@@ -43,13 +43,13 @@ namespace tl
 
             //! Start a render.
             virtual void begin(const imaging::Size&,
-                               const RenderOptions& = RenderOptions()) = 0;
+                const RenderOptions& = RenderOptions()) = 0;
 
             //! Finish a render.
             virtual void end() = 0;
 
             //! Draw an unfilled rectangle (line loop).
-            virtual void drawLineRect(
+            virtual void drawRectOutline(
                 const math::BBox2i&,
                 const imaging::Color4f&,
                 const math::Matrix4x4f&) = 0;

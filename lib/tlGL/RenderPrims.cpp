@@ -12,7 +12,7 @@ namespace tl
 {
     namespace gl
     {
-        void Render::drawLineRect(
+        void Render::drawRectOutline(
             const math::BBox2i& bbox,
             const imaging::Color4f& color,
             const math::Matrix4x4f& mvp)
