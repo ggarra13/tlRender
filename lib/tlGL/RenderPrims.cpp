@@ -60,7 +60,8 @@ namespace tl
 
         void Render::drawMesh(
             const geom::TriangleMesh2& mesh,
-            const imaging::Color4f& color)
+            const imaging::Color4f& color,
+            const math::Matrix4x4f& mvp)
         {
             TLRENDER_P();
 
@@ -69,6 +70,7 @@ namespace tl
             {
                 p.shaders["mesh"]->bind();
                 p.shaders["mesh"]->setUniform("color", color);
+                p.shaders["mesh"]->setUniform("transform.mvp", mvp );
 
                 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
