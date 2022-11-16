@@ -32,6 +32,9 @@ namespace tl
                 const timeline::RenderOptions& = timeline::RenderOptions()) override;
             void end() override;
             void setMatrix(const math::Matrix4x4f&) override;
+            void drawRectOutline(
+                const math::BBox2i& bbox,
+                const imaging::Color4f& color) override;
             void drawRect(
                 const math::BBox2i&,
                 const imaging::Color4f&) override;
