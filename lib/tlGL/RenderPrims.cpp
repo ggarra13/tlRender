@@ -16,6 +16,7 @@ namespace tl
         {
             TLRENDER_P();
 
+            p.shaders["mesh"]->bind();
             p.shaders["mesh"]->setUniform("transform.mvp", mvp);
         }
 
