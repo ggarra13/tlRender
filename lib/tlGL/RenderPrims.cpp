@@ -74,7 +74,6 @@ namespace tl
             {
                 p.shaders["mesh"]->bind();
                 p.shaders["mesh"]->setUniform("color", color);
-                p.shaders["mesh"]->setUniform("transform.mvp", mvp );
 
                 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
