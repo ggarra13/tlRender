@@ -65,8 +65,7 @@ namespace tl
 
         void Render::drawMesh(
             const geom::TriangleMesh2& mesh,
-            const imaging::Color4f& color,
-            const math::Matrix4x4f& mvp)
+            const imaging::Color4f& color)
         {
             TLRENDER_P();
 
