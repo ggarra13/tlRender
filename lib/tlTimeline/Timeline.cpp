@@ -61,8 +61,7 @@ namespace tl
             file::Path out = file::Path(removeFileURLPrefix(url), options);
             if (!out.isAbsolute())
             {
-                if ( out.get().compare( 0, directory.size(), directory ) != 0 )
-                   out = file::Path(directory, out.get(), options);
+                out = file::Path(directory, out.get(), options);
             }
             return out;
         }
