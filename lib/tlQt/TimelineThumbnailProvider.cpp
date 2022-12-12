@@ -53,7 +53,7 @@ namespace tl
             qint64 id = 0;
             std::vector<qint64> cancelRequests;
             size_t requestCount = 1;
-            std::chrono::milliseconds requestTimeout = std::chrono::milliseconds(50);
+            std::chrono::milliseconds requestTimeout = std::chrono::milliseconds(25);
             int timer = 0;
             int timerInterval = 50;
             QScopedPointer<QOffscreenSurface> offscreenSurface;
@@ -101,8 +101,8 @@ namespace tl
 
         qint64 TimelineThumbnailProvider::request(
             const QString& fileName,
-            const otime::RationalTime& time,
             const QSize& size,
+            const otime::RationalTime& time,
             const timeline::ColorConfigOptions& colorConfigOptions,
             const timeline::LUTOptions& lutOptions)
         {
@@ -127,8 +127,8 @@ namespace tl
 
         qint64 TimelineThumbnailProvider::request(
             const QString& fileName,
-            const QList<otime::RationalTime>& times,
             const QSize& size,
+            const QList<otime::RationalTime>& times,
             const timeline::ColorConfigOptions& colorConfigOptions,
             const timeline::LUTOptions& lutOptions)
         {
@@ -261,24 +261,16 @@ namespace tl
                         timeline::Options options;
                         options.videoRequestCount = 1;
                         options.audioRequestCount = 1;
-                        options.requestTimeout = std::chrono::milliseconds(100);
+                        options.requestTimeout = std::chrono::milliseconds(25);
                         options.ioOptions["SequenceIO/ThreadCount"] = string::Format("{0}").arg(1);
                         options.ioOptions["ffmpeg/ThreadCount"] = string::Format("{0}").arg(1);
                         request.timeline = timeline::Timeline::create(request.fileName.toUtf8().data(), context, options);
-                        otime::TimeRange timeRange;
-                        if (!request.times.empty())
-                        {
-                            timeRange = otime::TimeRange(request.times[0], otime::RationalTime(1.0, request.times[0].rate()));
-                            for (size_t i = 1; i < request.times.size(); ++i)
-                            {
-                                timeRange = timeRange.extended_by(
-                                    otime::TimeRange(request.times[i], otime::RationalTime(1.0, request.times[i].rate())));
-                            }
-                            request.timeline->setActiveRanges({ timeRange });
-                        }
                         for (const auto& i : request.times)
                         {
-                            request.futures.push_back(request.timeline->getVideo(i));
+                            request.futures.push_back(request.timeline->getVideo(
+                                i != time::invalidTime ?
+                                i :
+                                request.timeline->getTimeRange().start_time()));
                         }
                         p.requestsInProgress.push_back(std::move(request));
                     }

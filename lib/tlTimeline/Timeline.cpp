@@ -94,7 +94,8 @@ namespace tl
         void Timeline::_init(
             const otio::SerializableObject::Retainer<otio::Timeline>& otioTimeline,
             const std::shared_ptr<system::Context>& context,
-            const Options& options)
+            const Options& options,
+            const std::shared_ptr<ReadCache>& readCache)
         {
             TLRENDER_P();
 
@@ -150,6 +151,8 @@ namespace tl
                 catch (const std::exception&)
                 {}
             }
+            p.readCache = readCache ? readCache : ReadCache::create();
+            p.readCache->setMax(16);
 
             // Get information about the timeline.
             otio::ErrorStatus errorStatus;
@@ -339,11 +342,6 @@ namespace tl
             return _p->ioInfo;
         }
 
-        void Timeline::setActiveRanges(const std::vector<otime::TimeRange>& ranges)
-        {
-            _p->activeRanges = ranges;
-        }
-
         std::future<VideoData> Timeline::getVideo(const otime::RationalTime& time, uint16_t videoLayer)
         {
             TLRENDER_P();
@@ -415,10 +413,7 @@ namespace tl
             {
                 request->promise.set_value(AudioData());
             }
-            for (auto& i : p.readers)
-            {
-                i.second.read->cancelRequests();
-            }
+            p.readCache->cancelRequests();
         }
     }
 }

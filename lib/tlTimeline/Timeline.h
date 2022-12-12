@@ -5,6 +5,7 @@
 #pragma once
 
 #include <tlTimeline/Audio.h>
+#include <tlTimeline/ReadCache.h>
 #include <tlTimeline/Video.h>
 
 #include <tlCore/Context.h>
@@ -12,8 +13,6 @@
 #include <opentimelineio/composable.h>
 #include <opentimelineio/item.h>
 #include <opentimelineio/timeline.h>
-
-#include <future>
 
 namespace tl
 {
@@ -68,7 +67,8 @@ namespace tl
         otio::SerializableObject::Retainer<otio::Timeline> create(
             const std::string& fileName,
             const std::shared_ptr<system::Context>&,
-            const Options& = Options());
+            const Options& = Options(),
+            const std::shared_ptr<ReadCache>& = nullptr);
 
         //! Create a new timeline from a file name and audio file name.
         //! The file name can point to an .otio file, movie file, or
@@ -77,7 +77,8 @@ namespace tl
             const std::string& fileName,
             const std::string& audioFileName,
             const std::shared_ptr<system::Context>&,
-            const Options& = Options());
+            const Options& = Options(),
+            const std::shared_ptr<ReadCache>& = nullptr);
 
         //! Timeline.
         class Timeline : public std::enable_shared_from_this<Timeline>
@@ -88,7 +89,8 @@ namespace tl
             void _init(
                 const otio::SerializableObject::Retainer<otio::Timeline>&,
                 const std::shared_ptr<system::Context>&,
-                const Options&);
+                const Options&,
+                const std::shared_ptr<ReadCache>&);
 
             Timeline();
 
@@ -99,7 +101,8 @@ namespace tl
             static std::shared_ptr<Timeline> create(
                 const otio::SerializableObject::Retainer<otio::Timeline>&,
                 const std::shared_ptr<system::Context>&,
-                const Options& = Options());
+                const Options& = Options(),
+                const std::shared_ptr<ReadCache>& = nullptr);
 
             //! Create a new timeline from a file name. The file name can point
             //! to an .otio file, movie file, or image sequence.
@@ -146,10 +149,6 @@ namespace tl
 
             //! \name Video and Audio Data
             ///@{
-
-            //! Set the active time ranges. This informs the timeline which
-            //! I/O readers to keep active.
-            void setActiveRanges(const std::vector<otime::TimeRange>&);
 
             //! Get video data.
             std::future<VideoData> getVideo(const otime::RationalTime&, uint16_t layer = 0);
