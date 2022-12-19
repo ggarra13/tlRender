@@ -12,6 +12,53 @@ namespace tl
 {
     namespace gl
     {
+        void Render::pushMatrix()
+        {
+            TLRENDER_P();
+
+            math::Matrix4x4f mvp;
+
+            p.shaders["mesh"]->bind();
+            p.shaders["mesh"]->getUniform("transform.mvp", mvp);
+
+            p.matrices.push_back( mvp );
+
+            p.shaders["text"]->bind();
+            p.shaders["text"]->getUniform("transform.mvp", mvp);
+
+            p.matrices.push_back( mvp );
+        }
+        
+        void Render::setMatrix(const math::Matrix4x4f& mvp)
+        {
+            TLRENDER_P();
+
+            p.shaders["mesh"]->bind();
+            p.shaders["mesh"]->setUniform("transform.mvp", mvp);
+            
+            p.shaders["text"]->bind();
+            p.shaders["text"]->setUniform("transform.mvp", mvp);
+        }
+    
+        void Render::popMatrix()
+        {
+            TLRENDER_P();
+            
+            if ( p.matrices.empty() ) return;
+
+            math::Matrix4x4f mvp = p.matrices.back();
+            p.matrices.pop_back();
+            
+            p.shaders["text"]->bind();
+            p.shaders["text"]->setUniform("transform.mvp", mvp);
+
+            mvp = p.matrices.back();
+            p.matrices.pop_back();
+            
+            p.shaders["mesh"]->bind();
+            p.shaders["mesh"]->setUniform("transform.mvp", mvp);
+        }
+
         void Render::drawRect(
             const math::BBox2i& bbox,
             const imaging::Color4f& color)
