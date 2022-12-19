@@ -15,6 +15,32 @@ namespace tl
 {
     namespace time
     {
+        bool isValid(const otime::RationalTime& value)
+        {
+            return !value.is_invalid_time();
+        }
+
+        bool isValid(const otime::TimeRange& value)
+        {
+            return
+                !value.start_time().is_invalid_time() &&
+                !value.duration().is_invalid_time();
+        }
+
+        bool compareExact(const otime::RationalTime& a, const otime::RationalTime& b)
+        {
+            return
+                a.value() == b.value() &&
+                a.rate() == b.rate();
+        }
+
+        bool compareExact(const otime::TimeRange& a, const otime::TimeRange& b)
+        {
+            return
+                compareExact(a.start_time(), b.start_time()) &&
+                compareExact(a.duration(), b.duration());
+        }
+
         otime::RationalTime round(const otime::RationalTime& value)
         {
             return otime::RationalTime(std::round(value.value()), value.rate());
@@ -28,6 +54,22 @@ namespace tl
         otime::RationalTime ceil(const otime::RationalTime& value)
         {
             return otime::RationalTime(std::ceil(value.value()), value.rate());
+        }
+
+        std::vector<otime::RationalTime> frames(const otime::TimeRange& value)
+        {
+            std::vector<otime::RationalTime> out;
+            if (isValid(value))
+            {
+                const auto start = value.start_time();
+                const auto end = value.end_time_exclusive();
+                const auto inc = otime::RationalTime(1.0, value.duration().rate());
+                for (auto time = start; time < end; time += inc)
+                {
+                    out.push_back(time);
+                }
+            }
+            return out;
         }
 
         std::pair<int, int> toRational(double value)

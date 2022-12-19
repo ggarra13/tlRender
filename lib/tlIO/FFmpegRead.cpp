@@ -455,6 +455,44 @@ namespace tl
                     }
                 }
             }
+            int dataStream = -1;
+            for (unsigned int i = 0; i < p.video.avFormatContext->nb_streams; ++i)
+            {
+                if (AVMEDIA_TYPE_DATA == p.video.avFormatContext->streams[i]->codecpar->codec_type &&
+                    AV_DISPOSITION_DEFAULT == p.video.avFormatContext->streams[i]->disposition)
+                {
+                    dataStream = i;
+                    break;
+                }
+            }
+            if (-1 == dataStream)
+            {
+                for (unsigned int i = 0; i < p.video.avFormatContext->nb_streams; ++i)
+                {
+                    if (AVMEDIA_TYPE_DATA == p.video.avFormatContext->streams[i]->codecpar->codec_type)
+                    {
+                        dataStream = i;
+                        break;
+                    }
+                }
+            }
+            std::string timecode;
+            if (dataStream != -1)
+            {
+                AVDictionaryEntry* tag = nullptr;
+                while ((tag = av_dict_get(
+                    p.video.avFormatContext->streams[dataStream]->metadata,
+                    "",
+                    tag,
+                    AV_DICT_IGNORE_SUFFIX)))
+                {
+                    if (string::compareNoCase(tag->key, "timecode"))
+                    {
+                        timecode = tag->value;
+                        break;
+                    }
+                }
+            }
             if (p.video.avStream != -1)
             {
                 //av_dump_format(p.video.avFormatContext, p.video.avStream, fileName.c_str(), 0);
@@ -665,7 +703,6 @@ namespace tl
 
                 imaging::Tags tags;
                 AVDictionaryEntry* tag = nullptr;
-                otime::RationalTime startTime(0.0, speed);
                 while ((tag = av_dict_get(p.video.avFormatContext->metadata, "", tag, AV_DICT_IGNORE_SUFFIX)))
                 {
                     const std::string key(tag->key);
@@ -673,19 +710,24 @@ namespace tl
                     tags[key] = value;
                     if (string::compareNoCase(key, "timecode"))
                     {
-                        otime::ErrorStatus errorStatus;
-                        const otime::RationalTime time = otime::RationalTime::from_timecode(
-                            value,
-                            speed,
-                            &errorStatus);
-                        if (!otime::is_error(errorStatus))
-                        {
-                            startTime = time::floor(time.rescaled_to(speed));
-                            //std::cout << "start time: " << startTime << std::endl;
-                        }
+                        timecode = tag->value;
                     }
                 }
 
+                otime::RationalTime startTime(0.0, speed);
+                if (!timecode.empty())
+                {
+                    otime::ErrorStatus errorStatus;
+                    const otime::RationalTime time = otime::RationalTime::from_timecode(
+                        timecode,
+                        speed,
+                        &errorStatus);
+                    if (!otime::is_error(errorStatus))
+                    {
+                        startTime = time::floor(time);
+                        //std::cout << "start time: " << startTime << std::endl;
+                    }
+                }
                 p.info.videoTime = otime::TimeRange(
                     startTime,
                     otime::RationalTime(sequenceSize, speed));
@@ -1090,7 +1132,7 @@ namespace tl
                 if (videoRequest)
                 {
                     //std::cout << "video request: " << videoRequest->time << std::endl;
-                    if (videoRequest->time != p.videoTime)
+                    if (!time::compareExact(videoRequest->time, p.videoTime))
                     {
                         //std::cout << "video seek: " << videoRequest->time << std::endl;
                         p.videoTime = videoRequest->time;
@@ -1191,7 +1233,7 @@ namespace tl
                 if (audioRequest)
                 {
                     //std::cout << "audio request: " << audioRequest->time << std::endl;
-                    if (audioRequest->time.start_time() != p.audioTime)
+                    if (!time::compareExact(audioRequest->time.start_time(), p.audioTime))
                     {
                         //std::cout << "audio seek: " << audioRequest->time << std::endl;
                         p.audioTime = audioRequest->time.start_time();
@@ -1437,7 +1479,7 @@ namespace tl
 
                 if (time >= videoTime)
                 {
-                    //std::cout << "video frame: " << time << std::endl;
+                    //std::cout << "video time: " << time << std::endl;
                     auto image = imaging::Image::create(info.video[0]);
                     
                     auto tags = info.tags;
