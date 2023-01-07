@@ -48,6 +48,9 @@ namespace tl
             std::shared_ptr<tl::gl::OffscreenBuffer> buffer;
             std::shared_ptr<gl::VBO> vbo;
             std::shared_ptr<gl::VAO> vao;
+            otio::RationalTime       lastTime;
+            std::shared_ptr<imaging::FontSystem> fontSystem;
+            uint64_t                 skippedFrames = 0;
         };
 
         TimelineViewport::TimelineViewport(
@@ -249,6 +252,15 @@ namespace tl
                     p.render = gl::Render::create(context);
                 }
 
+
+                if ( !p.fontSystem )
+                {
+                    if (auto context = p.context.lock())
+                    {
+                        p.fontSystem = imaging::FontSystem::create(context);
+                    }
+                }
+            
                 const std::string vertexSource =
                     "#version 410\n"
                     "\n"
@@ -409,10 +421,57 @@ namespace tl
                 {
                     p.vao->bind();
                     p.vao->draw(GL_TRIANGLES, 0, p.vbo->getSize());
+
+                    _drawHUD();
                 }
             }
         }
 
+        void _drawText(
+            const std::shared_ptr<timeline::IRender>& render,
+            const std::vector<std::shared_ptr<imaging::Glyph> >& glyphs,
+            math::Vector2i& pos, const int16_t lineHeight,
+            const imaging::Color4f& labelColor) noexcept
+        {
+            const imaging::Color4f shadowColor(0.F, 0.F, 0.F, 0.7F);
+            math::Vector2i shadowPos{ pos.x + 2, pos.y + 2 };
+            render->drawText( glyphs, shadowPos, shadowColor );
+            render->drawText( glyphs, pos, labelColor );
+        }
+
+        
+        void TimelineViewport::_drawHUD()
+        {
+            TLRENDER_P();
+            const auto& viewportSize = _getViewportSize();
+
+            timeline::RenderOptions renderOptions;
+            renderOptions.clear = false;
+            p.render->begin( viewportSize, renderOptions );
+            static const std::string fontFamily = "NotoSans-Regular";
+            
+            const imaging::FontInfo fontInfo(fontFamily, 24);
+            const imaging::FontMetrics fontMetrics =
+                p.fontSystem->getMetrics(fontInfo);
+            auto lineHeight = fontMetrics.lineHeight;
+            math::Vector2i pos( 20, lineHeight*2 );
+            const imaging::Color4f labelColor( 255.F, 255.F, 0.F );
+            
+            const otime::RationalTime& time = p.videoData[0].time;
+            auto time_diff = ( time - p.lastTime );
+            int64_t frame_diff = time_diff.to_frames();
+            int64_t absdiff = std::abs(frame_diff);
+            if ( absdiff > 1 && absdiff < 10 )
+            {
+                p.skippedFrames += absdiff - 1;
+            }
+            char buf[128];
+            sprintf( buf, "SF: %" PRIu64, p.skippedFrames );
+            _drawText( p.render, p.fontSystem->getGlyphs(buf, fontInfo), pos,
+                       lineHeight, labelColor );
+            p.lastTime = time;
+        }
+        
 #if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
         void TimelineViewport::enterEvent(QEvent* event)
 #else
