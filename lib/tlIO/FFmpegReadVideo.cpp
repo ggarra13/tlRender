@@ -313,11 +313,7 @@ namespace tl
                 }
 
                 std::size_t sequenceSize = 0;
-                if (avVideoStream->nb_frames > 0)
-                {
-                    sequenceSize = avVideoStream->nb_frames;
-                }
-                else if (avVideoStream->duration != AV_NOPTS_VALUE)
+                if (avVideoStream->duration != AV_NOPTS_VALUE)
                 {
                     sequenceSize = av_rescale_q(
                         avVideoStream->duration,
@@ -332,7 +328,7 @@ namespace tl
                         swap(avVideoStream->r_frame_rate));
                 }
 
-                const double speed = avVideoStream->r_frame_rate.num / double(avVideoStream->r_frame_rate.den);
+                const double speed = av_q2d(avVideoStream->avg_frame_rate);
 
                 imaging::Tags tags;
                 AVDictionaryEntry* tag = nullptr;
