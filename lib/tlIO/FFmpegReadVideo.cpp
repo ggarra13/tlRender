@@ -328,7 +328,7 @@ namespace tl
                         swap(avVideoStream->r_frame_rate));
                 }
 
-                const double speed = av_q2d(avVideoStream->avg_frame_rate);
+                const double speed = avVideoStream->r_frame_rate.num / double(avVideoStream->r_frame_rate.den);
 
                 imaging::Tags tags;
                 AVDictionaryEntry* tag = nullptr;
