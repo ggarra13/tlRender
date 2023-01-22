@@ -12,16 +12,18 @@ else()
     set(FFmpeg_CXXFLAGS)
     set(FFmpeg_OBJCFLAGS)
     set(FFmpeg_LDFLAGS)
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    if(APPLE AND CMAKE_OSX_DEPLOYMENT_TARGET)
+        list(APPEND FFmpeg_CFLAGS "--extra-cflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+        list(APPEND FFmpeg_CXXFLAGS "--extra-cxxflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+        list(APPEND FFmpeg_OBJCFLAGS "--extra-objcflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+        list(APPEND FFmpeg_LDFLAGS "--extra-ldflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+    endif()
+    if(FFmpeg_DEBUG)
         list(APPEND FFmpeg_CFLAGS "--extra-cflags=-g")
         list(APPEND FFmpeg_CXXFLAGS "--extra-cxxflags=-g")
         list(APPEND FFmpeg_OBJCFLAGS "--extra-objcflags=-g")
         list(APPEND FFmpeg_LDFLAGS "--extra-ldflags=-g")
     endif()
-    list(APPEND FFmpeg_CFLAGS "--extra-cflags=${CMAKE_C_FLAGS}")
-    list(APPEND FFmpeg_CXXFLAGS "--extra-cxxflags=${CMAKE_CXX_FLAGS}")
-    list(APPEND FFmpeg_OBJCFLAGS "--extra-objcflags=${CMAKE_C_FLAGS}")
-    list(APPEND FFmpeg_LDFLAGS "--extra-ldflags=${CMAKE_SHARED_LINKER_FLAGS}")
     set(FFmpeg_CONFIGURE_ARGS
         --prefix=${CMAKE_INSTALL_PREFIX}
         --disable-programs
@@ -40,7 +42,7 @@ else()
         ${FFmpeg_OBJCFLAGS}
         ${FFmpeg_LDFLAGS}
         --x86asmexe=${CMAKE_INSTALL_PREFIX}/bin/nasm)
-    if (UNIX)
+    if(UNIX)
         list(APPEND FFmpeg_CONFIGURE_ARGS
             --disable-libxcb
             --disable-libxcb-shm
