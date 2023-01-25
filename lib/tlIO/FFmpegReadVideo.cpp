@@ -554,12 +554,6 @@ namespace tl
             {
                 avcodec_flush_buffers(_avCodecContext[_avStream]);
 
-                // int64_t seekTarget = 
-                //     av_rescale_q(
-                //         time.value() - _timeRange.start_time().value(),
-                //         swap(_avFormatContext->streams[_avStream]->r_frame_rate),
-                //         _avFormatContext->streams[_avStream]->time_base);
-
                 if (av_seek_frame(
                     _avFormatContext,
                     _avStream,
