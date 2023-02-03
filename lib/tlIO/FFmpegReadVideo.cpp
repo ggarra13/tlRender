@@ -304,20 +304,21 @@ namespace tl
                 {
                     _info.videoLevels = imaging::VideoLevels::LegalRange;
                 }
-                switch (_avCodecParameters[_avStream]->color_primaries)
+                switch (_avCodecParameters[_avStream]->color_space)
                 {
                 case AVCOL_SPC_BT2020_NCL:
                     _info.yuvCoefficients = imaging::YUVCoefficients::BT2020;
                     break;
                 default: break;
                 }
-                const double tbr = av_q2d(avVideoStream->r_frame_rate);
-                double speed = tbr;
 
+                _avSpeed = avVideoStream->r_frame_rate;
                 // Use avg_frame_rate if set
-                if ( avVideoStream->avg_frame_rate.num != 0 &&
-                     avVideoStream->avg_frame_rate.den != 0 )
-                    speed = av_q2d(avVideoStream->avg_frame_rate);
+                if (avVideoStream->avg_frame_rate.num != 0 &&
+                    avVideoStream->avg_frame_rate.den != 0)
+                    _avSpeed = avVideoStream->avg_frame_rate;
+                
+                const double speed = av_q2d(_avSpeed);
 
                 std::size_t sequenceSize = 0;
                 if (avVideoStream->nb_frames > 0)
@@ -548,16 +549,12 @@ namespace tl
             {
                 avcodec_flush_buffers(_avCodecContext[_avStream]);
 
-                AVRational speed = _avFormatContext->streams[_avStream]->avg_frame_rate;
-                if (speed.num == 0.0 || speed.den == 0.0)
-                    speed = _avFormatContext->streams[_avStream]->r_frame_rate;
-                
                 if (av_seek_frame(
                     _avFormatContext,
                     _avStream,
                     av_rescale_q(
                         time.value() - _timeRange.start_time().value(),
-                        swap(speed),
+                        swap(_avSpeed),
                         _avFormatContext->streams[_avStream]->time_base),
                     AVSEEK_FLAG_BACKWARD) < 0)
                 {
