@@ -12,11 +12,20 @@ else()
     set(FFmpeg_CXXFLAGS)
     set(FFmpeg_OBJCFLAGS)
     set(FFmpeg_LDFLAGS)
+    #
+    # Makre sure we pick the static libz we compiled, not the system one
+    #
+    list(APPEND FFmpeg_LDFLAGS --extra-ldflags="${CMAKE_PREFIX_PATH}/lib/libz.a")
     if(APPLE AND CMAKE_OSX_DEPLOYMENT_TARGET)
         list(APPEND FFmpeg_CFLAGS "--extra-cflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
         list(APPEND FFmpeg_CXXFLAGS "--extra-cxxflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
         list(APPEND FFmpeg_OBJCFLAGS "--extra-objcflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
         list(APPEND FFmpeg_LDFLAGS "--extra-ldflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+    endif()
+    if(TLRENDER_VPX)
+        list(APPEND FFmpeg_CONFIGURE_ARGS
+            --enable-libvpx)
+        list(APPEND FFmpeg_LDFLAGS --extra-ldflags="${CMAKE_PREFIX_PATH}/lib/libvpx.a")
     endif()
     if(FFmpeg_DEBUG)
         list(APPEND FFmpeg_CFLAGS "--extra-cflags=-g")
