@@ -6,7 +6,7 @@ include(ExternalProject)
 set(VPX_TAG v1.12.0) # ptoven to work
 
 
-if(WIN32)
+if(WIN32 OR NOT TLRENDER_FFMPEG)
     # Use media_autobuild-suite to build FFmpeg with VPX support on Windows
 else()
 

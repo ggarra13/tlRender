@@ -8,6 +8,7 @@ set(FFmpeg_DEBUG OFF)
 if(WIN32)
     # See the directions for building FFmpeg on Windows in "docs/build_windows.html".
 else()
+    set(FFmpeg_CONFIGURE)
     set(FFmpeg_CFLAGS)
     set(FFmpeg_CXXFLAGS)
     set(FFmpeg_OBJCFLAGS)
@@ -25,6 +26,9 @@ else()
     if(TLRENDER_VPX)
         list(APPEND FFmpeg_CONFIGURE_ARGS
             --enable-libvpx)
+        #
+        # Makre sure we pick the static libvpx we compiled, not the system one
+        #
         list(APPEND FFmpeg_LDFLAGS --extra-ldflags="${CMAKE_PREFIX_PATH}/lib/libvpx.a")
     endif()
     if(FFmpeg_DEBUG)
@@ -51,6 +55,10 @@ else()
         ${FFmpeg_OBJCFLAGS}
         ${FFmpeg_LDFLAGS}
         --x86asmexe=${CMAKE_INSTALL_PREFIX}/bin/nasm)
+    if (APPLE AND CMAKE_OSX_ARCHITECTURES)
+        list(APPEND FFmpeg_CONFIGURE_ARGS
+            --arch=${CMAKE_OSX_ARCHITECTURES})
+    endif()
     if(UNIX)
         list(APPEND FFmpeg_CONFIGURE_ARGS
             --disable-libxcb
