@@ -13,13 +13,27 @@ else()
     set(FFmpeg_CXXFLAGS)
     set(FFmpeg_OBJCFLAGS)
     set(FFmpeg_LDFLAGS)
-    if(APPLE)
-        if (CMAKE_OSX_DEPLOYMENT_TARGET)
-            list(APPEND FFmpeg_CFLAGS "--extra-cflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
-            list(APPEND FFmpeg_CXXFLAGS "--extra-cxxflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
-            list(APPEND FFmpeg_OBJCFLAGS "--extra-objcflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
-            list(APPEND FFmpeg_LDFLAGS "--extra-ldflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
-        endif()
+    
+    
+    find_package( ZLIB REQUIRED)
+    list(APPEND FFmpeg_LDFLAGS
+        --extra-ldflags="${ZLIB_LIBRARIES}")
+    
+    if(APPLE AND CMAKE_OSX_DEPLOYMENT_TARGET)
+        list(APPEND FFmpeg_CFLAGS "--extra-cflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+        list(APPEND FFmpeg_CXXFLAGS "--extra-cxxflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+        list(APPEND FFmpeg_OBJCFLAGS "--extra-objcflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+        list(APPEND FFmpeg_LDFLAGS "--extra-ldflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+    endif()
+    if(TLRENDER_VPX)
+        list(APPEND FFmpeg_CONFIGURE_ARGS
+            --enable-libvpx)
+        #
+        # Makre sure we pick the static libvpx we compiled, not the system one
+        #
+        list(APPEND FFmpeg_LDFLAGS
+            --extra-ldflags="${CMAKE_PREFIX_PATH}/lib/libvpx.a")
+        list(APPEND FFmpeg_DEPS VPX)
     endif()
     if(FFmpeg_DEBUG)
         list(APPEND FFmpeg_CFLAGS "--extra-cflags=-g")
@@ -40,13 +54,20 @@ else()
         --disable-vaapi
         --disable-sdl2
         --enable-pic
+        --enable-zlib
         ${FFmpeg_CFLAGS}
         ${FFmpeg_CXXFLAGS}
         ${FFmpeg_OBJCFLAGS}
         ${FFmpeg_LDFLAGS}
         --x86asmexe=${CMAKE_INSTALL_PREFIX}/bin/nasm)
+<<<<<<< HEAD
     if (APPLE AND CMAKE_OSX_ARCHITECTURES )
         list(APPEND FFmpeg_CONFIGURE_ARGS --arch=${CMAKE_OSX_ARCHITECTURES} )
+=======
+    if (APPLE AND CMAKE_OSX_ARCHITECTURES)
+        list(APPEND FFmpeg_CONFIGURE_ARGS
+            --arch=${CMAKE_OSX_ARCHITECTURES})
+>>>>>>> vpx
     endif()
     if(UNIX)
         list(APPEND FFmpeg_CONFIGURE_ARGS
