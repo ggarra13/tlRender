@@ -29,6 +29,11 @@ else()
     
     set(VPX_CONFIGURE_ARGS
         --prefix=${CMAKE_INSTALL_PREFIX}
+        --enable-pic
+        --disable-examples
+        --disable-tools
+        --disable-docs
+        --disable-unit-tests
         ${VPX_CFLAGS}
         ${VPX_CXXFLAGS}
         ${VPX_OBJCFLAGS}
