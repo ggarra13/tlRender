@@ -14,11 +14,6 @@ else()
     set(VPX_CXXFLAGS)
     set(VPX_OBJCFLAGS)
     set(VPX_LDFLAGS)
-    if(APPLE AND CMAKE_OSX_DEPLOYMENT_TARGET)
-        list(APPEND VPX_CFLAGS "-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
-        list(APPEND VPX_CXXFLAGS "-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
-        list(APPEND VPX_LDFLAGS "-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
-    endif()
     
     set(VPX_CONFIGURE_ARGS
         --prefix=${CMAKE_INSTALL_PREFIX}
@@ -27,9 +22,6 @@ else()
         --disable-tools
         --disable-docs
         --disable-unit-tests
-        ${VPX_CFLAGS}
-        ${VPX_CXXFLAGS}
-        ${VPX_LDFLAGS}
         )
 ExternalProject_Add(
   VPX
