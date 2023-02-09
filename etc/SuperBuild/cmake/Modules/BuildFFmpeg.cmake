@@ -14,10 +14,11 @@ else()
     set(FFmpeg_OBJCFLAGS)
     set(FFmpeg_LDFLAGS)
     
-    
-    find_package( ZLIB REQUIRED)
-    list(APPEND FFmpeg_LDFLAGS
-        --extra-ldflags="${ZLIB_LIBRARIES}")
+    # @todo: fix
+    #
+    # find_package( ZLIB REQUIRED)
+    # list(APPEND FFmpeg_LDFLAGS
+    #     --extra-ldflags="${ZLIB_LIBRARIES}")
     
     if(APPLE AND CMAKE_OSX_DEPLOYMENT_TARGET)
         list(APPEND FFmpeg_CFLAGS "--extra-cflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
