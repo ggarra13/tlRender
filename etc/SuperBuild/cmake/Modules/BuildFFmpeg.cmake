@@ -14,17 +14,20 @@ else()
     set(FFmpeg_OBJCFLAGS)
     set(FFmpeg_LDFLAGS)
     
-    # @todo: fix
-    #
-    # find_package( ZLIB REQUIRED)
-    # list(APPEND FFmpeg_LDFLAGS
-    #     --extra-ldflags="${ZLIB_LIBRARIES}")
+    
+    find_package( ZLIB REQUIRED)
+    list(APPEND FFmpeg_LDFLAGS
+        --extra-ldflags="${ZLIB_LIBRARIES}")
     
     if(APPLE AND CMAKE_OSX_DEPLOYMENT_TARGET)
-        list(APPEND FFmpeg_CFLAGS "--extra-cflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
-        list(APPEND FFmpeg_CXXFLAGS "--extra-cxxflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
-        list(APPEND FFmpeg_OBJCFLAGS "--extra-objcflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
-        list(APPEND FFmpeg_LDFLAGS "--extra-ldflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+        list(APPEND FFmpeg_CFLAGS
+            --extra-cflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET})
+        list(APPEND FFmpeg_CXXFLAGS 
+            --extra-cflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET})
+        list(APPEND FFmpeg_OBJCFLAGS
+            --extra-cflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET})
+        list(APPEND FFmpeg_LDFLAGS
+            --extra-cflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET})
     endif()
     if(TLRENDER_VPX)
         list(APPEND FFmpeg_CONFIGURE_ARGS
