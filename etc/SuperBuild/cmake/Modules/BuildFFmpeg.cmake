@@ -60,14 +60,9 @@ else()
         ${FFmpeg_OBJCFLAGS}
         ${FFmpeg_LDFLAGS}
         --x86asmexe=${CMAKE_INSTALL_PREFIX}/bin/nasm)
-<<<<<<< HEAD
-    if (APPLE AND CMAKE_OSX_ARCHITECTURES )
-        list(APPEND FFmpeg_CONFIGURE_ARGS --arch=${CMAKE_OSX_ARCHITECTURES} )
-=======
     if (APPLE AND CMAKE_OSX_ARCHITECTURES)
         list(APPEND FFmpeg_CONFIGURE_ARGS
             --arch=${CMAKE_OSX_ARCHITECTURES})
->>>>>>> vpx
     endif()
     if(UNIX)
         list(APPEND FFmpeg_CONFIGURE_ARGS
