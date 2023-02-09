@@ -17,13 +17,11 @@ else()
     if(APPLE AND CMAKE_OSX_DEPLOYMENT_TARGET)
         list(APPEND VPX_CFLAGS "--extra-cflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
         list(APPEND VPX_CXXFLAGS "--extra-cxxflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
-        list(APPEND VPX_OBJCFLAGS "--extra-objcflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
         list(APPEND VPX_LDFLAGS "--extra-ldflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
     endif()
     if(VPX_DEBUG)
         list(APPEND VPX_CFLAGS "--extra-cflags=-g")
         list(APPEND VPX_CXXFLAGS "--extra-cxxflags=-g")
-        list(APPEND VPX_OBJCFLAGS "--extra-objcflags=-g")
         list(APPEND VPX_LDFLAGS "--extra-ldflags=-g")
     endif()
     
@@ -36,7 +34,6 @@ else()
         --disable-unit-tests
         ${VPX_CFLAGS}
         ${VPX_CXXFLAGS}
-        ${VPX_OBJCFLAGS}
         ${VPX_LDFLAGS}
         )
 ExternalProject_Add(
