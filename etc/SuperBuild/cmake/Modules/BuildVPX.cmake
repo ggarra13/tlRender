@@ -29,7 +29,7 @@ ExternalProject_Add(
   DEPENDS YASM
   GIT_REPOSITORY "https://github.com/webmproject/libvpx.git"
   GIT_TAG ${VPX_TAG}
-  CONFIGURE_COMMAND PATH="${CMAKE_PREFIX_PATH}/install/bin:$ENV{PATH}" && sh ./configure ${VPX_CONFIGURE_ARGS}
+  CONFIGURE_COMMAND PATH="${CMAKE_PREFIX_PATH}/bin:$ENV{PATH}" && sh ./configure ${VPX_CONFIGURE_ARGS}
   BUILD_IN_SOURCE 1
 )
 
