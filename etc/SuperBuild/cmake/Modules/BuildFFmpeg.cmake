@@ -8,26 +8,16 @@ set(FFmpeg_DEBUG OFF)
 if(WIN32)
     # See the directions for building FFmpeg on Windows in "docs/build_windows.html".
 else()
-    set(FFmpeg_CONFIGURE)
     set(FFmpeg_CFLAGS)
     set(FFmpeg_CXXFLAGS)
     set(FFmpeg_OBJCFLAGS)
     set(FFmpeg_LDFLAGS)
-    
-    
-    find_package( ZLIB REQUIRED)
-    list(APPEND FFmpeg_LDFLAGS
-        --extra-ldflags="${ZLIB_LIBRARIES}")
-    
+
     if(APPLE AND CMAKE_OSX_DEPLOYMENT_TARGET)
-        list(APPEND FFmpeg_CFLAGS
-            --extra-cflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET})
-        list(APPEND FFmpeg_CXXFLAGS 
-            --extra-cflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET})
-        list(APPEND FFmpeg_OBJCFLAGS
-            --extra-cflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET})
-        list(APPEND FFmpeg_LDFLAGS
-            --extra-cflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET})
+        list(APPEND FFmpeg_CFLAGS "--extra-cflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+        list(APPEND FFmpeg_CXXFLAGS "--extra-cxxflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+        list(APPEND FFmpeg_OBJCFLAGS "--extra-objcflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+        list(APPEND FFmpeg_LDFLAGS "--extra-ldflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
     endif()
     if(TLRENDER_VPX)
         list(APPEND FFmpeg_CONFIGURE_ARGS
@@ -58,7 +48,6 @@ else()
         --disable-vaapi
         --disable-sdl2
         --enable-pic
-        --enable-zlib
         ${FFmpeg_CFLAGS}
         ${FFmpeg_CXXFLAGS}
         ${FFmpeg_OBJCFLAGS}

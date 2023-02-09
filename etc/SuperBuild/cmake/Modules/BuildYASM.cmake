@@ -3,7 +3,6 @@ include( ExternalProject )
 # Use this for cuting edge yasm
 # GIT_REPOSITORY "https://github.com/yasm/yasm.git"
 
-
 ExternalProject_Add(
   YASM
   PREFIX ${CMAKE_CURRENT_BINARY_DIR}/YASM
