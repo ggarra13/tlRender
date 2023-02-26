@@ -119,7 +119,7 @@ namespace tl
             }
 
             p.videoThread.running = true;
-			p.audioThread.running = true;
+            p.audioThread.running = true;
             p.videoThread.thread = std::thread(
                 [this, path]
                 {
