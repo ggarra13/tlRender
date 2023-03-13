@@ -28,7 +28,7 @@ namespace tl
             "Tile");
         TLRENDER_ENUM_SERIALIZE_IMPL(CompareMode);
 
-        std::vector<math::BBox2i> tiles(CompareMode mode, const std::vector<imaging::Size>& sizes)
+        std::vector<math::BBox2i> getTiles(CompareMode mode, const std::vector<imaging::Size>& sizes)
         {
             std::vector<math::BBox2i> out;
             const size_t count = sizes.size();
@@ -139,7 +139,7 @@ namespace tl
                 }
                 break;
             default:
-                if (count > 0)
+                for (size_t i = 0; i < count; ++i)
                 {
                     out.push_back(math::BBox2i(
                         0,
@@ -156,7 +156,7 @@ namespace tl
         {
             imaging::Size out;
             math::BBox2i bbox;
-            const auto tiles = timeline::tiles(mode, sizes);
+            const auto tiles = getTiles(mode, sizes);
             if (!tiles.empty())
             {
                 bbox = tiles[0];

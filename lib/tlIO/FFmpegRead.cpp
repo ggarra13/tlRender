@@ -127,9 +127,13 @@ namespace tl
                     try
                     {
                         p.readVideo = std::make_shared<ReadVideo>(path.get(), _memory, p.options);
-                        p.info.video.push_back(p.readVideo->getInfo());
-                        p.info.videoTime = p.readVideo->getTimeRange();
-                        p.info.tags = p.readVideo->getTags();
+                        const auto& videoInfo = p.readVideo->getInfo();
+                        if (videoInfo.isValid())
+                        {
+                            p.info.video.push_back(videoInfo);
+                            p.info.videoTime = p.readVideo->getTimeRange();
+                            p.info.tags = p.readVideo->getTags();
+                        }
 
                         p.readAudio = std::make_shared<ReadAudio>(path.get(), _memory, p.info.videoTime.duration().rate(), p.options);
                         p.info.audio = p.readAudio->getInfo();
@@ -326,6 +330,7 @@ namespace tl
             while (p.videoThread.running)
             {
                 // Check requests.
+                bool seek = false;
                 {
                     std::unique_lock<std::mutex> lock(p.videoMutex.mutex);
                     if (p.videoThread.cv.wait_for(
@@ -335,8 +340,7 @@ namespace tl
                         {
                             return
                                 !_p->videoMutex.requests.empty() ||
-                                _p->videoMutex.currentRequest ||
-                                !_p->readVideo->isBufferFull();
+                                _p->videoMutex.currentRequest;
                         }))
                     {
                         if (!p.videoMutex.currentRequest && !p.videoMutex.requests.empty())
@@ -344,14 +348,6 @@ namespace tl
                             p.videoMutex.currentRequest = p.videoMutex.requests.front();
                             p.videoMutex.requests.pop_front();
                         }
-                    }
-                }
-
-                // Seek.
-                {
-                    bool seek = false;
-                    {
-                        std::unique_lock<std::mutex> lock(p.videoMutex.mutex);
                         if (p.videoMutex.currentRequest)
                         {
                             if (!time::compareExact(
@@ -363,10 +359,12 @@ namespace tl
                             }
                         }
                     }
-                    if (seek)
-                    {
-                        p.readVideo->seek(p.videoThread.currentTime);
-                    }
+                }
+
+                // Seek.
+                if (seek)
+                {
+                    p.readVideo->seek(p.videoThread.currentTime);
                 }
 
                 // Process.
@@ -399,25 +397,27 @@ namespace tl
                 }
 
                 // Logging.
-                if (auto logSystem = _logSystem.lock())
                 {
                     const auto now = std::chrono::steady_clock::now();
                     const std::chrono::duration<float> diff = now - p.videoThread.logTimer;
                     if (diff.count() > 10.F)
                     {
                         p.videoThread.logTimer = now;
-                        const std::string id = string::Format("tl::io::ffmpeg::Read {0}").arg(this);
-                        size_t requestsSize = 0;
+                        if (auto logSystem = _logSystem.lock())
                         {
-                            std::unique_lock<std::mutex> lock(p.videoMutex.mutex);
-                            requestsSize = p.videoMutex.requests.size();
+                            const std::string id = string::Format("tl::io::ffmpeg::Read {0}").arg(this);
+                            size_t requestsSize = 0;
+                            {
+                                std::unique_lock<std::mutex> lock(p.videoMutex.mutex);
+                                requestsSize = p.videoMutex.requests.size();
+                            }
+                            logSystem->print(id, string::Format(
+                                "\n"
+                                "    Path: {0}\n"
+                                "    Video requests: {1}").
+                                arg(_path.get()).
+                                arg(requestsSize));
                         }
-                        logSystem->print(id, string::Format(
-                            "\n"
-                            "    Path: {0}\n"
-                            "    Video requests: {1}").
-                            arg(_path.get()).
-                            arg(requestsSize));
                     }
                 }
             }
@@ -432,6 +432,7 @@ namespace tl
             while (p.audioThread.running)
             {
                 // Check requests.
+                bool seek = false;
                 {
                     std::unique_lock<std::mutex> lock(p.audioMutex.mutex);
                     if (p.audioThread.cv.wait_for(
@@ -441,8 +442,7 @@ namespace tl
                         {
                             return
                                 !_p->audioMutex.requests.empty() ||
-                                _p->audioMutex.currentRequest ||
-                                !_p->readAudio->isBufferFull();
+                                _p->audioMutex.currentRequest;
                         }))
                     {
                         if (!p.audioMutex.currentRequest && !p.audioMutex.requests.empty())
@@ -450,14 +450,6 @@ namespace tl
                             p.audioMutex.currentRequest = p.audioMutex.requests.front();
                             p.audioMutex.requests.pop_front();
                         }
-                    }
-                }
-
-                // Seek.
-                {
-                    bool seek = false;
-                    {
-                        std::unique_lock<std::mutex> lock(p.audioMutex.mutex);
                         if (p.audioMutex.currentRequest)
                         {
                             if (!time::compareExact(
@@ -469,10 +461,12 @@ namespace tl
                             }
                         }
                     }
-                    if (seek)
-                    {
-                        p.readAudio->seek(p.audioThread.currentTime);
-                    }
+                }
+
+                // Seek.
+                if (seek)
+                {
+                    p.readAudio->seek(p.audioThread.currentTime);
                 }
 
                 // Process.
@@ -511,25 +505,27 @@ namespace tl
                 }
 
                 // Logging.
-                if (auto logSystem = _logSystem.lock())
                 {
                     const auto now = std::chrono::steady_clock::now();
                     const std::chrono::duration<float> diff = now - p.audioThread.logTimer;
                     if (diff.count() > 10.F)
                     {
                         p.audioThread.logTimer = now;
-                        const std::string id = string::Format("tl::io::ffmpeg::Read {0}").arg(this);
-                        size_t requestsSize = 0;
+                        if (auto logSystem = _logSystem.lock())
                         {
-                            std::unique_lock<std::mutex> lock(p.audioMutex.mutex);
-                            requestsSize = p.audioMutex.requests.size();
+                            const std::string id = string::Format("tl::io::ffmpeg::Read {0}").arg(this);
+                            size_t requestsSize = 0;
+                            {
+                                std::unique_lock<std::mutex> lock(p.audioMutex.mutex);
+                                requestsSize = p.audioMutex.requests.size();
+                            }
+                            logSystem->print(id, string::Format(
+                                "\n"
+                                "    Path: {0}\n"
+                                "    Audio requests: {1}").
+                                arg(_path.get()).
+                                arg(requestsSize));
                         }
-                        logSystem->print(id, string::Format(
-                            "\n"
-                            "    Path: {0}\n"
-                            "    Audio requests: {1}").
-                            arg(_path.get()).
-                            arg(requestsSize));
                     }
                 }
             }
