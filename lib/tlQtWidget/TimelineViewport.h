@@ -106,8 +106,6 @@ namespace tl
             math::Vector2i _viewportCenter() const;
             void _frameView();
 
-            void _drawHUD();
-            
             TLRENDER_PRIVATE();
         };
     }

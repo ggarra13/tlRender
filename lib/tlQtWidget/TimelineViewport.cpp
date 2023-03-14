@@ -413,8 +413,6 @@ namespace tl
                 {
                     p.vao->bind();
                     p.vao->draw(GL_TRIANGLES, 0, p.vbo->getSize());
-
-                    _drawHUD();
                 }
             }
         }
@@ -429,39 +427,6 @@ namespace tl
             math::Vector2i shadowPos{ pos.x + 2, pos.y + 2 };
             render->drawText( glyphs, shadowPos, shadowColor );
             render->drawText( glyphs, pos, labelColor );
-        }
-
-        
-        void TimelineViewport::_drawHUD()
-        {
-            TLRENDER_P();
-            const auto& viewportSize = _getViewportSize();
-
-            timeline::RenderOptions renderOptions;
-            renderOptions.clear = false;
-            p.render->begin( viewportSize, renderOptions );
-            static const std::string fontFamily = "NotoSans-Regular";
-            
-            const imaging::FontInfo fontInfo(fontFamily, 24);
-            const imaging::FontMetrics fontMetrics =
-                p.fontSystem->getMetrics(fontInfo);
-            auto lineHeight = fontMetrics.lineHeight;
-            math::Vector2i pos( 20, lineHeight*2 );
-            const imaging::Color4f labelColor( 255.F, 255.F, 0.F );
-            
-            const otime::RationalTime& time = p.videoData[0].time;
-            auto time_diff = ( time - p.lastTime );
-            int64_t frame_diff = time_diff.to_frames();
-            int64_t absdiff = std::abs(frame_diff);
-            if ( absdiff > 1 && absdiff < 10 )
-            {
-                p.skippedFrames += absdiff - 1;
-            }
-            char buf[128];
-            sprintf( buf, "SF: %" PRIu64, p.skippedFrames );
-            _drawText( p.render, p.fontSystem->getGlyphs(buf, fontInfo), pos,
-                       lineHeight, labelColor );
-            p.lastTime = time;
         }
         
 #if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
