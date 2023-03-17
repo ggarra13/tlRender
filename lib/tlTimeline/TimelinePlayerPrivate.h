@@ -49,7 +49,7 @@ namespace tl
                 RtAudioStreamStatus status,
                 void* userData);
             static void rtAudioErrorCallback(
-                RtAudioErrorType type,
+                RtAudioError::Type type,
                 const std::string& errorText);
 #endif // TLRENDER_AUDIO
 

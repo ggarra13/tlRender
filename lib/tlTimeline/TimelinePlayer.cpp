@@ -222,8 +222,7 @@ namespace tl
                                         &rtBufferFrames,
                                         p.rtAudioCallback,
                                         _p.get(),
-                                        nullptr);
-                                    p.thread.rtAudio->setErrorCallback(
+                                        nullptr,
                                         p.rtAudioErrorCallback);
                                     p.thread.rtAudio->startStream();
                                 }

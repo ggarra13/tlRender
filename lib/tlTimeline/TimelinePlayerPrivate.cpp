@@ -544,7 +544,7 @@ namespace tl
         }
 
         void TimelinePlayer::Private::rtAudioErrorCallback(
-            RtAudioErrorType type,
+            RtAudioError::Type type,
             const std::string& errorText)
         {}
 #endif // TLRENDER_AUDIO
