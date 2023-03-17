@@ -72,7 +72,7 @@ namespace tl
                 for (size_t i = 0; i < rtDeviceCount; ++i)
                 {
                     const RtAudio::DeviceInfo rtInfo = p.rtAudio->getDeviceInfo(i);
-                    if (rtInfo.probed)
+                    // if (rtInfo.probed) // gone from latest RtAudio
                     {
                         Device device;
                         device.name = rtInfo.name;
