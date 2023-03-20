@@ -24,13 +24,16 @@ else()
 	--disable-unit-tests
 	)
 
+    set( YASM_BIN_PATH "${CMAKE_INSTALL_PREFIX}/bin:$ENV{PATH}" )
+    
     ExternalProject_Add(
 	VPX
 	PREFIX ${CMAKE_CURRENT_BINARY_DIR}/VPX
 	DEPENDS YASM
 	GIT_REPOSITORY "https://github.com/webmproject/libvpx.git"
 	GIT_TAG ${VPX_TAG}
-	CONFIGURE_COMMAND PATH=${CMAKE_PREFIX_PATH}/bin:$ENV{PATH} ./configure ${VPX_CONFIGURE_ARGS}
+	CONFIGURE_COMMAND PATH=${YASM_BIN_PATH} ./configure ${VPX_CONFIGURE_ARGS}
+	BUILD_COMMAND PATH=${YASM_BIN_PATH} make
 	BUILD_IN_SOURCE 1
 	)
 
