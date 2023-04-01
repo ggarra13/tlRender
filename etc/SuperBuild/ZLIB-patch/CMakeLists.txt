@@ -5,6 +5,9 @@ project(zlib C)
 
 set(VERSION "1.2.11")
 
+# Set the position-independent code flag
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 option(ASM686 "Enable building i686 assembly implementation")
 option(AMD64 "Enable building amd64 assembly implementation")
 
