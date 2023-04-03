@@ -8,7 +8,6 @@ jobs:
 
     env:
       TLRENDER_MMAP: ON
-      TLRENDER_COVERAGE: OFF
       TLRENDER_PYTHON: OFF
       TLRENDER_OCIO: ON
       TLRENDER_AUDIO: ON
@@ -24,6 +23,7 @@ jobs:
       TLRENDER_PROGRAMS: OFF
       TLRENDER_EXAMPLES: OFF
       TLRENDER_TESTS: OFF
+      TLRENDER_GCOV: OFF
 
     steps:
     - uses: actions/checkout@v2
@@ -34,7 +34,7 @@ jobs:
       run: sudo apt-get update
 
     - name: Install lcov
-      if: env.TLRENDER_COVERAGE == 'ON'
+      if: env.TLRENDER_GCOV == 'ON'
       run: sudo apt-get install lcov
 
     - name: Install OpenGL dev
@@ -70,7 +70,6 @@ jobs:
           -DCMAKE_INSTALL_PREFIX=$PWD/install \
           -DCMAKE_PREFIX_PATH=$PWD/install \
           -DTLRENDER_MMAP=$TLRENDER_MMAP \
-          -DTLRENDER_COVERAGE=$TLRENDER_COVERAGE \
           -DTLRENDER_PYTHON=$TLRENDER_PYTHON \
           -DTLRENDER_OCIO=$TLRENDER_OCIO \
           -DTLRENDER_AUDIO=$TLRENDER_AUDIO \
@@ -85,7 +84,8 @@ jobs:
           -DTLRENDER_QT5=$TLRENDER_QT5 \
           -DTLRENDER_PROGRAMS=$TLRENDER_PROGRAMS \
           -DTLRENDER_EXAMPLES=$TLRENDER_EXAMPLES \
-          -DTLRENDER_TESTS=$TLRENDER_TESTS &&
+          -DTLRENDER_TESTS=$TLRENDER_TESTS \
+          -DTLRENDER_GCOV=$TLRENDER_GCOV &&
         cmake --build . -j 4
 
     - name: Run tests
@@ -95,7 +95,7 @@ jobs:
         ctest --rerun-failed --output-on-failure
     
     - name: Code coverage
-      if: env.TLRENDER_COVERAGE == 'ON'
+      if: env.TLRENDER_GCOV == 'ON'
       run: >
         cd build &&
         cd tlRender/src/tlRender-build &&
@@ -112,7 +112,6 @@ jobs:
 
     env:
       TLRENDER_MMAP: OFF
-      TLRENDER_COVERAGE: OFF
       TLRENDER_PYTHON: OFF
       TLRENDER_OCIO: OFF
       TLRENDER_AUDIO: OFF
@@ -128,6 +127,7 @@ jobs:
       TLRENDER_PROGRAMS: ON
       TLRENDER_EXAMPLES: ON
       TLRENDER_TESTS: ON
+      TLRENDER_GCOV: OFF
 
     steps:
     - uses: actions/checkout@v2
@@ -156,7 +156,6 @@ jobs:
           -DCMAKE_INSTALL_PREFIX=$PWD/install \
           -DCMAKE_PREFIX_PATH=$PWD/install \
           -DTLRENDER_MMAP=$TLRENDER_MMAP \
-          -DTLRENDER_COVERAGE=$TLRENDER_COVERAGE \
           -DTLRENDER_PYTHON=$TLRENDER_PYTHON \
           -DTLRENDER_OCIO=$TLRENDER_OCIO \
           -DTLRENDER_AUDIO=$TLRENDER_AUDIO \
@@ -170,7 +169,8 @@ jobs:
           -DTLRENDER_QT5=$TLRENDER_QT5 \
           -DTLRENDER_PROGRAMS=$TLRENDER_PROGRAMS \
           -DTLRENDER_EXAMPLES=$TLRENDER_EXAMPLES \
-          -DTLRENDER_TESTS=$TLRENDER_TESTS &&
+          -DTLRENDER_TESTS=$TLRENDER_TESTS \
+          -DTLRENDER_GCOV=$TLRENDER_GCOV &&
         cmake --build . -j 4
 
     - name: Run tests
@@ -184,7 +184,6 @@ jobs:
 
     env:
       TLRENDER_MMAP: ON
-      TLRENDER_COVERAGE: OFF
       TLRENDER_PYTHON: OFF
       TLRENDER_OCIO: ON
       TLRENDER_AUDIO: ON
@@ -199,6 +198,7 @@ jobs:
       TLRENDER_PROGRAMS: ON
       TLRENDER_EXAMPLES: ON
       TLRENDER_TESTS: ON
+      TLRENDER_GCOV: OFF
 
     steps:
     - uses: actions/checkout@v2
@@ -222,7 +222,6 @@ jobs:
           -DCMAKE_INSTALL_PREFIX=$PWD/install \
           -DCMAKE_PREFIX_PATH=$PWD/install \
           -DTLRENDER_MMAP=$TLRENDER_MMAP \
-          -DTLRENDER_COVERAGE=$TLRENDER_COVERAGE \
           -DTLRENDER_PYTHON=$TLRENDER_PYTHON \
           -DTLRENDER_OCIO=$TLRENDER_OCIO \
           -DTLRENDER_AUDIO=$TLRENDER_AUDIO \
@@ -236,7 +235,8 @@ jobs:
           -DTLRENDER_QT5=$TLRENDER_QT5 \
           -DTLRENDER_PROGRAMS=$TLRENDER_PROGRAMS \
           -DTLRENDER_EXAMPLES=$TLRENDER_EXAMPLES \
-          -DTLRENDER_TESTS=$TLRENDER_TESTS &&
+          -DTLRENDER_TESTS=$TLRENDER_TESTS \
+          -DTLRENDER_GCOV=$TLRENDER_GCOV &&
         cmake --build . -j 4
 
     - name: Run tests
@@ -251,7 +251,6 @@ jobs:
 
     env:
       TLRENDER_MMAP: ON
-      TLRENDER_COVERAGE: OFF
       TLRENDER_PYTHON: OFF
       TLRENDER_OCIO: ON
       TLRENDER_AUDIO: ON
@@ -266,6 +265,7 @@ jobs:
       TLRENDER_PROGRAMS: ON
       TLRENDER_EXAMPLES: ON
       TLRENDER_TESTS: ON
+      TLRENDER_GCOV: OFF
 
     steps:
     - uses: actions/checkout@v2
@@ -285,7 +285,6 @@ jobs:
           -DCMAKE_INSTALL_PREFIX=install `
           -DCMAKE_PREFIX_PATH=install `
           -DTLRENDER_MMAP=${{ env.TLRENDER_MMAP }} `
-          -DTLRENDER_COVERAGE=${{ env.TLRENDER_COVERAGE }} `
           -DTLRENDER_PYTHON=${{ env.TLRENDER_PYTHON }} `
           -DTLRENDER_OCIO=${{ env.TLRENDER_OCIO }} `
           -DTLRENDER_AUDIO=${{ env.TLRENDER_AUDIO }} `
@@ -299,7 +298,8 @@ jobs:
           -DTLRENDER_QT5=${{ env.TLRENDER_QT5 }} `
           -DTLRENDER_PROGRAMS=${{ env.TLRENDER_PROGRAMS }} `
           -DTLRENDER_EXAMPLES=${{ env.TLRENDER_EXAMPLES }} `
-          -DTLRENDER_TESTS=${{ env.TLRENDER_TESTS }} &&
+          -DTLRENDER_TESTS=${{ env.TLRENDER_TESTS }} `
+          -DTLRENDER_GCOV=${{ env.TLRENDER_GCOV }} &&
         cmake --build . -j 4
 
     - name: Run tests
