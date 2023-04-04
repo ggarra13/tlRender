@@ -284,11 +284,5 @@ namespace tl
             const GLint location = glGetUniformLocation(_p->program, name.c_str());
             glUniform4fv(location, value.size(), &value[0].x);
         }
-        
-        void Shader::getUniform(const std::string& name, math::Matrix4x4f& value)
-        {
-            const GLint location = glGetUniformLocation(_p->program, name.c_str());
-            glGetUniformfv(_p->program, location, value.e);
-        }
     }
 }

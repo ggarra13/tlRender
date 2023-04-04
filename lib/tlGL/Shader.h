@@ -87,14 +87,6 @@ namespace tl
 
             ///@}
 
-            //! \name Uniforms
-            //! Get uniform values.
-            ///@{
-
-            void getUniform(const std::string&, math::Matrix4x4f&);
-            
-            ///@}
-            
         private:
             TLRENDER_PRIVATE();
         };
