@@ -212,6 +212,7 @@ namespace tl
                         break;
                     }
                     case audio::DataType::F64:
+                    {
                         double* data = reinterpret_cast<double*>(out->getData());
                         
                         for (size_t i=0; i < halfNumSamples; ++i)
@@ -227,6 +228,7 @@ namespace tl
                             }
                         }
                         break;
+                    }
                     }
                 }
             }
