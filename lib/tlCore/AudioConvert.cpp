@@ -111,7 +111,7 @@ namespace tl
             return _p->outputInfo;
         }
 
-        std::shared_ptr<Audio> AudioConvert::convert(const std::shared_ptr<Audio>& value)
+        std::shared_ptr<Audio> AudioConvert::convert(const std::shared_ptr<Audio>& value, bool reverse)
         {
             TLRENDER_P();
             std::shared_ptr<Audio> out;
@@ -133,6 +133,44 @@ namespace tl
                     sampleCount);
                 out = Audio::create(p.outputInfo, swrOutputCount);
                 memcpy(out->getData(), tmp->getData(), out->getByteCount());
+                if (reverse)
+                {
+                    switch( p.outputInfo.dataType )
+                    {
+                    case audio::DataType::S8:
+                        std::cerr << "reversing S8" << std::endl;
+                        break;
+                    case audio::DataType::S16:
+                        std::cerr << "reversing S16" << std::endl;
+                        break;
+                    case audio::DataType::S32:
+                        std::cerr << "reversing S32" << std::endl;
+                        break;
+                    case audio::DataType::F32:
+                    {
+                        uint8_t channels  = p.outputInfo.channelCount;
+                        size_t halfNumSamples = sampleCount/2;
+                        float* data = reinterpret_cast<float*>(out->getData());
+                        
+                        for (size_t i=0; i < halfNumSamples; ++i)
+                        {
+                            float* out0 = data + i * channels;
+                            float* out1 = data + (sampleCount - 1 - i) * channels;
+
+                            for (size_t j=0; j < channels; ++j)
+                            {
+                                float tmp = out0[j];
+                                out0[j] = out1[j];
+                                out1[j] = tmp;
+                            }
+                        }
+                        break;
+                    }
+                    case audio::DataType::F64:
+                        std::cerr << "reversing F64" << std::endl;
+                        break;
+                    }
+                }
             }
 #endif // TLRENDER_FFMPEG
             return out;
