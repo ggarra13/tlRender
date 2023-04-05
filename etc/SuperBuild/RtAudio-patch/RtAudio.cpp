@@ -8615,7 +8615,6 @@ static void rt_pa_source_info_cb(pa_context * /*c*/, const pa_source_info *i,
 static void rt_pa_context_state_callback(pa_context *context, void *userdata) {
   (void)userdata;
 
-  pa_operation* op = nullptr;
   switch (pa_context_get_state(context)) {
     case PA_CONTEXT_CONNECTING:
     case PA_CONTEXT_AUTHORIZING:
@@ -8624,12 +8623,9 @@ static void rt_pa_context_state_callback(pa_context *context, void *userdata) {
 
     case PA_CONTEXT_READY:
       rt_pa_info.dev.clear();
-      op = pa_context_get_server_info(context, rt_pa_server_callback, NULL);
-      if (op) pa_operation_unref(op);
+      pa_context_get_server_info(context, rt_pa_server_callback, NULL);
       op = pa_context_get_sink_info_list(context, rt_pa_sink_info_cb, NULL);
-      if (op) pa_operation_unref(op);
       op = pa_context_get_source_info_list(context, rt_pa_source_info_cb, NULL);
-      if (op) pa_operation_unref(op);
       break;
 
     case PA_CONTEXT_TERMINATED:
