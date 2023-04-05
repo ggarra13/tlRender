@@ -568,14 +568,6 @@ namespace tl
 
                 break;
             }
-            // case Playback::Reverse:
-            //     // Update the audio frame.
-            //     {
-            //         std::unique_lock<std::mutex> lock(p->audioMutex.mutex);
-            //         p->audioMutex.rtAudioCurrentFrame += nFrames;
-            //     }
-            //     break
-                    ;
             default: break;
             }
 
