@@ -8624,8 +8624,8 @@ static void rt_pa_context_state_callback(pa_context *context, void *userdata) {
     case PA_CONTEXT_READY:
       rt_pa_info.dev.clear();
       pa_context_get_server_info(context, rt_pa_server_callback, NULL);
-      op = pa_context_get_sink_info_list(context, rt_pa_sink_info_cb, NULL);
-      op = pa_context_get_source_info_list(context, rt_pa_source_info_cb, NULL);
+      pa_context_get_sink_info_list(context, rt_pa_sink_info_cb, NULL);
+      pa_context_get_source_info_list(context, rt_pa_source_info_cb, NULL);
       break;
 
     case PA_CONTEXT_TERMINATED:
