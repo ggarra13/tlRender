@@ -157,7 +157,8 @@ namespace tl
                 memcpy(out->getData(), tmp->getData(), out->getByteCount());
                 if (reverse)
                 {
-                    size_t halfNumSamples = swrOutputSamples/2;
+                    const size_t reverseSamples = swrOutputCount;
+                    const size_t halfNumSamples = reverseSamples/2;
                     switch( p.outputInfo.dataType )
                     {
                     case audio::DataType::S8:
@@ -165,7 +166,7 @@ namespace tl
                         reverseAudio<S8_T>(out->getData(),
                                            p.outputInfo.channelCount,
                                            halfNumSamples,
-                                           sampleCount);
+                                           reverseSamples);
                         break;
                     }
                     case audio::DataType::S16:
@@ -173,7 +174,7 @@ namespace tl
                         reverseAudio<S16_T>(out->getData(),
                                             p.outputInfo.channelCount,
                                             halfNumSamples,
-                                            sampleCount);
+                                            reverseSamples);
                         break;
                     }
                     case audio::DataType::S32:
@@ -181,7 +182,7 @@ namespace tl
                         reverseAudio<S32_T>(out->getData(),
                                             p.outputInfo.channelCount,
                                             halfNumSamples,
-                                            sampleCount);
+                                            reverseSamples);
                         break;
                     }
                     case audio::DataType::F32:
@@ -189,7 +190,7 @@ namespace tl
                         reverseAudio<F32_T>(out->getData(),
                                             p.outputInfo.channelCount,
                                             halfNumSamples,
-                                            sampleCount);
+                                            reverseSamples);
                         break;
                     }
                     case audio::DataType::F64:
@@ -197,7 +198,7 @@ namespace tl
                         reverseAudio<F64_T>(out->getData(),
                                             p.outputInfo.channelCount,
                                             halfNumSamples,
-                                            sampleCount);
+                                            reverseSamples);
                         break;
                     }
                     }
