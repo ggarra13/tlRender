@@ -180,6 +180,8 @@ namespace tl
                                     reverseSamples);
                 break;
             }
+            default:
+                break;
             }
         }
         
