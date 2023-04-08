@@ -35,9 +35,6 @@ namespace tl
 
             //! Get output audio information.
             const audio::Info& getOutputInfo() const;
-
-            //! Revese audio data in place.
-            void reverse(const std::shared_ptr<Audio>&);
             
             //! Convert audio data.
             std::shared_ptr<Audio> convert(const std::shared_ptr<Audio>&);
