@@ -110,10 +110,11 @@ namespace tl
         {
             // Get the video ranges to be cached.
             const otime::TimeRange& timeRange = timeline->getTimeRange();
-            const otime::RationalTime readAheadRescaled =
+            otime::RationalTime readAheadRescaled =
                 time::floor(cacheOptions.readAhead.rescaled_to(timeRange.duration().rate()));
-            const otime::RationalTime readBehindRescaled =
+            otime::RationalTime readBehindRescaled =
                 time::floor(cacheOptions.readBehind.rescaled_to(timeRange.duration().rate()));
+            
             otime::TimeRange videoRange = time::invalidTimeRange;
             switch (cacheDirection)
             {
@@ -129,13 +130,13 @@ namespace tl
                 break;
             default: break;
             }
-            //std::cout << "in out range: " << inOutRange << std::endl;
-            //std::cout << "video range: " << videoRange << std::endl;
+
             const auto videoRanges = timeline::loop(videoRange, inOutRange);
-            //for (const auto& i : videoRanges)
-            //{
+
+            // for (const auto& i : videoRanges)
+            // {
             //    std::cout << "video ranges: " << i << std::endl;
-            //}
+            // }
 
             // Get the audio ranges to be cached.
             const otime::RationalTime audioOffsetTime = otime::RationalTime(audioOffset, 1.0).
@@ -445,6 +446,8 @@ namespace tl
                     }
                     p->audioThread.buffer.clear();
                     p->audioThread.rtAudioCurrentFrame = 0;
+                    p->audioThread.backwardsSize =
+                        std::numeric_limits<size_t>::max();
                 }
 
                 // Create the audio converter.
@@ -462,31 +465,28 @@ namespace tl
                     
                     const bool backwards = playback == Playback::Reverse;
                     int64_t frame = playbackStartFrame;
-                    const int64_t currentFrame = otime::RationalTime(
-                        p->audioThread.rtAudioCurrentFrame,
+                    const int64_t frameOffset = otime::RationalTime(
+                        p->audioThread.rtAudioCurrentFrame + audio::getSampleCount(p->audioThread.buffer),
                         p->audioThread.info.sampleRate).rescaled_to(p->ioInfo.audio.sampleRate).value();
-                    const int64_t numSamples = otime::RationalTime(
-                        audio::getSampleCount(p->audioThread.buffer),
-                        p->audioThread.info.sampleRate).rescaled_to(p->ioInfo.audio.sampleRate).value();
-                    if (playback == Playback::Forward)
+
+                    if (backwards)
                     {
-                        frame += currentFrame;
-                        frame += numSamples;
+                        frame -=  frameOffset;
                     }
                     else
                     {
-                        frame -= currentFrame;
-                        frame -= numSamples;
+                        frame += frameOffset;
                     }
 
                     int64_t seconds = p->ioInfo.audio.sampleRate > 0 ? (frame / p->ioInfo.audio.sampleRate) : 0;
                     int64_t offset = frame - seconds * p->ioInfo.audio.sampleRate;
-                    std::cout << "seconds: " << seconds << std::endl;
-                    std::cout << "offset: " << offset << std::endl;
+                    //std::cout << "frame:   " << frame   << std::endl;
+                    //std::cout << "seconds: " << seconds << std::endl;
+                    //std::cout << "offset:  " << offset  << std::endl;
                     while (audio::getSampleCount(p->audioThread.buffer) < nFrames)
                     {
-                        std::cout << "\tseconds: " << seconds << std::endl;
-                        std::cout << "\toffset: " << offset << std::endl;
+                        // std::cout << "\tseconds: " << seconds;
+                        // std::cout << "\toffset: " << offset;
                         AudioData audioData;
                         {
                             std::unique_lock<std::mutex> lock(p->audioMutex.mutex);
@@ -521,12 +521,15 @@ namespace tl
                             }
                         }
 
-                        const size_t size = std::min(
+                        size_t size = std::min(
                             getAudioBufferFrameCount(p->playerOptions.audioBufferFrameCount),
                             static_cast<size_t>(p->ioInfo.audio.sampleRate - offset));
 
                         if (backwards)
                         {
+                            if ( p->audioThread.backwardsSize < size )
+                                size = p->audioThread.backwardsSize;
+
                             audio::reverse(
                                 const_cast<uint8_t**>(audioDataP.data()),
                                 audioDataP.size(),
@@ -548,8 +551,7 @@ namespace tl
 
                         if (p->audioThread.convert)
                         {
-                            // if (backwards) p->audioThread.convert->reverse(tmp);
-                            auto convertedAudio = p->audioThread.convert->convert(tmp);
+                            const auto convertedAudio = p->audioThread.convert->convert(tmp);
                             p->audioThread.buffer.push_back(convertedAudio);
                         }
 
@@ -561,6 +563,7 @@ namespace tl
                                 offset += p->ioInfo.audio.sampleRate;
                                 seconds -= 1;
                             }
+                            p->audioThread.backwardsSize = size;
                         }
                         else
                         {
@@ -574,9 +577,6 @@ namespace tl
 
                         //std::cout << std::endl;
                     }
-
-                    std::cout << "END seconds: " << seconds << std::endl;
-                    std::cout << "END offset: " << offset << std::endl;
                     
                 }
 
