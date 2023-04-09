@@ -110,9 +110,9 @@ namespace tl
         {
             // Get the video ranges to be cached.
             const otime::TimeRange& timeRange = timeline->getTimeRange();
-            const otime::RationalTime readAheadRescaled =
+            otime::RationalTime readAheadRescaled =
                 time::floor(cacheOptions.readAhead.rescaled_to(timeRange.duration().rate()));
-            const otime::RationalTime readBehindRescaled =
+            otime::RationalTime readBehindRescaled =
                 time::floor(cacheOptions.readBehind.rescaled_to(timeRange.duration().rate()));
             
             otime::TimeRange videoRange = time::invalidTimeRange;
