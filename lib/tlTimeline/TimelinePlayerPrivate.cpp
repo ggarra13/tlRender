@@ -131,11 +131,13 @@ namespace tl
             default: break;
             }
 
+            // std::cout << "videoRange : " << videoRange << std::endl;
+            // std::cout << "inOutRange : " << inOutRange << std::endl;
             const auto videoRanges = timeline::loop(videoRange, inOutRange);
 
             // for (const auto& i : videoRanges)
             // {
-            //    std::cout << "video ranges: " << i << std::endl;
+            //     std::cout << "video ranges: " << i << std::endl;
             // }
 
             // Get the audio ranges to be cached.
@@ -500,6 +502,8 @@ namespace tl
                         {
                             break;
                         }
+                        
+                        std::vector<std::shared_ptr<audio::Audio> > audios;
                         std::vector<const uint8_t*> audioDataP;
                         for (const auto& layer : audioData.layers)
                         {
@@ -514,6 +518,7 @@ namespace tl
                                     tmp->zero();
                                     std::memcpy(tmp->getData(), audio->getData(), byteCount );
                                     audio = tmp;
+                                    audios.push_back(audio);
                                 }
                                 audioDataP.push_back(
                                     audio->getData() +
