@@ -78,10 +78,10 @@ else()
 	    --assert-level=2)
     endif()
     ExternalProject_Add(
-	FFmpeg
-	PREFIX ${CMAKE_CURRENT_BINARY_DIR}/FFmpeg
-	DEPENDS ${FFmpeg_DEPS}
-	URL https://ffmpeg.org/releases/ffmpeg-5.1.2.tar.bz2
-	CONFIGURE_COMMAND ./configure ${FFmpeg_CONFIGURE_ARGS}
-	BUILD_IN_SOURCE 1)
+        FFmpeg
+        PREFIX ${CMAKE_CURRENT_BINARY_DIR}/FFmpeg
+        DEPENDS ${FFmpeg_DEPS}
+        URL https://ffmpeg.org/releases/ffmpeg-6.0.tar.bz2
+        CONFIGURE_COMMAND ./configure ${FFmpeg_CONFIGURE_ARGS}
+        BUILD_IN_SOURCE 1)
 endif()
