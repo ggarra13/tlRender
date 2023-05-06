@@ -35,7 +35,6 @@ namespace tl
             math::Vector2i viewPos;
             float viewZoom = 1.F;
             bool frameView = true;
-            bool mouseInside = false;
             bool mousePressed = false;
             math::Vector2i mousePos;
             math::Vector2i mousePress;
@@ -70,6 +69,7 @@ namespace tl
             setFormat(surfaceFormat);
 
             setMouseTracking(true);
+            setFocusPolicy(Qt::StrongFocus);
         }
 
         TimelineViewport::~TimelineViewport()
@@ -197,23 +197,23 @@ namespace tl
             p.frameView = true;
             update();
         }
-
+        
         void TimelineViewport::viewZoom1To1()
         {
             TLRENDER_P();
-            setViewZoom(1.F, p.mouseInside ? p.mousePos : _viewportCenter());
+            setViewZoom(1.F, _viewportCenter());
         }
 
         void TimelineViewport::viewZoomIn()
         {
             TLRENDER_P();
-            setViewZoom(p.viewZoom * 2.F, p.mouseInside ? p.mousePos : _viewportCenter());
+            setViewZoom(p.viewZoom * 2.F, _viewportCenter());
         }
 
         void TimelineViewport::viewZoomOut()
         {
             TLRENDER_P();
-            setViewZoom(p.viewZoom / 2.F, p.mouseInside ? p.mousePos : _viewportCenter());
+            setViewZoom(p.viewZoom / 2.F, _viewportCenter());
         }
 
         void TimelineViewport::_currentVideoCallback(const timeline::VideoData& value)
@@ -490,7 +490,6 @@ namespace tl
         {
             TLRENDER_P();
             event->accept();
-            p.mouseInside = true;
             p.mousePressed = false;
         }
 
@@ -498,7 +497,6 @@ namespace tl
         {
             TLRENDER_P();
             event->accept();
-            p.mouseInside = false;
             p.mousePressed = false;
         }
 
@@ -550,6 +548,31 @@ namespace tl
             }
         }
 
+        void TimelineViewport::keyPressEvent(QKeyEvent* event)
+        {
+            TLRENDER_P();
+            switch (event->key())
+            {
+            case Qt::Key::Key_0:
+                event->accept();
+                setViewZoom(1.F, p.mousePos);
+                break;
+            case Qt::Key::Key_Minus:
+                event->accept();
+                setViewZoom(p.viewZoom / 2.F, p.mousePos);
+                break;
+            case Qt::Key::Key_Equal:
+            case Qt::Key::Key_Plus:
+                event->accept();
+                setViewZoom(p.viewZoom * 2.F, p.mousePos);
+                break;
+            case Qt::Key::Key_Backspace:
+                event->accept();
+                frameView();
+                break;
+            }
+        }
+
         imaging::Size TimelineViewport::_viewportSize() const
         {
             const float devicePixelRatio = window()->devicePixelRatio();
@@ -557,17 +580,17 @@ namespace tl
                 width() * devicePixelRatio,
                 height() * devicePixelRatio);
         }
+        
+        math::Vector2i TimelineViewport::_viewportCenter() const
+        {
+            const imaging::Size viewportSize = _viewportSize();
+            return math::Vector2i(viewportSize.w / 2, viewportSize.h / 2);
+        }
 
         imaging::Size TimelineViewport::_renderSize() const
         {
             TLRENDER_P();
             return timeline::getRenderSize(p.compareOptions.mode, p.timelineSizes);
-        }
-
-        math::Vector2i TimelineViewport::_viewportCenter() const
-        {
-            const imaging::Size viewportSize = _viewportSize();
-            return math::Vector2i(viewportSize.w / 2, viewportSize.h / 2);
         }
 
         void TimelineViewport::_frameView()
