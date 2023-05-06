@@ -534,14 +534,14 @@ namespace tl
             if (_avStream != -1 &&
                 _buffer.size() < _options.videoBufferSize)
             {
-                AVPacket* packet;
-                packet = av_packet_alloc();
+                AVPacket packet;
+                av_init_packet(&packet);
                 int decoding = 0;
                 while (0 == decoding)
                 {
                     if (!_eof)
                     {
-                        decoding = av_read_frame(_avFormatContext, packet);
+                        decoding = av_read_frame(_avFormatContext, &packet);
                         if (AVERROR_EOF == decoding)
                         {
                             _eof = true;
@@ -553,11 +553,11 @@ namespace tl
                             break;
                         }
                     }
-                    if ((_eof && _avStream != -1) || (_avStream == packet->stream_index))
+                    if ((_eof && _avStream != -1) || (_avStream == packet.stream_index))
                     {
                         decoding = avcodec_send_packet(
                             _avCodecContext[_avStream],
-                            _eof ? nullptr : packet);
+                            _eof ? nullptr : &packet);
                         if (AVERROR_EOF == decoding)
                         {
                             decoding = 0;
@@ -586,14 +586,14 @@ namespace tl
                             break;
                         }
                     }
-                    if (packet->buf)
+                    if (packet.buf)
                     {
-                        av_packet_unref(packet);
+                        av_packet_unref(&packet);
                     }
                 }
-                if (packet->buf)
+                if (packet.buf)
                 {
-                    av_packet_unref(packet);
+                    av_packet_unref(&packet);
                 }
                 //std::cout << "video buffer size: " << _buffer.size() << std::endl;
             }
@@ -644,6 +644,7 @@ namespace tl
 
                 if (time >= currentTime)
                 {
+                    //std::cout << "video time: " << time << std::endl;
                     auto image = imaging::Image::create(_info);
                     
                     auto tags = _tags;
