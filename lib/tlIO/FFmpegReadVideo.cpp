@@ -535,7 +535,6 @@ namespace tl
                 _buffer.size() < _options.videoBufferSize)
             {
                 AVPacket* packet = av_packet_alloc();
-                av_init_packet(packet);
                 int decoding = 0;
                 while (0 == decoding)
                 {
