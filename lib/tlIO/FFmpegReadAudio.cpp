@@ -368,16 +368,16 @@ namespace tl
                 audio::getSampleCount(_buffer) <
                 _options.audioBufferSize.rescaled_to(_info.sampleRate).value())
             {
-                AVPacket packet;
-                av_init_packet(&packet);
+                AVPacket* packet = av_packet_alloc();
                 int decoding = 0;
                 while (0 == decoding)
                 {
                     if (!_eof)
                     {
-                        decoding = av_read_frame(_avFormatContext, &packet);
+                        decoding = av_read_frame(_avFormatContext, packet);
                         if (AVERROR_EOF == decoding)
                         {
+                            avcodec_flush_buffers(_avCodecContext[_avStream]);
                             _eof = true;
                             decoding = 0;
                         }
@@ -387,11 +387,11 @@ namespace tl
                             break;
                         }
                     }
-                    if ((_eof && _avStream != -1) || (_avStream == packet.stream_index))
+                    if ((_eof && _avStream != -1) || (_avStream == packet->stream_index))
                     {
                         decoding = avcodec_send_packet(
                             _avCodecContext[_avStream],
-                            _eof ? nullptr : &packet);
+                            _eof ? nullptr : packet);
                         if (AVERROR_EOF == decoding)
                         {
                             decoding = 0;
@@ -428,16 +428,10 @@ namespace tl
                             break;
                         }
                     }
-                    if (packet.buf)
-                    {
-                        av_packet_unref(&packet);
-                    }
-                }
-                if (packet.buf)
-                {
-                    av_packet_unref(&packet);
+                    av_packet_unref(packet);
                 }
                 //std::cout << "audio buffer size: " << audio::getSampleCount(_buffer) << std::endl;
+                av_packet_free(&packet);
             }
         }
 

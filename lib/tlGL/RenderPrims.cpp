@@ -53,7 +53,7 @@ namespace tl
                 p.shaders["mesh"]->setUniform("transform.mvp", transform);
                 p.shaders["mesh"]->setUniform("color", color);
 
-                //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
                 if (!p.vbos["mesh"] || (p.vbos["mesh"] && p.vbos["mesh"]->getSize() != size * 3))
                 {
@@ -74,8 +74,6 @@ namespace tl
                     p.vaos["mesh"]->bind();
                     p.vaos["mesh"]->draw(GL_TRIANGLES, 0, p.vbos["mesh"]->getSize());
                 }
-
-                p.shaders["mesh"]->setUniform("transform.mvp", p.transform);
             }
         }
 
