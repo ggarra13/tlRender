@@ -18,13 +18,14 @@ else()
     set(VPX_CONFIGURE_ARGS
         --prefix=${CMAKE_INSTALL_PREFIX}
         --enable-pic
+	--as=yasm
         --disable-examples
         --disable-tools
         --disable-docs
         --disable-unit-tests
     )
 
-    set( YASM_BIN_PATH "${CMAKE_INSTALL_PREFIX}/bin:$ENV{PATH}" )
+    set( YASM_BIN_PATH $ENV{PATH} )
     
     ExternalProject_Add(
         VPX
