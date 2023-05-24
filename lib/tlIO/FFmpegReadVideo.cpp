@@ -534,13 +534,13 @@ namespace tl
             if (_avStream != -1 &&
                 _buffer.size() < _options.videoBufferSize)
             {
-                AVPacket* packet = av_packet_alloc();
+                Packet packet;
                 int decoding = 0;
                 while (0 == decoding)
                 {
                     if (!_eof)
                     {
-                        decoding = av_read_frame(_avFormatContext, packet);
+                        decoding = av_read_frame(_avFormatContext, packet.p);
                         if (AVERROR_EOF == decoding)
                         {
                             _eof = true;
@@ -552,11 +552,11 @@ namespace tl
                             break;
                         }
                     }
-                    if ((_eof && _avStream != -1) || (_avStream == packet->stream_index))
+                    if ((_eof && _avStream != -1) || (_avStream == packet.p->stream_index))
                     {
                         decoding = avcodec_send_packet(
                             _avCodecContext[_avStream],
-                            _eof ? nullptr : packet);
+                            _eof ? nullptr : packet.p);
                         if (AVERROR_EOF == decoding)
                         {
                             decoding = 0;
@@ -585,9 +585,16 @@ namespace tl
                             break;
                         }
                     }
-                    av_packet_unref(packet);
+                    if (packet.p->buf)
+                    {
+                        av_packet_unref(packet.p);
+                    }
                 }
-                av_packet_free(&packet);
+                if (packet.p->buf)
+                {
+                    av_packet_unref(packet.p);
+                }
+                //std::cout << "video buffer size: " << _buffer.size() << std::endl;
             }
         }
 
@@ -622,9 +629,9 @@ namespace tl
                 {
                     return out;
                 }
-                const int64_t timestamp = _avFrame->best_effort_timestamp != AV_NOPTS_VALUE ? _avFrame->best_effort_timestamp : _avFrame->pts != AV_NOPTS_VALUE ? _avFrame->pts : _avFrame->pkt_dts;
-                _avFrame->pts = timestamp;
-                
+                const int64_t timestamp = _avFrame->pts != AV_NOPTS_VALUE ? _avFrame->pts : _avFrame->pkt_dts;
+                //std::cout << "video timestamp: " << timestamp << std::endl;
+
                 const otime::RationalTime time(
                     _timeRange.start_time().value() +
                     av_rescale_q(
@@ -636,6 +643,7 @@ namespace tl
 
                 if (time >= currentTime)
                 {
+                    //std::cout << "video time: " << time << std::endl;
                     auto image = imaging::Image::create(_info);
                     
                     auto tags = _tags;
