@@ -30,6 +30,32 @@ namespace tl
             return out;
         }
 
+        std::vector<otime::TimeRange> seconds(const otime::TimeRange& value)
+        {
+            std::vector<otime::TimeRange> out;
+            if (value != invalidTimeRange)
+            {
+                const otime::TimeRange seconds(
+                    value.start_time().rescaled_to(1.0),
+                    value.duration().rescaled_to(1.0));
+                for (double t = std::floor(seconds.start_time().value());
+                    t < std::ceil(seconds.end_time_exclusive().value());
+                    t += 1.0)
+                {
+                    const double start = std::max(t, seconds.start_time().value());
+                    const double end = std::min(t + 1.0, seconds.end_time_exclusive().value());
+                    const otime::TimeRange second(
+                        otime::RationalTime(start, 1.0),
+                        otime::RationalTime(end - start, 1.0));
+                    const otime::TimeRange scaled(
+                        second.start_time().rescaled_to(value.duration().rate()),
+                        second.duration().rescaled_to(value.duration().rate()));
+                    out.push_back(scaled);
+                }
+            }
+            return out;
+        }
+
         std::pair<int, int> toRational(double value)
         {
             const std::array<std::pair<int, int>, 6> common =
@@ -206,8 +232,8 @@ namespace opentime
 
         std::ostream& operator << (std::ostream& os, const TimeRange& value)
         {
-            os << std::fixed << value.start_time().value() << "-" <<
-                value.end_time_inclusive().value() << "/" <<
+            os << std::fixed << value.start_time().value() << "/" <<
+                value.duration().value() << "/" <<
                 value.duration().rate();
             return os;
         }
@@ -229,8 +255,8 @@ namespace opentime
         {
             std::string s;
             is >> s;
-            auto split = tl::string::split(s, '-');
-            if (split.size() != 2)
+            auto split = tl::string::split(s, '/');
+            if (split.size() != 3)
             {
                 throw tl::error::ParseError();
             }
@@ -239,24 +265,19 @@ namespace opentime
                 std::stringstream ss(split[0]);
                 ss >> startTime;
             }
-            split = tl::string::split(split[1], '/');
-            if (split.size() != 2)
+            double duration = 0.0;
             {
-                throw tl::error::ParseError();
-            }
-            double endTime = 0.0;
-            {
-                std::stringstream ss(split[0]);
-                ss >> endTime;
+                std::stringstream ss(split[1]);
+                ss >> duration;
             }
             double rate = 0.0;
             {
-                std::stringstream ss(split[1]);
+                std::stringstream ss(split[2]);
                 ss >> rate;
             }
-            out = TimeRange::range_from_start_end_time_inclusive(
+            out = TimeRange(
                 RationalTime(startTime, rate),
-                RationalTime(endTime, rate));
+                RationalTime(duration, rate));
             return is;
         }
     }

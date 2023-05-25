@@ -4,9 +4,10 @@
 
 #include <tlPlayApp/SettingsObject.h>
 
+#include <tlQt/MetaTypes.h>
 #include <tlQt/ToolTipsFilter.h>
 
-#include <tlTimeline/TimelinePlayer.h>
+#include <tlTimeline/Player.h>
 
 #include <QApplication>
 #include <QMap>
@@ -57,16 +58,18 @@ namespace tl
             p.defaultValues["Timeline/FrameView"] = true;
             p.defaultValues["Timeline/StopOnScrub"] = false;
             p.defaultValues["Timeline/Thumbnails"] = true;
-            p.defaultValues["Cache/ReadAhead"] = timeline::PlayerCacheOptions().readAhead.value();
-            p.defaultValues["Cache/ReadBehind"] = timeline::PlayerCacheOptions().readBehind.value();
+            const timeline::PlayerCacheOptions playerCacheOptions;
+            p.defaultValues["Cache/ReadAhead"] = playerCacheOptions.readAhead.value();
+            p.defaultValues["Cache/ReadBehind"] = playerCacheOptions.readBehind.value();
             p.defaultValues["FileSequence/Audio"] =
                 static_cast<int>(timeline::FileSequenceAudio::BaseName);
             p.defaultValues["FileSequence/AudioFileName"] = "";
             p.defaultValues["FileSequence/AudioDirectory"] = "";
+            const timeline::PlayerOptions playerOptions;
             p.defaultValues["Performance/TimerMode"] =
-                static_cast<int>(timeline::TimerMode::System);
+                static_cast<int>(playerOptions.timerMode);
             p.defaultValues["Performance/AudioBufferFrameCount"] =
-                static_cast<int>(timeline::AudioBufferFrameCount::_256);
+                playerOptions.audioBufferFrameCount;
             p.defaultValues["Performance/VideoRequestCount"] = 16;
             p.defaultValues["Performance/AudioRequestCount"] = 16;
             p.defaultValues["Performance/SequenceThreadCount"] = 16;
@@ -85,9 +88,9 @@ namespace tl
                 version("Misc/ToolTipsEnabled"), true).toBool();
 
             p.timeObject = timeObject;
-            p.timeObject->setUnits(p.settings.value(
-                version("TimeUnits"),
-                QVariant::fromValue(p.timeObject->units())).value<qt::TimeUnits>());
+            p.timeObject->setTimeUnits(static_cast<timeline::TimeUnits>(p.settings.value(
+                version("TimeUnits2"),
+                static_cast<int>(p.timeObject->timeUnits())).toInt()));
 
             p.toolTipsFilter = new qt::ToolTipsFilter(this);
 
@@ -111,8 +114,8 @@ namespace tl
                 p.toolTipsEnabled);
 
             p.settings.setValue(
-                version("TimeUnits"),
-                QVariant::fromValue(p.timeObject->units()));
+                version("TimeUnits2"),
+                static_cast<int>(p.timeObject->timeUnits()));
         }
 
         QVariant SettingsObject::value(const QString& name)

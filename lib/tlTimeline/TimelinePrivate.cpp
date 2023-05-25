@@ -238,17 +238,21 @@ namespace tl
                         {
                             if (auto otioItem = dynamic_cast<otio::Item*>(otioChild.value))
                             {
-                                const otime::TimeRange requestTimeRange = otime::TimeRange(
-                                    otime::RationalTime(request->seconds, 1.0) - timeRange.start_time().rescaled_to(1.0),
-                                    otime::RationalTime(1.0, 1.0));
-                                otio::ErrorStatus errorStatus;
-                                const auto rangeOptional = otioItem->trimmed_range_in_parent(&errorStatus);
+                                const auto rangeOptional = otioItem->trimmed_range_in_parent();
                                 if (rangeOptional.has_value())
                                 {
-                                    const auto range = rangeOptional.value();
-                                    if (range.intersects(requestTimeRange))
+                                    const otime::TimeRange clipTimeRange(
+                                        rangeOptional.value().start_time().rescaled_to(1.0),
+                                        rangeOptional.value().duration().rescaled_to(1.0));
+                                    const double start = request->seconds -
+                                        timeRange.start_time().rescaled_to(1.0).value();
+                                    const otime::TimeRange requestTimeRange = otime::TimeRange(
+                                        otime::RationalTime(start, 1.0),
+                                        otime::RationalTime(1.0, 1.0));
+                                    if (requestTimeRange.intersects(clipTimeRange))
                                     {
                                         AudioLayerData audioData;
+                                        audioData.seconds = request->seconds;
                                         if (auto otioClip = dynamic_cast<const otio::Clip*>(otioItem))
                                         {
                                             audioData.audio = readAudio(otioTrack, otioClip, requestTimeRange);
@@ -328,10 +332,6 @@ namespace tl
                     {
                         valid &= i.audio.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
                     }
-                    if (i.audioB.valid())
-                    {
-                        valid &= i.audioB.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
-                    }
                 }
                 if (valid)
                 {
@@ -344,7 +344,8 @@ namespace tl
                             AudioLayer layer;
                             if (j.audio.valid())
                             {
-                                layer.audio = j.audio.get().audio;
+                                const auto audioData = j.audio.get();
+                                layer.audio = audioData.audio;
                             }
                             data.layers.push_back(layer);
                         }
@@ -430,7 +431,7 @@ namespace tl
                 clip->media_reference(),
                 this->path.getDirectory(),
                 options.pathOptions);
-            if (!readCache->get(path.get(), out))
+            if (!readCache->get(path, out))
             {
                 if (auto context = this->context.lock())
                 {
@@ -480,7 +481,11 @@ namespace tl
             ReadCacheItem item = getRead(clip, options.ioOptions);
             if (item.read)
             {
-                const auto mediaTime = timeline::mediaTime(time, track, clip, item.ioInfo.videoTime.duration().rate());
+                const auto mediaTime = timeline::toVideoMediaTime(
+                    time,
+                    track,
+                    clip,
+                    ioInfo);
                 out = item.read->readVideo(mediaTime, videoLayer);
             }
             return out;
@@ -495,10 +500,11 @@ namespace tl
             ReadCacheItem item = getRead(clip, options.ioOptions);
             if (item.read)
             {
-                const auto clipRange = track->transformed_time_range(timeRange, clip);
-                const auto mediaRange = otime::TimeRange(
-                    time::floor(clipRange.start_time().rescaled_to(ioInfo.audio.sampleRate)),
-                    time::ceil(clipRange.duration().rescaled_to(ioInfo.audio.sampleRate)));
+                const auto mediaRange = timeline::toAudioMediaTime(
+                    timeRange,
+                    track,
+                    clip,
+                    ioInfo);
                 out = item.read->readAudio(mediaRange);
             }
             return out;

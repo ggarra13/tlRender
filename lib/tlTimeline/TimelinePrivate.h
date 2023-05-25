@@ -77,9 +77,8 @@ namespace tl
                 AudioLayerData() {};
                 AudioLayerData(AudioLayerData&&) = default;
 
+                int64_t seconds = -1;
                 std::future<io::AudioData> audio;
-                std::future<io::AudioData> audioB;
-                float transitionValue = 0.F;
             };
             struct AudioRequest
             {

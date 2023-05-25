@@ -212,8 +212,8 @@ namespace tl
                 auto ioSystem = context->getSystem<io::System>();
                 for (const auto& fileInfo : file::dirList(fileName, pathOptions))
                 {
-                    const auto& path = fileInfo.getPath();
-                    const auto& extension = path.getExtension();
+                    const file::Path& path = fileInfo.getPath();
+                    const std::string extension = string::toLower(path.getExtension());
                     switch (ioSystem->getFileType(extension))
                     {
                     case io::FileType::Sequence:
@@ -249,7 +249,8 @@ namespace tl
                         break;
                     default:
                         //! \todo Get extensions for the Python adapters.
-                        if (".otio" == extension)
+                        if (".otio" == extension ||
+                            ".otioz" == extension)
                         {
                             out.push_back(path);
                         }
@@ -268,16 +269,16 @@ namespace tl
         namespace
         {
             const std::string fileURLPrefix = "file://";
+        }
 
-            std::string removeFileURLPrefix(const std::string& value)
+        std::string removeFileURLPrefix(const std::string& value)
+        {
+            std::string out = value;
+            if (0 == out.compare(0, fileURLPrefix.size(), fileURLPrefix))
             {
-                std::string out = value;
-                if (0 == out.compare(0, fileURLPrefix.size(), fileURLPrefix))
-                {
-                    out.replace(0, fileURLPrefix.size(), "");
-                }
-                return out;
+                out.replace(0, fileURLPrefix.size(), "");
             }
+            return out;
         }
 
         file::Path getPath(
@@ -296,12 +297,13 @@ namespace tl
         file::Path getPath(
             const otio::MediaReference* ref,
             const std::string& directory,
-            const file::PathOptions& pathOptions)
+            file::PathOptions pathOptions)
         {
             std::string url;
             if (auto externalRef = dynamic_cast<const otio::ExternalReference*>(ref))
             {
                 url = externalRef->target_url();
+                pathOptions.maxNumberDigits = 0;
             }
             else if (auto imageSequenceRef = dynamic_cast<const otio::ImageSequenceReference*>(ref))
             {
@@ -379,15 +381,56 @@ namespace tl
             return out;
         }
 
-        otime::RationalTime mediaTime(
+        otime::RationalTime toVideoMediaTime(
             const otime::RationalTime& time,
             const otio::Track* track,
             const otio::Clip* clip,
-            double mediaRate)
+            const io::Info& ioInfo)
         {
-            const auto clipTime = track->transformed_time(time, clip);
-            const auto mediaTime = time::round(clipTime.rescaled_to(mediaRate));
+            otime::RationalTime clipTime = track->transformed_time(time, clip);
+            if (auto externalReference =
+                dynamic_cast<const otio::ExternalReference*>(clip->media_reference()))
+            {
+                // If the available range start time is greater than the
+                // video end time we assume the media is missing timecode
+                // and adjust accordingly.
+                const auto availableRangeOpt = externalReference->available_range();
+                if (availableRangeOpt.has_value() &&
+                    availableRangeOpt->start_time() > ioInfo.videoTime.end_time_inclusive())
+                {
+                    clipTime -= availableRangeOpt->start_time();
+                }
+            }
+            const auto mediaTime = time::round(
+                clipTime.rescaled_to(ioInfo.videoTime.duration().rate()));
             return mediaTime;
+        }
+
+        otime::TimeRange toAudioMediaTime(
+            const otime::TimeRange& timeRange,
+            const otio::Track* track,
+            const otio::Clip* clip,
+            const io::Info& ioInfo)
+        {
+            otime::TimeRange clipRange = track->transformed_time_range(timeRange, clip);
+            if (auto externalReference = dynamic_cast<const otio::ExternalReference*>(clip->media_reference()))
+            {
+                // If the available range start time is greater than the
+                // video end time we assume the media is missing timecode
+                // and adjust accordingly.
+                const auto availableRangeOpt = externalReference->available_range();
+                if (availableRangeOpt.has_value() &&
+                    availableRangeOpt->start_time() > ioInfo.audioTime.end_time_inclusive())
+                { 
+                    clipRange = otime::TimeRange(
+                        clipRange.start_time() - availableRangeOpt->start_time(),
+                        clipRange.duration());
+                }
+            }
+            const otime::TimeRange mediaRange(
+                time::round(clipRange.start_time().rescaled_to(ioInfo.audio.sampleRate)),
+                time::round(clipRange.duration().rescaled_to(ioInfo.audio.sampleRate)));
+            return mediaRange;
         }
     }
 }

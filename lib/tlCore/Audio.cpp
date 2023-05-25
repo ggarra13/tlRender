@@ -18,7 +18,7 @@ namespace tl
         {
             template< typename T >
             inline void reverseAudio(uint8_t* inData,
-                                     uint8_t channels,
+                                     uint8_t channelCount,
                                      size_t sampleCount)
             {
                 T* data = reinterpret_cast<T*>(inData);
@@ -26,10 +26,10 @@ namespace tl
                         
                 for (size_t i = 0; i < halfNumSamples; ++i)
                 {
-                    T* out0 = data + i * channels;
-                    T* out1 = data + (sampleCount - 1 - i) * channels;
+                    T* out0 = data + i * channelCount;
+                    T* out1 = data + (sampleCount - i - 1) * channelCount;
 
-                    for (size_t j = 0; j < channels; ++j)
+                    for (size_t j = 0; j < channelCount; ++j)
                     {
                         T tmp = out0[j];
                         out0[j] = out1[j];

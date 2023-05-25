@@ -86,7 +86,6 @@ namespace tl
 #endif // QT_VERSION
 
             qRegisterMetaType<timeline::AlphaBlend>("tl::timeline::AlphaBlend");
-            qRegisterMetaType<timeline::AudioBufferFrameCount>("tl::timeline::AudioBufferFrameCount");
             qRegisterMetaType<timeline::AudioData>("tl::timeline::AudioData");
             qRegisterMetaType<timeline::AudioLayer>("tl::timeline::AudioLayer");
             qRegisterMetaType<timeline::Channels>("tl::timeline::Channels");
@@ -108,13 +107,13 @@ namespace tl
             qRegisterMetaType<timeline::PlayerCacheOptions>("tl::timeline::PlayerCacheOptions");
             qRegisterMetaType<timeline::PlayerOptions>("tl::timeline::PlayerOptions");
             qRegisterMetaType<timeline::TimeAction>("tl::timeline::TimeAction");
+            qRegisterMetaType<timeline::TimeUnits>("tl::timeline::TimeUnits");
             qRegisterMetaType<timeline::TimerMode>("tl::timeline::TimerMode");
             qRegisterMetaType<timeline::Transition>("tl::timeline::Transition");
             qRegisterMetaType<timeline::VideoData>("tl::timeline::VideoData");
             qRegisterMetaType<timeline::VideoLayer>("tl::timeline::VideoLayer");
 #if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
             QMetaType::registerComparators<timeline::AlphaBlend>();
-            QMetaType::registerComparators<timeline::AudioBufferFrameCount>();
             QMetaType::registerComparators<timeline::Channels>();
             QMetaType::registerComparators<timeline::CompareMode>();
             QMetaType::registerComparators<timeline::FileSequenceAudio>();
@@ -123,14 +122,9 @@ namespace tl
             QMetaType::registerComparators<timeline::Loop>();
             QMetaType::registerComparators<timeline::Playback>();
             QMetaType::registerComparators<timeline::TimeAction>();
+            QMetaType::registerComparators<timeline::TimeUnits>();
             QMetaType::registerComparators<timeline::TimerMode>();
             QMetaType::registerComparators<timeline::Transition>();
-#endif // QT_VERSION
-
-            qRegisterMetaType<TimeUnits>("tl::qt::TimeUnits");
-#if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
-            qRegisterMetaTypeStreamOperators<TimeUnits>("tl::qt::TimeUnits");
-            QMetaType::registerComparators<TimeUnits>();
 #endif // QT_VERSION
 
             QSurfaceFormat surfaceFormat;
