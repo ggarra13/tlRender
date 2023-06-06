@@ -198,7 +198,7 @@ namespace tl
                         // Get the layers.
                         std::string view;
                         if (header.hasView()) view = header.view() + " ";
-                        std::vector<Layer> layers = getLayers(header.channels(), channelGrouping, view);
+                        std::vector<Layer> layers = getLayers(header.channels(), channelGrouping);
                         size_t offset = _info.video.size();
                         _info.video.resize( offset + layers.size() );
                         for (size_t i = 0; i < layers.size(); ++i)
