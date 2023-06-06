@@ -196,8 +196,9 @@ namespace tl
                         readTags(header, _info.tags);
 
                         // Get the layers.
-                        
-                        std::vector<Layer> layers = getLayers(header.channels(), channelGrouping);
+                        std::string view;
+                        if (header.hasView()) view = header.view() + " ";
+                        std::vector<Layer> layers = getLayers(header.channels(), channelGrouping, view);
                         size_t offset = _info.video.size();
                         _info.video.resize( offset + layers.size() );
                         for (size_t i = 0; i < layers.size(); ++i)
@@ -209,7 +210,7 @@ namespace tl
                             if (sampling.x != 1 || sampling.y != 1)
                                 _fast = false;
                             auto& info = _info.video[offset + i];
-                            info.name = layer.name;
+                            info.name = view + layer.name;
                             info.size.w = _displayWindow.w();
                             info.size.h = _displayWindow.h();
                             info.size.pixelAspectRatio = header.pixelAspectRatio();
