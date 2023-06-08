@@ -19,6 +19,18 @@ namespace tl
 {
     namespace exr
     {
+        namespace
+        {
+            template<typename T>
+            std::string serialize(const Imath::Box<Imath::Vec2<T> >& value)
+            {
+                std::stringstream ss;
+                ss << value.min.x << " " << value.min.y << " " <<
+                    value.max.x << " " << value.max.y;
+                return ss.str();
+            }
+        }
+        
         struct IStream::Private
         {
             std::shared_ptr<file::FileIO> f;
@@ -247,16 +259,24 @@ namespace tl
                     uint16_t layer)
                 {
                     io::VideoData out;
+                
+                    layer = std::min(static_cast<size_t>(layer), _info.video.size() - 1);
+                    
 
-                    const Imf::Header& header = _f->header(0);
+                    const Imf::Header& header = _f->header(_layers[layer].partNumber);
 
                     // Get the display and data windows which can change
                     // from frame to frame.
-                    _displayWindow = fromImath(header.displayWindow());
-                    _dataWindow = fromImath(header.dataWindow());
+                    const auto& displayWindow = header.displayWindow();
+                    const auto& dataWindow = header.dataWindow();
+                    
+                    _displayWindow = fromImath(displayWindow);
+                    _dataWindow = fromImath(dataWindow);
                     _intersectedWindow = _displayWindow.intersect(_dataWindow);
-                
-                    layer = std::min(static_cast<size_t>(layer), _info.video.size() - 1);
+                    
+                    _info.tags["Display Window"] = serialize(displayWindow);
+                    _info.tags["Data Window"] = serialize(dataWindow);
+                    
                     imaging::Info imageInfo = _info.video[layer];
                     out.image = imaging::Image::create(imageInfo);
                     out.image->setTags(_info.tags);
