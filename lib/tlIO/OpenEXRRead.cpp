@@ -163,8 +163,8 @@ namespace tl
                         const Imf::Header& header = _f->header(partNumber);
 
                         // Get the display and data windows.
-                        _displayWindow = fromImath( header.displayWindow());
-                        _dataWindow = fromImath( header.dataWindow());
+                        _displayWindow = fromImath(header.displayWindow());
+                        _dataWindow = fromImath(header.dataWindow());
                         _intersectedWindow = _displayWindow.intersect(_dataWindow);
                         _fast = _displayWindow == _dataWindow;
 
@@ -247,6 +247,15 @@ namespace tl
                     uint16_t layer)
                 {
                     io::VideoData out;
+
+                    const Imf::Header& header = _f->header(0);
+
+                    // Get the display and data windows which can change
+                    // from frame to frame.
+                    _displayWindow = fromImath(header.displayWindow());
+                    _dataWindow = fromImath(header.dataWindow());
+                    _intersectedWindow = _displayWindow.intersect(_dataWindow);
+                
                     layer = std::min(static_cast<size_t>(layer), _info.video.size() - 1);
                     imaging::Info imageInfo = _info.video[layer];
                     out.image = imaging::Image::create(imageInfo);
