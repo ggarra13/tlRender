@@ -7,11 +7,9 @@
 
 #
 #
-# Main build script for mrv2.  It builds all dependencies and will install the
-# main executable on BUILD-OS-ARCH/BUILD_TYPE/install/bin.
-#
-# On Linux and macOS, it will also create a mrv2 or mrv2-dbg symbolic link
-# in $HOME/bin if the directory exists.
+# Test build script for tlRender.
+# It builds almost no dependencies and will install the
+# main executable on build/install/bin.
 #
 #
 
