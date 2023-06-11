@@ -2,11 +2,13 @@
 // Copyright (c) 2021-2023 Darby Johnston
 // All rights reserved.
 
+#define STBIW_WINDOWS_UTF8
+#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <tlIO/stb_image_write.h>
 
 #include <tlIO/STB.h>
 
-#include <sstream>
+#include <tlCore/StringFormat.h>
 
 namespace tl
 {
@@ -22,8 +24,28 @@ namespace tl
                     const std::shared_ptr<imaging::Image>& image)
                 {
                     const auto& info = image->getInfo();
-                    auto tmp = imaging::Image::create(info);
-                    // io->write(tmp->getData(), tmp->getDataByteCount());
+                    const int comp = static_cast<int>(
+                        imaging::getChannelCount(info.pixelType));
+                    const size_t bytes = imaging::getBitDepth(info.pixelType) / 8;
+                    if (bytes > 1)
+                        throw std::runtime_error(string::Format("{0}: {1}").
+                            arg(fileName).
+                            arg("Unsupported image depth"));
+
+                    stbi_flip_vertically_on_write(1);
+    
+                    file::Path path(fileName);
+                    std::string ext = path.getExtension();
+                    if (string::compareNoCase(ext, ".tga"))
+                        stbi_write_tga(fileName.c_str(), info.size.w,
+                                       info.size.h, comp, image->getData());
+                    else if (string::compareNoCase(ext, ".bmp"))
+                        stbi_write_bmp(fileName.c_str(), info.size.w,
+                                       info.size.h, comp, image->getData());
+                    else
+                        throw std::runtime_error(string::Format("{0}: {1}").
+                            arg(fileName).
+                            arg("Unsupported image format"));
                 }
             };
         }

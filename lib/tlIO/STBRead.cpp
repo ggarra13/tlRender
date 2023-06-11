@@ -19,29 +19,13 @@ namespace tl
     {
         namespace
         {
-            void flipImageY(stbi_uc* image, int width, int height,
-                            int bytesPerPixel)
-            {
-                stbi_uc* tempRow = new stbi_uc[width * bytesPerPixel];
-
-                for (int y = 0; y < height / 2; ++y) {
-                    stbi_uc* topRow = image + y * width * bytesPerPixel;
-                    stbi_uc* bottomRow = image + (height - y - 1) * width * bytesPerPixel;
-
-                    std::memcpy(tempRow, topRow, width * bytesPerPixel);
-                    std::memcpy(topRow, bottomRow, width * bytesPerPixel);
-                    std::memcpy(bottomRow, tempRow, width * bytesPerPixel);
-                }
-
-                delete[] tempRow;
-            }
             
             class File
             {
             public:
                 File(const std::string& fileName, const file::MemoryRead* memory)
                 {
-                    int w = 0, h = 0, n = 0;
+                    int w = 0, h = 0, n = 0, bits = 8;
                     int res = stbi_info(fileName.c_str(), &w, &h, &n);
                     if (res == 0)
                         throw std::runtime_error(string::Format("{0}: {1}").
@@ -50,7 +34,11 @@ namespace tl
 
                     _info.size.w = w;
                     _info.size.h = h;
-                    _info.pixelType = imaging::getIntType(n, 8);
+                    
+                    res = stbi_is_16_bit(fileName.c_str());
+                    if (res) bits = 16;
+                    
+                    _info.pixelType = imaging::getIntType(n, bits);
                     if (imaging::PixelType::None == _info.pixelType)
                     {
                         throw std::runtime_error(string::Format("{0}: {1}").
@@ -76,6 +64,8 @@ namespace tl
                     const int channels = static_cast<int>(
                         imaging::getChannelCount(_info.pixelType));
                     const size_t bytes = imaging::getBitDepth(_info.pixelType) / 8;
+                    
+                    stbi_set_flip_vertically_on_load(1);
 
                     int x, y, n;
                     stbi_uc* data = nullptr;
@@ -84,14 +74,12 @@ namespace tl
                     else if (bytes == 2)
                         data = reinterpret_cast<stbi_uc*>(
                             stbi_load_16(fileName.c_str(), &x, &y, &n, 0));
-
-                    flipImageY(data, _info.size.w, _info.size.h,
-                               channels * bytes);
-                                                                               
+                                                       
                     memcpy(
                         out.image->getData(), data,
                         _info.size.w * _info.size.h * channels * bytes);
-                    free(data);
+
+                    stbi_image_free(data);
 
                     return out;
                 }
