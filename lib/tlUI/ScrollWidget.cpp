@@ -16,6 +16,7 @@ namespace tl
         struct ScrollWidget::Private
         {
             ScrollType scrollType = ScrollType::Both;
+            bool scrollEventsEnabled = true;
             std::shared_ptr<ScrollArea> scrollArea;
             std::shared_ptr<ScrollBar> horizontalScrollBar;
             std::shared_ptr<ScrollBar> verticalScrollBar;
@@ -187,6 +188,11 @@ namespace tl
             _p->verticalScrollBar->setVisible(value);
         }
 
+        void ScrollWidget::setScrollEventsEnabled(bool value)
+        {
+            _p->scrollEventsEnabled = value;
+        }
+
         void ScrollWidget::setBorder(bool value)
         {
             _p->scrollArea->setBorder(value);
@@ -207,6 +213,65 @@ namespace tl
         {
             IWidget::sizeHintEvent(event);
             _sizeHint = _p->layout->getSizeHint();
+        }
+
+        void ScrollWidget::scrollEvent(ScrollEvent& event)
+        {
+            IWidget::scrollEvent(event);
+            TLRENDER_P();
+            if (p.scrollEventsEnabled)
+            {
+                event.accept = true;
+                math::Vector2i scrollPos = getScrollPos();
+                scrollPos.y += event.dy * getLineStep();
+                setScrollPos(scrollPos);
+            }
+        }
+
+        void ScrollWidget::keyPressEvent(KeyEvent& event)
+        {
+            IWidget::keyPressEvent(event);
+            TLRENDER_P();
+            switch (event.key)
+            {
+            case Key::PageUp:
+            {
+                event.accept = true;
+                math::Vector2i scrollPos = getScrollPos();
+                scrollPos.y -= getPageStep();
+                setScrollPos(scrollPos);
+                break;
+            }
+            case Key::PageDown:
+            {
+                event.accept = true;
+                math::Vector2i scrollPos = getScrollPos();
+                scrollPos.y += getPageStep();
+                setScrollPos(scrollPos);
+                break;
+            }
+            default: break;
+            }
+        }
+
+        void ScrollWidget::keyReleaseEvent(KeyEvent& event)
+        {
+            IWidget::keyReleaseEvent(event);
+            event.accept = true;
+        }
+
+        int ScrollWidget::getLineStep() const
+        {
+            TLRENDER_P();
+            const math::Vector2i scrollAreaSize = p.scrollArea->getGeometry().getSize();
+            return scrollAreaSize.y / 10.F;
+        }
+
+        int ScrollWidget::getPageStep() const
+        {
+            TLRENDER_P();
+            const math::Vector2i scrollAreaSize = p.scrollArea->getGeometry().getSize();
+            return scrollAreaSize.y;
         }
     }
 }

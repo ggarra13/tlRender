@@ -56,6 +56,9 @@ namespace tl
             //! Set whether the scroll bars are visible.
             void setScrollBarsVisible(bool);
 
+            //! Set whether scroll events are enabled.
+            void setScrollEventsEnabled(bool);
+
             //! Set whether the scroll area has a border.
             void setBorder(bool);
 
@@ -64,8 +67,14 @@ namespace tl
 
             void setGeometry(const math::BBox2i&) override;
             void sizeHintEvent(const SizeHintEvent&) override;
+            void scrollEvent(ScrollEvent&) override;
+            void keyPressEvent(KeyEvent&) override;
+            void keyReleaseEvent(KeyEvent&) override;
 
         private:
+            int getLineStep() const;
+            int getPageStep() const;
+
             TLRENDER_PRIVATE();
         };
     }

@@ -9,6 +9,7 @@ jobs:
     env:
       TLRENDER_MMAP: ON
       TLRENDER_PYTHON: OFF
+      TLRENDER_GLFW: ON
       TLRENDER_OCIO: ON
       TLRENDER_AUDIO: ON
       TLRENDER_JPEG: ON
@@ -21,10 +22,10 @@ jobs:
       TLRENDER_PROGRAMS: ON
       TLRENDER_EXAMPLES: ON
       TLRENDER_TESTS: ON
-      TLRENDER_GCOV: OFF
+      TLRENDER_GCOV: ON
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: recursive
 
@@ -72,6 +73,7 @@ jobs:
           -DCMAKE_PREFIX_PATH=$PWD/install \
           -DTLRENDER_MMAP=$TLRENDER_MMAP \
           -DTLRENDER_PYTHON=$TLRENDER_PYTHON \
+          -DTLRENDER_GLFW=$TLRENDER_GLFW \
           -DTLRENDER_OCIO=$TLRENDER_OCIO \
           -DTLRENDER_AUDIO=$TLRENDER_AUDIO \
           -DTLRENDER_JPEG=$TLRENDER_JPEG \
@@ -100,12 +102,19 @@ jobs:
         cd tlRender/src/tlRender-build &&
         sh ../../../../etc/Linux/lcov.sh
 
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        files: ${{ github.workspace }}/build/tlRender/src/tlRender-build/coverage_filtered.info
+        fail_ci_if_error: true
+
   linux-minimal-build:
     runs-on: ubuntu-latest
 
     env:
       TLRENDER_MMAP: OFF
       TLRENDER_PYTHON: OFF
+      TLRENDER_GLFW: OFF
       TLRENDER_OCIO: OFF
       TLRENDER_AUDIO: OFF
       TLRENDER_JPEG: OFF
@@ -121,7 +130,7 @@ jobs:
       TLRENDER_GCOV: OFF
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: recursive
 
@@ -147,6 +156,7 @@ jobs:
           -DCMAKE_PREFIX_PATH=$PWD/install \
           -DTLRENDER_MMAP=$TLRENDER_MMAP \
           -DTLRENDER_PYTHON=$TLRENDER_PYTHON \
+          -DTLRENDER_GLFW=$TLRENDER_GLFW \
           -DTLRENDER_OCIO=$TLRENDER_OCIO \
           -DTLRENDER_AUDIO=$TLRENDER_AUDIO \
           -DTLRENDER_JPEG=$TLRENDER_JPEG \
@@ -174,6 +184,7 @@ jobs:
     env:
       TLRENDER_MMAP: ON
       TLRENDER_PYTHON: OFF
+      TLRENDER_GLFW: ON
       TLRENDER_OCIO: ON
       TLRENDER_AUDIO: ON
       TLRENDER_JPEG: ON
@@ -189,7 +200,7 @@ jobs:
       TLRENDER_GCOV: OFF
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: recursive
 
@@ -211,6 +222,7 @@ jobs:
           -DCMAKE_PREFIX_PATH=$PWD/install \
           -DTLRENDER_MMAP=$TLRENDER_MMAP \
           -DTLRENDER_PYTHON=$TLRENDER_PYTHON \
+          -DTLRENDER_GLFW=$TLRENDER_GLFW \
           -DTLRENDER_OCIO=$TLRENDER_OCIO \
           -DTLRENDER_AUDIO=$TLRENDER_AUDIO \
           -DTLRENDER_JPEG=$TLRENDER_JPEG \
@@ -239,6 +251,7 @@ jobs:
     env:
       TLRENDER_MMAP: ON
       TLRENDER_PYTHON: OFF
+      TLRENDER_GLFW: ON
       TLRENDER_OCIO: ON
       TLRENDER_AUDIO: ON
       TLRENDER_JPEG: ON
@@ -254,7 +267,7 @@ jobs:
       TLRENDER_GCOV: OFF
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: recursive
 
@@ -272,6 +285,7 @@ jobs:
           -DCMAKE_PREFIX_PATH=install `
           -DTLRENDER_MMAP=${{ env.TLRENDER_MMAP }} `
           -DTLRENDER_PYTHON=${{ env.TLRENDER_PYTHON }} `
+          -DTLRENDER_GLFW=${{ env.TLRENDER_GLFW }} `
           -DTLRENDER_OCIO=${{ env.TLRENDER_OCIO }} `
           -DTLRENDER_AUDIO=${{ env.TLRENDER_AUDIO }} `
           -DTLRENDER_JPEG=${{ env.TLRENDER_JPEG }} `
