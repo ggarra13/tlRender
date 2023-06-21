@@ -20,9 +20,16 @@ namespace tl
             std::string directory;
             file::PathOptions pathOptions;
             std::shared_ptr<IOManager> ioManager;
-            std::shared_ptr<timeline::TimeUnitsModel> timeUnitsModel;
+            std::shared_ptr<timeline::ITimeUnitsModel> timeUnitsModel;
         };
 
+        //! In/out points display options.
+        enum class InOutDisplay
+        {
+            InsideRange,
+            OutsideRange
+        };
+        
         //! Cache display options.
         enum class CacheDisplay
         {
@@ -45,6 +52,7 @@ namespace tl
         //! Item options.
         struct ItemOptions
         {
+            InOutDisplay inOutDisplay = InOutDisplay::InsideRange;
             CacheDisplay cacheDisplay = CacheDisplay::VideoAndAudio;
             std::map<ColorRole, imaging::Color4f> colors =
             {
@@ -91,7 +99,7 @@ namespace tl
 
             std::string _durationLabel(const otime::RationalTime&);
 
-            virtual void _timeUnitsUpdate(timeline::TimeUnits);
+            virtual void _timeUnitsUpdate();
 
             ItemData _data;
             double _scale = 500.0;

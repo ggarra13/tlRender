@@ -89,7 +89,7 @@ namespace tl
 
         TimelineWidget::TimelineWidget(
             const std::shared_ptr<ui::Style>& style,
-            const std::shared_ptr<timeline::TimeUnitsModel>& timeUnitsModel,
+            const std::shared_ptr<timeline::ITimeUnitsModel>& timeUnitsModel,
             const std::shared_ptr<system::Context>& context,
             QWidget* parent) :
             QOpenGLWidget(parent),
@@ -409,21 +409,25 @@ namespace tl
         void TimelineWidget::keyPressEvent(QKeyEvent* event)
         {
             TLRENDER_P();
-            event->accept();
-            p.eventLoop->key(
+            if (p.eventLoop->key(
                 fromQtKey(event->key()),
                 true,
-                fromQtModifiers(event->modifiers()));
+                fromQtModifiers(event->modifiers())))
+            {
+                event->accept();
+            }
         }
 
         void TimelineWidget::keyReleaseEvent(QKeyEvent* event)
         {
             TLRENDER_P();
-            event->accept();
-            p.eventLoop->key(
+            if (p.eventLoop->key(
                 fromQtKey(event->key()),
                 false,
-                fromQtModifiers(event->modifiers()));
+                fromQtModifiers(event->modifiers())))
+            {
+                event->accept();
+            }
         }
 
         void TimelineWidget::timerEvent(QTimerEvent*)
