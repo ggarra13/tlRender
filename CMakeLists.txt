@@ -42,7 +42,7 @@ set(TLRENDER_QT6 FALSE CACHE BOOL "Enable support for Qt6")
 set(TLRENDER_QT5 FALSE CACHE BOOL "Enable support for Qt5")
 set(TLRENDER_PROGRAMS TRUE CACHE BOOL "Build programs")
 set(TLRENDER_EXAMPLES TRUE CACHE BOOL "Build examples")
-set(TLRENDER_TESTS TRUE CACHE BOOL "Build tests")
+set(TLRENDER_TESTS FALSE CACHE BOOL "Build tests")
 
 #-------------------------------------------------------------------------------
 # Internal configuration
