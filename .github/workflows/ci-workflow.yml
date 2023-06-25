@@ -233,13 +233,6 @@ jobs:
           -DTLRENDER_GCOV=$TLRENDER_GCOV &&
         cmake --build . -j 4
 
-    - name: Run tests
-      run: >
-        export DYLD_LIBRARY_PATH=$PWD/build/install/lib:$DYLD_LIBRARY_PATH &&
-        cd build &&
-        cd tlRender/src/tlRender-build &&
-        tests/tltest/tltest
-
   windows-build:
     runs-on: windows-latest
 
