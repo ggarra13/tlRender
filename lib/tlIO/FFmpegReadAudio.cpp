@@ -174,6 +174,7 @@ namespace tl
                         r);
                 }
 
+                otime::RationalTime timeReference = time::invalidTime;
                 imaging::Tags tags;
                 AVDictionaryEntry* tag = nullptr;
                 while ((tag = av_dict_get(_avFormatContext->metadata, "", tag, AV_DICT_IGNORE_SUFFIX)))
@@ -185,10 +186,18 @@ namespace tl
                     {
                         timecode = value;
                     }
+                    else if (string::compareNoCase(key, "time_reference"))
+                    {
+                        timeReference = otime::RationalTime(std::atoi(value.c_str()), sampleRate);
+                    }
                 }
 
                 otime::RationalTime startTime(0.0, sampleRate);
-                if (!timecode.empty())
+                if (!time::compareExact(_options.startTime, time::invalidTime))
+                {
+                    startTime = _options.startTime.rescaled_to(sampleRate);
+                }
+                else if (!timecode.empty())
                 {
                     otime::ErrorStatus errorStatus;
                     const otime::RationalTime time = otime::RationalTime::from_timecode(
@@ -198,8 +207,12 @@ namespace tl
                     if (!otime::is_error(errorStatus))
                     {
                         startTime = time::floor(time.rescaled_to(sampleRate));
-                        //std::cout << "start time: " << startTime << std::endl;
+                        //std::cout << fileName << " start time: " << startTime << std::endl;
                     }
+                }
+                else if (!time::compareExact(timeReference, time::invalidTime))
+                {
+                    startTime = timeReference;
                 }
                 _timeRange = otime::TimeRange(
                     startTime,
@@ -266,15 +279,14 @@ namespace tl
             {
                 avcodec_parameters_free(&i.second);
             }
+            if (_avIOContext && _avIOContext->buffer)
+            {
+                av_free(_avIOContext->buffer);
+            }
             if (_avIOContext)
             {
                 avio_context_free(&_avIOContext);
             }
-            //! \bug Free'd by avio_context_free()?
-            //if (_avIOContextBuffer)
-            //{
-            //    av_free(_avIOContextBuffer);
-            //}
             if (_avFormatContext)
             {
                 avformat_close_input(&_avFormatContext);
@@ -449,9 +461,9 @@ namespace tl
             return audio::getSampleCount(_buffer);
         }
 
-        void ReadAudio::bufferCopy(uint8_t* out, size_t byteCount)
+        void ReadAudio::bufferCopy(uint8_t* out, size_t sampleCount)
         {
-            audio::copy(_buffer, out, byteCount);
+            audio::copy(_buffer, out, sampleCount);
         }
 
         bool ReadAudio::isEOF() const

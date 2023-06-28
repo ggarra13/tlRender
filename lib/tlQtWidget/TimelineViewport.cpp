@@ -61,12 +61,12 @@ namespace tl
 
             p.context = context;
 
-            QSurfaceFormat surfaceFormat;
-            surfaceFormat.setMajorVersion(4);
-            surfaceFormat.setMinorVersion(1);
-            surfaceFormat.setProfile(QSurfaceFormat::CoreProfile);
-            surfaceFormat.setStencilBufferSize(8);
-            setFormat(surfaceFormat);
+            //QSurfaceFormat surfaceFormat;
+            //surfaceFormat.setMajorVersion(4);
+            //surfaceFormat.setMinorVersion(1);
+            //surfaceFormat.setProfile(QSurfaceFormat::CoreProfile);
+            //surfaceFormat.setStencilBufferSize(8);
+            //setFormat(surfaceFormat);
 
             setMouseTracking(true);
             setFocusPolicy(Qt::StrongFocus);

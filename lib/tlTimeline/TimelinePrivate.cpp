@@ -23,9 +23,7 @@ namespace tl
                 if (auto context = this->context.lock())
                 {
                     // The first video clip defines the video information for the timeline.
-                    io::Options ioOptions = options.ioOptions;
-                    ioOptions["SequenceIO/DefaultSpeed"] = string::Format("{0}").arg(clip->duration().rate());
-                    auto item = getRead(clip, ioOptions);
+                    auto item = getRead(clip, options.ioOptions);
                     if (item.read)
                     {
                         this->ioInfo.video = item.ioInfo.video;
@@ -252,6 +250,7 @@ namespace tl
                                     {
                                         AudioLayerData audioData;
                                         audioData.seconds = request->seconds;
+                                        audioData.timeRange = requestTimeRange.clamped(clipTimeRange);
                                         if (auto otioClip = dynamic_cast<const otio::Clip*>(otioItem))
                                         {
                                             audioData.audio = readAudio(otioTrack, otioClip, requestTimeRange);
@@ -344,6 +343,10 @@ namespace tl
                             if (j.audio.valid())
                             {
                                 const auto audioData = j.audio.get();
+                                if (audioData.audio)
+                                {
+                                    trimAudio(audioData.audio, j.seconds, j.timeRange);
+                                }
                                 layer.audio = audioData.audio;
                             }
                             data.layers.push_back(layer);
@@ -441,6 +444,18 @@ namespace tl
                     const auto memoryRead = getMemoryRead(clip->media_reference());
                     io::Options options = ioOptions;
                     options["SequenceIO/DefaultSpeed"] = string::Format("{0}").arg(timeRange.duration().rate());
+                    otio::ErrorStatus error;
+                    otime::RationalTime startTime = time::invalidTime;
+                    const otime::TimeRange availableRange = clip->available_range(&error);
+                    if (!otio::is_error(error))
+                    {
+                        startTime = availableRange.start_time();
+                    }
+                    else if (clip->source_range().has_value())
+                    {
+                        startTime = clip->source_range().value().start_time();
+                    }
+                    options["FFmpeg/StartTime"] = string::Format("{0}").arg(startTime);
                     const auto ioSystem = context->getSystem<io::System>();
                     out.read = ioSystem->read(path, memoryRead, options);
                     if (out.read)
@@ -484,7 +499,7 @@ namespace tl
                     time,
                     track,
                     clip,
-                    ioInfo);
+                    item.ioInfo);
                 out = item.read->readVideo(mediaTime, videoLayer);
             }
             return out;
@@ -503,10 +518,40 @@ namespace tl
                     timeRange,
                     track,
                     clip,
-                    ioInfo);
+                    item.ioInfo);
                 out = item.read->readAudio(mediaRange);
             }
             return out;
+        }
+
+        void Timeline::Private::trimAudio(
+            const std::shared_ptr<audio::Audio>& audio,
+            int64_t seconds,
+            const otime::TimeRange& timeRange)
+        {
+            const double s = seconds - this->timeRange.start_time().rescaled_to(1.0).value();
+            if (timeRange.start_time().value() > s)
+            {
+                const otime::RationalTime t =
+                    timeRange.start_time() - otime::RationalTime(s, 1.0);
+                const otime::RationalTime t2 =
+                    t.rescaled_to(audio->getSampleCount());
+                const size_t size = t2.value() *
+                    audio->getInfo().getByteCount();
+                memset(audio->getData(), 0, size);
+            }
+            if (timeRange.end_time_exclusive().value() < s + 1)
+            {
+                const otime::RationalTime t =
+                    timeRange.end_time_exclusive() - otime::RationalTime(s, 1.0);
+                const otime::RationalTime t2 =
+                    t.rescaled_to(audio->getSampleCount());
+                const size_t offset = t2.value() *
+                    audio->getInfo().getByteCount();
+                const size_t size = audio->getByteCount() -
+                    offset;
+                memset(audio->getData() + offset, 0, size);
+            }
         }
     }
 }

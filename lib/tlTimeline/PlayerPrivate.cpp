@@ -594,7 +594,7 @@ namespace tl
                     audio::copy(
                         p->audioThread.buffer,
                         reinterpret_cast<uint8_t*>(outputBuffer),
-                        nFrames * p->audioThread.info.getByteCount());
+                        nFrames);
                 }
 
                 // Update the audio frame.

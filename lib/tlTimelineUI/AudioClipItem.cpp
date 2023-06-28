@@ -27,6 +27,7 @@ namespace tl
             file::Path path;
             std::vector<file::MemoryRead> memoryRead;
             otime::TimeRange timeRange = time::invalidTimeRange;
+            otime::TimeRange availableRange = time::invalidTimeRange;
             std::string label;
             ui::FontRole labelFontRole = ui::FontRole::Label;
             std::string durationLabel;
@@ -90,7 +91,7 @@ namespace tl
             p.path = timeline::getPath(
                 p.clip->media_reference(),
                 itemData.directory,
-                itemData.pathOptions);
+                itemData.options.pathOptions);
             p.memoryRead = timeline::getMemoryRead(
                 p.clip->media_reference());
 
@@ -99,8 +100,22 @@ namespace tl
             {
                 p.timeRange = rangeOpt.value();
             }
+            otio::ErrorStatus error;
+            const otime::TimeRange availableRange = clip->available_range(&error);
+            if (!otio::is_error(error))
+            {
+                p.availableRange = availableRange;
+            }
+            else if (clip->source_range().has_value())
+            {
+                p.availableRange = clip->source_range().value();
+            }
 
-            p.label = p.path.get(-1, false);
+            p.label = clip->name();
+            if (p.label.empty())
+            {
+                p.label = p.path.get(-1, false);
+            }
             _textUpdate();
 
             p.cancelObserver = observer::ValueObserver<bool>::create(
@@ -486,7 +501,10 @@ namespace tl
                 if (p.ioInfoInit)
                 {
                     p.ioInfoInit = false;
-                    p.ioInfo = _data.ioManager->getInfo(p.path, p.memoryRead).get();
+                    p.ioInfo = _data.ioManager->getInfo(
+                        p.path,
+                        p.memoryRead,
+                        p.availableRange.start_time()).get();
                     _updates |= ui::Update::Size;
                     _updates |= ui::Update::Draw;
                 }

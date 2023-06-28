@@ -7,10 +7,16 @@
 #include "MainWindow.h"
 
 #include <tlUI/EventLoop.h>
+#include <tlUI/FileBrowser.h>
 
 #include <tlIO/IOSystem.h>
 
+#include <tlCore/File.h>
 #include <tlCore/StringFormat.h>
+
+#if defined(TLRENDER_NFD)
+#include <nfd.hpp>
+#endif // TLRENDER_NFD
 
 namespace tl
 {
@@ -25,6 +31,7 @@ namespace tl
                 std::shared_ptr<observer::Value<std::shared_ptr<timeline::Player> > > player;
                 std::shared_ptr<observer::List<std::shared_ptr<timeline::Player> > > players;
                 std::shared_ptr<MainWindow> mainWindow;
+                std::shared_ptr<ui::FileBrowser> fileBrowser;
             };
 
             void App::_init(
@@ -162,6 +169,12 @@ namespace tl
                         string::Format("{0}").arg(p.options.usdDiskCache)),
 #endif // TLRENDER_USD
                 });
+                const int exitCode = getExit();
+                if (exitCode != 0)
+                {
+                    exit(exitCode);
+                    return;
+                }
 
                 // Set I/O options.
                 io::Options ioOptions;
@@ -169,32 +182,32 @@ namespace tl
                 {
                     std::stringstream ss;
                     ss << p.options.usdRenderWidth;
-                    ioOptions["usd/renderWidth"] = ss.str();
+                    ioOptions["USD/renderWidth"] = ss.str();
                 }
                 {
                     std::stringstream ss;
                     ss << p.options.usdComplexity;
-                    ioOptions["usd/complexity"] = ss.str();
+                    ioOptions["USD/complexity"] = ss.str();
                 }
                 {
                     std::stringstream ss;
                     ss << p.options.usdDrawMode;
-                    ioOptions["usd/drawMode"] = ss.str();
+                    ioOptions["USD/drawMode"] = ss.str();
                 }
                 {
                     std::stringstream ss;
                     ss << p.options.usdEnableLighting;
-                    ioOptions["usd/enableLighting"] = ss.str();
+                    ioOptions["USD/enableLighting"] = ss.str();
                 }
                 {
                     std::stringstream ss;
                     ss << p.options.usdStageCache;
-                    ioOptions["usd/stageCacheCount"] = ss.str();
+                    ioOptions["USD/stageCacheCount"] = ss.str();
                 }
                 {
                     std::stringstream ss;
                     ss << p.options.usdDiskCache * memory::gigabyte;
-                    ioOptions["usd/diskCacheByteCount"] = ss.str();
+                    ioOptions["USD/diskCacheByteCount"] = ss.str();
                 }
 #endif // TLRENDER_USD
                 auto ioSystem = context->getSystem<io::System>();
@@ -244,6 +257,43 @@ namespace tl
                 auto out = std::shared_ptr<App>(new App);
                 out->_init(argc, argv, context);
                 return out;
+            }
+
+            void App::open()
+            {
+                TLRENDER_P();
+#if defined(TLRENDER_NFD)
+                nfdu8char_t* outPath = nullptr;
+                NFD::OpenDialog(outPath);
+                if (outPath)
+                {
+                    open(outPath);
+                    NFD::FreePath(outPath);
+                }
+#else  // TLRENDER_NFD
+                std::string path;
+                if (auto player = p.player->get())
+                {
+                    path = player->getPath().get();
+                }
+                else
+                {
+                    path = file::getCWD();
+                }
+                p.fileBrowser = ui::FileBrowser::create(path, _context);
+                p.fileBrowser->open(getEventLoop());
+                p.fileBrowser->setFileCallback(
+                    [this](const std::string& value)
+                    {
+                        open(value);
+                        _p->fileBrowser->close();
+                    });
+                p.fileBrowser->setCloseCallback(
+                    [this]
+                    {
+                        _p->fileBrowser.reset();
+                    });
+#endif // TLRENDER_NFD
             }
 
             void App::open(const std::string& fileName)

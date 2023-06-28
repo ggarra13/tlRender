@@ -28,8 +28,8 @@ namespace tl
             AVIOBufferData(const uint8_t* p, size_t size);
 
             const uint8_t* p = nullptr;
-            const uint8_t* pCurrent = nullptr;
             size_t size = 0;
+            size_t offset = 0;
         };
 
         int avIOBufferRead(void* opaque, uint8_t* buf, int bufSize);
@@ -39,6 +39,7 @@ namespace tl
 
         struct Options
         {
+            otime::RationalTime startTime = time::invalidTime;
             bool yuvToRGBConversion = false;
             audio::Info audioConvertInfo;
             size_t threadCount = ffmpeg::threadCount;
@@ -119,7 +120,7 @@ namespace tl
             void process(const otime::RationalTime& currentTime);
 
             size_t getBufferSize() const;
-            void bufferCopy(uint8_t*, size_t byteCount);
+            void bufferCopy(uint8_t*, size_t sampleCount);
 
             bool isEOF() const;
 

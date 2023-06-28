@@ -49,7 +49,6 @@
 #include <tlCoreTest/BBoxTest.h>
 #include <tlCoreTest/ColorTest.h>
 #include <tlCoreTest/ContextTest.h>
-#include <tlCoreTest/DirectoryTest.h>
 #include <tlCoreTest/ErrorTest.h>
 #include <tlCoreTest/FileIOTest.h>
 #include <tlCoreTest/FileInfoTest.h>
@@ -87,7 +86,9 @@ int main(int argc, char* argv[])
 {
     auto context = system::Context::create();
 #if defined(TLRENDER_QT5) || defined(TLRENDER_QT6)
-    qt::init(context);
+    qt::init(
+        qt::DefaultSurfaceFormat::OpenGL_4_1_CoreProfile,
+        context);
 #else // TLRENDER_QT5 || TLRENDER_QT6
     timeline::init(context);
 #endif // TLRENDER_QT5 || TLRENDER_QT6
@@ -108,7 +109,7 @@ int main(int argc, char* argv[])
     std::vector<std::shared_ptr<tests::ITest> > tests;
     if (0)
     {
-        tests.push_back(core_tests::TimeTest::create(context));
+        tests.push_back(core_tests::AudioTest::create(context));
     }
     else
     {
@@ -118,7 +119,6 @@ int main(int argc, char* argv[])
             tests.push_back(core_tests::BBoxTest::create(context));
             tests.push_back(core_tests::ColorTest::create(context));
             tests.push_back(core_tests::ContextTest::create(context));
-            tests.push_back(core_tests::DirectoryTest::create(context));
             tests.push_back(core_tests::ErrorTest::create(context));
             tests.push_back(core_tests::FileIOTest::create(context));
             tests.push_back(core_tests::FileInfoTest::create(context));
