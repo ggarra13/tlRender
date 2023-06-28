@@ -43,7 +43,7 @@
 #if defined(TLRENDER_STB)
 #include <tlIOTest/STBTest.h>
 #endif // TLRENDER_STB
-#include <tlIO/Util.h>
+#include <tlIO/Init.h>
 
 #include <tlCoreTest/AudioTest.h>
 #include <tlCoreTest/BBoxTest.h>
