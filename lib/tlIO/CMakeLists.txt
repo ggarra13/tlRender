@@ -9,8 +9,7 @@ set(HEADERS
     PPM.h
     SequenceIO.h
     SGI.h
-    STB.h
-    Util.h)
+    STB.h)
 set(HEADERS_PRIVATE
     SequenceIOReadPrivate.h)
 
@@ -34,8 +33,7 @@ set(SOURCE
     SGIWrite.cpp
     STB.cpp
     STBRead.cpp
-    STBWrite.cpp
-    Util.cpp)
+    STBWrite.cpp)
 
 set(LIBRARIES)
 set(LIBRARIES_PRIVATE)
