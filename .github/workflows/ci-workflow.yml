@@ -15,6 +15,7 @@ jobs:
       TLRENDER_TIFF: ON
       TLRENDER_PNG: ON
       TLRENDER_EXR: ON
+      TLRENDER_VPX: ON
       TLRENDER_FFMPEG: ON
       TLRENDER_NFD: OFF
       TLRENDER_QT5: ON
@@ -22,6 +23,7 @@ jobs:
       TLRENDER_EXAMPLES: ON
       TLRENDER_TESTS: ON
       TLRENDER_GCOV: ON
+
 
     steps:
     - uses: actions/checkout@v2
@@ -78,6 +80,7 @@ jobs:
           -DTLRENDER_TIFF=$TLRENDER_TIFF \
           -DTLRENDER_PNG=$TLRENDER_PNG \
           -DTLRENDER_EXR=$TLRENDER_EXR \
+          -DTLRENDER_VPX=$TLRENDER_VPX \
           -DTLRENDER_FFMPEG=$TLRENDER_FFMPEG \
           -DTLRENDER_NFD=$TLRENDER_NFD \
           -DTLRENDER_QT5=$TLRENDER_QT5 \
@@ -100,6 +103,12 @@ jobs:
         cd tlRender/src/tlRender-build &&
         sh ../../../../etc/Linux/lcov.sh
 
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v2.1.0
+      with:
+        files: ${{ github.workspace }}/build/tlRender/src/tlRender-build/coverage_filtered.info
+        fail_ci_if_error: false
+
   linux-minimal-build:
     runs-on: ubuntu-latest
 
@@ -112,6 +121,7 @@ jobs:
       TLRENDER_TIFF: OFF
       TLRENDER_PNG: OFF
       TLRENDER_EXR: OFF
+      TLRENDER_VPX: OFF
       TLRENDER_FFMPEG: OFF
       TLRENDER_NFD: OFF
       TLRENDER_QT5: OFF

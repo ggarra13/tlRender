@@ -102,6 +102,8 @@ namespace tl
             void keyPressEvent(QKeyEvent*) override;
 
         private:
+            void _drawHUD();
+
             imaging::Size _viewportSize() const;
             imaging::Size _renderSize() const;
             math::Vector2i _viewportCenter() const;

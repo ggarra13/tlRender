@@ -110,10 +110,11 @@ namespace tl
         {
             // Get the video ranges to be cached.
             const otime::TimeRange& timeRange = timeline->getTimeRange();
-            const otime::RationalTime readAheadRescaled =
+            otime::RationalTime readAheadRescaled =
                 time::floor(cacheOptions.readAhead.rescaled_to(timeRange.duration().rate()));
-            const otime::RationalTime readBehindRescaled =
+            otime::RationalTime readBehindRescaled =
                 time::floor(cacheOptions.readBehind.rescaled_to(timeRange.duration().rate()));
+            
             otime::TimeRange videoRange = time::invalidTimeRange;
             switch (cacheDirection)
             {
@@ -129,9 +130,9 @@ namespace tl
                 break;
             default: break;
             }
-            //std::cout << "in out range: " << inOutRange << std::endl;
-            //std::cout << "video range: " << videoRange << std::endl;
+
             const auto videoRanges = timeline::loop(videoRange, inOutRange);
+
             //for (const auto& i : videoRanges)
             //{
             //    std::cout << "video ranges: " << i << std::endl;
@@ -479,11 +480,13 @@ namespace tl
 
                     int64_t seconds = p->ioInfo.audio.sampleRate > 0 ? (frame / p->ioInfo.audio.sampleRate) : 0;
                     int64_t offset = frame - seconds * p->ioInfo.audio.sampleRate;
+                    //std::cout << "frame:   " << frame   << std::endl;
+                    //std::cout << "seconds: " << seconds << std::endl;
+                    //std::cout << "offset:  " << offset  << std::endl;
                     while (audio::getSampleCount(p->audioThread.buffer) < nFrames)
                     {
-                        //std::cout << "frame: " << frame << std::endl;
-                        //std::cout << "seconds: " << seconds << std::endl;
-                        //std::cout << "offset: " << offset << std::endl;
+                        // std::cout << "\tseconds: " << seconds;
+                        // std::cout << "\toffset: " << offset;
                         AudioData audioData;
                         {
                             std::unique_lock<std::mutex> lock(p->audioMutex.mutex);
@@ -551,7 +554,8 @@ namespace tl
 
                         if (p->audioThread.convert)
                         {
-                            p->audioThread.buffer.push_back(p->audioThread.convert->convert(tmp));
+                            const auto convertedAudio = p->audioThread.convert->convert(tmp);
+                            p->audioThread.buffer.push_back(convertedAudio);
                         }
 
                         if (backwards)
@@ -576,6 +580,7 @@ namespace tl
 
                         //std::cout << std::endl;
                     }
+                    
                 }
 
                 // Copy audio data to RtAudio.

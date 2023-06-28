@@ -19,6 +19,18 @@ namespace tl
 {
     namespace exr
     {
+        namespace
+        {
+            template<typename T>
+            std::string serialize(const Imath::Box<Imath::Vec2<T> >& value)
+            {
+                std::stringstream ss;
+                ss << value.min.x << " " << value.min.y << " " <<
+                    value.max.x << " " << value.max.y;
+                return ss.str();
+            }
+        }
+        
         struct IStream::Private
         {
             std::shared_ptr<file::FileIO> f;
@@ -158,13 +170,13 @@ namespace tl
                     int numberOfParts = _f->parts();
                     int partNumber;
 
-                    for ( partNumber = 0; partNumber < numberOfParts; ++partNumber )
+                    for (partNumber = 0; partNumber < numberOfParts; ++partNumber)
                     {
                         const Imf::Header& header = _f->header(partNumber);
 
                         // Get the display and data windows.
-                        _displayWindow = fromImath( header.displayWindow());
-                        _dataWindow = fromImath( header.dataWindow());
+                        _displayWindow = fromImath(header.displayWindow());
+                        _dataWindow = fromImath(header.dataWindow());
                         _intersectedWindow = _displayWindow.intersect(_dataWindow);
                         _fast = _displayWindow == _dataWindow;
 
@@ -196,20 +208,21 @@ namespace tl
                         readTags(header, _info.tags);
 
                         // Get the layers.
-                        
+                        std::string view;
+                        if (header.hasView()) view = header.view() + " ";
                         std::vector<Layer> layers = getLayers(header.channels(), channelGrouping);
                         size_t offset = _info.video.size();
-                        _info.video.resize( offset + layers.size() );
+                        _info.video.resize(offset + layers.size());
                         for (size_t i = 0; i < layers.size(); ++i)
                         {
                             layers[i].partNumber = partNumber;
                             const auto& layer = layers[i];
-                            _layers.push_back( layer );
+                            _layers.push_back(layer);
                             const math::Vector2i sampling(layer.channels[0].sampling.x, layer.channels[0].sampling.y);
                             if (sampling.x != 1 || sampling.y != 1)
                                 _fast = false;
                             auto& info = _info.video[offset + i];
-                            info.name = layer.name;
+                            info.name = view + layer.name;
                             info.size.w = _displayWindow.w();
                             info.size.h = _displayWindow.h();
                             info.size.pixelAspectRatio = header.pixelAspectRatio();
@@ -246,7 +259,24 @@ namespace tl
                     uint16_t layer)
                 {
                     io::VideoData out;
+                
                     layer = std::min(static_cast<size_t>(layer), _info.video.size() - 1);
+                    
+
+                    const Imf::Header& header = _f->header(_layers[layer].partNumber);
+
+                    // Get the display and data windows which can change
+                    // from frame to frame.
+                    const auto& displayWindow = header.displayWindow();
+                    const auto& dataWindow = header.dataWindow();
+                    
+                    _displayWindow = fromImath(displayWindow);
+                    _dataWindow = fromImath(dataWindow);
+                    _intersectedWindow = _displayWindow.intersect(_dataWindow);
+                    
+                    _info.tags["Display Window"] = serialize(displayWindow);
+                    _info.tags["Data Window"] = serialize(dataWindow);
+                    
                     imaging::Info imageInfo = _info.video[layer];
                     out.image = imaging::Image::create(imageInfo);
                     out.image->setTags(_info.tags);
@@ -272,7 +302,7 @@ namespace tl
                                     sampling.y,
                                     0.F));
                         }
-                        Imf::InputPart in( *_f.get(), _layers[layer].partNumber );
+                        Imf::InputPart in(*_f.get(), _layers[layer].partNumber);
                         in.setFrameBuffer(frameBuffer);
                         in.readPixels(_displayWindow.min.y, _displayWindow.max.y);
                     }
@@ -295,7 +325,7 @@ namespace tl
                                     sampling.y,
                                     0.F));
                         }
-                        Imf::InputPart in( *_f.get(), _layers[layer].partNumber );
+                        Imf::InputPart in(*_f.get(), _layers[layer].partNumber);
                         in.setFrameBuffer(frameBuffer);
                         for (int y = _displayWindow.min.y; y <= _displayWindow.max.y; ++y)
                         {
