@@ -8,7 +8,6 @@ set(HEADERS
     Init.h
     PPM.h
     SequenceIO.h
-    SGI.h)
     SGI.h
     STB.h
     Util.h)
