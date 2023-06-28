@@ -6,6 +6,7 @@
 #define STBI_NO_PNG
 #define STBI_NO_HDR
 #define STBI_NO_PNM
+#define STBI_WINDOWS_UTF8
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
 
@@ -24,7 +25,7 @@ namespace tl
             {
             public:
                 File(const std::string& fileName, const file::MemoryRead* memory)
-                    {
+                {
                         int res = 0, w = 0, h = 0, n = 0, bits = 8;
 
                         _memory = memory;
