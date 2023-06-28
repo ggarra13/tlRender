@@ -9,13 +9,13 @@ jobs:
     env:
       TLRENDER_MMAP: ON
       TLRENDER_PYTHON: OFF
+      TLRENDER_GLFW: ON
       TLRENDER_OCIO: ON
       TLRENDER_AUDIO: ON
       TLRENDER_JPEG: ON
       TLRENDER_TIFF: ON
       TLRENDER_PNG: ON
       TLRENDER_EXR: ON
-      TLRENDER_VPX: ON
       TLRENDER_FFMPEG: ON
       TLRENDER_NFD: OFF
       TLRENDER_QT5: ON
@@ -24,9 +24,8 @@ jobs:
       TLRENDER_TESTS: ON
       TLRENDER_GCOV: ON
 
-
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: recursive
 
@@ -74,13 +73,13 @@ jobs:
           -DCMAKE_PREFIX_PATH=$PWD/install \
           -DTLRENDER_MMAP=$TLRENDER_MMAP \
           -DTLRENDER_PYTHON=$TLRENDER_PYTHON \
+          -DTLRENDER_GLFW=$TLRENDER_GLFW \
           -DTLRENDER_OCIO=$TLRENDER_OCIO \
           -DTLRENDER_AUDIO=$TLRENDER_AUDIO \
           -DTLRENDER_JPEG=$TLRENDER_JPEG \
           -DTLRENDER_TIFF=$TLRENDER_TIFF \
           -DTLRENDER_PNG=$TLRENDER_PNG \
           -DTLRENDER_EXR=$TLRENDER_EXR \
-          -DTLRENDER_VPX=$TLRENDER_VPX \
           -DTLRENDER_FFMPEG=$TLRENDER_FFMPEG \
           -DTLRENDER_NFD=$TLRENDER_NFD \
           -DTLRENDER_QT5=$TLRENDER_QT5 \
@@ -104,10 +103,10 @@ jobs:
         sh ../../../../etc/Linux/lcov.sh
 
     - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v2.1.0
+      uses: codecov/codecov-action@v3
       with:
         files: ${{ github.workspace }}/build/tlRender/src/tlRender-build/coverage_filtered.info
-        fail_ci_if_error: false
+        fail_ci_if_error: true
 
   linux-minimal-build:
     runs-on: ubuntu-latest
@@ -115,13 +114,13 @@ jobs:
     env:
       TLRENDER_MMAP: OFF
       TLRENDER_PYTHON: OFF
+      TLRENDER_GLFW: OFF
       TLRENDER_OCIO: OFF
       TLRENDER_AUDIO: OFF
       TLRENDER_JPEG: OFF
       TLRENDER_TIFF: OFF
       TLRENDER_PNG: OFF
       TLRENDER_EXR: OFF
-      TLRENDER_VPX: OFF
       TLRENDER_FFMPEG: OFF
       TLRENDER_NFD: OFF
       TLRENDER_QT5: OFF
@@ -131,7 +130,7 @@ jobs:
       TLRENDER_GCOV: OFF
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: recursive
 
@@ -157,6 +156,7 @@ jobs:
           -DCMAKE_PREFIX_PATH=$PWD/install \
           -DTLRENDER_MMAP=$TLRENDER_MMAP \
           -DTLRENDER_PYTHON=$TLRENDER_PYTHON \
+          -DTLRENDER_GLFW=$TLRENDER_GLFW \
           -DTLRENDER_OCIO=$TLRENDER_OCIO \
           -DTLRENDER_AUDIO=$TLRENDER_AUDIO \
           -DTLRENDER_JPEG=$TLRENDER_JPEG \
@@ -184,6 +184,7 @@ jobs:
     env:
       TLRENDER_MMAP: ON
       TLRENDER_PYTHON: OFF
+      TLRENDER_GLFW: ON
       TLRENDER_OCIO: ON
       TLRENDER_AUDIO: ON
       TLRENDER_JPEG: ON
@@ -199,7 +200,7 @@ jobs:
       TLRENDER_GCOV: OFF
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: recursive
 
@@ -221,6 +222,7 @@ jobs:
           -DCMAKE_PREFIX_PATH=$PWD/install \
           -DTLRENDER_MMAP=$TLRENDER_MMAP \
           -DTLRENDER_PYTHON=$TLRENDER_PYTHON \
+          -DTLRENDER_GLFW=$TLRENDER_GLFW \
           -DTLRENDER_OCIO=$TLRENDER_OCIO \
           -DTLRENDER_AUDIO=$TLRENDER_AUDIO \
           -DTLRENDER_JPEG=$TLRENDER_JPEG \
@@ -249,6 +251,7 @@ jobs:
     env:
       TLRENDER_MMAP: ON
       TLRENDER_PYTHON: OFF
+      TLRENDER_GLFW: ON
       TLRENDER_OCIO: ON
       TLRENDER_AUDIO: ON
       TLRENDER_JPEG: ON
@@ -264,7 +267,7 @@ jobs:
       TLRENDER_GCOV: OFF
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: recursive
 
@@ -282,6 +285,7 @@ jobs:
           -DCMAKE_PREFIX_PATH=install `
           -DTLRENDER_MMAP=${{ env.TLRENDER_MMAP }} `
           -DTLRENDER_PYTHON=${{ env.TLRENDER_PYTHON }} `
+          -DTLRENDER_GLFW=${{ env.TLRENDER_GLFW }} `
           -DTLRENDER_OCIO=${{ env.TLRENDER_OCIO }} `
           -DTLRENDER_AUDIO=${{ env.TLRENDER_AUDIO }} `
           -DTLRENDER_JPEG=${{ env.TLRENDER_JPEG }} `
