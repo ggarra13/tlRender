@@ -9,6 +9,9 @@ set(HEADERS
     PPM.h
     SequenceIO.h
     SGI.h)
+    SGI.h
+    STB.h
+    Util.h)
 set(HEADERS_PRIVATE
     SequenceIOReadPrivate.h)
 
@@ -29,7 +32,15 @@ set(SOURCE
     SequenceIOWrite.cpp
     SGI.cpp
     SGIRead.cpp
+<<<<<<< HEAD
     SGIWrite.cpp)
+=======
+    SGIWrite.cpp
+    STB.cpp
+    STBRead.cpp
+    STBWrite.cpp
+    Util.cpp)
+>>>>>>> tga_bmp_psd
 
 set(LIBRARIES)
 set(LIBRARIES_PRIVATE)
