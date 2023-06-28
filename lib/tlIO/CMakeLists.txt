@@ -31,15 +31,11 @@ set(SOURCE
     SequenceIOWrite.cpp
     SGI.cpp
     SGIRead.cpp
-<<<<<<< HEAD
-    SGIWrite.cpp)
-=======
     SGIWrite.cpp
     STB.cpp
     STBRead.cpp
     STBWrite.cpp
     Util.cpp)
->>>>>>> tga_bmp_psd
 
 set(LIBRARIES)
 set(LIBRARIES_PRIVATE)
