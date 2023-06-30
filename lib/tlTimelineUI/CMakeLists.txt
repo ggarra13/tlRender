@@ -1,6 +1,7 @@
 set(HEADERS
     AudioClipItem.h
     AudioGapItem.h
+    IBasicItem.h
     IItem.h
     IOManager.h
     Init.h
@@ -8,6 +9,7 @@ set(HEADERS
     TimelineViewport.h
     TimelineWidget.h
     TrackItem.h
+    TransitionItem.h
     VideoClipItem.h
     VideoGapItem.h)
 set(HEADERS_PRIVATE)
@@ -15,6 +17,7 @@ set(HEADERS_PRIVATE)
 set(SOURCE
     AudioClipItem.cpp
     AudioGapItem.cpp
+    IBasicItem.cpp
     IItem.cpp
     IOManager.cpp
     Init.cpp
@@ -22,6 +25,7 @@ set(SOURCE
     TimelineViewport.cpp
     TimelineWidget.cpp
     TrackItem.cpp
+    TransitionItem.cpp
     VideoClipItem.cpp
     VideoGapItem.cpp)
 

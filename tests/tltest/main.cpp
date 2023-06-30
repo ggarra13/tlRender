@@ -43,7 +43,6 @@
 #if defined(TLRENDER_STB)
 #include <tlIOTest/STBTest.h>
 #endif // TLRENDER_STB
-#include <tlIO/Init.h>
 
 #include <tlCoreTest/AudioTest.h>
 #include <tlCoreTest/BBoxTest.h>
@@ -165,6 +164,9 @@ int main(int argc, char* argv[])
 #if defined(TLRENDER_TIFF)
             tests.push_back(io_tests::TIFFTest::create(context));
 #endif // TLRENDER_TIFF
+#if defined(TLRENDER_STB)
+            tests.push_back(io_tests::STBTest::create(context));
+#endif // TLRENDER_STB
         }
         if (1)
         {

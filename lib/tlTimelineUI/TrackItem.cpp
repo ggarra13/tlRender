@@ -6,6 +6,7 @@
 
 #include <tlTimelineUI/AudioClipItem.h>
 #include <tlTimelineUI/AudioGapItem.h>
+#include <tlTimelineUI/TransitionItem.h>
 #include <tlTimelineUI/VideoClipItem.h>
 #include <tlTimelineUI/VideoGapItem.h>
 
@@ -19,8 +20,30 @@ namespace tl
         {
             TrackType trackType = TrackType::None;
             otime::TimeRange timeRange = time::invalidTimeRange;
-            std::map<std::shared_ptr<IItem>, otime::TimeRange> childTimeRanges;
-            int margin = 0;
+            std::string label;
+            std::string durationLabel;
+            ui::FontRole fontRole = ui::FontRole::Label;
+            std::map<std::shared_ptr<IItem>, otime::TimeRange> itemTimeRanges;
+            std::vector<std::shared_ptr<IItem> > clipsAndGaps;
+            std::vector<std::shared_ptr<IItem> > transitions;
+
+            struct SizeData
+            {
+                int margin = 0;
+                imaging::FontInfo fontInfo = imaging::FontInfo("", 0);
+                int lineHeight = 0;
+                bool textUpdate = true;
+                math::Vector2i labelSize;
+                math::Vector2i durationSize;
+            };
+            SizeData size;
+
+            struct DrawData
+            {
+                std::vector<std::shared_ptr<imaging::Glyph> > labelGlyphs;
+                std::vector<std::shared_ptr<imaging::Glyph> > durationGlyphs;
+            };
+            DrawData draw;
         };
 
         void TrackItem::_init(
@@ -32,33 +55,43 @@ namespace tl
             IItem::_init("tl::timelineui::TrackItem", itemData, context, parent);
             TLRENDER_P();
 
+            p.label = track->name();
             if (otio::Track::Kind::video == track->kind())
             {
                 p.trackType = TrackType::Video;
+                if (p.label.empty())
+                {
+                    p.label = "Video Track";
+                }
             }
             else if (otio::Track::Kind::audio == track->kind())
             {
                 p.trackType = TrackType::Audio;
+                if (p.label.empty())
+                {
+                    p.label = "Audio Track";
+                }
             }
-
             p.timeRange = track->trimmed_range();
+
+            _textUpdate();
 
             for (const auto& child : track->children())
             {
                 if (auto clip = dynamic_cast<otio::Clip*>(child.value))
                 {
-                    std::shared_ptr<IItem> clipItem;
+                    std::shared_ptr<IItem> item;
                     switch (p.trackType)
                     {
                     case TrackType::Video:
-                        clipItem = VideoClipItem::create(
+                        item = VideoClipItem::create(
                             clip,
                             itemData,
                             context,
                             shared_from_this());
                         break;
                     case TrackType::Audio:
-                        clipItem = AudioClipItem::create(
+                        item = AudioClipItem::create(
                             clip,
                             itemData,
                             context,
@@ -69,23 +102,24 @@ namespace tl
                     const auto timeRangeOpt = track->trimmed_range_of_child(clip);
                     if (timeRangeOpt.has_value())
                     {
-                        p.childTimeRanges[clipItem] = timeRangeOpt.value();
+                        p.itemTimeRanges[item] = timeRangeOpt.value();
                     }
+                    p.clipsAndGaps.push_back(item);
                 }
                 else if (auto gap = dynamic_cast<otio::Gap*>(child.value))
                 {
-                    std::shared_ptr<IItem> gapItem;
+                    std::shared_ptr<IItem> item;
                     switch (p.trackType)
                     {
                     case TrackType::Video:
-                        gapItem = VideoGapItem::create(
+                        item = VideoGapItem::create(
                             gap,
                             itemData,
                             context,
                             shared_from_this());
                         break;
                     case TrackType::Audio:
-                        gapItem = AudioGapItem::create(
+                        item = AudioGapItem::create(
                             gap,
                             itemData,
                             context,
@@ -96,8 +130,24 @@ namespace tl
                     const auto timeRangeOpt = track->trimmed_range_of_child(gap);
                     if (timeRangeOpt.has_value())
                     {
-                        p.childTimeRanges[gapItem] = timeRangeOpt.value();
+                        p.itemTimeRanges[item] = timeRangeOpt.value();
                     }
+                    p.clipsAndGaps.push_back(item);
+                }
+                else if (auto transition = dynamic_cast<otio::Transition*>(child.value))
+                {
+                    auto item = TransitionItem::create(
+                        transition,
+                        itemData,
+                        context,
+                        shared_from_this());
+                    const auto timeRangeOpt = track->trimmed_range_of_child(transition);
+                    if (timeRangeOpt.has_value())
+                    {
+                        const otime::TimeRange timeRange = timeRangeOpt.value();
+                        p.itemTimeRanges[item] = timeRange;
+                    }
+                    p.transitions.push_back(item);
                 }
             }
         }
@@ -124,22 +174,39 @@ namespace tl
         {
             IItem::setGeometry(value);
             TLRENDER_P();
-            for (auto child : _children)
+            int y = _geometry.min.y +
+                p.size.lineHeight;
+            int h = 0;
+            for (auto item : p.clipsAndGaps)
             {
-                if (auto item = std::dynamic_pointer_cast<IItem>(child))
+                const auto i = p.itemTimeRanges.find(item);
+                if (i != p.itemTimeRanges.end())
                 {
-                    const auto i = p.childTimeRanges.find(item);
-                    if (i != p.childTimeRanges.end())
-                    {
-                        const math::Vector2i& sizeHint = child->getSizeHint();
-                        math::BBox2i bbox(
-                            _geometry.min.x +
-                            i->second.start_time().rescaled_to(1.0).value() * _scale,
-                            _geometry.min.y,
-                            sizeHint.x,
-                            sizeHint.y);
-                        child->setGeometry(bbox);
-                    }
+                    const math::Vector2i& sizeHint = item->getSizeHint();
+                    const math::BBox2i bbox(
+                        _geometry.min.x +
+                        i->second.start_time().rescaled_to(1.0).value() * _scale,
+                        y,
+                        sizeHint.x,
+                        sizeHint.y);
+                    item->setGeometry(bbox);
+                    h = std::max(h, sizeHint.y);
+                }
+            }
+            y += h;
+            for (auto item : p.transitions)
+            {
+                const auto i = p.itemTimeRanges.find(item);
+                if (i != p.itemTimeRanges.end())
+                {
+                    const math::Vector2i& sizeHint = item->getSizeHint();
+                    const math::BBox2i bbox(
+                        _geometry.min.x +
+                        i->second.start_time().rescaled_to(1.0).value() * _scale,
+                        y,
+                        sizeHint.x,
+                        sizeHint.y);
+                    item->setGeometry(bbox);
                 }
             }
         }
@@ -149,17 +216,35 @@ namespace tl
             IItem::sizeHintEvent(event);
             TLRENDER_P();
 
-            p.margin = event.style->getSizeRole(ui::SizeRole::MarginSmall, event.displayScale);
+            p.size.margin = event.style->getSizeRole(ui::SizeRole::MarginInside, event.displayScale);
 
-            int childrenHeight = 0;
-            for (const auto& child : _children)
+            auto fontInfo = event.style->getFontRole(p.fontRole, event.displayScale);
+            if (fontInfo != p.size.fontInfo || p.size.textUpdate)
             {
-                childrenHeight = std::max(childrenHeight, child->getSizeHint().y);
+                p.size.fontInfo = fontInfo;
+                auto fontMetrics = event.getFontMetrics(p.fontRole);
+                p.size.lineHeight = fontMetrics.lineHeight;
+                p.size.labelSize = event.fontSystem->getSize(p.label, fontInfo);
+                p.size.durationSize = event.fontSystem->getSize(p.durationLabel, fontInfo);
+            }
+            p.size.textUpdate = false;
+
+            int clipsAndGapsHeight = 0;
+            for (const auto& item : p.clipsAndGaps)
+            {
+                clipsAndGapsHeight = std::max(clipsAndGapsHeight, item->getSizeHint().y);
+            }
+            int transitionsHeight = 0;
+            for (const auto& item : p.transitions)
+            {
+                transitionsHeight = std::max(transitionsHeight, item->getSizeHint().y);
             }
 
             _sizeHint = math::Vector2i(
                 p.timeRange.duration().rescaled_to(1.0).value() * _scale,
-                childrenHeight);
+                p.size.lineHeight +
+                clipsAndGapsHeight +
+                transitionsHeight);
         }
 
         void TrackItem::drawEvent(
@@ -167,6 +252,75 @@ namespace tl
             const ui::DrawEvent& event)
         {
             IItem::drawEvent(drawRect, event);
+            TLRENDER_P();
+
+            const math::BBox2i& g = _geometry;
+
+            const math::BBox2i labelGeometry(
+                g.min.x +
+                p.size.margin,
+                g.min.y,
+                p.size.labelSize.x,
+                p.size.lineHeight);
+            const math::BBox2i durationGeometry(
+                g.max.x -
+                p.size.margin -
+                p.size.durationSize.x,
+                g.min.y,
+                p.size.durationSize.x,
+                p.size.lineHeight);
+            const bool labelVisible = drawRect.intersects(labelGeometry);
+            const bool durationVisible =
+                drawRect.intersects(durationGeometry) &&
+                !durationGeometry.intersects(labelGeometry);
+
+            if (labelVisible)
+            {
+                if (!p.label.empty() && p.draw.labelGlyphs.empty())
+                {
+                    p.draw.labelGlyphs = event.fontSystem->getGlyphs(p.label, p.size.fontInfo);
+                }
+                const auto fontMetrics = event.getFontMetrics(p.fontRole);
+                event.render->drawText(
+                    p.draw.labelGlyphs,
+                    math::Vector2i(
+                        labelGeometry.min.x,
+                        labelGeometry.min.y +
+                        fontMetrics.ascender),
+                    event.style->getColorRole(ui::ColorRole::Text));
+            }
+
+            if (durationVisible)
+            {
+                if (!p.durationLabel.empty() && p.draw.durationGlyphs.empty())
+                {
+                    p.draw.durationGlyphs = event.fontSystem->getGlyphs(p.durationLabel, p.size.fontInfo);
+                }
+                const auto fontMetrics = event.getFontMetrics(p.fontRole);
+                event.render->drawText(
+                    p.draw.durationGlyphs,
+                    math::Vector2i(
+                        durationGeometry.min.x,
+                        durationGeometry.min.y +
+                        fontMetrics.ascender),
+                    event.style->getColorRole(ui::ColorRole::Text));
+            }
+        }
+
+        void TrackItem::_timeUnitsUpdate()
+        {
+            IItem::_timeUnitsUpdate();
+            _textUpdate();
+        }
+
+        void TrackItem::_textUpdate()
+        {
+            TLRENDER_P();
+            p.durationLabel = IItem::_durationLabel(p.timeRange.duration());
+            p.size.textUpdate = true;
+            p.draw.durationGlyphs.clear();
+            _updates |= ui::Update::Size;
+            _updates |= ui::Update::Draw;
         }
     }
 }
