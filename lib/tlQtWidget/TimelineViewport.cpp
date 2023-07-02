@@ -30,7 +30,7 @@ namespace tl
             std::vector<timeline::ImageOptions> imageOptions;
             std::vector<timeline::DisplayOptions> displayOptions;
             timeline::CompareOptions compareOptions;
-            std::vector<qt::TimelinePlayer*> timelinePlayers;
+            QVector<QPointer<qt::TimelinePlayer> > timelinePlayers;
             std::vector<imaging::Size> timelineSizes;
             math::Vector2i viewPos;
             float viewZoom = 1.F;
@@ -120,45 +120,57 @@ namespace tl
             update();
         }
 
-        void TimelineViewport::setTimelinePlayers(const std::vector<qt::TimelinePlayer*>& value)
+        void TimelineViewport::setTimelinePlayers(const QVector<QPointer<qt::TimelinePlayer> >& value)
         {
             TLRENDER_P();
 
-            for (const auto& i : p.timelinePlayers)
+            for (const auto& player : p.timelinePlayers)
             {
-                disconnect(
-                    i,
-                    SIGNAL(currentVideoChanged(const tl::timeline::VideoData&)),
-                    this,
-                    SLOT(_currentVideoCallback(const tl::timeline::VideoData&)));
+                if (player)
+                {
+                    disconnect(
+                        player,
+                        SIGNAL(currentVideoChanged(const tl::timeline::VideoData&)),
+                        this,
+                        SLOT(_currentVideoCallback(const tl::timeline::VideoData&)));
+                }
             }
 
             p.timelinePlayers = value;
 
             p.timelineSizes.clear();
-            for (const auto& i : p.timelinePlayers)
+            for (const auto& player : p.timelinePlayers)
             {
-                const auto& ioInfo = i->ioInfo();
-                if (!ioInfo.video.empty())
+                if (player)
                 {
-                    p.timelineSizes.push_back(ioInfo.video[0].size);
+                    const auto& ioInfo = player->ioInfo();
+                    if (!ioInfo.video.empty())
+                    {
+                        p.timelineSizes.push_back(ioInfo.video[0].size);
+                    }
                 }
             }
 
             p.videoData.clear();
-            for (const auto& i : p.timelinePlayers)
+            for (const auto& player : p.timelinePlayers)
             {
-                p.videoData.push_back(i->currentVideo());
+                if (player)
+                {
+                    p.videoData.push_back(player->currentVideo());
+                }
             }
 
             update();
 
-            for (const auto& i : p.timelinePlayers)
+            for (const auto& player : p.timelinePlayers)
             {
-                connect(
-                    i,
-                    SIGNAL(currentVideoChanged(const tl::timeline::VideoData&)),
-                    SLOT(_currentVideoCallback(const tl::timeline::VideoData&)));
+                if (player)
+                {
+                    connect(
+                        player,
+                        SIGNAL(currentVideoChanged(const tl::timeline::VideoData&)),
+                        SLOT(_currentVideoCallback(const tl::timeline::VideoData&)));
+                }
             }
         }
 
@@ -184,9 +196,9 @@ namespace tl
                 return;
             p.viewPos = pos;
             p.viewZoom = zoom;
-            p.frameView = false;
             update();
             Q_EMIT viewPosAndZoomChanged(p.viewPos, p.viewZoom);
+            setFrameView(false);
         }
 
         void TimelineViewport::setViewZoom(float zoom, const math::Vector2i& focus)
@@ -198,11 +210,14 @@ namespace tl
             setViewPosAndZoom(pos, zoom);
         }
 
-        void TimelineViewport::frameView()
+        void TimelineViewport::setFrameView(bool value)
         {
             TLRENDER_P();
-            p.frameView = true;
+            if (value == p.frameView)
+                return;
+            p.frameView = value;
             update();
+            Q_EMIT frameViewChanged(p.frameView);
         }
         
         void TimelineViewport::viewZoom1To1()
@@ -236,12 +251,13 @@ namespace tl
                 {
                     p.videoData[i] = timeline::VideoData();
                 }
-            }
-            const auto i = std::find(p.timelinePlayers.begin(), p.timelinePlayers.end(), sender());
-            if (i != p.timelinePlayers.end())
+            }            
+            for (size_t i = 0; i < p.timelinePlayers.size(); ++i)
             {
-                const size_t index = i - p.timelinePlayers.begin();
-                p.videoData[index] = value;
+                if (p.timelinePlayers[i] == sender())
+                {
+                    p.videoData[i] = value;
+                }
             }
             update();
         }
@@ -540,16 +556,16 @@ namespace tl
             {
                 p.viewPos.x = p.viewPosMousePress.x + (p.mousePos.x - p.mousePress.x);
                 p.viewPos.y = p.viewPosMousePress.y + (p.mousePos.y - p.mousePress.y);
-                p.frameView = false;
                 update();
                 Q_EMIT viewPosAndZoomChanged(p.viewPos, p.viewZoom);
+                setFrameView(false);
             }
         }
 
         void TimelineViewport::wheelEvent(QWheelEvent* event)
         {
             TLRENDER_P();
-            if (!p.timelinePlayers.empty())
+            if (!p.timelinePlayers.empty() && p.timelinePlayers[0])
             {
                 const auto t = p.timelinePlayers[0]->currentTime();
                 const float delta = event->angleDelta().y() / 8.F / 15.F;
@@ -577,7 +593,7 @@ namespace tl
                 break;
             case Qt::Key::Key_Backspace:
                 event->accept();
-                frameView();
+                setFrameView(true);
                 break;
             }
         }
@@ -621,7 +637,6 @@ namespace tl
                 p.viewPos = viewPos;
                 p.viewZoom = zoom;
                 Q_EMIT viewPosAndZoomChanged(p.viewPos, p.viewZoom);
-                Q_EMIT frameViewActivated();
             }
         }
     }

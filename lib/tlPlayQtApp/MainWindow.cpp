@@ -51,11 +51,13 @@
 #include <QMenuBar>
 #include <QMimeData>
 #include <QMouseEvent>
+#include <QPointer>
 #include <QSlider>
 #include <QStatusBar>
 #include <QStyle>
 #include <QToolBar>
 #include <QToolButton>
+#include <QVector>
 #include <QWindow>
 
 namespace tl
@@ -73,7 +75,7 @@ namespace tl
         {
             App* app = nullptr;
 
-            std::vector<qt::TimelinePlayer*> timelinePlayers;
+            QVector<QPointer<qt::TimelinePlayer> > timelinePlayers;
             bool floatOnTop = false;
             bool secondaryFloatOnTop = false;
             timeline::ColorConfigOptions colorConfigOptions;
@@ -537,10 +539,10 @@ namespace tl
 
             connect(
                 p.viewActions->actions()["Frame"],
-                &QAction::triggered,
-                [this]
+                &QAction::toggled,
+                [this](bool value)
                 {
-                    _p->timelineViewport->frameView();
+                    _p->timelineViewport->setFrameView(value);
                 });
             connect(
                 p.viewActions->actions()["Zoom1To1"],
@@ -586,7 +588,7 @@ namespace tl
                 &qtwidget::TimeSpinBox::valueChanged,
                 [this](const otime::RationalTime& value)
                 {
-                    if (!_p->timelinePlayers.empty())
+                    if (!_p->timelinePlayers.isEmpty())
                     {
                         _p->timelinePlayers[0]->setPlayback(timeline::Playback::Stop);
                         _p->timelinePlayers[0]->seek(value);
@@ -664,13 +666,15 @@ namespace tl
                 });
             connect(
                 p.timelineViewport,
-                &qtwidget::TimelineViewport::frameViewActivated,
-                [this]
+                &qtwidget::TimelineViewport::frameViewChanged,
+                [this](bool value)
                 {
+                    _p->viewActions->actions()["Frame"]->setChecked(value);
+
                     _p->app->outputDevice()->setView(
                         _p->timelineViewport->viewPos(),
                         _p->timelineViewport->viewZoom(),
-                        _p->timelineViewport->hasFrameView());
+                        value);
                 });
 
             connect(
@@ -753,10 +757,10 @@ namespace tl
             }
         }
 
-        void MainWindow::setTimelinePlayers(const std::vector<qt::TimelinePlayer*>& timelinePlayers)
+        void MainWindow::setTimelinePlayers(const QVector<QPointer<qt::TimelinePlayer> >& timelinePlayers)
         {
             TLRENDER_P();
-            if (!p.timelinePlayers.empty())
+            if (!p.timelinePlayers.empty() && p.timelinePlayers[0])
             {
                 disconnect(
                     p.timelinePlayers[0],
@@ -782,7 +786,7 @@ namespace tl
 
             p.timelinePlayers = timelinePlayers;
 
-            if (!p.timelinePlayers.empty())
+            if (!p.timelinePlayers.empty() && p.timelinePlayers[0])
             {
                 connect(
                     p.timelinePlayers[0],
@@ -895,7 +899,7 @@ namespace tl
                         mouseEvent->y() * devicePixelRatio;
                     if (p.mousePressed)
                     {
-                        if (!p.timelinePlayers.empty())
+                        if (!p.timelinePlayers.empty() && p.timelinePlayers[0])
                         {
                             const auto& ioInfo = p.timelinePlayers[0]->ioInfo();
                             if (!ioInfo.video.empty())
@@ -945,9 +949,9 @@ namespace tl
                     SLOT(setViewPosAndZoom(const tl::math::Vector2i&, float)));
                 connect(
                     p.timelineViewport,
-                    SIGNAL(frameViewActivated()),
+                    SIGNAL(frameViewChanged(bool)),
                     p.secondaryWindow->viewport(),
-                    SLOT(frameView()));
+                    SLOT(setFrameView(bool)));
 
                 connect(
                     p.secondaryWindow,
@@ -1028,7 +1032,7 @@ namespace tl
             p.speedSpinBox->setEnabled(count > 0);
             p.volumeSlider->setEnabled(count > 0);
 
-            if (!p.timelinePlayers.empty())
+            if (!p.timelinePlayers.empty() && p.timelinePlayers[0])
             {
                 {
                     QSignalBlocker blocker(p.currentTimeSpinBox);
@@ -1070,6 +1074,8 @@ namespace tl
 
             p.compareActions->setCompareOptions(p.compareOptions);
 
+            p.viewActions->actions()["Frame"]->setChecked(p.timelineViewport->hasFrameView());
+
             p.renderActions->setImageOptions(p.imageOptions);
             p.renderActions->setDisplayOptions(p.displayOptions);
 
@@ -1087,7 +1093,7 @@ namespace tl
             p.timelineViewport->setCompareOptions(p.compareOptions);
 
             p.timelineWidget->setPlayer(
-                !p.timelinePlayers.empty() ?
+                (!p.timelinePlayers.empty() && p.timelinePlayers[0]) ?
                 p.timelinePlayers[0]->player() :
                 nullptr);
             p.timelineWidget->setFrameView(p.app->settingsObject()->value("Timeline/FrameView").toBool());
@@ -1104,16 +1110,21 @@ namespace tl
             p.colorTool->setLUTOptions(p.lutOptions);
             p.colorTool->setDisplayOptions(p.displayOptions);
 
-            p.infoTool->setInfo(!p.timelinePlayers.empty() ? p.timelinePlayers[0]->ioInfo() : io::Info());
+            p.infoTool->setInfo(
+                (!p.timelinePlayers.empty() && p.timelinePlayers[0]) ?
+                p.timelinePlayers[0]->ioInfo() :
+                io::Info());
 
-            p.audioTool->setAudioOffset(!p.timelinePlayers.empty() ? p.timelinePlayers[0]->audioOffset() : 0.0);
+            p.audioTool->setAudioOffset(
+                (!p.timelinePlayers.empty() && p.timelinePlayers[0])
+                ? p.timelinePlayers[0]->audioOffset() :
+                0.0);
 
             std::vector<std::string> infoLabel;
             std::vector<std::string> infoTooltip;
-            const int aIndex = p.app->filesModel()->observeAIndex()->get();
-            if (count > 0 && aIndex >= 0 && aIndex < count)
+            if (!p.timelinePlayers.empty() && p.timelinePlayers[0])
             {
-                const std::string fileName = files[aIndex]->path.get(-1, false);
+                const std::string fileName = p.timelinePlayers[0]->path().get(-1, false);
                 std::string fileNameLabel = fileName;
                 if (fileNameLabel.size() > infoLabelMax)
                 {
@@ -1122,7 +1133,7 @@ namespace tl
                 infoLabel.push_back(fileNameLabel);
                 infoTooltip.push_back(fileName);
 
-                const auto& ioInfo = files[aIndex]->ioInfo;
+                const io::Info& ioInfo = p.timelinePlayers[0]->ioInfo();
                 if (!ioInfo.video.empty())
                 {
                     {

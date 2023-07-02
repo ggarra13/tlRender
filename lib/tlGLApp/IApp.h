@@ -5,6 +5,7 @@
 #include <tlApp/IApp.h>
 
 #include <tlCore/Image.h>
+#include <tlCore/ValueObserver.h>
 
 struct GLFWwindow;
 
@@ -58,12 +59,17 @@ namespace tl
             void setWindowSize(const imaging::Size&);
 
             //! Get whether the window is in full screen mode.
-            bool isWindowFullScreen() const;
+            bool isFullScreen() const;
+
+            //! Observe whether the window is in full screen mode.
+            std::shared_ptr<observer::IValue<bool> > observeFullScreen() const;
 
             //! Set whether the window is in full screen mode.
-            void setWindowFullScreen(bool);
+            void setFullScreen(bool);
 
         protected:
+            virtual void _drop(const std::vector<std::string>&);
+
             virtual void _tick();
 
         private:
@@ -75,6 +81,7 @@ namespace tl
             static void _scrollCallback(GLFWwindow*, double, double);
             static void _keyCallback(GLFWwindow*, int, int, int, int);
             static void _charCallback(GLFWwindow*, unsigned int);
+            static void _dropCallback(GLFWwindow*, int, const char**);
 
             TLRENDER_PRIVATE();
         };

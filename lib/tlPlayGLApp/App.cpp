@@ -9,8 +9,11 @@
 #include <tlUI/EventLoop.h>
 #include <tlUI/FileBrowser.h>
 
+#include <tlTimeline/Util.h>
+
 #include <tlIO/IOSystem.h>
 
+#include <tlCore/AudioSystem.h>
 #include <tlCore/File.h>
 #include <tlCore/StringFormat.h>
 
@@ -26,10 +29,21 @@ namespace tl
         {
             std::string input;
             Options options;
-            std::shared_ptr<observer::Value<std::shared_ptr<timeline::Player> > > player;
-            std::shared_ptr<observer::List<std::shared_ptr<timeline::Player> > > players;
+            float volume = 1.F;
+            bool mute = false;
+            bool deviceActive = false;
+            std::shared_ptr<play::FilesModel> filesModel;
+            std::vector<std::shared_ptr<play::FilesModelItem> > files;
+            std::vector<std::shared_ptr<play::FilesModelItem> > activeFiles;
+            std::vector<std::shared_ptr<timeline::Player> > players;
+            std::shared_ptr<observer::List<std::shared_ptr<timeline::Player> > > activePlayers;
+
             std::shared_ptr<MainWindow> mainWindow;
             std::shared_ptr<ui::FileBrowser> fileBrowser;
+
+            std::shared_ptr<observer::ListObserver<std::shared_ptr<play::FilesModelItem> > > filesObserver;
+            std::shared_ptr<observer::ListObserver<std::shared_ptr<play::FilesModelItem> > > activeObserver;
+            std::shared_ptr<observer::ListObserver<int> > layersObserver;
         };
 
         void App::_init(
@@ -87,6 +101,10 @@ namespace tl
                     "Enable the HUD (heads up display).",
                     string::Format("{0}").arg(p.options.hud),
                     "0, 1"),
+                app::CmdLineValueOption<double>::create(
+                    p.options.speed,
+                    { "-speed" },
+                    "Playback speed."),
                 app::CmdLineValueOption<timeline::Playback>::create(
                     p.options.playback,
                     { "-playback", "-p" },
@@ -211,25 +229,58 @@ namespace tl
             auto ioSystem = context->getSystem<io::System>();
             ioSystem->setOptions(ioOptions);
 
-            // Read the timeline.
-            p.player = observer::Value<std::shared_ptr<timeline::Player> >::create();
-            p.players = observer::List<std::shared_ptr<timeline::Player> >::create();
+            // Create objects.
+            p.filesModel = play::FilesModel::create(context);
+            p.activePlayers = observer::List<std::shared_ptr<timeline::Player> >::create();
+            p.filesObserver = observer::ListObserver<std::shared_ptr<play::FilesModelItem> >::create(
+                p.filesModel->observeFiles(),
+                [this](const std::vector<std::shared_ptr<play::FilesModelItem> >& value)
+                {
+                    _filesCallback(value);
+                });
+            p.activeObserver = observer::ListObserver<std::shared_ptr<play::FilesModelItem> >::create(
+                p.filesModel->observeActive(),
+                [this](const std::vector<std::shared_ptr<play::FilesModelItem> >& value)
+                {
+                    _activeCallback(value);
+                });
+            p.layersObserver = observer::ListObserver<int>::create(
+                p.filesModel->observeLayers(),
+                [this](const std::vector<int>& value)
+                {
+                    for (size_t i = 0; i < value.size() && i < _p->players.size(); ++i)
+                    {
+                        if (auto player = _p->players[i])
+                        {
+                            player->setVideoLayer(value[i]);
+                        }
+                    }
+                });
+
+            // Open the input files.
             if (!p.input.empty())
             {
                 open(p.input);
-                if (auto player = p.player->get())
+                if (!p.players.empty())
                 {
-                    if (time::isValid(p.options.inOutRange))
+                    if (auto player = p.players[0])
                     {
-                        player->setInOutRange(p.options.inOutRange);
-                        player->seek(p.options.inOutRange.start_time());
+                        if (p.options.speed > 0.0)
+                        {
+                            player->setSpeed(p.options.speed);
+                        }
+                        if (time::isValid(p.options.inOutRange))
+                        {
+                            player->setInOutRange(p.options.inOutRange);
+                            player->seek(p.options.inOutRange.start_time());
+                        }
+                        if (time::isValid(p.options.seek))
+                        {
+                            player->seek(p.options.seek);
+                        }
+                        player->setLoop(p.options.loop);
+                        player->setPlayback(p.options.playback);
                     }
-                    if (time::isValid(p.options.seek))
-                    {
-                        player->seek(p.options.seek);
-                    }
-                    player->setLoop(p.options.loop);
-                    player->setPlayback(p.options.playback);
                 }
             }
 
@@ -257,7 +308,7 @@ namespace tl
             return out;
         }
 
-        void App::open()
+        void App::openDialog()
         {
             TLRENDER_P();
 #if defined(TLRENDER_NFD)
@@ -269,14 +320,13 @@ namespace tl
                 NFD::FreePath(outPath);
             }
 #else  // TLRENDER_NFD
-            std::string path;
-            if (auto player = p.player->get())
+            std::string path = file::getCWD();
+            if (!p.players.empty())
             {
-                path = player->getPath().get();
-            }
-            else
-            {
-                path = file::getCWD();
+                if (auto player = p.players[0])
+                {
+                    path = player->getPath().get();
+                }
             }
             p.fileBrowser = ui::FileBrowser::create(path, _context);
             p.fileBrowser->open(getEventLoop());
@@ -294,54 +344,266 @@ namespace tl
 #endif // TLRENDER_NFD
         }
 
-        void App::open(const std::string& fileName)
+        void App::open(const std::string& fileName, const std::string& audioFileName)
         {
             TLRENDER_P();
-            try
+            file::PathOptions pathOptions;
+            //pathOptions.maxNumberDigits = p.settingsObject->value("Misc/MaxFileSequenceDigits").toInt();
+            for (const auto& path : timeline::getPaths(fileName, pathOptions, _context))
             {
-                auto timeline = timeline::Timeline::create(fileName, _context);
-                auto player = timeline::Player::create(timeline, _context);
-                p.player->setIfChanged(player);
-                p.players->setIfChanged({ player });
-            }
-            catch (const std::exception& e)
-            {
-                std::cerr << e.what() << std::endl;
-                p.player->setIfChanged(nullptr);
-                p.players->clear();
+                auto item = std::make_shared<play::FilesModelItem>();
+                item->path = path;
+                item->audioPath = file::Path(audioFileName);
+                p.filesModel->add(item);
+                //p.settingsObject->addRecentFile(QString::fromUtf8(path.get().c_str()));
             }
         }
 
-        void App::close()
+        const std::shared_ptr<play::FilesModel>& App::getFilesModel() const
         {
-            TLRENDER_P();
-            p.player->setIfChanged(nullptr);
-            p.players->clear();
+            return _p->filesModel;
         }
 
-        void App::closeAll()
+        std::shared_ptr<observer::IList<std::shared_ptr<timeline::Player> > > App::observeActivePlayers() const
         {
-            TLRENDER_P();
-            p.player->setIfChanged(nullptr);
-            p.players->clear();
+            return _p->activePlayers;
         }
 
-        std::shared_ptr<observer::IValue<std::shared_ptr<timeline::Player> > > App::observePlayer() const
+        const std::shared_ptr<MainWindow>& App::getMainWindow() const
         {
-            return _p->player;
+            return _p->mainWindow;
         }
 
-        std::shared_ptr<observer::IList<std::shared_ptr<timeline::Player> > > App::observePlayers() const
+        void App::_drop(const std::vector<std::string>& value)
         {
-            return _p->players;
+            for (const auto& i : value)
+            {
+                open(i);
+            }
         }
 
         void App::_tick()
         {
             TLRENDER_P();
-            for (const auto& player : p.players->get())
+            for (const auto& player : p.players)
             {
-                player->tick();
+                if (player)
+                {
+                    player->tick();
+                }
+            }
+        }
+
+        void App::_filesCallback(const std::vector<std::shared_ptr<play::FilesModelItem> >& items)
+        {
+            TLRENDER_P();
+
+            // Create the new list of players.
+            std::vector<std::shared_ptr<timeline::Player> > players(items.size());
+            for (size_t i = 0; i < items.size(); ++i)
+            {
+                const auto j = std::find(p.files.begin(), p.files.end(), items[i]);
+                if (j != p.files.end())
+                {
+                    const size_t k = j - p.files.begin();
+                    players[i] = p.players[k];
+                }
+            }
+
+            // Find players to destroy.
+            std::vector<std::shared_ptr<timeline::Player> > destroy;
+            for (size_t i = 0; i < p.files.size(); ++i)
+            {
+                const auto j = std::find(items.begin(), items.end(), p.files[i]);
+                if (j == items.end())
+                {
+                    destroy.push_back(p.players[i]);
+                }
+            }
+
+            // Create new timeline players.
+            auto audioSystem = _context->getSystem<audio::System>();
+            for (size_t i = 0; i < players.size(); ++i)
+            {
+                if (!players[i])
+                {
+                    try
+                    {
+                        timeline::Options options;
+                        /*options.fileSequenceAudio = p.settingsObject->value("FileSequence/Audio").
+                            value<timeline::FileSequenceAudio>();
+                        options.fileSequenceAudioFileName = p.settingsObject->value("FileSequence/AudioFileName").
+                            toString().toUtf8().data();
+                        options.fileSequenceAudioDirectory = p.settingsObject->value("FileSequence/AudioDirectory").
+                            toString().toUtf8().data();
+                        options.videoRequestCount = p.settingsObject->value("Performance/VideoRequestCount").toInt();
+                        options.audioRequestCount = p.settingsObject->value("Performance/AudioRequestCount").toInt();
+                        options.ioOptions["SequenceIO/ThreadCount"] = string::Format("{0}").
+                            arg(p.settingsObject->value("Performance/SequenceThreadCount").toInt());
+                        options.ioOptions["FFmpeg/YUVToRGBConversion"] = string::Format("{0}").
+                            arg(p.settingsObject->value("Performance/FFmpegYUVToRGBConversion").toBool());
+                        options.ioOptions["FFmpeg/ThreadCount"] = string::Format("{0}").
+                            arg(p.settingsObject->value("Performance/FFmpegThreadCount").toInt());
+                        options.pathOptions.maxNumberDigits = std::min(
+                            p.settingsObject->value("Misc/MaxFileSequenceDigits").toInt(),
+                            255);*/
+                        auto otioTimeline = items[i]->audioPath.isEmpty() ?
+                            timeline::create(items[i]->path.get(), _context, options) :
+                            timeline::create(items[i]->path.get(), items[i]->audioPath.get(), _context, options);
+                        auto timeline = timeline::Timeline::create(otioTimeline, _context, options);
+
+                        timeline::PlayerOptions playerOptions;
+                        playerOptions.cache.readAhead = time::invalidTime;
+                        playerOptions.cache.readBehind = time::invalidTime;
+                        //playerOptions.timerMode = p.settingsObject->value("Performance/TimerMode").
+                        //    value<timeline::TimerMode>();
+                        //playerOptions.audioBufferFrameCount =
+                        //    p.settingsObject->value("Performance/AudioBufferFrameCount").toInt();
+                        players[i] = timeline::Player::create(
+                            timeline,
+                            _context,
+                            playerOptions);
+
+                        for (const auto& video : players[i]->getIOInfo().video)
+                        {
+                            items[i]->videoLayers.push_back(video.name);
+                        }
+                    }
+                    catch (const std::exception& e)
+                    {
+                        _log(e.what(), log::Type::Error);
+                    }
+                }
+            }
+
+            p.files = items;
+            p.players = players;
+        }
+
+        void App::_activeCallback(const std::vector<std::shared_ptr<play::FilesModelItem> >& items)
+        {
+            TLRENDER_P();
+
+            auto activePlayers = _getActivePlayers();
+            if (!activePlayers.empty() && activePlayers[0])
+            {
+                activePlayers[0]->setPlayback(timeline::Playback::Stop);
+            }
+
+            p.activeFiles = items;
+
+            activePlayers = _getActivePlayers();
+            p.activePlayers->setIfChanged(activePlayers);
+            std::shared_ptr<timeline::Player> first;
+            if (!activePlayers.empty())
+            {
+                first = activePlayers[0];
+                if (first)
+                {
+                    first->setExternalTime(nullptr);
+                }
+            }
+            for (size_t i = 1; i < activePlayers.size(); ++i)
+            {
+                if (auto player = activePlayers[i])
+                {
+                    activePlayers[i]->setExternalTime(
+                        first.get() != player.get() ?
+                        first :
+                        nullptr);
+                }
+            }
+
+            _cacheUpdate();
+            _audioUpdate();
+        }
+
+        std::vector<std::shared_ptr<timeline::Player> > App::_getActivePlayers() const
+        {
+            TLRENDER_P();
+            std::vector<std::shared_ptr<timeline::Player> > out;
+            for (size_t i = 0; i < p.activeFiles.size(); ++i)
+            {
+                const auto j = std::find(
+                    p.files.begin(),
+                    p.files.end(),
+                    p.activeFiles[i]);
+                if (j != p.files.end())
+                {
+                    const auto k = j - p.files.begin();
+                    out.push_back(p.players[k]);
+                }
+            }
+            return out;
+        }
+
+        otime::RationalTime App::_getCacheReadAhead() const
+        {
+            TLRENDER_P();
+            const double readAhead = 4.0; //p.settingsObject->value("Cache/ReadAhead").toDouble();
+            const size_t activeCount = p.activeFiles.size();
+            return otime::RationalTime(
+                readAhead / static_cast<double>(activeCount),
+                1.0);
+        }
+
+        otime::RationalTime App::_getCacheReadBehind() const
+        {
+            TLRENDER_P();
+            const double readBehind = 0.25; //p.settingsObject->value("Cache/ReadBehind").toDouble();
+            const size_t activeCount = p.activeFiles.size();
+            return otime::RationalTime(
+                readBehind / static_cast<double>(activeCount),
+                1.0);
+        }
+
+        void App::_cacheUpdate()
+        {
+            TLRENDER_P();
+
+            const auto activePlayers = _getActivePlayers();
+
+            // Update inactive players.
+            timeline::PlayerCacheOptions cacheOptions;
+            cacheOptions.readAhead = time::invalidTime;
+            cacheOptions.readBehind = time::invalidTime;
+            for (const auto& player : p.players)
+            {
+                const auto j = std::find(
+                    activePlayers.begin(),
+                    activePlayers.end(),
+                    player);
+                if (j == activePlayers.end())
+                {
+                    if (player)
+                    {
+                        player->setCacheOptions(cacheOptions);
+                    }
+                }
+            }
+
+            // Update active players.
+            cacheOptions.readAhead = _getCacheReadAhead();
+            cacheOptions.readBehind = _getCacheReadBehind();
+            for (const auto& player : activePlayers)
+            {
+                if (player)
+                {
+                    player->setCacheOptions(cacheOptions);
+                }
+            }
+        }
+
+        void App::_audioUpdate()
+        {
+            TLRENDER_P();
+            for (const auto& player : p.players)
+            {
+                if (player)
+                {
+                    player->setVolume(p.volume);
+                    player->setMute(p.mute || p.deviceActive);
+                }
             }
         }
     }

@@ -21,7 +21,7 @@ namespace tl
             std::map<std::string, std::shared_ptr<ui::ToolButton> > buttons;
             std::shared_ptr<ui::HorizontalLayout> layout;
 
-            std::shared_ptr<observer::ValueObserver<std::shared_ptr<timeline::Player> > > playerObserver;
+            std::shared_ptr<observer::ListObserver<std::shared_ptr<timeline::Player> > > playerObserver;
         };
 
         void FileToolBar::_init(
@@ -56,7 +56,7 @@ namespace tl
                 {
                     if (auto app = appWeak.lock())
                     {
-                        app->open();
+                        app->openDialog();
                     }
                 });
             p.buttons["OpenSeparateAudio"]->setClickedCallback(
@@ -71,7 +71,7 @@ namespace tl
                 {
                     if (auto app = appWeak.lock())
                     {
-                        app->close();
+                        app->getFilesModel()->close();
                     }
                 });
             p.buttons["CloseAll"]->setClickedCallback(
@@ -79,15 +79,15 @@ namespace tl
                 {
                     if (auto app = appWeak.lock())
                     {
-                        app->closeAll();
+                        app->getFilesModel()->closeAll();
                     }
                 });
 
-            p.playerObserver = observer::ValueObserver<std::shared_ptr<timeline::Player> >::create(
-                app->observePlayer(),
-                [this](const std::shared_ptr<timeline::Player>& value)
+            p.playerObserver = observer::ListObserver<std::shared_ptr<timeline::Player> >::create(
+                app->observeActivePlayers(),
+                [this](const std::vector<std::shared_ptr<timeline::Player> >& value)
                 {
-                    _p->player = value;
+                    _p->player = !value.empty() ? value[0] : nullptr;
                 });
         }
 

@@ -4,6 +4,8 @@
 
 #include <tlGLApp/IApp.h>
 
+#include <tlPlay/FilesModel.h>
+
 #include <tlTimeline/IRender.h>
 #include <tlTimeline/Player.h>
 
@@ -20,15 +22,6 @@ namespace tl
     {
         class MainWindow;
 
-        //! HUD elements.
-        enum class HUDElement
-        {
-            UpperLeft,
-            UpperRight,
-            LowerLeft,
-            LowerRight
-        };
-
         //! Application options.
         struct Options
         {
@@ -37,6 +30,7 @@ namespace tl
             imaging::Size windowSize = imaging::Size(1280, 720);
             bool fullscreen = false;
             bool hud = true;
+            double speed = 0.0;
             timeline::Playback playback = timeline::Playback::Stop;
             timeline::Loop loop = timeline::Loop::Loop;
             otime::RationalTime seek = time::invalidTime;
@@ -75,28 +69,38 @@ namespace tl
                 char* argv[],
                 const std::shared_ptr<system::Context>&);
 
-            //! Open a new timeline player.
-            void open();
+            //! Open a file.
+            void open(
+                const std::string&,
+                const std::string& audioFileName = std::string());
 
-            //! Open a new timeline player.
-            void open(const std::string&);
+            //! Open a file dialog.
+            void openDialog();
 
-            //! Close the current timeline player.
-            void close();
+            //! Get the files model.
+            const std::shared_ptr<play::FilesModel>& getFilesModel() const;
 
-            //! Close all of the timeline players.
-            void closeAll();
+            //! Observe the active timeline players.
+            std::shared_ptr<observer::IList<std::shared_ptr<timeline::Player> > > observeActivePlayers() const;
 
-            //! Observe the current timeline player.
-            std::shared_ptr<observer::IValue<std::shared_ptr<timeline::Player> > > observePlayer() const;
-
-            //! Observe the list of timeline players.
-            std::shared_ptr<observer::IList<std::shared_ptr<timeline::Player> > > observePlayers() const;
+            //! Get the main window.
+            const std::shared_ptr<MainWindow>& getMainWindow() const;
 
         protected:
+            void _drop(const std::vector<std::string>&) override;
             void _tick() override;
 
         private:
+            void _filesCallback(const std::vector<std::shared_ptr<play::FilesModelItem> >&);
+            void _activeCallback(const std::vector<std::shared_ptr<play::FilesModelItem> >&);
+
+            std::vector<std::shared_ptr<timeline::Player> > _getActivePlayers() const;
+            otime::RationalTime _getCacheReadAhead() const;
+            otime::RationalTime _getCacheReadBehind() const;
+
+            void _cacheUpdate();
+            void _audioUpdate();
+
             TLRENDER_PRIVATE();
         };
     }

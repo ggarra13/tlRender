@@ -101,7 +101,7 @@ namespace tl
             GLFWwindow* glfwWindow = nullptr;
             imaging::Size windowSize;
             math::Vector2i windowPos;
-            bool fullscreen = false;
+            std::shared_ptr<observer::Value<bool> > fullscreen;
             imaging::Size frameBufferSize;
             math::Vector2f contentScale = math::Vector2f(1.F, 1.F);
 
@@ -150,6 +150,8 @@ namespace tl
             {
                 return;
             }
+
+            p.fullscreen = observer::Value<bool>::create(false);
 
             // Create the window.
             glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
@@ -202,13 +204,14 @@ namespace tl
             _log(string::Format("OpenGL version: {0}.{1}.{2}").arg(glMajor).arg(glMinor).arg(glRevision));
             glfwSetFramebufferSizeCallback(p.glfwWindow, _frameBufferSizeCallback);
             glfwSetWindowContentScaleCallback(p.glfwWindow, _windowContentScaleCallback);
-            setWindowFullScreen(p.options.fullscreen);
+            setFullScreen(p.options.fullscreen);
             glfwSetCursorEnterCallback(p.glfwWindow, _cursorEnterCallback);
             glfwSetCursorPosCallback(p.glfwWindow, _cursorPosCallback);
             glfwSetMouseButtonCallback(p.glfwWindow, _mouseButtonCallback);
             glfwSetScrollCallback(p.glfwWindow, _scrollCallback);
             glfwSetKeyCallback(p.glfwWindow, _keyCallback);
             glfwSetCharCallback(p.glfwWindow, _charCallback);
+            glfwSetDropCallback(p.glfwWindow, _dropCallback);
             glfwShowWindow(p.glfwWindow);
 
             // Initialize the user interface.
@@ -324,50 +327,58 @@ namespace tl
             glfwSetWindowSize(_p->glfwWindow, value.w, value.h);
         }
 
-        bool IApp::isWindowFullScreen() const
+        bool IApp::isFullScreen() const
+        {
+            return _p->fullscreen->get();
+        }
+
+        std::shared_ptr<observer::IValue<bool> > IApp::observeFullScreen() const
         {
             return _p->fullscreen;
         }
 
-        void IApp::setWindowFullScreen(bool value)
+        void IApp::setFullScreen(bool value)
         {
             TLRENDER_P();
-            if (value == p.fullscreen)
-                return;
-            p.fullscreen = value;
-            if (p.fullscreen)
+            if (p.fullscreen->setIfChanged(value))
             {
-                int width = 0;
-                int height = 0;
-                glfwGetWindowSize(p.glfwWindow, &width, &height);
-                p.windowSize.w = width;
-                p.windowSize.h = height;
+                if (value)
+                {
+                    int width = 0;
+                    int height = 0;
+                    glfwGetWindowSize(p.glfwWindow, &width, &height);
+                    p.windowSize.w = width;
+                    p.windowSize.h = height;
 
-                GLFWmonitor* glfwMonitor = glfwGetPrimaryMonitor();
-                const GLFWvidmode* glfwVidmode = glfwGetVideoMode(glfwMonitor);
-                glfwGetWindowPos(p.glfwWindow, &p.windowPos.x, &p.windowPos.y);
-                glfwSetWindowMonitor(
-                    p.glfwWindow,
-                    glfwMonitor,
-                    0,
-                    0,
-                    glfwVidmode->width,
-                    glfwVidmode->height,
-                    glfwVidmode->refreshRate);
-            }
-            else
-            {
-                GLFWmonitor* glfwMonitor = glfwGetPrimaryMonitor();
-                glfwSetWindowMonitor(
-                    p.glfwWindow,
-                    NULL,
-                    p.windowPos.x,
-                    p.windowPos.y,
-                    p.windowSize.w,
-                    p.windowSize.h,
-                    0);
+                    GLFWmonitor* glfwMonitor = glfwGetPrimaryMonitor();
+                    const GLFWvidmode* glfwVidmode = glfwGetVideoMode(glfwMonitor);
+                    glfwGetWindowPos(p.glfwWindow, &p.windowPos.x, &p.windowPos.y);
+                    glfwSetWindowMonitor(
+                        p.glfwWindow,
+                        glfwMonitor,
+                        0,
+                        0,
+                        glfwVidmode->width,
+                        glfwVidmode->height,
+                        glfwVidmode->refreshRate);
+                }
+                else
+                {
+                    GLFWmonitor* glfwMonitor = glfwGetPrimaryMonitor();
+                    glfwSetWindowMonitor(
+                        p.glfwWindow,
+                        NULL,
+                        p.windowPos.x,
+                        p.windowPos.y,
+                        p.windowSize.w,
+                        p.windowSize.h,
+                        0);
+                }
             }
         }
+
+        void IApp::_drop(const std::vector<std::string>&)
+        {}
 
         void IApp::_tick()
         {}
@@ -585,6 +596,17 @@ namespace tl
             IApp* app = reinterpret_cast<IApp*>(glfwGetWindowUserPointer(glfwWindow));
             std::wstring_convert<std::codecvt_utf8<tl_char_t>, tl_char_t> utf32Convert;
             app->_p->eventLoop->text(utf32Convert.to_bytes(c));
+        }
+
+        void IApp::_dropCallback(GLFWwindow* glfwWindow, int count, const char** fileNames)
+        {
+            IApp* app = reinterpret_cast<IApp*>(glfwGetWindowUserPointer(glfwWindow));
+            std::vector<std::string> tmp;
+            for (int i = 0; i < count; ++i)
+            {
+                tmp.push_back(fileNames[i]);
+            }
+            app->_drop(tmp);
         }
     }
 }

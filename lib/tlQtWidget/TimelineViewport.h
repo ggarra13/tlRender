@@ -10,6 +10,8 @@
 
 #include <QOpenGLWidget>
 #include <QOpenGLFunctions_4_1_Core>
+#include <QPointer>
+#include <QVector>
 
 namespace tl
 {
@@ -45,7 +47,7 @@ namespace tl
             void setCompareOptions(const timeline::CompareOptions&);
 
             //! Set the timeline players.
-            void setTimelinePlayers(const std::vector<qt::TimelinePlayer*>&);
+            void setTimelinePlayers(const QVector<QPointer<qt::TimelinePlayer> >&);
 
             //! Get the view position.
             const math::Vector2i& viewPos() const;
@@ -64,7 +66,7 @@ namespace tl
             void setViewZoom(float, const tl::math::Vector2i& focus = tl::math::Vector2i());
 
             //! Frame the view.
-            void frameView();
+            void setFrameView(bool);
 
             //! Set the view zoom to 1:1.
             void viewZoom1To1();
@@ -79,8 +81,8 @@ namespace tl
             //! This signal is emitted when the position and zoom change.
             void viewPosAndZoomChanged(const tl::math::Vector2i&, float);
 
-            //! This signal is emitted when the view is framed.
-            void frameViewActivated();
+            //! This signal is emitted when the frame view is changed.
+            void frameViewChanged(bool);
 
         private Q_SLOTS:
             void _currentVideoCallback(const tl::timeline::VideoData&);
