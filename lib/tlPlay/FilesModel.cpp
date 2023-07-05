@@ -53,9 +53,19 @@ namespace tl
             return out;
         }
 
+        const std::vector<std::shared_ptr<FilesModelItem> >& FilesModel::getFiles() const
+        {
+            return _p->files->get();
+        }
+
         std::shared_ptr<observer::IList<std::shared_ptr<FilesModelItem> > > FilesModel::observeFiles() const
         {
             return _p->files;
+        }
+
+        const std::shared_ptr<FilesModelItem>& FilesModel::getA() const
+        {
+            return _p->a->get();
         }
 
         std::shared_ptr<observer::IValue<std::shared_ptr<FilesModelItem> > > FilesModel::observeA() const
@@ -63,9 +73,19 @@ namespace tl
             return _p->a;
         }
 
+        int FilesModel::getAIndex() const
+        {
+            return _p->aIndex->get();
+        }
+
         std::shared_ptr<observer::IValue<int> > FilesModel::observeAIndex() const
         {
             return _p->aIndex;
+        }
+
+        const std::vector<std::shared_ptr<FilesModelItem> >& FilesModel::getB() const
+        {
+            return _p->b->get();
         }
 
         std::shared_ptr<observer::IList<std::shared_ptr<FilesModelItem> > > FilesModel::observeB() const
@@ -73,9 +93,19 @@ namespace tl
             return _p->b;
         }
 
+        const std::vector<int>& FilesModel::getBIndexes() const
+        {
+            return _p->bIndexes->get();
+        }
+
         std::shared_ptr<observer::IList<int> > FilesModel::observeBIndexes() const
         {
             return _p->bIndexes;
+        }
+
+        const std::vector<std::shared_ptr<FilesModelItem> >& FilesModel::getActive() const
+        {
+            return _p->active->get();
         }
 
         std::shared_ptr<observer::IList<std::shared_ptr<FilesModelItem> > > FilesModel::observeActive() const
@@ -447,6 +477,11 @@ namespace tl
             }
         }
 
+        const timeline::CompareOptions& FilesModel::getCompareOptions() const
+        {
+            return _p->compareOptions->get();
+        }
+
         std::shared_ptr<observer::IValue<timeline::CompareOptions> > FilesModel::observeCompareOptions() const
         {
             return _p->compareOptions;
@@ -541,25 +576,9 @@ namespace tl
         {
             TLRENDER_P();
             std::vector<int> out;
-            if (p.a->get())
+            for (const auto& f : p.files->get())
             {
-                out.push_back(p.a->get()->videoLayer);
-            }
-            switch (p.compareOptions->get().mode)
-            {
-            case timeline::CompareMode::B:
-            case timeline::CompareMode::Wipe:
-            case timeline::CompareMode::Overlay:
-            case timeline::CompareMode::Difference:
-            case timeline::CompareMode::Horizontal:
-            case timeline::CompareMode::Vertical:
-            case timeline::CompareMode::Tile:
-                for (const auto& b : p.b->get())
-                {
-                    out.push_back(b->videoLayer);
-                }
-                break;
-            default: break;
+                out.push_back(f->videoLayer);
             }
             return out;
         }
