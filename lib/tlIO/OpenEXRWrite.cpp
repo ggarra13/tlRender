@@ -27,6 +27,12 @@ namespace tl
                 std::stringstream ss(i->second);
                 ss >> _compression;
             }
+            i = options.find("OpenEXR/ZipCompressionLevel");
+            if (i != options.end())
+            {
+                std::stringstream ss(i->second);
+                ss >> _zipCompressionLevel;
+            }
             i = options.find("OpenEXR/DWACompressionLevel");
             if (i != options.end())
             {
@@ -66,6 +72,7 @@ namespace tl
                 1.F,
                 Imf::INCREASING_Y,
                 toImf(_compression));
+            header.zipCompressionLevel() = _zipCompressionLevel;
             header.dwaCompressionLevel() = _dwaCompressionLevel;
             writeTags(image->getTags(), io::sequenceDefaultSpeed, header);
             Imf::RgbaOutputFile f(fileName.c_str(), header);

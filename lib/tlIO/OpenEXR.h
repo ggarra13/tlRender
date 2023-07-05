@@ -202,6 +202,7 @@ namespace tl
         private:
             Compression _compression = Compression::ZIP;
             float _dwaCompressionLevel = 45.F;
+            int   _zipCompressionLevel = 4;
         };
 
         //! OpenEXR plugin.
