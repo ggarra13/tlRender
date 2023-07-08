@@ -194,18 +194,6 @@ namespace tl
             out.min.y = std::max(min.y, value.min.y);
             out.max.x = std::min(max.x, value.max.x);
             out.max.y = std::min(max.y, value.max.y);
-            if (out.max.x < out.min.x )
-            {
-                T tmp = out.max.x;
-                out.max.x = out.min.x;
-                out.min.x = tmp;
-            }
-            if (out.max.y < out.min.y )
-            {
-                T tmp = out.max.y;
-                out.max.y = out.min.y;
-                out.min.y = tmp;
-            }
             return out;
         }
 

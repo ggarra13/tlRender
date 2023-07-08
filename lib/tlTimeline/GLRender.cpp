@@ -666,6 +666,7 @@ namespace tl
         void GLRender::setClipRect(const math::BBox2i& value)
         {
             TLRENDER_P();
+            if (!value.isValid()) return;
             p.clipRect = value;
             glScissor(
                 value.x(),
