@@ -264,7 +264,21 @@ namespace tl
             const timeline::ClipRectEnabledState clipRectEnabledState(event.render);
             const timeline::ClipRectState clipRectState(event.render);
             event.render->setClipRectEnabled(true);
-            event.render->setClipRect(bbox.intersect(clipRectState.getClipRect()));
+            const math::BBox2i& rect = clipRectState.getClipRect();
+            math::BBox2i inter = bbox.intersect(rect);
+            if (inter.min.x > inter.max.x)
+            {
+                int tmp = inter.max.x;
+                inter.max.x = inter.min.x;
+                inter.min.x = tmp;
+            }
+            if (inter.min.y > inter.max.y)
+            {
+                int tmp = inter.max.y;
+                inter.max.y = inter.min.y;
+                inter.min.y = tmp;
+            }
+            event.render->setClipRect(inter);
 
             std::set<otime::RationalTime> thumbnailsDelete;
             for (const auto& thumbnail : p.thumbnails)
