@@ -6,6 +6,7 @@
 
 #include "BasicWidgets.h"
 #include "Charts.h"
+#include "DragAndDrop.h"
 #include "GridLayouts.h"
 #include "NumericWidgets.h"
 #include "RowLayouts.h"
@@ -26,37 +27,46 @@ namespace tl
         {
             struct MainWindow::Private
             {
+                std::map<std::string, std::shared_ptr<IExampleWidget> > widgets;
+                std::map<std::string, std::shared_ptr<ui::ListButton> > buttons;
                 std::shared_ptr<ui::ButtonGroup> buttonGroup;
                 std::shared_ptr<ui::RowLayout> layout;
                 std::shared_ptr<ui::StackLayout> stackLayout;
             };
 
             void MainWindow::_init(
-                const std::shared_ptr<system::Context>& context)
+                const std::shared_ptr<system::Context>& context,
+                const std::shared_ptr<IWidget>& parent)
             {
-                IWidget::_init("MainWindow", context);
+                IWidget::_init("MainWindow", context, parent);
                 TLRENDER_P();
 
                 setBackgroundRole(ui::ColorRole::Window);
 
-                std::vector<std::shared_ptr<ui::IButton> > buttons;
-                const std::vector<std::string> buttonText =
-                {
-                    "Basic Widgets",
-                    "Numeric Widgets",
-                    "Charts",
-                    "Row Layouts",
-                    "Grid Layouts",
-                    "Scroll Areas"
-                };
+                std::shared_ptr<IExampleWidget> widget = BasicWidgets::create(context);
+                p.widgets[widget->getExampleName()] = widget;
+                widget = Charts::create(context);
+                p.widgets[widget->getExampleName()] = widget;
+                widget = DragAndDrop::create(context);
+                p.widgets[widget->getExampleName()] = widget;
+                widget = GridLayouts::create(context);
+                p.widgets[widget->getExampleName()] = widget;
+                widget = NumericWidgets::create(context);
+                p.widgets[widget->getExampleName()] = widget;
+                widget = RowLayouts::create(context);
+                p.widgets[widget->getExampleName()] = widget;
+                widget = ScrollAreas::create(context);
+                p.widgets[widget->getExampleName()] = widget;
+
                 p.buttonGroup = ui::ButtonGroup::create(
                     ui::ButtonGroupType::Click,
                     context);
-                for (const auto& text : buttonText)
+                for (const auto& i : p.widgets)
                 {
                     auto button = ui::ListButton::create(context);
-                    button->setText(text);
-                    buttons.push_back(button);
+                    const std::string& exampleName = i.second->getExampleName();
+                    button->setText(exampleName);
+                    p.buttons[exampleName] = button;
                     p.buttonGroup->addButton(button);
                 }
                 p.buttonGroup->setClickedCallback(
@@ -65,16 +75,9 @@ namespace tl
                         _p->stackLayout->setCurrentIndex(value);
                     });
 
-                auto basicWidgets = BasicWidgets::create(context);
-                auto numericWidgets = NumericWidgets::create(context);
-                auto charts = Charts::create(context);
-                auto rowLayouts = RowLayouts::create(context);
-                auto gridLayouts = GridLayouts::create(context);
-                auto scrollAreas = ScrollAreas::create(context);
-
                 p.layout = ui::HorizontalLayout::create(context, shared_from_this());
                 p.layout->setMarginRole(ui::SizeRole::Margin);
-                p.layout->setSpacingRole(ui::SizeRole::SpacingLarge);
+                p.layout->setSpacingRole(ui::SizeRole::Spacing);
                 auto scrollWidget = ui::ScrollWidget::create(
                     context,
                     ui::ScrollType::Vertical,
@@ -82,21 +85,22 @@ namespace tl
                 auto buttonLayout = ui::VerticalLayout::create(context);
                 scrollWidget->setWidget(buttonLayout);
                 buttonLayout->setSpacingRole(ui::SizeRole::None);
-                for (auto button : buttons)
+                for (auto button : p.buttons)
                 {
-                    button->setParent(buttonLayout);
+                    button.second->setParent(buttonLayout);
                 }
                 p.stackLayout = ui::StackLayout::create(context, p.layout);
                 p.stackLayout->setHStretch(ui::Stretch::Expanding);
-                p.stackLayout->setVStretch(ui::Stretch::Expanding);
-                basicWidgets->setParent(p.stackLayout);
-                numericWidgets->setParent(p.stackLayout);
-                charts->setParent(p.stackLayout);
-                rowLayouts->setParent(p.stackLayout);
-                gridLayouts->setParent(p.stackLayout);
-                scrollAreas->setParent(p.stackLayout);
+                for (auto widget : p.widgets)
+                {
+                    scrollWidget = ui::ScrollWidget::create(
+                        context,
+                        ui::ScrollType::Both,
+                        p.stackLayout);
+                    scrollWidget->setWidget(widget.second);
+                }
 
-                //p.stackLayout->setCurrentWidget(numericWidgets);
+                //p.stackLayout->setCurrentWidget(widgets["DragAndDrop"]);
             }
 
             MainWindow::MainWindow() :
@@ -107,10 +111,11 @@ namespace tl
             {}
 
             std::shared_ptr<MainWindow> MainWindow::create(
-                const std::shared_ptr<system::Context>& context)
+                const std::shared_ptr<system::Context>& context,
+                const std::shared_ptr<IWidget>& parent)
             {
                 auto out = std::shared_ptr<MainWindow>(new MainWindow);
-                out->_init(context);
+                out->_init(context, parent);
                 return out;
             }
 

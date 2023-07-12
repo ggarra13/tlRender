@@ -4,6 +4,8 @@
 
 #include <tlApp/IApp.h>
 
+#include <tlUI/EventLoop.h>
+
 #include <tlCore/Image.h>
 #include <tlCore/ValueObserver.h>
 
@@ -11,11 +13,6 @@ struct GLFWwindow;
 
 namespace tl
 {
-    namespace ui
-    {
-        class EventLoop;
-    }
-
     //! OpenGL application support.
     namespace gl
     {
@@ -68,6 +65,13 @@ namespace tl
             void setFullScreen(bool);
 
         protected:
+            void _setCursor(ui::StandardCursor value);
+            void _setCursor(
+                const std::shared_ptr<imaging::Image>&,
+                const math::Vector2i&);
+
+            std::shared_ptr<imaging::Image> _capture(const math::BBox2i&);
+
             virtual void _drop(const std::vector<std::string>&);
 
             virtual void _tick();

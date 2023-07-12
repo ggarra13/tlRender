@@ -9,7 +9,7 @@ namespace tl
     namespace timelineui
     {
         void AudioGapItem::_init(
-            const otio::Gap* gap,
+            const otio::SerializableObject::Retainer<otio::Gap>& gap,
             const ItemData& itemData,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
@@ -19,6 +19,7 @@ namespace tl
                 rangeOpt.has_value() ? rangeOpt.value() : time::invalidTimeRange,
                 !gap->name().empty() ? gap->name() : "Gap",
                 _options.colors[ColorRole::AudioGap],
+                getMarkers(gap),
                 "tl::timelineui::AudioGapItem",
                 itemData,
                 context,
@@ -32,7 +33,7 @@ namespace tl
         {}
 
         std::shared_ptr<AudioGapItem> AudioGapItem::create(
-            const otio::Gap* gap,
+            const otio::SerializableObject::Retainer<otio::Gap>& gap,
             const ItemData& itemData,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)

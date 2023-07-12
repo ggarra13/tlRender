@@ -12,8 +12,8 @@
 #include <tlIO/IOSystem.h>
 
 #include <tlGL/OffscreenBuffer.h>
+#include <tlGL/Util.h>
 
-#include <tlCore/FontSystem.h>
 #include <tlCore/LogSystem.h>
 #include <tlCore/StringFormat.h>
 
@@ -92,6 +92,28 @@ namespace tl
             private:
                 GLFWwindow* _glfwWindow = nullptr;
             };
+
+            class Cursor
+            {
+            public:
+                Cursor(GLFWwindow*, GLFWcursor*);
+
+                ~Cursor();
+
+            private:
+                GLFWcursor* _cursor = nullptr;
+            };
+
+            Cursor::Cursor(GLFWwindow* window, GLFWcursor* cursor) :
+                _cursor(cursor)
+            {
+                glfwSetCursor(window, cursor);
+            }
+
+            Cursor::~Cursor()
+            {
+                glfwDestroyCursor(_cursor);
+            }
         }
 
         struct IApp::Private
@@ -104,10 +126,10 @@ namespace tl
             std::shared_ptr<observer::Value<bool> > fullscreen;
             imaging::Size frameBufferSize;
             math::Vector2f contentScale = math::Vector2f(1.F, 1.F);
+            std::unique_ptr<Cursor> cursor;
 
             std::shared_ptr<ui::Style> style;
             std::shared_ptr<ui::IconLibrary> iconLibrary;
-            std::shared_ptr<imaging::FontSystem> fontSystem;
             std::shared_ptr<Clipboard> clipboard;
             int modifiers = 0;
             std::shared_ptr<ui::EventLoop> eventLoop;
@@ -218,16 +240,31 @@ namespace tl
             // Initialize the user interface.
             p.style = ui::Style::create(_context);
             p.iconLibrary = ui::IconLibrary::create(_context);
-            p.fontSystem = imaging::FontSystem::create(_context);
             p.clipboard = Clipboard::create(p.glfwWindow, _context);
             p.eventLoop = ui::EventLoop::create(
                 p.style,
                 p.iconLibrary,
-                p.fontSystem,
                 p.clipboard,
                 _context);
+            p.eventLoop->setCursor(
+                [this](ui::StandardCursor value)
+                {
+                    _setCursor(value);
+                });
+            p.eventLoop->setCursor(
+                [this](
+                    const std::shared_ptr<imaging::Image>& image,
+                    const math::Vector2i& hotspot)
+                {
+                    _setCursor(image, hotspot);
+                });
+            p.eventLoop->setCapture(
+                [this](const math::BBox2i& value)
+                {
+                    return _capture(value);
+                });
 
-            // Create the renderer.
+            // Initialize the renderer.
             p.render = timeline::GLRender::create(_context);
         }
 
@@ -264,9 +301,9 @@ namespace tl
 
                 _tick();
 
-                p.eventLoop->tick();
                 p.eventLoop->setDisplaySize(p.frameBufferSize);
                 p.eventLoop->setDisplayScale(p.contentScale.x);
+                p.eventLoop->tick();
 
                 gl::OffscreenBufferOptions offscreenBufferOptions;
                 offscreenBufferOptions.colorType = imaging::PixelType::RGBA_F32;
@@ -376,6 +413,82 @@ namespace tl
                         0);
                 }
             }
+        }
+
+        void IApp::_setCursor(ui::StandardCursor value)
+        {
+            TLRENDER_P();
+            GLFWcursor* cursor = nullptr;
+            switch (value)
+            {
+            case ui::StandardCursor::Arrow:
+                break;
+            case ui::StandardCursor::IBeam:
+                cursor = glfwCreateStandardCursor(GLFW_IBEAM_CURSOR);
+                break;
+            case ui::StandardCursor::Crosshair:
+                cursor = glfwCreateStandardCursor(GLFW_CROSSHAIR_CURSOR);
+                break;
+            case ui::StandardCursor::Hand:
+                cursor = glfwCreateStandardCursor(GLFW_HAND_CURSOR);
+                break;
+            case ui::StandardCursor::HResize:
+                cursor = glfwCreateStandardCursor(GLFW_HRESIZE_CURSOR);
+                break;
+            case ui::StandardCursor::VResize:
+                cursor = glfwCreateStandardCursor(GLFW_VRESIZE_CURSOR);
+                break;
+            }
+            glfwSetCursor(p.glfwWindow, cursor);
+        }
+
+        void IApp::_setCursor(
+            const std::shared_ptr<imaging::Image>& image,
+            const math::Vector2i& hotspot)
+        {
+            TLRENDER_P();
+            GLFWimage glfwImage;
+            glfwImage.width = image->getWidth();
+            glfwImage.height = image->getHeight();
+            glfwImage.pixels = image->getData();
+            GLFWcursor* glfwCursor = glfwCreateCursor(&glfwImage, hotspot.x, hotspot.y);
+            p.cursor.reset(new Cursor(p.glfwWindow, glfwCursor));
+        }
+
+        std::shared_ptr<imaging::Image> IApp::_capture(const math::BBox2i& value)
+        {
+            TLRENDER_P();
+            const imaging::Size size(value.w(), value.h());
+            const imaging::Info info(size, imaging::PixelType::RGBA_U8);
+            auto out = imaging::Image::create(info);
+
+            gl::OffscreenBufferBinding binding(p.offscreenBuffer);
+
+            glPixelStorei(GL_PACK_ALIGNMENT, 1);
+            glPixelStorei(GL_PACK_SWAP_BYTES, 0);
+            glReadPixels(
+                value.min.x,
+                p.frameBufferSize.h - value.min.y - size.h,
+                size.w,
+                size.h,
+                gl::getReadPixelsFormat(info.pixelType),
+                gl::getReadPixelsType(info.pixelType),
+                out->getData());
+
+            auto flipped = imaging::Image::create(info);
+            for (size_t y = 0; y < size.h; ++y)
+            {
+                uint8_t* p = flipped->getData() + y * size.w * 4;
+                memcpy(
+                    p,
+                    out->getData() + (size.h - 1 - y) * size.w * 4,
+                    size.w * 4);
+                //for (size_t x = 0; x < size.w; ++x, p += 4)
+                //{
+                //    p[3] /= 2;
+                //}
+            }
+            return flipped;
         }
 
         void IApp::_drop(const std::vector<std::string>&)

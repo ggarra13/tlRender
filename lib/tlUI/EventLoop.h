@@ -15,6 +15,17 @@ namespace tl
     {
         class IClipboard;
 
+        //! Cursors.
+        enum class StandardCursor
+        {
+            Arrow,
+            IBeam,
+            Crosshair,
+            Hand,
+            HResize,
+            VResize
+        };
+
         //! Event loop.
         class EventLoop : public std::enable_shared_from_this<EventLoop>
         {
@@ -24,7 +35,6 @@ namespace tl
             void _init(
                 const std::shared_ptr<Style>&,
                 const std::shared_ptr<IconLibrary>&,
-                const std::shared_ptr<imaging::FontSystem>&,
                 const std::shared_ptr<IClipboard>&,
                 const std::shared_ptr<system::Context>&);
 
@@ -37,7 +47,6 @@ namespace tl
             static std::shared_ptr<EventLoop> create(
                 const std::shared_ptr<Style>&,
                 const std::shared_ptr<IconLibrary>&,
-                const std::shared_ptr<imaging::FontSystem>&,
                 const std::shared_ptr<IClipboard>&,
                 const std::shared_ptr<system::Context>&);
 
@@ -73,8 +82,19 @@ namespace tl
             //! Handle mouse button presses.
             void mouseButton(int button, bool press, int modifiers);
 
+            //! Set the standard cursor function.
+            void setCursor(const std::function<void(StandardCursor)>&);
+
+            //! Set the custom cursor function.
+            void setCursor(const std::function<void(
+                const std::shared_ptr<imaging::Image>&,
+                const math::Vector2i&)>&);
+
             //! Handle scrolling (mouse wheel or touch pad).
             void scroll(float dx, float dy, int modifiers);
+
+            //! Get the clipboard.
+            const std::shared_ptr<IClipboard>& getClipboard() const;
 
             //! Tick the event loop.
             void tick();
@@ -85,8 +105,13 @@ namespace tl
             //! Draw the user interface.
             void draw(const std::shared_ptr<timeline::IRender>&);
 
-            //! Get the clipboard.
-            const std::shared_ptr<IClipboard>& getClipboard() const;
+            //! Take a screenshot of a widget.
+            std::shared_ptr<imaging::Image> screenshot(
+                const std::shared_ptr<IWidget>&);
+
+            //! Set the screenshot capture function.
+            void setCapture(const std::function<std::shared_ptr<imaging::Image>(
+                const math::BBox2i&)>&);
 
         protected:
             void _tickEvent();

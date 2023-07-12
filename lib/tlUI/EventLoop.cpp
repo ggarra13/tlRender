@@ -25,12 +25,20 @@ namespace tl
             float displayScale = 1.F;
             std::list<std::weak_ptr<IWidget> > topLevelWidgets;
             math::Vector2i cursorPos;
+            math::Vector2i cursorPosPrev;
             std::weak_ptr<IWidget> hover;
             std::weak_ptr<IWidget> mousePress;
             MouseClickEvent mouseClickEvent;
             std::weak_ptr<IWidget> keyFocus;
             std::weak_ptr<IWidget> keyPress;
             KeyEvent keyEvent;
+            std::function<void(StandardCursor)> cursor;
+            std::function<void(
+                const std::shared_ptr<imaging::Image>&,
+                const math::Vector2i&)> customCursor;
+            std::shared_ptr<DragAndDropData> dndData;
+            std::weak_ptr<IWidget> dragAndDropHover;
+            std::function<std::shared_ptr<imaging::Image>(const math::BBox2i&)> capture;
             int updates = 0;
             size_t widgetCount = 0;
             std::list<int> tickTimes;
@@ -42,7 +50,6 @@ namespace tl
         void EventLoop::_init(
             const std::shared_ptr<Style>& style,
             const std::shared_ptr<IconLibrary>& iconLibrary,
-            const std::shared_ptr<imaging::FontSystem>& fontSystem,
             const std::shared_ptr<IClipboard>& clipboard,
             const std::shared_ptr<system::Context>& context)
         {
@@ -50,7 +57,7 @@ namespace tl
             p.context = context;
             p.style = style;
             p.iconLibrary = iconLibrary;
-            p.fontSystem = fontSystem;
+            p.fontSystem = context->getSystem<imaging::FontSystem>();
             p.clipboard = clipboard;
             p.logTimer = std::chrono::steady_clock::now();
 
@@ -73,12 +80,11 @@ namespace tl
         std::shared_ptr<EventLoop> EventLoop::create(
             const std::shared_ptr<Style>& style,
             const std::shared_ptr<IconLibrary>& iconLibrary,
-            const std::shared_ptr<imaging::FontSystem>& fontSystem,
             const std::shared_ptr<IClipboard>& clipboard,
             const std::shared_ptr<system::Context>& context)
         {
             auto out = std::shared_ptr<EventLoop>(new EventLoop);
-            out->_init(style, iconLibrary, fontSystem, clipboard, context);
+            out->_init(style, iconLibrary, clipboard, context);
             return out;
         }
 
@@ -140,42 +146,52 @@ namespace tl
         {
             TLRENDER_P();
 
-            if (auto hoverWidget = p.hover.lock())
+            if (auto hover = p.hover.lock())
             {
-                if (hoverWidget->getTopLevel() == widget)
+                if (hover->getTopLevel() == widget)
                 {
                     p.hover.reset();
-                    hoverWidget->leaveEvent();
+                    hover->mouseLeaveEvent();
                 }
             }
-            if (auto pressedWidget = p.mousePress.lock())
+            if (auto pressed = p.mousePress.lock())
             {
-                if (pressedWidget->getTopLevel() == widget)
+                if (pressed->getTopLevel() == widget)
                 {
                     p.mousePress.reset();
                     p.mouseClickEvent.pos = p.cursorPos;
                     p.mouseClickEvent.accept = false;
-                    pressedWidget->mouseReleaseEvent(p.mouseClickEvent);
+                    pressed->mouseReleaseEvent(p.mouseClickEvent);
                 }
             }
-            if (auto focusWidget = p.keyFocus.lock())
+            if (auto focus = p.keyFocus.lock())
             {
-                if (focusWidget->getTopLevel() == widget)
+                if (focus->getTopLevel() == widget)
                 {
                     p.keyFocus.reset();
-                    focusWidget->keyFocusEvent(false);
+                    focus->keyFocusEvent(false);
                 }
             }
-            if (auto keyPressWidget = p.keyPress.lock())
+            if (auto keyPress = p.keyPress.lock())
             {
-                if (keyPressWidget->getTopLevel() == widget)
+                if (keyPress->getTopLevel() == widget)
                 {
                     p.keyPress.reset();
                     p.keyEvent.pos = p.cursorPos;
                     p.keyEvent.accept = false;
-                    keyPressWidget->keyReleaseEvent(p.keyEvent);
+                    keyPress->keyReleaseEvent(p.keyEvent);
                 }
             }
+            if (auto dragAndDrop = p.dragAndDropHover.lock())
+            {
+                p.dragAndDropHover.reset();
+                DragAndDropEvent event(
+                    p.cursorPos,
+                    p.cursorPosPrev,
+                    p.dndData);
+                dragAndDrop->dragLeaveEvent(event);
+            }
+            p.dndData.reset();
 
             widget->setEventLoop(nullptr);
             auto i = std::find_if(
@@ -273,8 +289,7 @@ namespace tl
         void EventLoop::text(const std::string& value)
         {
             TLRENDER_P();
-            TextEvent event;
-            event.text = value;
+            TextEvent event(value);
 
             // Send event to the focused widget.
             if (auto widget = p.keyFocus.lock())
@@ -316,18 +331,85 @@ namespace tl
         void EventLoop::cursorPos(const math::Vector2i& pos)
         {
             TLRENDER_P();
-            MouseMoveEvent event;
-            event.pos = pos;// * p.displayScale;
-            event.prev = p.cursorPos;
+
+            p.cursorPosPrev = p.cursorPos;
+            p.cursorPos = pos;
+
+            MouseMoveEvent event(p.cursorPos, p.cursorPosPrev);
             if (auto widget = p.mousePress.lock())
             {
-                widget->mouseMoveEvent(event);
+                if (p.dndData)
+                {
+                    // Find the drag and drop hover widget.
+                    DragAndDropEvent event(
+                        p.cursorPos,
+                        p.cursorPosPrev,
+                        p.dndData);
+                    auto hover = p.dragAndDropHover.lock();
+                    auto widgets = _getUnderCursor(p.cursorPos);
+                    std::shared_ptr<IWidget> widget;
+                    while (!widgets.empty())
+                    {
+                        if (hover == widgets.back())
+                        {
+                            break;
+                        }
+                        widgets.back()->dragEnterEvent(event);
+                        if (event.accept)
+                        {
+                            widget = widgets.back();
+                            break;
+                        }
+                        widgets.pop_back();
+                    }
+                    if (widget)
+                    {
+                        if (hover)
+                        {
+                            hover->dragLeaveEvent(event);
+                        }
+                        p.dragAndDropHover = widget;
+                    }
+                    else if (widgets.empty() && hover)
+                    {
+                        p.dragAndDropHover.reset();
+                        hover->dragLeaveEvent(event);
+                    }
+                    hover = p.dragAndDropHover.lock();
+                    if (hover)
+                    {
+                        DragAndDropEvent event(
+                            p.cursorPos,
+                            p.cursorPosPrev,
+                            p.dndData);
+                        hover->dragMoveEvent(event);
+                    }
+                }
+                else
+                {
+                    widget->mouseMoveEvent(event);
+
+                    p.dndData = event.dndData;
+                    if (p.dndData)
+                    {
+                        // Start a drag and drop.
+                        widget->mouseReleaseEvent(p.mouseClickEvent);
+                        widget->mouseLeaveEvent();
+                        if (event.dndCursor && p.customCursor)
+                        {
+                            p.customCursor(event.dndCursor, event.dndCursorHotspot);
+                        }
+                        else if (p.cursor)
+                        {
+                            p.cursor(StandardCursor::Crosshair);
+                        }
+                    }
+                }
             }
             else
             {
                 _hoverUpdate(event);
             }
-            p.cursorPos = event.pos;
         }
 
         void EventLoop::mouseButton(int button, bool press, int modifiers)
@@ -366,24 +448,54 @@ namespace tl
                 if (auto widget = p.mousePress.lock())
                 {
                     p.mousePress.reset();
-                    widget->mouseReleaseEvent(p.mouseClickEvent);
+                    if (auto hover = p.dragAndDropHover.lock())
+                    {
+                        // Finish a drag and drop.
+                        p.dragAndDropHover.reset();
+                        DragAndDropEvent event(
+                            p.cursorPos,
+                            p.cursorPosPrev,
+                            p.dndData);
+                        hover->dragLeaveEvent(event);
+                        hover->dropEvent(event);
+                    }
+                    else
+                    {
+                        widget->mouseReleaseEvent(p.mouseClickEvent);
+                    }
+                    if (p.dndData)
+                    {
+                        p.dndData.reset();
+                        if (p.cursor)
+                        {
+                            p.cursor(StandardCursor::Arrow);
+                        }
+                    }
                 }
 
-                MouseMoveEvent moveEvent;
-                moveEvent.pos = p.cursorPos;
-                moveEvent.prev = p.cursorPos;
-                _hoverUpdate(moveEvent);
+                MouseMoveEvent event(
+                    p.cursorPos,
+                    p.cursorPosPrev);
+                _hoverUpdate(event);
             }
+        }
+
+        void EventLoop::setCursor(const std::function<void(StandardCursor)>& value)
+        {
+            _p->cursor = value;
+        }
+
+        void EventLoop::setCursor(const std::function<void(
+            const std::shared_ptr<imaging::Image>&,
+            const math::Vector2i&)>& value)
+        {
+            _p->customCursor = value;
         }
 
         void EventLoop::scroll(float dx, float dy, int modifiers)
         {
             TLRENDER_P();
-            ScrollEvent event;
-            event.modifiers = modifiers;
-            event.pos = p.cursorPos;
-            event.dx = dx;
-            event.dy = dy;
+            ScrollEvent event(modifiers, p.cursorPos, dx, dy);
             auto widgets = _getUnderCursor(p.cursorPos);
             for (auto i = widgets.rbegin(); i != widgets.rend(); ++i)
             {
@@ -393,6 +505,11 @@ namespace tl
                     break;
                 }
             }
+        }
+
+        const std::shared_ptr<IClipboard>& EventLoop::getClipboard() const
+        {
+            return _p->clipboard;
         }
 
         void EventLoop::tick()
@@ -478,20 +595,28 @@ namespace tl
             _p->updates &= ~static_cast<int>(Update::Draw);
         }
 
-        const std::shared_ptr<IClipboard>& EventLoop::getClipboard() const
+        std::shared_ptr<imaging::Image> EventLoop::screenshot(
+            const std::shared_ptr<IWidget>& widget)
         {
-            return _p->clipboard;
+            TLRENDER_P();
+            return p.capture ? p.capture(widget->getGeometry()) : nullptr;
+        }
+
+        void EventLoop::setCapture(const std::function<std::shared_ptr<imaging::Image>(
+            const math::BBox2i&)>& value)
+        {
+            _p->capture = value;
         }
 
         void EventLoop::_tickEvent()
         {
             TLRENDER_P();
             p.widgetCount = 0;
-            TickEvent event;
-            event.style = p.style;
-            event.iconLibrary = p.iconLibrary;
-            event.fontSystem = p.fontSystem;
-            event.displayScale = p.displayScale;
+            TickEvent event(
+                p.style,
+                p.iconLibrary,
+                p.fontSystem,
+                p.displayScale);
             for (const auto& i : p.topLevelWidgets)
             {
                 if (auto widget = i.lock())
@@ -564,16 +689,11 @@ namespace tl
         void EventLoop::_sizeHintEvent()
         {
             TLRENDER_P();
-            SizeHintEvent event;
-            event.style = p.style;
-            event.iconLibrary = p.iconLibrary;
-            event.fontSystem = p.fontSystem;
-            event.displayScale = p.displayScale;
-            for (auto i : getFontRoleEnums())
-            {
-                event.fontMetrics[i] = p.fontSystem->getMetrics(
-                    p.style->getFontRole(i, p.displayScale));
-            }
+            SizeHintEvent event(
+                p.style,
+                p.iconLibrary,
+                p.fontSystem,
+                p.displayScale);
             for (const auto& i : p.topLevelWidgets)
             {
                 if (auto widget = i.lock())
@@ -597,16 +717,11 @@ namespace tl
         void EventLoop::_clipEvent()
         {
             TLRENDER_P();
-            ClipEvent event;
-            event.style = p.style;
-            event.iconLibrary = p.iconLibrary;
-            event.fontSystem = p.fontSystem;
-            event.displayScale = p.displayScale;
-            for (auto i : getFontRoleEnums())
-            {
-                event.fontMetrics[i] = p.fontSystem->getMetrics(
-                    p.style->getFontRole(i, p.displayScale));
-            }
+            ClipEvent event(
+                p.style,
+                p.iconLibrary,
+                p.fontSystem,
+                p.displayScale);
             for (const auto& i : p.topLevelWidgets)
             {
                 if (auto widget = i.lock())
@@ -686,17 +801,12 @@ namespace tl
         void EventLoop::_drawEvent(const std::shared_ptr<timeline::IRender>& render)
         {
             TLRENDER_P();
-            DrawEvent event;
-            event.style = p.style;
-            event.iconLibrary = p.iconLibrary;
-            event.render = render;
-            event.fontSystem = p.fontSystem;
-            event.displayScale = p.displayScale;
-            for (auto i : getFontRoleEnums())
-            {
-                event.fontMetrics[i] = p.fontSystem->getMetrics(
-                    p.style->getFontRole(i, p.displayScale));
-            }
+            DrawEvent event(
+                p.style,
+                p.iconLibrary,
+                render,
+                p.fontSystem,
+                p.displayScale);
             event.render->setClipRectEnabled(true);
             for (const auto& i : p.topLevelWidgets)
             {
@@ -786,20 +896,29 @@ namespace tl
                 if (hover != widget)
                 {
                     //std::cout << "leave: " << widget->getName() << std::endl;
-                    widget->leaveEvent();
+                    widget->mouseLeaveEvent();
                     if (hover)
                     {
                         //std::cout << "enter: " << hover->getName() << std::endl;
-                        hover->enterEvent();
+                        hover->mouseEnterEvent();
                     }
                 }
             }
             else if (hover)
             {
                 //std::cout << "enter: " << hover->getName() << std::endl;
-                hover->enterEvent();
+                hover->mouseEnterEvent();
             }
+
             p.hover = hover;
+
+            if (auto widget = p.hover.lock())
+            {
+                MouseMoveEvent event(
+                    p.cursorPos,
+                    p.cursorPosPrev);
+                widget->mouseMoveEvent(event);
+            }
         }
 
         void EventLoop::_hoverUpdate(MouseMoveEvent& event)
@@ -807,8 +926,7 @@ namespace tl
             auto widgets = _getUnderCursor(event.pos);
             while (!widgets.empty())
             {
-                widgets.back()->mouseMoveEvent(event);
-                if (event.accept)
+                if (widgets.back()->hasMouseHover())
                 {
                     break;
                 }

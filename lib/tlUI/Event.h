@@ -20,12 +20,22 @@ namespace tl
         //! Child event.
         struct ChildEvent
         {
+            ChildEvent();
+            ChildEvent(const std::shared_ptr<IWidget>&);
+
             std::shared_ptr<IWidget> child;
         };
 
         //! Tick event.
         struct TickEvent
         {
+            TickEvent();
+            TickEvent(
+                const std::shared_ptr<Style>&               style,
+                const std::shared_ptr<IconLibrary>&         iconLibrary,
+                const std::shared_ptr<imaging::FontSystem>& fontSystem,
+                float                                       displayScale);
+
             std::shared_ptr<Style>               style;
             std::shared_ptr<IconLibrary>         iconLibrary;
             std::shared_ptr<imaging::FontSystem> fontSystem;
@@ -35,11 +45,18 @@ namespace tl
         //! Size hint event.
         struct SizeHintEvent
         {
+            SizeHintEvent();
+            SizeHintEvent(
+                const std::shared_ptr<Style>&               style,
+                const std::shared_ptr<IconLibrary>&         iconLibrary,
+                const std::shared_ptr<imaging::FontSystem>& fontSystem,
+                float                                       displayScale);
+
             std::shared_ptr<Style>                   style;
             std::shared_ptr<IconLibrary>             iconLibrary;
             std::shared_ptr<imaging::FontSystem>     fontSystem;
-            float                                    displayScale = 1.F;
             std::map<FontRole, imaging::FontMetrics> fontMetrics;
+            float                                    displayScale = 1.F;
 
             imaging::FontMetrics getFontMetrics(FontRole) const;
         };
@@ -47,11 +64,18 @@ namespace tl
         //! Clip event.
         struct ClipEvent
         {
+            ClipEvent();
+            ClipEvent(
+                const std::shared_ptr<Style>&               style,
+                const std::shared_ptr<IconLibrary>&         iconLibrary,
+                const std::shared_ptr<imaging::FontSystem>& fontSystem,
+                float                                       displayScale);
+
             std::shared_ptr<Style>                   style;
             std::shared_ptr<IconLibrary>             iconLibrary;
             std::shared_ptr<imaging::FontSystem>     fontSystem;
-            float                                    displayScale = 1.F;
             std::map<FontRole, imaging::FontMetrics> fontMetrics;
+            float                                    displayScale = 1.F;
 
             imaging::FontMetrics getFontMetrics(FontRole) const;
         };
@@ -59,22 +83,45 @@ namespace tl
         //! Draw event.
         struct DrawEvent
         {
+            DrawEvent();
+            DrawEvent(
+                const std::shared_ptr<Style>&               style,
+                const std::shared_ptr<IconLibrary>&         iconLibrary,
+                const std::shared_ptr<timeline::IRender>&   render,
+                const std::shared_ptr<imaging::FontSystem>& fontSystem,
+                float                                       displayScale);
+
             std::shared_ptr<Style>                   style;
             std::shared_ptr<IconLibrary>             iconLibrary;
             std::shared_ptr<timeline::IRender>       render;
             std::shared_ptr<imaging::FontSystem>     fontSystem;
-            float                                    displayScale = 1.F;
             std::map<FontRole, imaging::FontMetrics> fontMetrics;
+            float                                    displayScale = 1.F;
 
             imaging::FontMetrics getFontMetrics(FontRole) const;
+        };
+
+        //! Drag and drop data.
+        class DragAndDropData : public std::enable_shared_from_this<DragAndDropData>
+        {
+        public:
+            virtual ~DragAndDropData() = 0;
         };
 
         //! Mouse move event.
         struct MouseMoveEvent
         {
-            math::Vector2i pos;
-            math::Vector2i prev;
-            bool           accept = false;
+            MouseMoveEvent();
+            MouseMoveEvent(
+                const math::Vector2i& pos,
+                const math::Vector2i& prev);
+
+            math::Vector2i                   pos;
+            math::Vector2i                   prev;
+            bool                             accept = false;
+            std::shared_ptr<DragAndDropData> dndData;
+            std::shared_ptr<imaging::Image>  dndCursor;
+            math::Vector2i                   dndCursorHotspot;
         };
 
         //! Keyboard modifiers.
@@ -100,6 +147,12 @@ namespace tl
         //! Mouse click event.
         struct MouseClickEvent
         {
+            MouseClickEvent();
+            MouseClickEvent(
+                int                   button,
+                int                   modifiers,
+                const math::Vector2i& pos);
+
             int            button    = 0;
             int            modifiers = 0;
             math::Vector2i pos;
@@ -109,6 +162,13 @@ namespace tl
         //! Scroll event (mouse wheel or touch pad).
         struct ScrollEvent
         {
+            ScrollEvent();
+            ScrollEvent(
+                int                   modifiers,
+                const math::Vector2i& pos,
+                float                 dx,
+                float                 dy);
+
             int            modifiers = 0;
             math::Vector2i pos;
             float          dx        = 0.F;
@@ -220,6 +280,12 @@ namespace tl
         //! Key event.
         struct KeyEvent
         {
+            KeyEvent();
+            KeyEvent(
+                Key                   key,
+                int                   modifiers,
+                const math::Vector2i& pos);
+
             Key            key       = Key::Unknown;
             int            modifiers = 0;
             math::Vector2i pos;
@@ -229,8 +295,40 @@ namespace tl
         //! Text event.
         struct TextEvent
         {
+            TextEvent();
+            TextEvent(const std::string& text);
+
             std::string text;
             bool        accept = false;
+        };
+
+        //! Drag and drop text data.
+        class TextDragAndDropData : public DragAndDropData
+        {
+        public:
+            TextDragAndDropData(const std::string& text);
+
+            ~TextDragAndDropData() override;
+
+            const std::string& getText() const;
+
+        private:
+            std::string _text;
+        };
+
+        //! Drag and drop event.
+        struct DragAndDropEvent
+        {
+            DragAndDropEvent();
+            DragAndDropEvent(
+                const math::Vector2i&                   pos,
+                const math::Vector2i&                   prev,
+                const std::shared_ptr<DragAndDropData>& data);
+
+            math::Vector2i                   pos;
+            math::Vector2i                   prev;
+            std::shared_ptr<DragAndDropData> data;
+            bool                             accept = false;
         };
     }
 }

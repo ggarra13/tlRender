@@ -22,7 +22,6 @@ namespace tl
             otime::TimeRange timeRange = time::invalidTimeRange;
             std::string label;
             std::string durationLabel;
-            ui::FontRole fontRole = ui::FontRole::Label;
             std::map<std::shared_ptr<IItem>, otime::TimeRange> itemTimeRanges;
             std::vector<std::shared_ptr<IItem> > clipsAndGaps;
             std::vector<std::shared_ptr<IItem> > transitions;
@@ -31,7 +30,7 @@ namespace tl
             {
                 int margin = 0;
                 imaging::FontInfo fontInfo = imaging::FontInfo("", 0);
-                int lineHeight = 0;
+                imaging::FontMetrics fontMetrics;
                 bool textUpdate = true;
                 math::Vector2i labelSize;
                 math::Vector2i durationSize;
@@ -47,7 +46,7 @@ namespace tl
         };
 
         void TrackItem::_init(
-            const otio::Track* track,
+            const otio::SerializableObject::Retainer<otio::Track>& track,
             const ItemData& itemData,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
@@ -78,7 +77,7 @@ namespace tl
 
             for (const auto& child : track->children())
             {
-                if (auto clip = dynamic_cast<otio::Clip*>(child.value))
+                if (auto clip = otio::dynamic_retainer_cast<otio::Clip>(child))
                 {
                     std::shared_ptr<IItem> item;
                     switch (p.trackType)
@@ -106,7 +105,7 @@ namespace tl
                     }
                     p.clipsAndGaps.push_back(item);
                 }
-                else if (auto gap = dynamic_cast<otio::Gap*>(child.value))
+                else if (auto gap = otio::dynamic_retainer_cast<otio::Gap>(child))
                 {
                     std::shared_ptr<IItem> item;
                     switch (p.trackType)
@@ -134,7 +133,7 @@ namespace tl
                     }
                     p.clipsAndGaps.push_back(item);
                 }
-                else if (auto transition = dynamic_cast<otio::Transition*>(child.value))
+                else if (auto transition = otio::dynamic_retainer_cast<otio::Transition>(child))
                 {
                     auto item = TransitionItem::create(
                         transition,
@@ -160,7 +159,7 @@ namespace tl
         {}
 
         std::shared_ptr<TrackItem> TrackItem::create(
-            const otio::Track* track,
+            const otio::SerializableObject::Retainer<otio::Track>& track,
             const ItemData& itemData,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
@@ -175,7 +174,7 @@ namespace tl
             IItem::setGeometry(value);
             TLRENDER_P();
             int y = _geometry.min.y +
-                p.size.lineHeight;
+                p.size.fontMetrics.lineHeight;
             int h = 0;
             for (auto item : p.clipsAndGaps)
             {
@@ -218,12 +217,13 @@ namespace tl
 
             p.size.margin = event.style->getSizeRole(ui::SizeRole::MarginInside, event.displayScale);
 
-            auto fontInfo = event.style->getFontRole(p.fontRole, event.displayScale);
+            auto fontInfo = imaging::FontInfo(
+                _options.regularFont,
+                _options.fontSize * event.displayScale);
             if (fontInfo != p.size.fontInfo || p.size.textUpdate)
             {
                 p.size.fontInfo = fontInfo;
-                auto fontMetrics = event.getFontMetrics(p.fontRole);
-                p.size.lineHeight = fontMetrics.lineHeight;
+                p.size.fontMetrics = event.fontSystem->getMetrics(fontInfo);
                 p.size.labelSize = event.fontSystem->getSize(p.label, fontInfo);
                 p.size.durationSize = event.fontSystem->getSize(p.durationLabel, fontInfo);
             }
@@ -242,7 +242,7 @@ namespace tl
 
             _sizeHint = math::Vector2i(
                 p.timeRange.duration().rescaled_to(1.0).value() * _scale,
-                p.size.lineHeight +
+                p.size.fontMetrics.lineHeight +
                 clipsAndGapsHeight +
                 transitionsHeight);
         }
@@ -261,14 +261,14 @@ namespace tl
                 p.size.margin,
                 g.min.y,
                 p.size.labelSize.x,
-                p.size.lineHeight);
+                p.size.fontMetrics.lineHeight);
             const math::BBox2i durationGeometry(
                 g.max.x -
                 p.size.margin -
                 p.size.durationSize.x,
                 g.min.y,
                 p.size.durationSize.x,
-                p.size.lineHeight);
+                p.size.fontMetrics.lineHeight);
             const bool labelVisible = drawRect.intersects(labelGeometry);
             const bool durationVisible =
                 drawRect.intersects(durationGeometry) &&
@@ -280,13 +280,12 @@ namespace tl
                 {
                     p.draw.labelGlyphs = event.fontSystem->getGlyphs(p.label, p.size.fontInfo);
                 }
-                const auto fontMetrics = event.getFontMetrics(p.fontRole);
                 event.render->drawText(
                     p.draw.labelGlyphs,
                     math::Vector2i(
                         labelGeometry.min.x,
                         labelGeometry.min.y +
-                        fontMetrics.ascender),
+                        p.size.fontMetrics.ascender),
                     event.style->getColorRole(ui::ColorRole::Text));
             }
 
@@ -296,13 +295,12 @@ namespace tl
                 {
                     p.draw.durationGlyphs = event.fontSystem->getGlyphs(p.durationLabel, p.size.fontInfo);
                 }
-                const auto fontMetrics = event.getFontMetrics(p.fontRole);
                 event.render->drawText(
                     p.draw.durationGlyphs,
                     math::Vector2i(
                         durationGeometry.min.x,
                         durationGeometry.min.y +
-                        fontMetrics.ascender),
+                        p.size.fontMetrics.ascender),
                     event.style->getColorRole(ui::ColorRole::Text));
             }
         }

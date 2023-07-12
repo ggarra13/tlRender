@@ -75,6 +75,7 @@ namespace tl
 
         void FontSystem::_init(const std::shared_ptr<system::Context>& context)
         {
+            ISystem::_init("tl::imaging::FontSystem", context);
             TLRENDER_P();
 
             p.context = context;
@@ -124,6 +125,16 @@ namespace tl
             auto out = std::shared_ptr<FontSystem>(new FontSystem);
             out->_init(context);
             return out;
+        }
+
+        void FontSystem::addFont(const std::string& name, const uint8_t* data, size_t size)
+        {
+            TLRENDER_P();
+            FT_Error ftError = FT_New_Memory_Face(p.ftLibrary, data, size, 0, &p.ftFaces[name]);
+            if (ftError)
+            {
+                throw std::runtime_error("Cannot create font");
+            }
         }
 
         size_t FontSystem::getGlyphCacheSize() const

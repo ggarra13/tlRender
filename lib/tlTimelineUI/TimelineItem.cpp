@@ -22,13 +22,13 @@ namespace tl
             otime::TimeRange inOutRange = time::invalidTimeRange;
             timeline::PlayerCacheInfo cacheInfo;
             bool stopOnScrub = true;
-            ui::FontRole fontRole = ui::FontRole::Mono;
 
             struct SizeData
             {
                 int margin = 0;
                 int spacing = 0;
                 int border = 0;
+                imaging::FontInfo fontInfo = imaging::FontInfo("", 0);
                 imaging::FontMetrics fontMetrics;
                 math::Vector2i scrollPos;
             };
@@ -56,13 +56,15 @@ namespace tl
             IItem::_init("tl::timelineui::TimelineItem", itemData, context, parent);
             TLRENDER_P();
 
+            setMouseHover(true);
+
             p.player = player;
             p.timeRange = player->getTimeRange();
 
             const auto otioTimeline = p.player->getTimeline()->getTimeline();
             for (const auto& child : otioTimeline->tracks()->children())
             {
-                if (const auto* track = dynamic_cast<otio::Track*>(child.value))
+                if (auto track = otio::dynamic_retainer_cast<otio::Track>(child))
                 {
                     auto trackItem = TrackItem::create(
                         track,
@@ -155,7 +157,7 @@ namespace tl
             {
                 const auto& sizeHint = child->getSizeHint();
                 child->setGeometry(math::BBox2i(
-                    _geometry.min.x + p.size.margin,
+                    _geometry.min.x,
                     _geometry.min.y + y,
                     sizeHint.x,
                     sizeHint.y));
@@ -177,7 +179,10 @@ namespace tl
             p.size.spacing = event.style->getSizeRole(ui::SizeRole::SpacingSmall, event.displayScale);
             p.size.border = event.style->getSizeRole(ui::SizeRole::Border, event.displayScale);
 
-            p.size.fontMetrics = event.getFontMetrics(p.fontRole);
+            p.size.fontInfo = imaging::FontInfo(
+                _options.monoFont,
+                _options.fontSize * event.displayScale);
+            p.size.fontMetrics = event.fontSystem->getMetrics(p.size.fontInfo);
 
             int childrenHeight = 0;
             for (const auto& child : _children)
@@ -241,10 +246,10 @@ namespace tl
             _drawCurrentTime(drawRect, event);
         }
 
-        void TimelineItem::enterEvent()
+        void TimelineItem::mouseEnterEvent()
         {}
 
-        void TimelineItem::leaveEvent()
+        void TimelineItem::mouseLeaveEvent()
         {}
 
         void TimelineItem::mouseMoveEvent(ui::MouseMoveEvent& event)
@@ -429,9 +434,8 @@ namespace tl
             const int handle = event.style->getSizeRole(ui::SizeRole::Handle, event.displayScale);
             const math::BBox2i& g = _geometry;
 
-            const auto fontInfo = event.style->getFontRole(p.fontRole, event.displayScale);
             const std::string labelMax = _data.timeUnitsModel->getLabel(p.timeRange.duration());
-            const math::Vector2i labelMaxSize = event.fontSystem->getSize(labelMax, fontInfo);
+            const math::Vector2i labelMaxSize = event.fontSystem->getSize(labelMax, p.size.fontInfo);
             const int distanceMin = p.size.border + p.size.spacing + labelMaxSize.x;
 
             const int w = _sizeHint.x;
@@ -546,7 +550,7 @@ namespace tl
                             p.timeRange.start_time() +
                             otime::RationalTime(t, 1.0).rescaled_to(p.timeRange.duration().rate()));
                         event.render->drawText(
-                            event.fontSystem->getGlyphs(label, fontInfo),
+                            event.fontSystem->getGlyphs(label, p.size.fontInfo),
                             math::Vector2i(
                                 bbox.min.x,
                                 bbox.min.y +
@@ -651,7 +655,6 @@ namespace tl
         {
             TLRENDER_P();
 
-            const auto fontInfo = event.style->getFontRole(p.fontRole, event.displayScale);
             const math::BBox2i& g = _geometry;
 
             const otime::RationalTime& currentTime = p.player->observeCurrentTime()->get();
@@ -664,7 +667,7 @@ namespace tl
 
                 event.render->drawRect(
                     math::BBox2i(
-                        pos.x - p.size.border,
+                        pos.x,
                         pos.y,
                         p.size.border * 2,
                         g.h()),
@@ -672,9 +675,9 @@ namespace tl
 
                 const std::string label = _data.timeUnitsModel->getLabel(currentTime);
                 event.render->drawText(
-                    event.fontSystem->getGlyphs(label, fontInfo),
+                    event.fontSystem->getGlyphs(label, p.size.fontInfo),
                     math::Vector2i(
-                        pos.x + p.size.spacing,
+                        pos.x + p.size.border * 2 + p.size.spacing,
                         pos.y +
                         p.size.margin +
                         p.size.fontMetrics.ascender),
@@ -706,16 +709,8 @@ namespace tl
         int TimelineItem::_timeToPos(const otime::RationalTime& value) const
         {
             TLRENDER_P();
-            int out = 0;
-            if (!time::compareExact(value, time::invalidTime) &&
-                p.timeRange.duration().value() > 0.0)
-            {
-                const float normalized =
-                    (value.value() - p.timeRange.start_time().value()) /
-                    p.timeRange.duration().value();
-                out = _geometry.min.x + normalized * _geometry.w();
-            }
-            return out;
+            const otime::RationalTime t = value - p.timeRange.start_time();
+            return _geometry.min.x + t.rescaled_to(1.0).value() * _scale;
         }
 
         void TimelineItem::_resetMouse()

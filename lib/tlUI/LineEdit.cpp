@@ -133,6 +133,8 @@ namespace tl
         {
             IWidget::_init("tl::ui::LineEdit", context, parent);
             TLRENDER_P();
+            setMouseHover(true);
+            setAcceptsKeyFocus(true);
             _textUpdate();
         }
 
@@ -224,11 +226,6 @@ namespace tl
                     _updates |= Update::Draw;
                 }
             }
-        }
-
-        bool LineEdit::acceptsKeyFocus() const
-        {
-            return true;
         }
 
         void LineEdit::tickEvent(
@@ -326,7 +323,7 @@ namespace tl
             const timeline::ClipRectEnabledState clipRectEnabledState(event.render);
             const timeline::ClipRectState clipRectState(event.render);
             event.render->setClipRectEnabled(true);
-            event.render->setClipRect(g.margin(-p.size.border * 2));
+            event.render->setClipRect(g.margin(-p.size.border * 2).intersect(drawRect));
 
             const math::BBox2i g2 = g.margin(-(p.size.border * 2 + p.size.margin));
             if (p.selection.isValid())
@@ -383,10 +380,10 @@ namespace tl
             }
         }
 
-        void LineEdit::enterEvent()
+        void LineEdit::mouseEnterEvent()
         {}
 
-        void LineEdit::leaveEvent()
+        void LineEdit::mouseLeaveEvent()
         {}
 
         void LineEdit::mouseMoveEvent(MouseMoveEvent& event)

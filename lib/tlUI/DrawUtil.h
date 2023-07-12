@@ -5,6 +5,7 @@
 #pragma once
 
 #include <tlCore/Color.h>
+#include <tlCore/Image.h>
 #include <tlCore/Mesh.h>
 
 namespace tl
@@ -34,7 +35,7 @@ namespace tl
         geom::TriangleMesh2 shadow(
             const math::BBox2i&,
             int cornerRadius,
-            const float alpha = .3F,
+            const float alpha = .2F,
             size_t resolution = 8);
     }
 }

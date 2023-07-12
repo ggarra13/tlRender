@@ -9,7 +9,7 @@ namespace tl
     namespace timelineui
     {
         void TransitionItem::_init(
-            const otio::Transition* transition,
+            const otio::SerializableObject::Retainer<otio::Transition>& transition,
             const ItemData& itemData,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
@@ -19,6 +19,7 @@ namespace tl
                 rangeOpt.has_value() ? rangeOpt.value() : time::invalidTimeRange,
                 !transition->name().empty() ? transition->name() : "Transition",
                 _options.colors[ColorRole::Transition],
+                {},
                 "tl::timelineui::TransitionItem",
                 itemData,
                 context,
@@ -32,7 +33,7 @@ namespace tl
         {}
 
         std::shared_ptr<TransitionItem> TransitionItem::create(
-            const otio::Transition* transition,
+            const otio::SerializableObject::Retainer<otio::Transition>& transition,
             const ItemData& itemData,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
