@@ -1,6 +1,6 @@
 include(ExternalProject)
 
-set(install_cmd )
+set(install_cmd true)
 if(NOT DEFINED PYTHON_EXECUTABLE)
     if(WIN32)
         set(PYTHON_EXECUTABLE python)
