@@ -1,5 +1,6 @@
 include(ExternalProject)
 
+set(install_cmd )
 if(NOT DEFINED PYTHON_EXECUTABLE)
     if(WIN32)
         set(PYTHON_EXECUTABLE python)
@@ -7,7 +8,6 @@ if(NOT DEFINED PYTHON_EXECUTABLE)
 	set(install_cmd copy "${cmake_install_prefix}\\lib\\*.dll" "${cmake_install_prefix}\\bin")
     else()
         set(PYTHON_EXECUTABLE python3)
-	set(install_cmd )
     endif()
 endif()
 
