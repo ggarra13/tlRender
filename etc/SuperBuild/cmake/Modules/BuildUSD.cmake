@@ -1,5 +1,12 @@
 include(ExternalProject)
 
+if(NOT DEFINED PYTHON_EXECUTABLE)
+    if(WIN32)
+        set(PYTHON_EXECUTABLE python)
+    else()
+        set(PYTHON_EXECUTABLE python3)
+endif()
+
 set(USD_DEPS)
 
 set(USD_ARGS)
