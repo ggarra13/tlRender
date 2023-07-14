@@ -21,7 +21,7 @@ ExternalProject_Add(
     DEPENDS ${USD_DEPS}
     URL https://github.com/PixarAnimationStudios/USD/archive/refs/tags/v23.05.tar.gz
     CONFIGURE_COMMAND ""
-    BUILD_COMMAND python3 build_scripts/build_usd.py ${USD_ARGS} ${CMAKE_INSTALL_PREFIX}
+    BUILD_COMMAND ${PYTHON_EXECUTABLE} build_scripts/build_usd.py ${USD_ARGS} ${CMAKE_INSTALL_PREFIX}
     BUILD_IN_SOURCE 1
     INSTALL_COMMAND "")
 
