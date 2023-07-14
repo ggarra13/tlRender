@@ -3,8 +3,10 @@ include(ExternalProject)
 if(NOT DEFINED PYTHON_EXECUTABLE)
     if(WIN32)
         set(PYTHON_EXECUTABLE python)
+	set(install_cmd copy $"{CMAKE_INSTALL_PREFIX}\lib\*.dll" "${CMAKE_INSTALL_PREFIX}\bin")
     else()
         set(PYTHON_EXECUTABLE python3)
+	set(install_cmd "")
     endif()
 endif()
 
@@ -31,5 +33,5 @@ ExternalProject_Add(
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ${PYTHON_EXECUTABLE} build_scripts/build_usd.py ${USD_ARGS} ${CMAKE_INSTALL_PREFIX}
     BUILD_IN_SOURCE 1
-    INSTALL_COMMAND "")
+    INSTALL_COMMAND ${install_cmd})
 
