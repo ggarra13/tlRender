@@ -19,7 +19,7 @@ namespace tl
             void _init(
                 const otime::TimeRange&,
                 const std::string& label,
-                const imaging::Color4f&,
+                ColorRole,
                 const std::vector<Marker>&,
                 const std::string& name,
                 const ItemData&,
@@ -41,8 +41,9 @@ namespace tl
                 const ui::DrawEvent&) override;
 
         protected:
-            math::BBox2i _getInsideGeometry() const;
+            int _getMargin() const;
             int _getLineHeight() const;
+            math::BBox2i _getInsideGeometry() const;
 
             void _timeUnitsUpdate() override;
 

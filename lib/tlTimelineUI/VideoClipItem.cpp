@@ -63,7 +63,7 @@ namespace tl
             IBasicItem::_init(
                 rangeOpt.has_value() ? rangeOpt.value() : time::invalidTimeRange,
                 !clip->name().empty() ? clip->name() : path.get(-1, false),
-                _options.colors[ColorRole::VideoClip],
+                ColorRole::VideoClip,
                 getMarkers(clip),
                 "tl::timelineui::VideoClipItem",
                 itemData,
@@ -253,12 +253,13 @@ namespace tl
             TLRENDER_P();
 
             const math::BBox2i g = _getInsideGeometry();
+            const int m = _getMargin();
             const auto now = std::chrono::steady_clock::now();
 
             const math::BBox2i bbox(
                 g.min.x,
                 g.min.y +
-                _getLineHeight(),
+                _getLineHeight() + m * 2,
                 g.w(),
                 _options.thumbnailHeight);
             event.render->drawRect(
@@ -366,7 +367,7 @@ namespace tl
                         g.min.x +
                         x,
                         g.min.y +
-                        _getLineHeight(),
+                        _getLineHeight() + m * 2,
                         p.size.thumbnailWidth,
                         _options.thumbnailHeight);
                     if (bbox.intersects(clipRect))

@@ -668,11 +668,14 @@ namespace tl
             TLRENDER_P();
             if (!value.isValid()) return;
             p.clipRect = value;
-            glScissor(
-                value.x(),
-                p.renderSize.h - value.h() - value.y(),
-                value.w(),
-                value.h());
+            if (p.clipRect.isValid())
+            {
+                glScissor(
+                    value.x(),
+                    p.renderSize.h - value.h() - value.y(),
+                    value.w(),
+                    value.h());
+            }
         }
 
         math::Matrix4x4f GLRender::getTransform() const

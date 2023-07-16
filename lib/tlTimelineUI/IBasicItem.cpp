@@ -15,7 +15,7 @@ namespace tl
             otime::TimeRange timeRange = time::invalidTimeRange;
             std::string label;
             std::string durationLabel;
-            imaging::Color4f color;
+            ColorRole colorRole = ColorRole::VideoClip;
             std::vector<Marker> markers;
 
             struct SizeData
@@ -43,7 +43,7 @@ namespace tl
         void IBasicItem::_init(
             const otime::TimeRange& timeRange,
             const std::string& label,
-            const imaging::Color4f& color,
+            ColorRole colorRole,
             const std::vector<Marker>& markers,
             const std::string& name,
             const ItemData& itemData,
@@ -55,7 +55,7 @@ namespace tl
 
             p.timeRange = timeRange;
             p.label = label;
-            p.color = color;
+            p.colorRole = colorRole;
             p.markers = markers;
 
             _textUpdate();
@@ -100,11 +100,14 @@ namespace tl
             _sizeHint = math::Vector2i(
                 p.timeRange.duration().rescaled_to(1.0).value() * _scale,
                 p.size.fontMetrics.lineHeight +
-                p.size.border * 2);
+                p.size.margin * 2 +
+                p.size.border * 4);
             if (_options.showMarkers)
             {
                 _sizeHint.y += p.markers.size() *
-                    (p.size.fontMetrics.lineHeight + p.size.border * 2);
+                    (p.size.fontMetrics.lineHeight +
+                    p.size.margin * 2 +
+                    p.size.border * 2);
             }
         }
 
@@ -130,14 +133,14 @@ namespace tl
             IItem::drawEvent(drawRect, event);
             TLRENDER_P();
 
-            const math::BBox2i g = _geometry.margin(-p.size.border);
-
-            event.render->drawRect(g, p.color);
+            const math::BBox2i g = _geometry.margin(-(p.size.border * 2));
+            event.render->drawRect(
+                g,
+                _options.colors.find(p.colorRole)->second);
 
             math::BBox2i labelGeometry(
-                g.min.x +
-                p.size.margin,
-                g.min.y,
+                g.min.x + p.size.margin,
+                g.min.y + p.size.margin,
                 p.size.labelSize.x,
                 p.size.fontMetrics.lineHeight);
             if (drawRect.intersects(labelGeometry))
@@ -157,9 +160,9 @@ namespace tl
 
             const math::BBox2i durationGeometry(
                 g.max.x -
-                p.size.margin -
-                p.size.durationSize.x,
-                g.min.y,
+                p.size.durationSize.x -
+                p.size.margin,
+                g.min.y + p.size.margin,
                 p.size.durationSize.x,
                 p.size.fontMetrics.lineHeight);
             if (drawRect.intersects(durationGeometry) &&
@@ -185,7 +188,10 @@ namespace tl
                     p.draw.markerGlyphs.resize(p.markers.size());
                 }
                 float y = g.max.y + 1 -
-                    (p.size.fontMetrics.lineHeight + p.size.border * 2) * p.markers.size();
+                    (p.size.fontMetrics.lineHeight +
+                    p.size.margin * 2 +
+                    p.size.border * 2) *
+                    p.markers.size();
                 for (size_t i = 0; i < p.markers.size(); ++i)
                 {
                     const int x0 =
@@ -204,9 +210,8 @@ namespace tl
                     y += p.size.border * 2;
 
                     labelGeometry = math::BBox2i(
-                        g2.min.x +
-                        p.size.margin,
-                        y,
+                        g2.min.x + p.size.margin,
+                        y + p.size.margin,
                         p.size.markerSizes[i].x,
                         p.size.fontMetrics.lineHeight);
                     if (drawRect.intersects(labelGeometry))
@@ -224,19 +229,25 @@ namespace tl
                             event.style->getColorRole(ui::ColorRole::Text));
                     }
 
-                    y += p.size.fontMetrics.lineHeight;
+                    y += p.size.fontMetrics.lineHeight +
+                        p.size.margin * 2;
                 }
             }
         }
 
-        math::BBox2i IBasicItem::_getInsideGeometry() const
+        int IBasicItem::_getMargin() const
         {
-            return _geometry.margin(-_p->size.border);
+            return _p->size.margin;
         }
 
         int IBasicItem::_getLineHeight() const
         {
             return _p->size.fontMetrics.lineHeight;
+        }
+
+        math::BBox2i IBasicItem::_getInsideGeometry() const
+        {
+            return _geometry.margin(-(_p->size.border * 2));
         }
 
         void IBasicItem::_timeUnitsUpdate()
