@@ -1,4 +1,6 @@
 set(HEADERS
+    stb_image.h
+    stb_image_write.h
     Cineon.h
     DPX.h
     IO.h
@@ -8,7 +10,8 @@ set(HEADERS
     Init.h
     PPM.h
     SequenceIO.h
-    SGI.h)
+    SGI.h
+    STB.h)
 set(HEADERS_PRIVATE
     SequenceIOReadPrivate.h)
 
@@ -29,7 +32,10 @@ set(SOURCE
     SequenceIOWrite.cpp
     SGI.cpp
     SGIRead.cpp
-    SGIWrite.cpp)
+    SGIWrite.cpp
+    STB.cpp
+    STBRead.cpp
+    STBWrite.cpp)
 
 set(LIBRARIES)
 set(LIBRARIES_PRIVATE)

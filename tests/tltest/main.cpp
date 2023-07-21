@@ -148,6 +148,9 @@ int main(int argc, char* argv[])
             tests.push_back(io_tests::IOTest::create(context));
             tests.push_back(io_tests::PPMTest::create(context));
             tests.push_back(io_tests::SGITest::create(context));
+#if defined(TLRENDER_STB)
+            tests.push_back(io_tests::STBTest::create(context));
+#endif // TLRENDER_STB
 #if defined(TLRENDER_FFMPEG)
             tests.push_back(io_tests::FFmpegTest::create(context));
 #endif // TLRENDER_FFMPEG

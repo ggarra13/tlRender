@@ -108,6 +108,8 @@ namespace tl
             void keyPressEvent(ui::KeyEvent&) override;
             void keyReleaseEvent(ui::KeyEvent&) override;
 
+            const otime::TimeRange timeRange() const;
+            
         private:
             void _setViewZoom(
                 double zoomNew,

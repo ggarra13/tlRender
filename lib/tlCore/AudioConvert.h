@@ -38,10 +38,11 @@ namespace tl
 
             //! Convert audio data.
             std::shared_ptr<Audio> convert(const std::shared_ptr<Audio>&);
-
+            
             //! Flush the converter.
             void flush();
 
+            
         private:
             TLRENDER_PRIVATE();
         };
