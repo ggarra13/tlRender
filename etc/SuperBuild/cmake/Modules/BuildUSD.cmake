@@ -1,5 +1,10 @@
 include(ExternalProject)
 
+
+if(NOT DEFINED PYTHON_EXECUTABLE)
+    set(PYTHON_EXECUTABLE python3)
+endif()
+
 set(USD_DEPS)
 
 set(USD_ARGS)
@@ -24,7 +29,7 @@ ExternalProject_Add(
     PATCH_COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_CURRENT_SOURCE_DIR}/USD-patch/build_usd.py
         ${CMAKE_CURRENT_BINARY_DIR}/USD/src/USD/build_scripts/build_usd.py
-    BUILD_COMMAND python3 build_scripts/build_usd.py ${USD_ARGS} ${CMAKE_INSTALL_PREFIX}
+    BUILD_COMMAND ${PYTHON_EXECUTABLE} build_scripts/build_usd.py ${USD_ARGS} ${CMAKE_INSTALL_PREFIX}
     BUILD_IN_SOURCE 1
     INSTALL_COMMAND "")
 
