@@ -1,17 +1,11 @@
 include(ExternalProject)
 
-set(install_cmd true)
+
 if(NOT DEFINED PYTHON_EXECUTABLE)
-    if(WIN32)
-        set(PYTHON_EXECUTABLE python)
-	cmake_path(CONVERT ${CMAKE_INSTALL_PREFIX} TO_NATIVE_PATH_LIST cmake_install_prefix)
-	set(install_cmd copy "${cmake_install_prefix}\\lib\\*.dll" "${cmake_install_prefix}\\bin")
-    else()
-        set(PYTHON_EXECUTABLE python3)
-    endif()
+    set(PYTHON_EXECUTABLE python3)
 endif()
 
-set(USD_DEPS)
+set(USD_DEPS ${PYTHON_DEP})
 
 set(USD_ARGS)
 if(CMAKE_OSX_ARCHITECTURES)
@@ -32,7 +26,10 @@ ExternalProject_Add(
     DEPENDS ${USD_DEPS}
     URL https://github.com/PixarAnimationStudios/USD/archive/refs/tags/v23.05.tar.gz
     CONFIGURE_COMMAND ""
+    PATCH_COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_CURRENT_SOURCE_DIR}/USD-patch/build_usd.py
+        ${CMAKE_CURRENT_BINARY_DIR}/USD/src/USD/build_scripts/build_usd.py
     BUILD_COMMAND ${PYTHON_EXECUTABLE} build_scripts/build_usd.py ${USD_ARGS} ${CMAKE_INSTALL_PREFIX}
     BUILD_IN_SOURCE 1
-    INSTALL_COMMAND ${install_cmd})
+    INSTALL_COMMAND "")
 

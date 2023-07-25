@@ -5,6 +5,7 @@
 #include <tlPlayGLApp/App.h>
 
 #include <tlPlayGLApp/MainWindow.h>
+#include <tlPlayGLApp/Tools.h>
 
 #include <tlUI/EventLoop.h>
 #include <tlUI/FileBrowser.h>
@@ -38,6 +39,7 @@ namespace tl
             std::shared_ptr<ui::RecentFilesModel> recentFilesModel;
             std::vector<std::shared_ptr<timeline::Player> > players;
             std::shared_ptr<observer::List<std::shared_ptr<timeline::Player> > > activePlayers;
+            std::shared_ptr<ToolsModel> toolsModel;
 
             std::shared_ptr<MainWindow> mainWindow;
             std::shared_ptr<ui::FileBrowser> fileBrowser;
@@ -263,12 +265,22 @@ namespace tl
                     }
                 });
 
+            p.toolsModel = ToolsModel::create();
+
             p.fileBrowserPath = file::getCWD();
 
             // Open the input files.
             if (!p.input.empty())
             {
+                if (!p.options.compareFileName.empty())
+                {
+                    open(p.options.compareFileName);
+                    p.filesModel->setCompareOptions(p.options.compareOptions);
+                    p.filesModel->setB(0, true);
+                }
+
                 open(p.input);
+                
                 if (!p.players.empty())
                 {
                     if (auto player = p.players[0])
@@ -373,6 +385,11 @@ namespace tl
         std::shared_ptr<observer::IList<std::shared_ptr<timeline::Player> > > App::observeActivePlayers() const
         {
             return _p->activePlayers;
+        }
+
+        const std::shared_ptr<ToolsModel>& App::getToolsModel() const
+        {
+            return _p->toolsModel;
         }
 
         const std::shared_ptr<MainWindow>& App::getMainWindow() const

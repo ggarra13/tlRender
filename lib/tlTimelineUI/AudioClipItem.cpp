@@ -431,6 +431,7 @@ namespace tl
                                 p.audioDataFutures[time].future = _data.ioManager->readAudio(
                                     p.path,
                                     p.memoryRead,
+                                    p.availableRange.start_time(),
                                     mediaRange);
                                 p.audioDataFutures[time].size = bbox.getSize();
                             }

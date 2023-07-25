@@ -407,6 +407,7 @@ namespace tl
                                 p.videoDataFutures[time] = _data.ioManager->readVideo(
                                     p.path,
                                     p.memoryRead,
+                                    p.availableRange.start_time(),
                                     mediaTime);
                             }
                         }

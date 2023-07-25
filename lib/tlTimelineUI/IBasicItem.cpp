@@ -6,6 +6,8 @@
 
 #include <tlUI/DrawUtil.h>
 
+#include <tlTimeline/RenderUtil.h>
+
 namespace tl
 {
     namespace timelineui
@@ -86,13 +88,10 @@ namespace tl
                 p.size.labelSize = event.fontSystem->getSize(p.label, fontInfo);
                 p.size.durationSize = event.fontSystem->getSize(p.durationLabel, fontInfo);
                 p.size.markerSizes.clear();
-                if (_options.showMarkers)
+                for (const auto& marker : p.markers)
                 {
-                    for (const auto& marker : p.markers)
-                    {
-                        p.size.markerSizes.push_back(
-                            event.fontSystem->getSize(marker.name, fontInfo));
-                    }
+                    p.size.markerSizes.push_back(
+                        event.fontSystem->getSize(marker.name, fontInfo));
                 }
             }
             p.size.textUpdate = false;
@@ -137,6 +136,11 @@ namespace tl
             event.render->drawRect(
                 g,
                 _options.colors.find(p.colorRole)->second);
+
+            const timeline::ClipRectEnabledState clipRectEnabledState(event.render);
+            const timeline::ClipRectState clipRectState(event.render);
+            event.render->setClipRectEnabled(true);
+            event.render->setClipRect(g.intersect(drawRect));
 
             math::BBox2i labelGeometry(
                 g.min.x + p.size.margin,

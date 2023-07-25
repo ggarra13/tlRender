@@ -27,6 +27,7 @@ namespace tl
             "SpacingTool",
             "Border",
             "ScrollArea",
+            "Slider",
             "Handle",
             "Shadow",
             "DragLength");
@@ -86,6 +87,7 @@ namespace tl
             _sizeRoles[static_cast<size_t>(SizeRole::SpacingTool)] = 2;
             _sizeRoles[static_cast<size_t>(SizeRole::Border)] = 1;
             _sizeRoles[static_cast<size_t>(SizeRole::ScrollArea)] = 200;
+            _sizeRoles[static_cast<size_t>(SizeRole::Slider)] = 100;
             _sizeRoles[static_cast<size_t>(SizeRole::Handle)] = 10;
             _sizeRoles[static_cast<size_t>(SizeRole::HandleSmall)] = 6;
             _sizeRoles[static_cast<size_t>(SizeRole::Shadow)] = 15;
@@ -113,7 +115,7 @@ namespace tl
             _fontRoles.resize(static_cast<size_t>(FontRole::Count));
             _fontRoles[static_cast<size_t>(FontRole::Label)] = imaging::FontInfo("NotoSans-Regular", 12 * 1);
             _fontRoles[static_cast<size_t>(FontRole::Mono)] = imaging::FontInfo("NotoMono-Regular", 12 * 1);
-            _fontRoles[static_cast<size_t>(FontRole::Title)] = imaging::FontInfo("NotoSans-Regular", 18 * 1);
+            _fontRoles[static_cast<size_t>(FontRole::Title)] = imaging::FontInfo("NotoSans-Bold", 12 * 1);
 
             p.changed = observer::Value<bool>::create();
         }
