@@ -1,8 +1,17 @@
 include(ExternalProject)
 
+set(install_cmd true)
+if(WIN32)
+  cmake_path(CONVERT ${CMAKE_INSTALL_PREFIX} TO_NATIVE_PATH_LIST cmake_install_prefix)
+  set(install_cmd copy "${cmake_install_prefix}\\lib\\*.dll" "${cmake_install_prefix}\\bin" && xcopy "${cmake_install_prefix}\\lib\\usd" "${cmake_install_prefix}\\bin\\" /E/H/C/I)
+endif()
 
 if(NOT DEFINED PYTHON_EXECUTABLE)
-    set(PYTHON_EXECUTABLE python3)
+  if(WIN32)
+      set(PYTHON_EXECUTABLE python)
+  else()
+      set(PYTHON_EXECUTABLE python3)
+  endif()
 endif()
 
 set(USD_DEPS ${PYTHON_DEP})
@@ -31,5 +40,5 @@ ExternalProject_Add(
         ${CMAKE_CURRENT_BINARY_DIR}/USD/src/USD/build_scripts/build_usd.py
     BUILD_COMMAND ${PYTHON_EXECUTABLE} build_scripts/build_usd.py ${USD_ARGS} ${CMAKE_INSTALL_PREFIX}
     BUILD_IN_SOURCE 1
-    INSTALL_COMMAND "")
+    INSTALL_COMMAND ${install_cmd})
 
