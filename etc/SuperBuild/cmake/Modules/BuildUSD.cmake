@@ -3,7 +3,7 @@ include(ExternalProject)
 set(install_cmd true)
 if(WIN32)
   cmake_path(CONVERT ${CMAKE_INSTALL_PREFIX} TO_NATIVE_PATH_LIST cmake_install_prefix)
-  set(install_cmd copy "${cmake_install_prefix}\\lib\\*.dll" "${cmake_install_prefix}\\bin\\" && xcopy "${cmake_install_prefix}\\lib\\usd" "${cmake_install_prefix}\\bin\\usd" /E/H/C/I && del /Q "${cmake_install_prefix}\\lib\\*.dll" "${cmake_install_prefix}\\lib\\usd"  )
+  set(install_cmd copy /Y "${cmake_install_prefix}\\lib\\*.dll" "${cmake_install_prefix}\\bin\\" && xcopy "${cmake_install_prefix}\\lib\\usd" "${cmake_install_prefix}\\bin\\usd" /E/H/C/I && del /Q "${cmake_install_prefix}\\lib\\*.dll" "${cmake_install_prefix}\\lib\\usd"  )
 endif()
 
 if(NOT DEFINED PYTHON_EXECUTABLE)
