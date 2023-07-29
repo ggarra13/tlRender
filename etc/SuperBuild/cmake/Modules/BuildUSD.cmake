@@ -1,10 +1,5 @@
 include(ExternalProject)
 
-set(install_cmd true)
-if(WIN32)
-  cmake_path(CONVERT ${CMAKE_INSTALL_PREFIX} TO_NATIVE_PATH_LIST cmake_install_prefix)
-  set(install_cmd copy /Y "${cmake_install_prefix}\\lib\\*.dll" "${cmake_install_prefix}\\bin\\" && xcopy "${cmake_install_prefix}\\lib\\usd" "${cmake_install_prefix}\\bin\\usd" /E/H/C/I )
-endif()
 
 if(NOT DEFINED PYTHON_EXECUTABLE)
   if(WIN32)
@@ -40,5 +35,5 @@ ExternalProject_Add(
         ${CMAKE_CURRENT_BINARY_DIR}/USD/src/USD/build_scripts/build_usd.py
     BUILD_COMMAND ${PYTHON_EXECUTABLE} build_scripts/build_usd.py ${USD_ARGS} ${CMAKE_INSTALL_PREFIX}
     BUILD_IN_SOURCE 1
-    INSTALL_COMMAND ${install_cmd})
+    INSTALL_COMMAND "")
 
