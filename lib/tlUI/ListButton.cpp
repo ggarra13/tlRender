@@ -112,7 +112,7 @@ namespace tl
                     p.size.textSize = event.fontSystem->getSize(_text, fontInfo);
                 }
                 _sizeHint.x = p.size.textSize.x + p.size.margin * 2;
-                _sizeHint.y = p.size.fontMetrics.lineHeight;
+                _sizeHint.y = p.size.fontMetrics.lineHeight + p.size.margin * 2;
             }
             if (_iconImage || _checkedIconImage)
             {
@@ -134,12 +134,8 @@ namespace tl
                 _sizeHint.x += size.x;
                 _sizeHint.y = std::max(_sizeHint.y, size.y);
             }
-            _sizeHint.x +=
-                p.size.margin * 2 +
-                p.size.border * 4;
-            _sizeHint.y +=
-                p.size.margin * 2 +
-                p.size.border * 4;
+            _sizeHint.x += p.size.border * 4;
+            _sizeHint.y += p.size.border * 4;
         }
 
         void ListButton::clipEvent(
@@ -165,15 +161,6 @@ namespace tl
             const math::BBox2i& g = _geometry;
             const bool enabled = isEnabled();
 
-            // Draw the key focus.
-            if (_keyFocus)
-            {
-                event.render->drawMesh(
-                    border(g, p.size.border * 2),
-                    math::Vector2i(),
-                    event.style->getColorRole(ColorRole::KeyFocus));
-            }
-
             // Draw the background and checked state.
             const ColorRole colorRole = _checked ? _checkedRole : _buttonRole;
             if (colorRole != ColorRole::None)
@@ -197,9 +184,18 @@ namespace tl
                     event.style->getColorRole(ColorRole::Hover));
             }
 
+            // Draw the key focus.
+            if (_keyFocus)
+            {
+                event.render->drawMesh(
+                    border(g, p.size.border * 2),
+                    math::Vector2i(),
+                    event.style->getColorRole(ColorRole::KeyFocus));
+            }
+
             // Draw the icon.
             const math::BBox2i g2 = g.margin(-p.size.border * 2);
-            int x = g2.x() + p.size.margin;
+            int x = g2.x();
             if (_checked && _checkedIconImage)
             {
                 const imaging::Size& iconSize = _checkedIconImage->getSize();

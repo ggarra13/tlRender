@@ -8,6 +8,18 @@ namespace tl
 {
     namespace ui
     {
+        bool FileBrowserOptions::operator == (const FileBrowserOptions& other) const
+        {
+            return filter == other.filter &&
+                extension == other.extension &&
+                list == other.list;
+        }
+
+        bool FileBrowserOptions::operator != (const FileBrowserOptions& other) const
+        {
+            return !(*this == other);
+        }
+
         struct FileBrowser::Private
         {
             std::shared_ptr<FileBrowserWidget> widget;
@@ -25,6 +37,7 @@ namespace tl
                 path,
                 context,
                 shared_from_this());
+
             p.widget->setCancelCallback(
                 [this]
                 {
@@ -52,6 +65,40 @@ namespace tl
         void FileBrowser::setFileCallback(const std::function<void(const file::Path&)>& value)
         {
             _p->widget->setFileCallback(value);
+        }
+
+        const file::Path& FileBrowser::getPath() const
+        {
+            return _p->widget->getPath();
+        }
+
+        const FileBrowserOptions& FileBrowser::getOptions() const
+        {
+            return _p->widget->getOptions();
+        }
+
+        void FileBrowser::setOptions(const FileBrowserOptions& value)
+        {
+            _p->widget->setOptions(value);
+        }
+
+        void to_json(nlohmann::json& json, const FileBrowserOptions& value)
+        {
+            nlohmann::json list;
+            to_json(list, value.list);
+            json =
+            {
+                { "filter", value.filter },
+                { "extension", value.extension },
+                { "list", list }
+            };
+        }
+
+        void from_json(const nlohmann::json& json, FileBrowserOptions& value)
+        {
+            json.at("filter").get_to(value.filter);
+            json.at("extension").get_to(value.extension);
+            from_json(json.at("list"), value.list);
         }
     }
 }

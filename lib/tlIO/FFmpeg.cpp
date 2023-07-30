@@ -138,7 +138,10 @@ namespace tl
                     tag,
                     AV_DICT_IGNORE_SUFFIX)))
                 {
-                    if (string::compareNoCase(tag->key, "timecode"))
+                    if (string::compare(
+                        tag->key,
+                        "timecode",
+                        string::Compare::CaseInsensitive))
                     {
                         timecode = tag->value;
                         break;
@@ -180,6 +183,7 @@ namespace tl
                     { ".mxf", io::FileType::Movie },
                     { ".webm", io::FileType::Movie },
                     { ".wmv", io::FileType::Movie },
+                    { ".avi", io::FileType::Movie },
                     { ".wav", io::FileType::Audio },
                     { ".mp3", io::FileType::Audio },
                     { ".aiff", io::FileType::Audio }

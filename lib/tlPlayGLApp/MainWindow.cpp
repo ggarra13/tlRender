@@ -6,6 +6,7 @@
 
 #include <tlPlayGLApp/App.h>
 #include <tlPlayGLApp/AudioMenu.h>
+#include <tlPlayGLApp/AudioPopup.h>
 #include <tlPlayGLApp/CompareMenu.h>
 #include <tlPlayGLApp/CompareToolBar.h>
 #include <tlPlayGLApp/FileMenu.h>
@@ -13,6 +14,7 @@
 #include <tlPlayGLApp/FrameMenu.h>
 #include <tlPlayGLApp/PlaybackMenu.h>
 #include <tlPlayGLApp/RenderMenu.h>
+#include <tlPlayGLApp/SpeedPopup.h>
 #include <tlPlayGLApp/ToolsMenu.h>
 #include <tlPlayGLApp/ToolsToolBar.h>
 #include <tlPlayGLApp/ToolsWidget.h>
@@ -29,7 +31,6 @@
 #include <tlUI/Divider.h>
 #include <tlUI/DoubleEdit.h>
 #include <tlUI/DoubleModel.h>
-#include <tlUI/IncButtons.h>
 #include <tlUI/Label.h>
 #include <tlUI/Menu.h>
 #include <tlUI/MenuBar.h>
@@ -42,6 +43,7 @@
 #include <tlTimeline/TimeUnits.h>
 
 #include <tlCore/StringFormat.h>
+#include <tlCore/Timer.h>
 
 namespace tl
 {
@@ -77,10 +79,13 @@ namespace tl
             std::shared_ptr<ui::TimeEdit> currentTimeEdit;
             std::shared_ptr<ui::DoubleEdit> speedEdit;
             std::shared_ptr<ui::ToolButton> speedButton;
+            std::shared_ptr<SpeedPopup> speedPopup;
             std::shared_ptr<ui::TimeLabel> durationLabel;
             std::shared_ptr<ui::ComboBox> timeUnitsComboBox;
             std::shared_ptr<ui::ToolButton> audioButton;
+            std::shared_ptr<AudioPopup> audioPopup;
             std::shared_ptr<ui::Label> statusLabel;
+            std::shared_ptr<time::Timer> statusTimer;
             std::shared_ptr<ui::Label> infoLabel;
             std::shared_ptr<ToolsWidget> toolsWidget;
             std::shared_ptr<ui::RowLayout> layout;
@@ -91,6 +96,7 @@ namespace tl
             std::shared_ptr<observer::ValueObserver<timeline::Playback> > playbackObserver;
             std::shared_ptr<observer::ValueObserver<otime::RationalTime> > currentTimeObserver;
             std::shared_ptr<observer::ValueObserver<timeline::CompareOptions> > compareOptionsObserver;
+            std::shared_ptr<observer::ListObserver<log::Item> > logObserver;
         };
 
         void MainWindow::_init(
@@ -181,14 +187,13 @@ namespace tl
             p.frameButtonGroup->addButton(timeEndButton);
 
             p.currentTimeEdit = ui::TimeEdit::create(p.timeUnitsModel, context);
-            auto currentTimeIncButtons = ui::IncButtons::create(context);
 
             p.speedEdit = ui::DoubleEdit::create(context, p.speedModel);
-            auto speedIncButtons = ui::DoubleIncButtons::create(p.speedModel, context);
             p.speedButton = ui::ToolButton::create(context);
             p.speedButton->setIcon("MenuArrow");
 
             p.durationLabel = ui::TimeLabel::create(p.timeUnitsModel, context);
+            p.durationLabel->setMarginRole(ui::SizeRole::MarginInside);
 
             p.timeUnitsComboBox = ui::ComboBox::create(context);
             p.timeUnitsComboBox->setItems(timeline::getTimeUnitsLabels());
@@ -199,10 +204,13 @@ namespace tl
             p.audioButton->setIcon("Volume");
 
             p.statusLabel = ui::Label::create(context);
-            p.statusLabel->setTextWidth(80);
             p.statusLabel->setHStretch(ui::Stretch::Expanding);
+            p.statusLabel->setMarginRole(ui::SizeRole::MarginInside);
+            p.statusTimer = time::Timer::create(context);
+
             p.infoLabel = ui::Label::create(context);
-            p.infoLabel->setTextWidth(40);
+            p.infoLabel->setHAlign(ui::HAlign::Right);
+            p.infoLabel->setMarginRole(ui::SizeRole::MarginInside);
 
             p.toolsWidget = ToolsWidget::create(app, context);
             p.toolsWidget->setVisible(false);
@@ -222,10 +230,13 @@ namespace tl
             p.viewToolBar->setParent(hLayout);
             ui::Divider::create(ui::Orientation::Horizontal, context, hLayout);
             p.toolsToolBar->setParent(hLayout);
+            ui::Divider::create(ui::Orientation::Vertical, context, p.layout);
             auto splitter = ui::Splitter::create(ui::Orientation::Vertical, context, p.layout);
             splitter->setSplit(.7F);
+            splitter->setSpacingRole(ui::SizeRole::None);
             auto splitter2 = ui::Splitter::create(ui::Orientation::Horizontal, context, splitter);
             splitter2->setSplit(.8F);
+            splitter2->setSpacingRole(ui::SizeRole::None);
             p.timelineViewport->setParent(splitter2);
             p.toolsWidget->setParent(splitter2);
             p.timelineWidget->setParent(splitter);
@@ -242,23 +253,19 @@ namespace tl
             framePrevButton->setParent(hLayout2);
             frameNextButton->setParent(hLayout2);
             timeEndButton->setParent(hLayout2);
-            hLayout2 = ui::HorizontalLayout::create(context, hLayout);
-            hLayout2->setSpacingRole(ui::SizeRole::SpacingTool);
-            p.currentTimeEdit->setParent(hLayout2);
-            currentTimeIncButtons->setParent(hLayout2);
+            p.currentTimeEdit->setParent(hLayout);
             hLayout2 = ui::HorizontalLayout::create(context, hLayout);
             hLayout2->setSpacingRole(ui::SizeRole::SpacingTool);
             p.speedEdit->setParent(hLayout2);
-            speedIncButtons->setParent(hLayout2);
             p.speedButton->setParent(hLayout2);
             p.durationLabel->setParent(hLayout);
             p.timeUnitsComboBox->setParent(hLayout);
             p.audioButton->setParent(hLayout);
             ui::Divider::create(ui::Orientation::Vertical, context, p.layout);
             hLayout = ui::HorizontalLayout::create(context, p.layout);
-            hLayout->setMarginRole(ui::SizeRole::MarginInside);
-            hLayout->setSpacingRole(ui::SizeRole::SpacingSmall);
+            hLayout->setSpacingRole(ui::SizeRole::None);
             p.statusLabel->setParent(hLayout);
+            ui::Divider::create(ui::Orientation::Horizontal, context, hLayout);
             p.infoLabel->setParent(hLayout);
 
             _viewportUpdate();
@@ -270,23 +277,6 @@ namespace tl
                     if (!_p->players.empty() && _p->players[0])
                     {
                         _p->players[0]->seek(value);
-                    }
-                });
-
-            currentTimeIncButtons->setIncCallback(
-                [this]
-                {
-                    if (!_p->players.empty() && _p->players[0])
-                    {
-                        _p->players[0]->frameNext();
-                    }
-                });
-            currentTimeIncButtons->setDecCallback(
-                [this]
-                {
-                    if (!_p->players.empty() && _p->players[0])
-                    {
-                        _p->players[0]->framePrev();
                     }
                 });
 
@@ -329,6 +319,18 @@ namespace tl
                     }
                 });
 
+            p.speedButton->setPressedCallback(
+                [this]
+                {
+                    _showSpeedPopup();
+                });
+
+            p.audioButton->setPressedCallback(
+                [this]
+                {
+                    _showAudioPopup();
+                });
+
             p.playersObserver = observer::ListObserver<std::shared_ptr<timeline::Player> >::create(
                 app->observeActivePlayers(),
                 [this](const std::vector<std::shared_ptr<timeline::Player> >& value)
@@ -351,6 +353,13 @@ namespace tl
                 [this](const timeline::CompareOptions& value)
                 {
                     _viewportUpdate();
+                });
+
+            p.logObserver = observer::ListObserver<log::Item>::create(
+                context->getLogSystem()->observeLog(),
+                [this](const std::vector<log::Item>& value)
+                {
+                    _statusUpdate(value);
                 });
         }
 
@@ -455,6 +464,89 @@ namespace tl
             }
         }
 
+        void MainWindow::_showSpeedPopup()
+        {
+            TLRENDER_P();
+            if (auto context = _context.lock())
+            {
+                if (auto app = p.app.lock())
+                {
+                    if (auto eventLoop = getEventLoop().lock())
+                    {
+                        if (!p.speedPopup)
+                        {
+                            const double defaultSpeed =
+                                !p.players.empty() && p.players[0] ?
+                                p.players[0]->getDefaultSpeed() :
+                                0.0;
+                            p.speedPopup = SpeedPopup::create(defaultSpeed, context);
+                            p.speedPopup->open(eventLoop, p.speedButton->getGeometry());
+                            auto weak = std::weak_ptr<MainWindow>(std::dynamic_pointer_cast<MainWindow>(shared_from_this()));
+                            p.speedPopup->setCallback(
+                                [weak](double value)
+                                {
+                                    if (auto widget = weak.lock())
+                                    {
+                                        if (!widget->_p->players.empty() &&
+                                            widget->_p->players[0])
+                                        {
+                                            widget->_p->players[0]->setSpeed(value);
+                                        }
+                                        widget->_p->speedPopup->close();
+                                    }
+                                });
+                            p.speedPopup->setCloseCallback(
+                                [weak]
+                                {
+                                    if (auto widget = weak.lock())
+                                    {
+                                        widget->_p->speedPopup.reset();
+                                    }
+                                });
+                        }
+                        else
+                        {
+                            p.speedPopup->close();
+                            p.speedPopup.reset();
+                        }
+                    }
+                }
+            }
+        }
+
+        void MainWindow::_showAudioPopup()
+        {
+            TLRENDER_P();
+            if (auto context = _context.lock())
+            {
+                if (auto app = p.app.lock())
+                {
+                    if (auto eventLoop = getEventLoop().lock())
+                    {
+                        if (!p.audioPopup)
+                        {
+                            p.audioPopup = AudioPopup::create(app, context);
+                            p.audioPopup->open(eventLoop, p.audioButton->getGeometry());
+                            auto weak = std::weak_ptr<MainWindow>(std::dynamic_pointer_cast<MainWindow>(shared_from_this()));
+                            p.audioPopup->setCloseCallback(
+                                [weak]
+                                {
+                                    if (auto widget = weak.lock())
+                                    {
+                                        widget->_p->audioPopup.reset();
+                                    }
+                                });
+                        }
+                        else
+                        {
+                            p.audioPopup->close();
+                            p.audioPopup.reset();
+                        }
+                    }
+                }
+            }
+        }
+
         void MainWindow::_viewportUpdate()
         {
             TLRENDER_P();
@@ -462,6 +554,27 @@ namespace tl
             {
                 p.timelineViewport->setCompareOptions(
                     app->getFilesModel()->getCompareOptions());
+            }
+        }
+
+        void MainWindow::_statusUpdate(const std::vector<log::Item>& value)
+        {
+            TLRENDER_P();
+            for (const auto& i : value)
+            {
+                switch (i.type)
+                {
+                case log::Type::Error:
+                    p.statusLabel->setText(log::toString(i));
+                    p.statusTimer->start(
+                        std::chrono::seconds(5),
+                        [this]
+                        {
+                            _p->statusLabel->setText(std::string());
+                        });
+                        break;
+                default: break;
+                }
             }
         }
 
@@ -473,7 +586,24 @@ namespace tl
             {
                 const file::Path& path = p.players[0]->getPath();
                 const io::Info& info = p.players[0]->getIOInfo();
-                text = string::Format("{0}").arg(path.get(-1, false));
+                std::vector<std::string> s;
+                s.push_back(path.get(-1, false));
+                if (!info.video.empty())
+                {
+                    s.push_back(std::string(
+                        string::Format("V: {0} {1}").
+                        arg(info.video[0].size).
+                        arg(info.video[0].pixelType)));
+                }
+                if (info.audio.isValid())
+                {
+                    s.push_back(std::string(
+                        string::Format("A: {0} {1} {2}").
+                        arg(info.audio.channelCount).
+                        arg(info.audio.dataType).
+                        arg(info.audio.sampleRate / 1000)));
+                }
+                text = string::join(s, ", ");
             }
             p.infoLabel->setText(text);
         }

@@ -25,32 +25,8 @@ namespace tl
     namespace play_gl
     {
         class MainWindow;
+        class Settings;
         class ToolsModel;
-
-        //! Application options.
-        struct Options
-        {
-            std::string compareFileName;
-            timeline::CompareOptions compareOptions;
-            imaging::Size windowSize = imaging::Size(1280, 720);
-            bool fullscreen = false;
-            bool hud = true;
-            double speed = 0.0;
-            timeline::Playback playback = timeline::Playback::Stop;
-            timeline::Loop loop = timeline::Loop::Loop;
-            otime::RationalTime seek = time::invalidTime;
-            otime::TimeRange inOutRange = time::invalidTimeRange;
-            timeline::ColorConfigOptions colorConfigOptions;
-            timeline::LUTOptions lutOptions;
-#if defined(TLRENDER_USD)
-            size_t usdRenderWidth = usd::RenderOptions().renderWidth;
-            float usdComplexity = usd::RenderOptions().complexity;
-            usd::DrawMode usdDrawMode = usd::RenderOptions().drawMode;
-            bool usdEnableLighting = usd::RenderOptions().enableLighting;
-            size_t usdStageCache = usd::RenderOptions().stageCacheCount;
-            size_t usdDiskCache = usd::RenderOptions().diskCacheByteCount / memory::gigabyte;
-#endif // TLRENDER_USD
-        };
 
         //! Application.
         class App : public gl::IApp
@@ -81,6 +57,12 @@ namespace tl
 
             //! Open a file dialog.
             void openDialog();
+
+            //! Open a file and separate audio dialog.
+            void openSeparateAudioDialog();
+
+            //! Get the settings.
+            const std::shared_ptr<Settings>& getSettings() const;
 
             //! Get the files model.
             const std::shared_ptr<play::FilesModel>& getFilesModel() const;

@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include <tlPlayQtApp/ToolWidget.h>
+#include <tlPlayQtApp/IToolWidget.h>
 
 #include <QDockWidget>
 
@@ -18,14 +18,12 @@ namespace tl
     namespace play_qt
     {
         //! Messages tool.
-        class MessagesTool : public ToolWidget
+        class MessagesTool : public IToolWidget
         {
             Q_OBJECT
 
         public:
-            MessagesTool(
-                const std::shared_ptr<system::Context>&,
-                QWidget* parent = nullptr);
+            MessagesTool(App*, QWidget* parent = nullptr);
 
             ~MessagesTool() override;
 

@@ -17,7 +17,6 @@ namespace tl
         TLRENDER_ENUM_IMPL(
             Tool,
             "Files",
-            "Compare",
             "Color",
             "Info",
             "Audio",
@@ -32,7 +31,6 @@ namespace tl
             const std::array<std::string, static_cast<size_t>(Tool::Count)> data =
             {
                 "Files",
-                "Compare",
                 "Color",
                 "Information",
                 "Audio",
@@ -49,7 +47,6 @@ namespace tl
             const std::array<std::string, static_cast<size_t>(Tool::Count)> data =
             {
                 "Files",
-                "Compare",
                 "Color",
                 "Info",
                 "Audio",
@@ -71,11 +68,25 @@ namespace tl
                 ui::Key::F4,
                 ui::Key::F5,
                 ui::Key::F6,
-                ui::Key::F9,
-                ui::Key::F10,
-                ui::Key::F11
+                ui::Key::F7,
+                ui::Key::F8
             };
             return data[static_cast<size_t>(value)];
+        }
+
+        std::vector<Tool> toolsInToolbar()
+        {
+            const std::vector<Tool> out
+            {
+                Tool::Files,
+                Tool::Color,
+                Tool::Info,
+                Tool::Audio,
+                Tool::Devices,
+                Tool::Settings,
+                Tool::Messages
+            };
+            return out;
         }
 
         struct ToolsModel::Private

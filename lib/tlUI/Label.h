@@ -32,7 +32,7 @@ namespace tl
 
             //! Create a new widget.
             static std::shared_ptr<Label> create(
-                const std::string&,
+                const std::string& text,
                 const std::shared_ptr<system::Context>&,
                 const std::shared_ptr<IWidget>& parent = nullptr);
 
@@ -59,7 +59,7 @@ namespace tl
                 const DrawEvent&) override;
 
         private:
-            std::string _getText() const;
+            void _textUpdate();
             TLRENDER_PRIVATE();
         };
     }

@@ -36,10 +36,8 @@ namespace tl
             qtwidget::SearchWidget* tagsSearchWidget = nullptr;
         };
 
-        InfoTool::InfoTool(
-            App* app,
-            QWidget* parent) :
-            ToolWidget(parent),
+        InfoTool::InfoTool(App* app, QWidget* parent) :
+            IToolWidget(app, parent),
             _p(new Private)
         {
             TLRENDER_P();
@@ -79,8 +77,9 @@ namespace tl
                 p.tagsProxyModel,
                 SLOT(setFilterFixedString(const QString&)));
 
-            app->settingsObject()->setDefaultValue("InfoTool/TagsHeader", QByteArray());
-            auto ba = app->settingsObject()->value("InfoTool/TagsHeader").toByteArray();
+            auto settingsObject = app->settingsObject();
+            settingsObject->setDefaultValue("InfoTool/TagsHeader", QByteArray());
+            auto ba = settingsObject->value("InfoTool/TagsHeader").toByteArray();
             if (!ba.isEmpty())
             {
                 p.tagsView->header()->restoreState(ba);
@@ -110,7 +109,7 @@ namespace tl
             setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 
             auto dockTitleBar = new DockTitleBar;
-            dockTitleBar->setText(tr("INFORMATION"));
+            dockTitleBar->setText(tr("Information"));
             dockTitleBar->setIcon(QIcon(":/Icons/Info.svg"));
             auto dockWidget = new QDockWidget;
             setTitleBarWidget(dockTitleBar);

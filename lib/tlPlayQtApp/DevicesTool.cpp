@@ -63,10 +63,8 @@ namespace tl
             qtwidget::FloatSlider* maxFALLSlider = nullptr;
         };
 
-        DevicesTool::DevicesTool(
-            App* app,
-            QWidget* parent) :
-            ToolWidget(parent),
+        DevicesTool::DevicesTool(App* app, QWidget* parent) :
+            IToolWidget(app, parent),
             _p(new Private)
         {
             TLRENDER_P();
@@ -444,7 +442,7 @@ namespace tl
             setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 
             auto dockTitleBar = new DockTitleBar;
-            dockTitleBar->setText(tr("DEVICES"));
+            dockTitleBar->setText(tr("Devices"));
             dockTitleBar->setIcon(QIcon(":/Icons/Devices.svg"));
             auto dockWidget = new QDockWidget;
             setTitleBarWidget(dockTitleBar);

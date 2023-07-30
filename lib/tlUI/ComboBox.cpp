@@ -50,7 +50,7 @@ namespace tl
                 const std::shared_ptr<system::Context>& context,
                 const std::shared_ptr<IWidget>& parent)
             {
-                IPopup::_init("tl::ui::ComboBoxMenu", context, parent);
+                IMenuPopup::_init("tl::ui::ComboBoxMenu", context, parent);
 
                 std::vector<std::shared_ptr<ListButton> > buttons;
                 _buttonGroup = ButtonGroup::create(ButtonGroupType::Click, context);
@@ -63,12 +63,13 @@ namespace tl
                     _buttonGroup->addButton(button);
                 }
 
-                _layout = VerticalLayout::create(context, shared_from_this());
+                _layout = VerticalLayout::create(context);
                 _layout->setSpacingRole(SizeRole::None);
                 for (const auto& button : buttons)
                 {
                     button->setParent(_layout);
                 }
+                setWidget(_layout);
                 
                 auto weak = std::weak_ptr<ComboBoxMenu>(std::dynamic_pointer_cast<ComboBoxMenu>(shared_from_this()));
                 _buttonGroup->setClickedCallback(
@@ -179,11 +180,22 @@ namespace tl
         {}
 
         std::shared_ptr<ComboBox> ComboBox::create(
+            const std::shared_ptr<system::Context>&context,
+            const std::shared_ptr<IWidget>&parent)
+        {
+            auto out = std::shared_ptr<ComboBox>(new ComboBox);
+            out->_init(context, parent);
+            return out;
+        }
+
+        std::shared_ptr<ComboBox> ComboBox::create(
+            const std::vector<std::string>& items,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
         {
             auto out = std::shared_ptr<ComboBox>(new ComboBox);
             out->_init(context, parent);
+            out->setItems(items);
             return out;
         }
 
@@ -432,7 +444,8 @@ namespace tl
                     event.style->getColorRole(ColorRole::Hover));
             }
 
-            int x = g2.x() + p.size.margin;
+            const math::BBox2i g3 = g2.margin(-p.size.margin);
+            int x = g3.x();
             if (p.iconImage)
             {
                 const imaging::Size& iconSize = p.iconImage->getSize();
@@ -440,7 +453,7 @@ namespace tl
                     p.iconImage,
                     math::BBox2i(
                         x,
-                        g2.y() + g2.h() / 2 - iconSize.h / 2,
+                        g3.y() + g3.h() / 2 - iconSize.h / 2,
                         iconSize.w,
                         iconSize.h),
                     event.style->getColorRole(enabled ?
@@ -457,7 +470,7 @@ namespace tl
                 }
                 const math::Vector2i pos(
                     x + p.size.margin,
-                    g2.y() + g2.h() / 2 - p.size.textSize.y / 2 +
+                    g3.y() + g3.h() / 2 - p.size.textSize.y / 2 +
                     p.size.fontMetrics.ascender);
                 event.render->drawText(
                     p.draw.glyphs,
@@ -474,8 +487,8 @@ namespace tl
                 event.render->drawImage(
                     p.arrowIconImage,
                     math::BBox2i(
-                        x,
-                        g2.y() + g2.h() / 2 - iconSize.h / 2,
+                        g3.x() + g3.w() - iconSize.w,
+                        g3.y() + g3.h() / 2 - iconSize.h / 2,
                         iconSize.w,
                         iconSize.h),
                     event.style->getColorRole(enabled ?
