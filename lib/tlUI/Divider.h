@@ -10,7 +10,7 @@ namespace tl
 {
     namespace ui
     {
-        //! Divider.
+        //! Divider widget.
         class Divider : public IWidget
         {
             TLRENDER_NON_COPYABLE(Divider);

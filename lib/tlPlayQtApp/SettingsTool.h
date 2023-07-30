@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include <tlPlayQtApp/ToolWidget.h>
+#include <tlPlayQtApp/IToolWidget.h>
 
 #include <tlQt/TimeObject.h>
 
@@ -44,6 +44,20 @@ namespace tl
             TLRENDER_PRIVATE();
         };
 
+        //! File browser settings widget.
+        class FileBrowserSettingsWidget : public QWidget
+        {
+            Q_OBJECT
+
+        public:
+            FileBrowserSettingsWidget(SettingsObject*, QWidget* parent = nullptr);
+
+            ~FileBrowserSettingsWidget() override;
+
+        private:
+            TLRENDER_PRIVATE();
+        };
+
         //! Performance settings widget.
         class PerformanceSettingsWidget : public QWidget
         {
@@ -73,15 +87,12 @@ namespace tl
         };
 
         //! Settings tool.
-        class SettingsTool : public ToolWidget
+        class SettingsTool : public IToolWidget
         {
             Q_OBJECT
 
         public:
-            SettingsTool(
-                SettingsObject*,
-                qt::TimeObject*,
-                QWidget* parent = nullptr);
+            SettingsTool(App*, QWidget* parent = nullptr);
         };
 
         //! Settings tool dock widget.

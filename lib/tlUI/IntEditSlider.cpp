@@ -4,9 +4,7 @@
 
 #include <tlUI/IntEditSlider.h>
 
-#include <tlUI/IncButtons.h>
 #include <tlUI/IntEdit.h>
-#include <tlUI/IntModel.h>
 #include <tlUI/IntSlider.h>
 #include <tlUI/RowLayout.h>
 
@@ -18,18 +16,19 @@ namespace tl
         {
             std::shared_ptr<IntModel> model;
             std::shared_ptr<IntEdit> edit;
-            std::shared_ptr<IntIncButtons> incButtons;
             std::shared_ptr<IntSlider> slider;
             std::shared_ptr<HorizontalLayout> layout;
         };
 
         void IntEditSlider::_init(
-            const std::shared_ptr<IntModel>& model,
             const std::shared_ptr<system::Context>& context,
+            const std::shared_ptr<IntModel>& model,
             const std::shared_ptr<IWidget>& parent)
         {
             IWidget::_init("tl::ui::IntEditSlider", context, parent);
             TLRENDER_P();
+
+            setHStretch(Stretch::Expanding);
 
             p.model = model;
             if (!p.model)
@@ -37,16 +36,13 @@ namespace tl
                 p.model = IntModel::create(context);
             }
 
-            p.edit = IntEdit::create(model, context);
+            p.edit = IntEdit::create(context, p.model);
 
-            p.incButtons = IntIncButtons::create(model, context);
-
-            p.slider = IntSlider::create(model, context);
+            p.slider = IntSlider::create(context, p.model);
 
             p.layout = HorizontalLayout::create(context, shared_from_this());
             p.layout->setSpacingRole(SizeRole::SpacingTool);
             p.edit->setParent(p.layout);
-            p.incButtons->setParent(p.layout);
             p.slider->setParent(p.layout);
             p.slider->setHStretch(Stretch::Expanding);
         }
@@ -59,13 +55,18 @@ namespace tl
         {}
 
         std::shared_ptr<IntEditSlider> IntEditSlider::create(
-            const std::shared_ptr<IntModel>& model,
             const std::shared_ptr<system::Context>& context,
+            const std::shared_ptr<IntModel>& model,
             const std::shared_ptr<IWidget>& parent)
         {
             auto out = std::shared_ptr<IntEditSlider>(new IntEditSlider);
-            out->_init(model, context, parent);
+            out->_init(context, model, parent);
             return out;
+        }
+
+        const std::shared_ptr<IntModel>& IntEditSlider::getModel() const
+        {
+            return _p->model;
         }
 
         void IntEditSlider::setDigits(int value)

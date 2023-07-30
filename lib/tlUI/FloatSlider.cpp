@@ -5,7 +5,6 @@
 #include <tlUI/FloatSlider.h>
 
 #include <tlUI/DrawUtil.h>
-#include <tlUI/FloatModel.h>
 
 namespace tl
 {
@@ -36,8 +35,8 @@ namespace tl
         };
 
         void FloatSlider::_init(
-            const std::shared_ptr<FloatModel>& model,
             const std::shared_ptr<system::Context>& context,
+            const std::shared_ptr<FloatModel>& model,
             const std::shared_ptr<IWidget>& parent)
         {
             IWidget::_init("tl::ui::FloatSlider", context, parent);
@@ -45,6 +44,7 @@ namespace tl
 
             setMouseHover(true);
             setAcceptsKeyFocus(true);
+            setHStretch(Stretch::Expanding);
 
             p.model = model;
             if (!p.model)
@@ -77,12 +77,12 @@ namespace tl
         {}
 
         std::shared_ptr<FloatSlider> FloatSlider::create(
-            const std::shared_ptr<FloatModel>& model,
             const std::shared_ptr<system::Context>& context,
+            const std::shared_ptr<FloatModel>& model,
             const std::shared_ptr<IWidget>& parent)
         {
             auto out = std::shared_ptr<FloatSlider>(new FloatSlider);
-            out->_init(model, context, parent);
+            out->_init(context, model, parent);
             return out;
         }
 
@@ -119,12 +119,11 @@ namespace tl
             p.size.border = event.style->getSizeRole(SizeRole::Border, event.displayScale);
             p.size.handle = event.style->getSizeRole(SizeRole::Handle, event.displayScale);
 
-            auto fontInfo = imaging::FontInfo();
-            fontInfo.size *= event.displayScale;
+            auto fontInfo = event.style->getFontRole(FontRole::Label, event.displayScale);
             p.size.fontMetrics = event.fontSystem->getMetrics(fontInfo);
 
             _sizeHint.x =
-                event.style->getSizeRole(SizeRole::ScrollArea, event.displayScale) +
+                event.style->getSizeRole(SizeRole::Slider, event.displayScale) +
                 p.size.border * 6;
             _sizeHint.y =
                 p.size.fontMetrics.lineHeight +

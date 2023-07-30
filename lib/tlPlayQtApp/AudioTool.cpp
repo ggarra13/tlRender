@@ -70,8 +70,8 @@ namespace tl
             AudioOffsetWidget* offsetWidget = nullptr;
         };
 
-        AudioTool::AudioTool(QWidget* parent) :
-            ToolWidget(parent),
+        AudioTool::AudioTool(App* app, QWidget* parent) :
+            IToolWidget(app, parent),
             _p(new Private)
         {
             TLRENDER_P();
@@ -105,7 +105,7 @@ namespace tl
             setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 
             auto dockTitleBar = new DockTitleBar;
-            dockTitleBar->setText(tr("AUDIO"));
+            dockTitleBar->setText(tr("Audio"));
             dockTitleBar->setIcon(QIcon(":/Icons/Audio.svg"));
             auto dockWidget = new QDockWidget;
             setTitleBarWidget(dockTitleBar);

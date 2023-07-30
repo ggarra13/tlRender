@@ -2,6 +2,8 @@
 // Copyright (c) 2021-2023 Darby Johnston
 // All rights reserved.
 
+#pragma once
+
 #include <tlUI/Menu.h>
 
 #include <tlPlay/FilesModel.h>
@@ -36,7 +38,7 @@ namespace tl
         private:
             void _filesUpdate(
                 const std::vector<std::shared_ptr<play::FilesModelItem> >&);
-            void _currentUpdate(const std::vector<int>&);
+            void _bUpdate(const std::vector<int>&);
             void _compareUpdate(const timeline::CompareOptions&);
 
             TLRENDER_PRIVATE();

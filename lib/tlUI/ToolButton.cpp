@@ -48,11 +48,22 @@ namespace tl
         {}
 
         std::shared_ptr<ToolButton> ToolButton::create(
+            const std::shared_ptr<system::Context>&context,
+            const std::shared_ptr<IWidget>&parent)
+        {
+            auto out = std::shared_ptr<ToolButton>(new ToolButton);
+            out->_init(context, parent);
+            return out;
+        }
+
+        std::shared_ptr<ToolButton> ToolButton::create(
+            const std::string& text,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
         {
             auto out = std::shared_ptr<ToolButton>(new ToolButton);
             out->_init(context, parent);
+            out->setText(text);
             return out;
         }
 
@@ -102,6 +113,12 @@ namespace tl
                 }
                 _sizeHint.x = p.size.textSize.x + p.size.margin * 2;
                 _sizeHint.y = p.size.fontMetrics.lineHeight;
+                if (_icon.empty())
+                {
+                    const int max = std::max(_sizeHint.x, _sizeHint.y);
+                    _sizeHint.x = max;
+                    _sizeHint.y = _sizeHint.y;
+                }
             }
             if (_iconImage)
             {
@@ -152,18 +169,9 @@ namespace tl
                     math::Vector2i(),
                     event.style->getColorRole(ColorRole::KeyFocus));
             }
-            //else
-            //{
-            //    event.render->drawMesh(
-            //        border(g.margin(-p.size.border), p.size.border),
-            //        math::Vector2i(),
-            //        event.style->getColorRole(ColorRole::Border));
-            //}
 
             const math::BBox2i g2 = g.margin(-p.size.border * 2);
-            const ColorRole colorRole = _checked ?
-                ColorRole::Checked :
-                _buttonRole;
+            const ColorRole colorRole = _checked ? _checkedRole : _buttonRole;
             if (colorRole != ColorRole::None)
             {
                 event.render->drawRect(
@@ -184,7 +192,8 @@ namespace tl
                     event.style->getColorRole(ColorRole::Hover));
             }
 
-            int x = g2.x() + p.size.margin;
+            const math::BBox2i g3 = g2.margin(-p.size.margin);
+            int x = g3.x();
             if (_iconImage)
             {
                 const imaging::Size& iconSize = _iconImage->getSize();
@@ -192,7 +201,7 @@ namespace tl
                   _iconImage,
                   math::BBox2i(
                       x,
-                      g2.y() + g2.h() / 2 - iconSize.h / 2,
+                      g3.y() + g3.h() / 2 - iconSize.h / 2,
                       iconSize.w,
                       iconSize.h),
                   event.style->getColorRole(enabled ?
@@ -207,9 +216,12 @@ namespace tl
                 {
                     p.draw.glyphs = event.fontSystem->getGlyphs(_text, p.size.fontInfo);
                 }
+                const int x2 = !_icon.empty() ?
+                    (x + p.size.margin) :
+                    (g3.x() + g3.w() / 2 - p.size.textSize.x / 2);
                 const math::Vector2i pos(
-                    x + p.size.margin,
-                    g2.y() + g2.h() / 2 - p.size.textSize.y / 2 +
+                    x2,
+                    g3.y() + g3.h() / 2 - p.size.textSize.y / 2 +
                     p.size.fontMetrics.ascender);
                 event.render->drawText(
                     p.draw.glyphs,

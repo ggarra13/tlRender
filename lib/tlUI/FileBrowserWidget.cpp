@@ -4,7 +4,9 @@
 
 #include <tlUI/FileBrowserPrivate.h>
 
+#include <tlUI/CheckBox.h>
 #include <tlUI/ComboBox.h>
+#include <tlUI/Divider.h>
 #include <tlUI/Label.h>
 #include <tlUI/LineEdit.h>
 #include <tlUI/PushButton.h>
@@ -14,7 +16,10 @@
 #include <tlUI/Splitter.h>
 #include <tlUI/ToolButton.h>
 
+#include <tlIO/IOSystem.h>
+
 #include <tlCore/File.h>
+#include <tlCore/StringFormat.h>
 
 #include <list>
 
@@ -25,8 +30,8 @@ namespace tl
         struct FileBrowserWidget::Private
         {
             file::Path path;
-            file::ListOptions listOptions;
             std::shared_ptr<RecentFilesModel> recentModel;
+            std::vector<std::string> extensions;
 
             std::shared_ptr<ToolButton> upButton;
             std::shared_ptr<ToolButton> cwdButton;
@@ -35,10 +40,14 @@ namespace tl
             std::shared_ptr<ScrollWidget> pathsScrollWidget;
             std::shared_ptr<DirectoryWidget> directoryWidget;
             std::shared_ptr<ScrollWidget> directoryScrollWidget;
-            std::shared_ptr<Splitter> splitter;
+            std::shared_ptr<LineEdit> filterEdit;
+            std::shared_ptr<ToolButton> filterClearButton;
+            std::shared_ptr<ComboBox> extensionsComboBox;
             std::shared_ptr<ComboBox> sortComboBox;
+            std::shared_ptr<CheckBox> reverseSortCheckBox;
             std::shared_ptr<PushButton> okButton;
             std::shared_ptr<PushButton> cancelButton;
+            std::shared_ptr<Splitter> splitter;
             std::shared_ptr<VerticalLayout> layout;
 
             std::function<void(const file::Path&)> fileCallback;
@@ -53,9 +62,26 @@ namespace tl
             IWidget::_init("tl::ui::FileBrowserWidget", context, parent);
             TLRENDER_P();
 
+            setHStretch(Stretch::Expanding);
+            setVStretch(Stretch::Expanding);
+            setMouseHover(true);
+
             p.path = file::Path(path);
 
             p.recentModel = RecentFilesModel::create(context);
+
+            std::vector<std::string> extensionsLabels;
+            if (auto context = _context.lock())
+            {
+                auto ioSystem = context->getSystem<io::System>();
+                for (const auto& extension : ioSystem->getExtensions())
+                {
+                    p.extensions.push_back(extension);
+                    extensionsLabels.push_back(string::Format("*{0}").arg(extension));
+                }
+            }
+            p.extensions.push_back(std::string());
+            extensionsLabels.push_back("*.*");
 
             p.upButton = ToolButton::create(context);
             p.upButton->setIcon("DirectoryUp");
@@ -73,8 +99,20 @@ namespace tl
             p.directoryScrollWidget->setWidget(p.directoryWidget);
             p.directoryScrollWidget->setVStretch(Stretch::Expanding);
 
-            p.sortComboBox = ComboBox::create(context);
-            p.sortComboBox->setItems(file::getListSortLabels());
+            p.filterEdit = LineEdit::create(context);
+            
+            p.filterClearButton = ToolButton::create(context);
+            p.filterClearButton->setIcon("Clear");
+
+            p.extensionsComboBox = ComboBox::create(extensionsLabels, context);
+            if (!extensionsLabels.empty())
+            {
+                p.extensionsComboBox->setCurrentIndex(extensionsLabels.size() - 1);
+            }
+
+            p.sortComboBox = ComboBox::create(file::getListSortLabels(), context);
+
+            p.reverseSortCheckBox = CheckBox::create("Reverse sort", context);
 
             p.okButton = PushButton::create(context);
             p.okButton->setText("Ok");
@@ -83,24 +121,40 @@ namespace tl
             p.cancelButton->setText("Cancel");
 
             p.layout = VerticalLayout::create(context, shared_from_this());
-            p.layout->setSpacingRole(SizeRole::SpacingSmall);
-            p.layout->setMarginRole(SizeRole::MarginSmall);
-            auto hLayout = HorizontalLayout::create(context, p.layout);
+            p.layout->setSpacingRole(SizeRole::None);
+            auto label = Label::create("File Browser", context, p.layout);
+            label->setBackgroundRole(ColorRole::Button);
+            label->setMarginRole(SizeRole::MarginSmall);
+            Divider::create(Orientation::Vertical, context, p.layout);
+            auto vLayout = VerticalLayout::create(context, p.layout);
+            vLayout->setSpacingRole(SizeRole::SpacingSmall);
+            vLayout->setMarginRole(SizeRole::MarginSmall);
+            vLayout->setVStretch(Stretch::Expanding);
+            auto hLayout = HorizontalLayout::create(context, vLayout);
             hLayout->setSpacingRole(SizeRole::SpacingSmall);
             p.upButton->setParent(hLayout);
             p.pathEdit->setParent(hLayout);
-            p.splitter = Splitter::create(Orientation::Horizontal, context, p.layout);
+            p.splitter = Splitter::create(Orientation::Horizontal, context, vLayout);
             p.splitter->setSplit(0.2);
-            p.splitter->setSpacingRole(SizeRole::SpacingSmall);
             p.pathsScrollWidget->setParent(p.splitter);
             p.directoryScrollWidget->setParent(p.splitter);
-            hLayout = HorizontalLayout::create(context, p.layout);
+            hLayout = HorizontalLayout::create(context, vLayout);
             hLayout->setSpacingRole(SizeRole::SpacingSmall);
-            auto label = Label::create(context);
-            label->setText("Sort:");
-            label->setParent(hLayout);
+            label = Label::create("Filter:", context, hLayout);
+            label->setMarginRole(SizeRole::MarginInside);
+            auto hLayout2 = HorizontalLayout::create(context, hLayout);
+            hLayout2->setSpacingRole(SizeRole::SpacingTool);
+            p.filterEdit->setParent(hLayout2);
+            p.filterClearButton->setParent(hLayout2);
+            label = Label::create("Extensions:", context, hLayout);
+            label->setMarginRole(SizeRole::MarginInside);
+            p.extensionsComboBox->setParent(hLayout);
+            label = Label::create("Sort:", context, hLayout);
+            label->setMarginRole(SizeRole::MarginInside);
             p.sortComboBox->setParent(hLayout);
-            auto spacer = Spacer::create(context, hLayout);
+            p.reverseSortCheckBox->setParent(hLayout);
+            auto spacer = Spacer::create(Orientation::Horizontal, context, hLayout);
+            spacer->setSpacingRole(SizeRole::None);
             spacer->setHStretch(Stretch::Expanding);
             p.okButton->setParent(hLayout);
             p.cancelButton->setParent(hLayout);
@@ -173,11 +227,48 @@ namespace tl
                     _pathUpdate();
                 });
 
+            p.filterEdit->setTextChangedCallback(
+                [this](const std::string& value)
+                {
+                    FileBrowserOptions options = _p->directoryWidget->getOptions();
+                    options.filter = value;
+                    _p->directoryWidget->setOptions(options);
+                });
+
+            p.filterClearButton->setClickedCallback(
+                [this]
+                {
+                    FileBrowserOptions options = _p->directoryWidget->getOptions();
+                    options.filter = std::string();
+                    _p->directoryWidget->setOptions(options);
+                    _p->filterEdit->clearText();
+                });
+
+            p.extensionsComboBox->setIndexCallback(
+                [this](int value)
+                {
+                    if (value >= 0 && value < _p->extensions.size())
+                    {
+                        FileBrowserOptions options = _p->directoryWidget->getOptions();
+                        options.extension = _p->extensions[value];
+                        _p->directoryWidget->setOptions(options);
+                    }
+                });
+
             p.sortComboBox->setIndexCallback(
                 [this](int value)
                 {
-                    _p->listOptions.sort = static_cast<file::ListSort>(value);
-                    _pathUpdate();
+                    FileBrowserOptions options = _p->directoryWidget->getOptions();
+                    options.list.sort = static_cast<file::ListSort>(value);
+                    _p->directoryWidget->setOptions(options);
+                });
+
+            p.reverseSortCheckBox->setCheckedCallback(
+                [this](bool value)
+                {
+                    FileBrowserOptions options = _p->directoryWidget->getOptions();
+                    options.list.reverseSort = value;
+                    _p->directoryWidget->setOptions(options);
                 });
 
             p.okButton->setClickedCallback(
@@ -228,10 +319,40 @@ namespace tl
             _p->cancelCallback = value;
         }
 
+        const file::Path& FileBrowserWidget::getPath() const
+        {
+            return _p->path;
+        }
+        
+        const FileBrowserOptions& FileBrowserWidget::getOptions() const
+        {
+            return _p->directoryWidget->getOptions();
+        }
+
+        void FileBrowserWidget::setOptions(const FileBrowserOptions& value)
+        {
+            TLRENDER_P();
+            p.directoryWidget->setOptions(value);
+            p.filterEdit->setText(value.filter);
+            const auto i = std::find(p.extensions.begin(), p.extensions.end(), value.extension);
+            if (i != p.extensions.end())
+            {
+                p.extensionsComboBox->setCurrentIndex(i - p.extensions.begin());
+            }
+            p.sortComboBox->setCurrentIndex(static_cast<int>(value.list.sort));
+            p.reverseSortCheckBox->setChecked(value.list.reverseSort);
+        }
+
         void FileBrowserWidget::setGeometry(const math::BBox2i& value)
         {
             IWidget::setGeometry(value);
             _p->layout->setGeometry(value);
+        }
+
+        void FileBrowserWidget::sizeHintEvent(const SizeHintEvent& value)
+        {
+            IWidget::sizeHintEvent(value);
+            _sizeHint = _p->layout->getSizeHint();
         }
 
         void FileBrowserWidget::mouseMoveEvent(MouseMoveEvent& event)
@@ -253,7 +374,7 @@ namespace tl
         {
             TLRENDER_P();
             p.pathEdit->setText(p.path.get());
-            p.directoryWidget->setPath(p.path.getDirectory(), p.listOptions);
+            p.directoryWidget->setPath(p.path.getDirectory());
             p.directoryScrollWidget->setScrollPos(math::Vector2i(0, 0));
         }
     }

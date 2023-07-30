@@ -6,6 +6,8 @@
 
 #include <tlUI/DrawUtil.h>
 
+#include <tlTimeline/RenderUtil.h>
+
 namespace tl
 {
     namespace timelineui
@@ -15,7 +17,7 @@ namespace tl
             otime::TimeRange timeRange = time::invalidTimeRange;
             std::string label;
             std::string durationLabel;
-            ColorRole colorRole = ColorRole::VideoClip;
+            ui::ColorRole colorRole = ui::ColorRole::VideoClip;
             std::vector<Marker> markers;
 
             struct SizeData
@@ -43,7 +45,7 @@ namespace tl
         void IBasicItem::_init(
             const otime::TimeRange& timeRange,
             const std::string& label,
-            ColorRole colorRole,
+            ui::ColorRole colorRole,
             const std::vector<Marker>& markers,
             const std::string& name,
             const ItemData& itemData,
@@ -86,13 +88,10 @@ namespace tl
                 p.size.labelSize = event.fontSystem->getSize(p.label, fontInfo);
                 p.size.durationSize = event.fontSystem->getSize(p.durationLabel, fontInfo);
                 p.size.markerSizes.clear();
-                if (_options.showMarkers)
+                for (const auto& marker : p.markers)
                 {
-                    for (const auto& marker : p.markers)
-                    {
-                        p.size.markerSizes.push_back(
-                            event.fontSystem->getSize(marker.name, fontInfo));
-                    }
+                    p.size.markerSizes.push_back(
+                        event.fontSystem->getSize(marker.name, fontInfo));
                 }
             }
             p.size.textUpdate = false;
@@ -136,7 +135,12 @@ namespace tl
             const math::BBox2i g = _geometry.margin(-(p.size.border * 2));
             event.render->drawRect(
                 g,
-                _options.colors.find(p.colorRole)->second);
+                event.style->getColorRole(p.colorRole));
+
+            const timeline::ClipRectEnabledState clipRectEnabledState(event.render);
+            const timeline::ClipRectState clipRectState(event.render);
+            event.render->setClipRectEnabled(true);
+            event.render->setClipRect(g.intersect(drawRect));
 
             math::BBox2i labelGeometry(
                 g.min.x + p.size.margin,

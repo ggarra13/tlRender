@@ -1,17 +1,14 @@
 include(ExternalProject)
 
-set(install_cmd true)
 if(NOT DEFINED PYTHON_EXECUTABLE)
     if(WIN32)
         set(PYTHON_EXECUTABLE python)
-	cmake_path(CONVERT ${CMAKE_INSTALL_PREFIX} TO_NATIVE_PATH_LIST cmake_install_prefix)
-	set(install_cmd copy "${cmake_install_prefix}\\lib\\*.dll" "${cmake_install_prefix}\\bin")
     else()
         set(PYTHON_EXECUTABLE python3)
     endif()
 endif()
 
-set(USD_DEPS)
+set(USD_DEPS ${PYTHON_DEP})
 
 set(USD_ARGS)
 if(CMAKE_OSX_ARCHITECTURES)
@@ -34,5 +31,5 @@ ExternalProject_Add(
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ${PYTHON_EXECUTABLE} build_scripts/build_usd.py ${USD_ARGS} ${CMAKE_INSTALL_PREFIX}
     BUILD_IN_SOURCE 1
-    INSTALL_COMMAND ${install_cmd})
+    INSTALL_COMMAND "")
 

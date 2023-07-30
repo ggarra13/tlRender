@@ -4,9 +4,7 @@
 
 #include <tlUI/FloatEditSlider.h>
 
-#include <tlUI/IncButtons.h>
 #include <tlUI/FloatEdit.h>
-#include <tlUI/FloatModel.h>
 #include <tlUI/FloatSlider.h>
 #include <tlUI/RowLayout.h>
 
@@ -18,18 +16,19 @@ namespace tl
         {
             std::shared_ptr<FloatModel> model;
             std::shared_ptr<FloatEdit> edit;
-            std::shared_ptr<FloatIncButtons> incButtons;
             std::shared_ptr<FloatSlider> slider;
             std::shared_ptr<HorizontalLayout> layout;
         };
 
         void FloatEditSlider::_init(
-            const std::shared_ptr<FloatModel>& model,
             const std::shared_ptr<system::Context>& context,
+            const std::shared_ptr<FloatModel>& model,
             const std::shared_ptr<IWidget>& parent)
         {
             IWidget::_init("tl::ui::FloatEditSlider", context, parent);
             TLRENDER_P();
+
+            setHStretch(Stretch::Expanding);
 
             p.model = model;
             if (!p.model)
@@ -37,16 +36,13 @@ namespace tl
                 p.model = FloatModel::create(context);
             }
 
-            p.edit = FloatEdit::create(model, context);
+            p.edit = FloatEdit::create(context, p.model);
 
-            p.incButtons = FloatIncButtons::create(model, context);
-
-            p.slider = FloatSlider::create(model, context);
+            p.slider = FloatSlider::create(context, p.model);
 
             p.layout = HorizontalLayout::create(context, shared_from_this());
             p.layout->setSpacingRole(SizeRole::SpacingTool);
             p.edit->setParent(p.layout);
-            p.incButtons->setParent(p.layout);
             p.slider->setParent(p.layout);
             p.slider->setHStretch(ui::Stretch::Expanding);
         }
@@ -59,13 +55,18 @@ namespace tl
         {}
 
         std::shared_ptr<FloatEditSlider> FloatEditSlider::create(
-            const std::shared_ptr<FloatModel>& model,
             const std::shared_ptr<system::Context>& context,
+            const std::shared_ptr<FloatModel>& model,
             const std::shared_ptr<IWidget>& parent)
         {
             auto out = std::shared_ptr<FloatEditSlider>(new FloatEditSlider);
-            out->_init(model, context, parent);
+            out->_init(context, model, parent);
             return out;
+        }
+
+        const std::shared_ptr<FloatModel>& FloatEditSlider::getModel() const
+        {
+            return _p->model;
         }
 
         void FloatEditSlider::setDigits(int value)

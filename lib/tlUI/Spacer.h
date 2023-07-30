@@ -17,6 +17,7 @@ namespace tl
 
         protected:
             void _init(
+                Orientation,
                 const std::shared_ptr<system::Context>&,
                 const std::shared_ptr<IWidget>& parent = nullptr);
 
@@ -27,6 +28,7 @@ namespace tl
 
             //! Create a new widget.
             static std::shared_ptr<Spacer> create(
+                Orientation,
                 const std::shared_ptr<system::Context>&,
                 const std::shared_ptr<IWidget>& parent = nullptr);
 

@@ -1,14 +1,19 @@
 set(HEADERS
     ButtonGroup.h
+    Bellows.h
+    CheckBox.h
     ComboBox.h
     Divider.h
     DoubleEdit.h
+    DoubleEditSlider.h
     DoubleModel.h
+    DoubleSlider.h
     DrawUtil.h
     DrivesModel.h
     Event.h
     EventLoop.h
     FileBrowser.h
+    FileEdit.h
     FloatEdit.h
     FloatEditSlider.h
     FloatModel.h
@@ -24,6 +29,7 @@ set(HEADERS
     IWidgetInline.h
     IWidgetOptions.h
     IconLibrary.h
+    Icon.h
     IncButtons.h
     Init.h
     IntEdit.h
@@ -56,18 +62,24 @@ set(HEADERS_PRIVATE
 
 set(SOURCE
     ButtonGroup.cpp
+    Bellows.cpp
+    CheckBox.cpp
     ComboBox.cpp
     Divider.cpp
     DoubleEdit.cpp
+    DoubleEditSlider.cpp
     DoubleModel.cpp
+    DoubleSlider.cpp
     DrawUtil.cpp
     DrivesModel.cpp
     Event.cpp
     EventLoop.cpp
     FileBrowser.cpp
+    FileEdit.cpp
     FileBrowserButton.cpp
     FileBrowserDirectoryWidget.cpp
     FileBrowserPathsWidget.cpp
+    FileBrowserSystem.cpp
     FileBrowserWidget.cpp
     FloatEdit.cpp
     FloatEditSlider.cpp
@@ -83,6 +95,7 @@ set(SOURCE
     IWidget.cpp
     IWidgetOptions.cpp
     IconLibrary.cpp
+    Icon.cpp
     IncButtons.cpp
     Init.cpp
     IntEdit.cpp

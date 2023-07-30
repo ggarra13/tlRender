@@ -48,11 +48,22 @@ namespace tl
         {}
 
         std::shared_ptr<PushButton> PushButton::create(
+            const std::shared_ptr<system::Context>&context,
+            const std::shared_ptr<IWidget>&parent)
+        {
+            auto out = std::shared_ptr<PushButton>(new PushButton);
+            out->_init(context, parent);
+            return out;
+        }
+
+        std::shared_ptr<PushButton> PushButton::create(
+            const std::string& text,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
         {
             auto out = std::shared_ptr<PushButton>(new PushButton);
             out->_init(context, parent);
+            out->setText(text);
             return out;
         }
 
@@ -166,9 +177,7 @@ namespace tl
             // Draw the background and checked state.
             const math::BBox2i g2 = g.margin(-p.size.border * 2);
             const auto mesh = rect(g2);
-            const ColorRole colorRole = _checked ?
-                ColorRole::Checked :
-                _buttonRole;
+            const ColorRole colorRole = _checked ? _checkedRole : _buttonRole;
             if (colorRole != ColorRole::None)
             {
                 event.render->drawMesh(
@@ -194,7 +203,12 @@ namespace tl
             }
 
             // Draw the icon.
-            int x = g2.x() + p.size.margin;
+            const math::BBox2i g3 = g2.margin(
+                -p.size.margin,
+                -p.size.margin2,
+                -p.size.margin,
+                -p.size.margin2);
+            int x = g3.x();
             if (_iconImage)
             {
                 const imaging::Size& iconSize = _iconImage->getSize();
@@ -202,7 +216,7 @@ namespace tl
                   _iconImage,
                   math::BBox2i(
                       x,
-                      g2.y() + g2.h() / 2 - iconSize.h / 2,
+                      g3.y() + g3.h() / 2 - iconSize.h / 2,
                       iconSize.w,
                       iconSize.h),
                   event.style->getColorRole(enabled ?
@@ -220,7 +234,7 @@ namespace tl
                 }
                 const math::Vector2i pos(
                     x + p.size.margin2,
-                    g2.y() + g2.h() / 2 - p.size.textSize.y / 2 +
+                    g3.y() + g3.h() / 2 - p.size.textSize.y / 2 +
                     p.size.fontMetrics.ascender);
                 event.render->drawText(
                     p.draw.glyphs,
