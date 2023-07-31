@@ -511,9 +511,9 @@ namespace tl
             if (p.timelineItem)
             {
                 otime::RationalTime startTime, endTime;
-                startTime = p.timelineItem->_posToTime(_geometry.x());
+                startTime = p.timelineItem->_posToTime(_geometry.min.x);
                 endTime   = p.timelineItem->_posToTime(_geometry.w());
-                out = otime::TimeRange::range_from_start_end_time(
+                out = otime::TimeRange::range_from_start_end_time_inclusive(
                     startTime, endTime);
             }
             return out;
