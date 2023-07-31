@@ -2,7 +2,11 @@ include(ExternalProject)
 
 
 if(NOT DEFINED PYTHON_EXECUTABLE)
-    set(PYTHON_EXECUTABLE python3)
+  if(WIN32)
+      set(PYTHON_EXECUTABLE python)
+  else()
+      set(PYTHON_EXECUTABLE python3)
+  endif()
 endif()
 
 set(USD_DEPS ${PYTHON_DEP})

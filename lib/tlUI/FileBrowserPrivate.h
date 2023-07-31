@@ -41,12 +41,10 @@ namespace tl
             void sizeHintEvent(const SizeHintEvent&) override;
 
         private:
-            void _createLabel(
-                const std::string&,
-                const std::shared_ptr<system::Context>&);
             void _createButton(
                 const std::string&,
-                const std::shared_ptr<system::Context>&);
+                const std::shared_ptr<system::Context>&,
+                const std::shared_ptr<IWidget>& parent);
 
             void _pathsUpdate();
 
@@ -110,13 +108,15 @@ namespace tl
                 const std::shared_ptr<system::Context>&,
                 const std::shared_ptr<IWidget>& parent = nullptr);
 
-            void setPath(
-                const std::string&,
-                const file::ListOptions&);
+            void setPath(const std::string&);
 
             void setFileCallback(const std::function<void(const std::string&)>&);
 
             void setPathCallback(const std::function<void(const std::string&)>&);
+
+            void setOptions(const FileBrowserOptions&);
+
+            const FileBrowserOptions& getOptions() const;
 
             void setGeometry(const math::BBox2i&) override;
             void sizeHintEvent(const SizeHintEvent&) override;
@@ -151,7 +151,14 @@ namespace tl
 
             void setCancelCallback(const std::function<void(void)>&);
 
+            const file::Path& getPath() const;
+
+            const FileBrowserOptions& getOptions() const;
+
+            void setOptions(const FileBrowserOptions&);
+
             void setGeometry(const math::BBox2i&) override;
+            void sizeHintEvent(const SizeHintEvent&) override;
             void mouseMoveEvent(MouseMoveEvent&) override;
             void mousePressEvent(MouseClickEvent&) override;
             void mouseReleaseEvent(MouseClickEvent&) override;

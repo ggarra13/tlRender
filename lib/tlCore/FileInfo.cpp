@@ -44,6 +44,7 @@ namespace tl
         {
             return
                 sort == other.sort &&
+                reverseSort == other.reverseSort &&
                 sortDirectoriesFirst == other.sortDirectoriesFirst &&
                 dotAndDotDotDirs == other.dotAndDotDotDirs &&
                 dotFiles == other.dotFiles &&
@@ -133,6 +134,33 @@ namespace tl
             }
 
             return out;
+        }
+
+        void to_json(nlohmann::json& json, const ListOptions& value)
+        {
+            json = nlohmann::json
+            {
+                { "sort", value.sort },
+                { "reverseSort", value.reverseSort },
+                { "sortDirectoriesFirst", value.sortDirectoriesFirst },
+                { "dotAndDotDotDirs", value.dotAndDotDotDirs },
+                { "dotFiles", value.dotFiles },
+                { "sequence", value.sequence },
+                { "negativeNumbers", value.negativeNumbers },
+                { "maxNumberDigits", value.maxNumberDigits }
+            };
+        }
+
+        void from_json(const nlohmann::json& json, ListOptions& value)
+        {
+            json.at("sort").get_to(value.sort);
+            json.at("reverseSort").get_to(value.reverseSort);
+            json.at("sortDirectoriesFirst").get_to(value.sortDirectoriesFirst);
+            json.at("dotAndDotDotDirs").get_to(value.dotAndDotDotDirs);
+            json.at("dotFiles").get_to(value.dotFiles);
+            json.at("sequence").get_to(value.sequence);
+            json.at("negativeNumbers").get_to(value.negativeNumbers);
+            json.at("maxNumberDigits").get_to(value.maxNumberDigits);
         }
     }
 }

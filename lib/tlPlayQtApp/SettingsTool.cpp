@@ -4,6 +4,7 @@
 
 #include <tlPlayQtApp/SettingsTool.h>
 
+#include <tlPlayQtApp/App.h>
 #include <tlPlayQtApp/DockTitleBar.h>
 #include <tlPlayQtApp/SettingsObject.h>
 
@@ -17,8 +18,8 @@
 #include <QFormLayout>
 #include <QLabel>
 #include <QLineEdit>
-#include <QPushButton>
 #include <QSpinBox>
+#include <QToolButton>
 
 namespace tl
 {
@@ -128,7 +129,7 @@ namespace tl
             p.audioDirectory->setText(
                 settingsObject->value("FileSequence/AudioDirectory").toString());
             p.maxDigitsSpinBox->setValue(
-                settingsObject->value("Misc/MaxFileSequenceDigits").toInt());
+                settingsObject->value("FileSequence/MaxDigits").toInt());
 
             connect(
                 p.audioComboBox,
@@ -159,7 +160,7 @@ namespace tl
                 QOverload<int>::of(&QSpinBox::valueChanged),
                 [settingsObject](int value)
                 {
-                    settingsObject->setValue("Misc/MaxFileSequenceDigits", value);
+                    settingsObject->setValue("FileSequence/MaxDigits", value);
                 });
 
             connect(
@@ -182,7 +183,7 @@ namespace tl
                         QSignalBlocker signalBlocker(_p->audioDirectory);
                         _p->audioDirectory->setText(value.toString());
                     }
-                    else if (name == "Misc/MaxFileSequenceDigits")
+                    else if (name == "FileSequence/MaxDigits")
                     {
                         QSignalBlocker signalBlocker(_p->maxDigitsSpinBox);
                         _p->maxDigitsSpinBox->setValue(value.toInt());
@@ -191,6 +192,51 @@ namespace tl
         }
 
         FileSequenceSettingsWidget::~FileSequenceSettingsWidget()
+        {}
+
+        struct FileBrowserSettingsWidget::Private
+        {
+            QCheckBox* nativeFileDialogCheckBox = nullptr;
+        };
+
+        FileBrowserSettingsWidget::FileBrowserSettingsWidget(SettingsObject * settingsObject, QWidget * parent) :
+            QWidget(parent),
+            _p(new Private)
+        {
+            TLRENDER_P();
+
+            p.nativeFileDialogCheckBox = new QCheckBox;
+            p.nativeFileDialogCheckBox->setText(tr("Native file dialog"));
+
+            auto layout = new QFormLayout;
+            layout->addRow(p.nativeFileDialogCheckBox);
+            setLayout(layout);
+
+            p.nativeFileDialogCheckBox->setChecked(
+                settingsObject->value("FileBrowser/NativeFileDialog").toBool());
+
+            connect(
+                p.nativeFileDialogCheckBox,
+                &QCheckBox::stateChanged,
+                [settingsObject](int value)
+                {
+                    settingsObject->setValue("FileBrowser/NativeFileDialog", Qt::Checked == value);
+                });
+
+            connect(
+                settingsObject,
+                &SettingsObject::valueChanged,
+                [this](const QString& key, const QVariant& value)
+                {
+                    if ("FileBrowser/NativeFileDialog" == key)
+                    {
+                        QSignalBlocker signalBlocker(_p->nativeFileDialogCheckBox);
+                        _p->nativeFileDialogCheckBox->setChecked(value.toBool());
+                    }
+                });
+        }
+
+        FileBrowserSettingsWidget::~FileBrowserSettingsWidget()
         {}
 
         struct PerformanceSettingsWidget::Private
@@ -234,7 +280,7 @@ namespace tl
             p.ffmpegThreadCountSpinBox->setRange(0, 64);
 
             auto layout = new QFormLayout;
-            auto label = new QLabel(tr("Changes are applied to newly opened files."));
+            auto label = new QLabel(tr("Changes are applied to new files."));
             label->setWordWrap(true);
             layout->addRow(label);
             layout->addRow(tr("Timer mode:"), p.timerModeComboBox);
@@ -381,46 +427,58 @@ namespace tl
             layout->addRow(p.toolTipsCheckBox);
             setLayout(layout);
 
-            p.toolTipsCheckBox->setChecked(settingsObject->hasToolTipsEnabled());
+            p.toolTipsCheckBox->setChecked(
+                settingsObject->value("Misc/ToolTipsEnabled").toBool());
 
             connect(
                 p.toolTipsCheckBox,
                 &QCheckBox::stateChanged,
                 [settingsObject](int value)
                 {
-                    settingsObject->setToolTipsEnabled(Qt::Checked == value);
+                    settingsObject->setValue("Misc/ToolTipsEnabled", Qt::Checked == value);
                 });
 
             connect(
                 settingsObject,
-                &SettingsObject::toolTipsEnabledChanged,
-                [this](bool value)
+                &SettingsObject::valueChanged,
+                [this](const QString& key, const QVariant& value)
                 {
-                    QSignalBlocker signalBlocker(_p->toolTipsCheckBox);
-                    _p->toolTipsCheckBox->setChecked(value);
+                    if ("Misc/ToolTipsEnabled" == key)
+                    {
+                        QSignalBlocker signalBlocker(_p->toolTipsCheckBox);
+                        _p->toolTipsCheckBox->setChecked(value.toBool());
+                    }
                 });
         }
 
         MiscSettingsWidget::~MiscSettingsWidget()
         {}
 
-        SettingsTool::SettingsTool(
-            SettingsObject* settingsObject,
-            qt::TimeObject* timeObject,
-            QWidget* parent) :
-            ToolWidget(parent)
+        SettingsTool::SettingsTool(App* app, QWidget* parent) :
+            IToolWidget(app, parent)
         {
+            auto settingsObject = app->settingsObject();
             addBellows(tr("Cache"), new CacheSettingsWidget(settingsObject));
             addBellows(tr("File Sequences"), new FileSequenceSettingsWidget(settingsObject));
+            addBellows(tr("File Browser"), new FileBrowserSettingsWidget(settingsObject));
             addBellows(tr("Performance"), new PerformanceSettingsWidget(settingsObject));
             addBellows(tr("Miscellaneous"), new MiscSettingsWidget(settingsObject));
-            auto resetButton = new QPushButton(tr("Default Settings"));
-            addWidget(resetButton);
+            auto resetButton = new QToolButton;
+            resetButton->setText(tr("Default Settings"));
+            resetButton->setAutoRaise(true);
+            auto layout = new QHBoxLayout;
+            layout->setContentsMargins(0, 0, 0, 0);
+            layout->setSpacing(1);
+            layout->addWidget(resetButton);
+            layout->addStretch();
+            auto widget = new QWidget;
+            widget->setLayout(layout);
+            addWidget(widget);
             addStretch();
 
             connect(
                 resetButton,
-                &QPushButton::clicked,
+                &QToolButton::clicked,
                 [settingsObject]
                 {
                     settingsObject->reset();
@@ -436,7 +494,7 @@ namespace tl
             setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 
             auto dockTitleBar = new DockTitleBar;
-            dockTitleBar->setText(tr("SETTINGS"));
+            dockTitleBar->setText(tr("Settings"));
             dockTitleBar->setIcon(QIcon(":/Icons/Settings.svg"));
             auto dockWidget = new QDockWidget;
             setTitleBarWidget(dockTitleBar);

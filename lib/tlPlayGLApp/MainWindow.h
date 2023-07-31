@@ -57,7 +57,10 @@ namespace tl
 
         private:
             void _setPlayers(const std::vector<std::shared_ptr<timeline::Player> >&);
+            void _showSpeedPopup();
+            void _showAudioPopup();
             void _viewportUpdate();
+            void _statusUpdate(const std::vector<log::Item>&);
             void _infoUpdate();
 
             TLRENDER_PRIVATE();

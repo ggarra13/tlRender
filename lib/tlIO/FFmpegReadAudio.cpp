@@ -182,11 +182,17 @@ namespace tl
                     const std::string key(tag->key);
                     const std::string value(tag->value);
                     tags[key] = value;
-                    if (string::compareNoCase(key, "timecode"))
+                    if (string::compare(
+                        key,
+                        "timecode",
+                        string::Compare::CaseInsensitive))
                     {
                         timecode = value;
                     }
-                    else if (string::compareNoCase(key, "time_reference"))
+                    else if (string::compare(
+                        key,
+                        "time_reference",
+                        string::Compare::CaseInsensitive))
                     {
                         timeReference = otime::RationalTime(std::atoi(value.c_str()), sampleRate);
                     }
@@ -378,11 +384,12 @@ namespace tl
             _eof = false;
         }
 
-        void ReadAudio::process(const otime::RationalTime& currentTime)
+        void ReadAudio::process(
+            const otime::RationalTime& currentTime,
+            size_t sampleCount)
         {
-            if (_avStream != -1 &&
-                audio::getSampleCount(_buffer) <
-                _options.audioBufferSize.rescaled_to(_info.sampleRate).value())
+            const size_t bufferSampleCount = audio::getSampleCount(_buffer);
+            if (_avStream != -1 && bufferSampleCount < sampleCount)
             {
                 Packet packet;
                 int decoding = 0;

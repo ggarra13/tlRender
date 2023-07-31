@@ -16,7 +16,9 @@ namespace tl
         struct ScrollWidget::Private
         {
             ScrollType scrollType = ScrollType::Both;
+            bool scrollBarsVisible = true;
             bool scrollEventsEnabled = true;
+            std::shared_ptr<IWidget> widget;
             std::shared_ptr<ScrollArea> scrollArea;
             std::shared_ptr<ScrollBar> horizontalScrollBar;
             std::shared_ptr<ScrollBar> verticalScrollBar;
@@ -43,6 +45,7 @@ namespace tl
                 p.horizontalScrollBar = ScrollBar::create(Orientation::Horizontal, context);
                 break;
             case ScrollType::Vertical:
+            case ScrollType::Menu:
                 p.verticalScrollBar = ScrollBar::create(Orientation::Vertical, context);
                 break;
             case ScrollType::Both:
@@ -52,7 +55,7 @@ namespace tl
             }
 
             p.layout = GridLayout::create(context, shared_from_this());
-            p.layout->setSpacingRole(SizeRole::MarginInside);
+            p.layout->setSpacingRole(SizeRole::None);
             p.layout->setStretch(Stretch::Expanding);
             p.scrollArea->setParent(p.layout);
             p.layout->setGridPos(p.scrollArea, 0, 0);
@@ -147,7 +150,16 @@ namespace tl
 
         void ScrollWidget::setWidget(const std::shared_ptr<IWidget>& value)
         {
-            value->setParent(_p->scrollArea);
+            TLRENDER_P();
+            if (p.widget)
+            {
+                p.widget->setParent(nullptr);
+            }
+            p.widget = value;
+            if (p.widget)
+            {
+                p.widget->setParent(_p->scrollArea);
+            }
         }
 
         math::BBox2i ScrollWidget::getViewport() const
@@ -184,8 +196,12 @@ namespace tl
 
         void ScrollWidget::setScrollBarsVisible(bool value)
         {
-            _p->horizontalScrollBar->setVisible(value);
-            _p->verticalScrollBar->setVisible(value);
+            TLRENDER_P();
+            if (value == p.scrollBarsVisible)
+                return;
+            p.scrollBarsVisible = value;
+            p.horizontalScrollBar->setVisible(value);
+            p.verticalScrollBar->setVisible(value);
         }
 
         void ScrollWidget::setScrollEventsEnabled(bool value)

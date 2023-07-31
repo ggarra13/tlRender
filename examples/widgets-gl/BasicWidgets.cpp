@@ -5,7 +5,9 @@
 #include "BasicWidgets.h"
 
 #include <tlUI/ButtonGroup.h>
+#include <tlUI/CheckBox.h>
 #include <tlUI/ComboBox.h>
+#include <tlUI/FileEdit.h>
 #include <tlUI/GroupBox.h>
 #include <tlUI/LineEdit.h>
 #include <tlUI/PushButton.h>
@@ -81,6 +83,25 @@ namespace tl
                 toolButton3->setIcon("Audio");
                 toolButton3->setEnabled(false);
 
+                auto checkBox0 = ui::CheckBox::create(context);
+                checkBox0->setText("CheckBox 1");
+                checkBox0->setCheckedCallback(
+                    [](bool value)
+                    {
+                        std::cout << "CheckBox 1: " << value << std::endl;
+                    });
+                auto checkBox1 = ui::CheckBox::create(context);
+                checkBox1->setChecked(true);
+                checkBox1->setText("CheckBox 2");
+                checkBox1->setCheckedCallback(
+                    [](bool value)
+                    {
+                        std::cout << "CheckBox 2: " << value << std::endl;
+                    });
+                auto checkBox2 = ui::CheckBox::create(context);
+                checkBox2->setText("CheckBox 3");
+                checkBox2->setEnabled(false);
+
                 auto lineEdit0 = ui::LineEdit::create(context);
                 auto lineEdit1 = ui::LineEdit::create(context);
                 lineEdit1->setText("Hello world");
@@ -153,43 +174,52 @@ namespace tl
                         timeUnitsModel->setTimeUnits(static_cast<timeline::TimeUnits>(value));
                     });
 
+                auto fileEdit = ui::FileEdit::create(context);
+                fileEdit->setFileCallback(
+                    [](const file::Path& value)
+                    {
+                        std::cout << value.get() << std::endl;
+                    });
+
                 p.layout = ui::VerticalLayout::create(context, shared_from_this());
                 p.layout->setMarginRole(ui::SizeRole::Margin);
-                auto groupBox = ui::GroupBox::create(context, p.layout);
-                groupBox->setText("Push Buttons");
+                auto groupBox = ui::GroupBox::create("Push Buttons", context, p.layout);
                 auto hLayout = ui::HorizontalLayout::create(context, groupBox);
                 pushButton0->setParent(hLayout);
                 pushButton1->setParent(hLayout);
                 pushButton2->setParent(hLayout);
-                groupBox = ui::GroupBox::create(context, p.layout);
-                groupBox->setText("Tool Buttons");
+                groupBox = ui::GroupBox::create("Tool Buttons", context, p.layout);
                 hLayout = ui::HorizontalLayout::create(context, groupBox);
                 hLayout->setSpacingRole(ui::SizeRole::SpacingTool);
                 toolButton2->setParent(hLayout);
                 toolButton0->setParent(hLayout);
                 toolButton1->setParent(hLayout);
                 toolButton3->setParent(hLayout);
-                groupBox = ui::GroupBox::create(context, p.layout);
-                groupBox->setText("Line Edits");
+                groupBox = ui::GroupBox::create("Check Boxes", context, p.layout);
+                hLayout = ui::HorizontalLayout::create(context, groupBox);
+                checkBox0->setParent(hLayout);
+                checkBox1->setParent(hLayout);
+                checkBox2->setParent(hLayout);
+                groupBox = ui::GroupBox::create("Line Edits", context, p.layout);
                 hLayout = ui::HorizontalLayout::create(context, groupBox);
                 lineEdit0->setParent(hLayout);
                 lineEdit1->setParent(hLayout);
                 lineEdit2->setParent(hLayout);
-                groupBox = ui::GroupBox::create(context, p.layout);
-                groupBox->setText("Combo Boxes");
+                groupBox = ui::GroupBox::create("Combo Boxes", context, p.layout);
                 hLayout = ui::HorizontalLayout::create(context, groupBox);
                 comboBox0->setParent(hLayout);
                 comboBox1->setParent(hLayout);
                 comboBox2->setParent(hLayout);
                 comboBox3->setParent(hLayout);
-                groupBox = ui::GroupBox::create(context, p.layout);
-                groupBox->setText("Time Widgets");
+                groupBox = ui::GroupBox::create("Time Widgets", context, p.layout);
                 hLayout = ui::HorizontalLayout::create(context, groupBox);
                 timeEdit0->setParent(hLayout);
                 timeEdit1->setParent(hLayout);
                 timeEdit2->setParent(hLayout);
                 timeLabel0->setParent(hLayout);
                 timeUnitsComboBox->setParent(hLayout);
+                groupBox = ui::GroupBox::create("File Edit", context, p.layout);
+                fileEdit->setParent(groupBox);
             }
 
             BasicWidgets::BasicWidgets() :

@@ -41,31 +41,24 @@ namespace tl
             VideoOnly
         };
 
-        //! Timeline color roles.
-        enum class ColorRole
+        //! Waveform primitive type.
+        enum class WaveformPrim
         {
-            InOut,
-            VideoCache,
-            AudioCache,
-            VideoClip,
-            VideoGap,
-            AudioClip,
-            AudioGap,
-            Transition
+            Mesh,
+            Image
         };
 
         //! Item options.
         struct ItemOptions
         {
-            ItemOptions();
-
             InOutDisplay inOutDisplay = InOutDisplay::InsideRange;
             CacheDisplay cacheDisplay = CacheDisplay::VideoAndAudio;
-            std::map<ColorRole, imaging::Color4f> colors;
             float clipRectScale = 2.F;
             bool thumbnails = true;
             int thumbnailHeight = 100;
+            int waveformWidth = 200;
             int waveformHeight = 50;
+            WaveformPrim waveformPrim = WaveformPrim::Mesh;
             float thumbnailFade = .5F;
             bool showTransitions = false;
             bool showMarkers = false;

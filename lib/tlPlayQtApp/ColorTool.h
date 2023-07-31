@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include <tlPlayQtApp/ToolWidget.h>
+#include <tlPlayQtApp/IToolWidget.h>
 
 #include <tlQt/MetaTypes.h>
 
@@ -16,17 +16,13 @@ namespace tl
 {
     namespace play_qt
     {
-        class ColorModel;
-
         //! Configuration widget.
         class ConfigWidget : public QWidget
         {
             Q_OBJECT
 
         public:
-            ConfigWidget(
-                const std::shared_ptr<ColorModel>& colorModel,
-                QWidget* parent = nullptr);
+            ConfigWidget(App*, QWidget* parent = nullptr);
 
             ~ConfigWidget() override;
 
@@ -42,7 +38,7 @@ namespace tl
             Q_OBJECT
 
         public:
-            LUTWidget(QWidget* parent = nullptr);
+            LUTWidget(App*, QWidget* parent = nullptr);
 
             ~LUTWidget() override;
 
@@ -155,14 +151,12 @@ namespace tl
         };
 
         //! Color tool.
-        class ColorTool : public ToolWidget
+        class ColorTool : public IToolWidget
         {
             Q_OBJECT
 
         public:
-            ColorTool(
-                const std::shared_ptr<ColorModel>& colorModel,
-                QWidget* parent = nullptr);
+            ColorTool(App*, QWidget* parent = nullptr);
 
             ~ColorTool() override;
 

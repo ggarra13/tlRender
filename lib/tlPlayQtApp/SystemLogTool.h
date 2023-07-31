@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include <tlPlayQtApp/ToolWidget.h>
+#include <tlPlayQtApp/IToolWidget.h>
 
 #include <QDockWidget>
 
@@ -18,14 +18,12 @@ namespace tl
     namespace play_qt
     {
         //! System log tool.
-        class SystemLogTool : public ToolWidget
+        class SystemLogTool : public IToolWidget
         {
             Q_OBJECT
 
         public:
-            SystemLogTool(
-                const std::shared_ptr<system::Context>&,
-                QWidget* parent = nullptr);
+            SystemLogTool(App*, QWidget* parent = nullptr);
 
             ~SystemLogTool() override;
 

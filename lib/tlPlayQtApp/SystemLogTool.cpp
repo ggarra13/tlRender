@@ -32,10 +32,8 @@ namespace tl
             std::shared_ptr<observer::ListObserver<log::Item> > logObserver;
         };
 
-        SystemLogTool::SystemLogTool(
-            const std::shared_ptr<system::Context>& context,
-            QWidget* parent) :
-            ToolWidget(parent),
+        SystemLogTool::SystemLogTool(App* app, QWidget* parent) :
+            IToolWidget(app, parent),
             _p(new Private)
         {
             TLRENDER_P();
@@ -47,12 +45,12 @@ namespace tl
             p.listWidget->setFont(fixedFont);
 
             p.copyButton = new QToolButton;
-            p.copyButton->setIcon(QIcon(":/Icons/Copy.svg"));
+            p.copyButton->setText("Copy");
             p.copyButton->setAutoRaise(true);
             p.copyButton->setToolTip(tr("Copy the contents to the clipboard"));
 
             p.clearButton = new QToolButton;
-            p.clearButton->setIcon(QIcon(":/Icons/Clear.svg"));
+            p.clearButton->setText("Clear");
             p.clearButton->setAutoRaise(true);
             p.clearButton->setToolTip(tr("Clear the contents"));
 
@@ -62,41 +60,25 @@ namespace tl
             layout->addWidget(p.listWidget);
             auto hLayout = new QHBoxLayout;
             hLayout->setSpacing(1);
-            hLayout->addStretch();
             hLayout->addWidget(p.copyButton);
             hLayout->addWidget(p.clearButton);
+            hLayout->addStretch();
             layout->addLayout(hLayout);
             auto widget = new QWidget;
             widget->setLayout(layout);
             addWidget(widget);
 
             p.logObserver = observer::ListObserver<log::Item>::create(
-                context->getLogSystem()->observeLog(),
+                app->getContext()->getLogSystem()->observeLog(),
                 [this](const std::vector<log::Item>& value)
                 {
+                    const size_t options =
+                    static_cast<size_t>(log::StringConvert::Time) |
+                static_cast<size_t>(log::StringConvert::Prefix);
                     for (const auto& i : value)
                     {
-                        switch (i.type)
-                        {
-                        case log::Type::Message:
-                            _p->listWidget->addItem(QString("%1 %2: %3").
-                                arg(i.time).
-                                arg(QString::fromUtf8(i.prefix.c_str())).
-                                arg(QString::fromUtf8(i.message.c_str())));
-                            break;
-                        case log::Type::Warning:
-                            _p->listWidget->addItem(QString("%1 Warning %2: %3").
-                                arg(i.time).
-                                arg(QString::fromUtf8(i.prefix.c_str())).
-                                arg(QString::fromUtf8(i.message.c_str())));
-                            break;
-                        case log::Type::Error:
-                            _p->listWidget->addItem(QString("%1 ERROR %2: %3").
-                                arg(i.time).
-                                arg(QString::fromUtf8(i.prefix.c_str())).
-                                arg(QString::fromUtf8(i.message.c_str())));
-                            break;
-                        }
+                        _p->listWidget->addItem(QString::fromUtf8(
+                            log::toString(i, options).c_str()));
                         while (_p->listWidget->count() > messagesMax)
                         {
                             delete _p->listWidget->takeItem(0);
@@ -137,7 +119,7 @@ namespace tl
             setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 
             auto dockTitleBar = new DockTitleBar;
-            dockTitleBar->setText(tr("SYSTEM LOG"));
+            dockTitleBar->setText(tr("System Log"));
             auto dockWidget = new QDockWidget;
             setTitleBarWidget(dockTitleBar);
 
