@@ -108,7 +108,8 @@ namespace tl
             void keyPressEvent(ui::KeyEvent&) override;
             void keyReleaseEvent(ui::KeyEvent&) override;
 
-            const otime::TimeRange timeRange() const;
+            const math::BBox2i& getTimelineItemGeometry() const;
+            double getScale() const;
             
         private:
             void _setViewZoom(

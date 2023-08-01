@@ -81,6 +81,18 @@ namespace tl
             return out;
         }
 
+        double TimelineWidget::getScale() const
+        {
+            TLRENDER_P();
+            return p.scale;
+        }
+        
+        const math::BBox2i& TimelineWidget::getTimelineItemGeometry() const
+        {
+            TLRENDER_P();
+            return p.timelineItem->getGeometry();
+        }
+
         void TimelineWidget::setPlayer(const std::shared_ptr<timeline::Player>& player)
         {
             TLRENDER_P();
@@ -502,21 +514,6 @@ namespace tl
         {
             TLRENDER_P();
             p.mouse.mode = Private::MouseMode::None;
-        }
-
-        const otime::TimeRange TimelineWidget::timeRange() const
-        {
-            TLRENDER_P();
-            otime::TimeRange out = time::invalidTimeRange;
-            if (p.timelineItem)
-            {
-                otime::RationalTime startTime, endTime;
-                startTime = p.timelineItem->_posToTime(_geometry.min.x);
-                endTime   = p.timelineItem->_posToTime(_geometry.w());
-                out = otime::TimeRange::range_from_start_end_time_inclusive(
-                    startTime, endTime);
-            }
-            return out;
         }
         
         void TimelineWidget::_timelineUpdate()

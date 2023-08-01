@@ -55,8 +55,6 @@ namespace tl
             void mouseReleaseEvent(ui::MouseClickEvent&) override;
             //void keyPressEvent(ui::KeyEvent&) override;
             //void keyReleaseEvent(ui::KeyEvent&) override;
-            
-            otime::RationalTime _posToTime(float) const;
 
         protected:
             void _timeUnitsUpdate() override;
@@ -75,6 +73,7 @@ namespace tl
                 const math::BBox2i&,
                 const ui::DrawEvent&);
 
+            otime::RationalTime _posToTime(float) const;
             int _timeToPos(const otime::RationalTime&) const;
 
             void _resetMouse();
