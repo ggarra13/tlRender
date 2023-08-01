@@ -81,7 +81,7 @@ namespace tl
                 {}
 
             public:
-                ~Clipboard() override
+                virtual ~Clipboard()
                 {}
 
                 static std::shared_ptr<Clipboard> create(
@@ -381,6 +381,14 @@ namespace tl
         const std::shared_ptr<ui::Style> IApp::getStyle() const
         {
             return _p->style;
+        }
+
+        imaging::Size IApp::getWindowSize() const
+        {
+            int width = 0;
+            int height = 0;
+            glfwGetWindowSize(_p->glfwWindow, &width, &height);
+            return imaging::Size(width, height);
         }
 
         void IApp::setWindowSize(const imaging::Size& value)

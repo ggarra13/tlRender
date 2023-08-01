@@ -19,12 +19,12 @@ namespace tl
             void _init(
                 Orientation,
                 const std::shared_ptr<system::Context>&,
-                const std::shared_ptr<IWidget>& parent = nullptr);
+                const std::shared_ptr<IWidget>& parent);
 
             Spacer();
 
         public:
-            ~Spacer() override;
+            virtual ~Spacer();
 
             //! Create a new widget.
             static std::shared_ptr<Spacer> create(

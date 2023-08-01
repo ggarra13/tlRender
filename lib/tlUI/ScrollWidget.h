@@ -18,13 +18,13 @@ namespace tl
         protected:
             void _init(
                 const std::shared_ptr<system::Context>&,
-                ScrollType = ScrollType::Both,
-                const std::shared_ptr<IWidget>& parent = nullptr);
+                ScrollType,
+                const std::shared_ptr<IWidget>& parent);
 
             ScrollWidget();
 
         public:
-            ~ScrollWidget() override;
+            virtual ~ScrollWidget();
 
             //! Create a new widget.
             static std::shared_ptr<ScrollWidget> create(

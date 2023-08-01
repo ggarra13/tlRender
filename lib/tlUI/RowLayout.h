@@ -22,12 +22,12 @@ namespace tl
                 Orientation,
                 const std::string& name,
                 const std::shared_ptr<system::Context>&,
-                const std::shared_ptr<IWidget>& parent = nullptr);
+                const std::shared_ptr<IWidget>& parent);
 
             RowLayout();
 
         public:
-            ~RowLayout() override;
+            virtual ~RowLayout();
 
             //! Create a new layout.
             static std::shared_ptr<RowLayout> create(
@@ -59,12 +59,12 @@ namespace tl
         protected:
             void _init(
                 const std::shared_ptr<system::Context>&,
-                const std::shared_ptr<IWidget>& parent = nullptr);
+                const std::shared_ptr<IWidget>& parent);
 
             HorizontalLayout();
 
         public:
-            ~HorizontalLayout() override;
+            virtual ~HorizontalLayout();
 
             //! Create a new layout.
             static std::shared_ptr<HorizontalLayout> create(
@@ -80,12 +80,12 @@ namespace tl
         protected:
             void _init(
                 const std::shared_ptr<system::Context>&,
-                const std::shared_ptr<IWidget>& parent = nullptr);
+                const std::shared_ptr<IWidget>& parent);
 
             VerticalLayout();
 
         public:
-            ~VerticalLayout() override;
+            virtual ~VerticalLayout();
 
             //! Create a new layout.
             static std::shared_ptr<VerticalLayout> create(

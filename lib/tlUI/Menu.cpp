@@ -109,12 +109,12 @@ namespace tl
             protected:
                 void _init(
                     const std::shared_ptr<system::Context>&,
-                    const std::shared_ptr<IWidget>& parent = nullptr);
+                    const std::shared_ptr<IWidget>& parent);
 
                 MenuButton();
 
             public:
-                ~MenuButton() override;
+                virtual ~MenuButton();
 
                 static std::shared_ptr<MenuButton> create(
                     const std::shared_ptr<system::Context>&,
@@ -545,7 +545,6 @@ namespace tl
                 {
                     switch (event.key)
                     {
-                    case Key::Space:
                     case Key::Enter:
                         event.accept = true;
                         takeKeyFocus();

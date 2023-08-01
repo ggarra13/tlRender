@@ -22,12 +22,12 @@ namespace tl
         protected:
             void _init(
                 const std::shared_ptr<system::Context>&,
-                const std::shared_ptr<IWidget>& parent = nullptr);
+                const std::shared_ptr<IWidget>& parent);
 
             IncButton();
 
         public:
-            ~IncButton() override;
+            virtual ~IncButton();
 
             //! Create a new widget.
             static std::shared_ptr<IncButton> create(
@@ -51,12 +51,12 @@ namespace tl
         protected:
             void _init(
                 const std::shared_ptr<system::Context>&,
-                const std::shared_ptr<IWidget>& parent = nullptr);
+                const std::shared_ptr<IWidget>& parent);
 
             IncButtons();
 
         public:
-            ~IncButtons() override;
+            virtual ~IncButtons();
 
             //! Create a new widget.
             static std::shared_ptr<IncButtons> create(
@@ -86,12 +86,12 @@ namespace tl
             void _init(
                 const std::shared_ptr<IntModel>&,
                 const std::shared_ptr<system::Context>&,
-                const std::shared_ptr<IWidget>& parent = nullptr);
+                const std::shared_ptr<IWidget>& parent);
 
             IntIncButtons();
 
         public:
-            ~IntIncButtons() override;
+            virtual ~IntIncButtons();
 
             //! Create a new widget.
             static std::shared_ptr<IntIncButtons> create(
@@ -117,12 +117,12 @@ namespace tl
             void _init(
                 const std::shared_ptr<FloatModel>&,
                 const std::shared_ptr<system::Context>&,
-                const std::shared_ptr<IWidget>& parent = nullptr);
+                const std::shared_ptr<IWidget>& parent);
 
             FloatIncButtons();
 
         public:
-            ~FloatIncButtons() override;
+            virtual ~FloatIncButtons();
 
             //! Create a new widget.
             static std::shared_ptr<FloatIncButtons> create(
@@ -149,12 +149,12 @@ namespace tl
             void _init(
                 const std::shared_ptr<DoubleModel>&,
                 const std::shared_ptr<system::Context>&,
-                const std::shared_ptr<IWidget>& parent = nullptr);
+                const std::shared_ptr<IWidget>& parent);
 
             DoubleIncButtons();
 
         public:
-            ~DoubleIncButtons() override;
+            virtual ~DoubleIncButtons();
 
             //! Create a new widget.
             static std::shared_ptr<DoubleIncButtons> create(

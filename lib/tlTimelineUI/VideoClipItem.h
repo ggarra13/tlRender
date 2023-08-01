@@ -20,12 +20,12 @@ namespace tl
                 const otio::SerializableObject::Retainer<otio::Clip>&,
                 const ItemData&,
                 const std::shared_ptr<system::Context>&,
-                const std::shared_ptr<IWidget>& parent = nullptr);
+                const std::shared_ptr<IWidget>& parent);
 
             VideoClipItem();
 
         public:
-            ~VideoClipItem() override;
+            virtual ~VideoClipItem();
 
             //! Create a new item.
             static std::shared_ptr<VideoClipItem> create(

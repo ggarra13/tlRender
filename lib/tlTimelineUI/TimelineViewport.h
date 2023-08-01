@@ -20,12 +20,12 @@ namespace tl
         protected:
             void _init(
                 const std::shared_ptr<system::Context>&,
-                const std::shared_ptr<IWidget>& parent = nullptr);
+                const std::shared_ptr<IWidget>& parent);
 
             TimelineViewport();
 
         public:
-            ~TimelineViewport() override;
+            virtual ~TimelineViewport();
 
             //! Create a new widget.
             static std::shared_ptr<TimelineViewport> create(

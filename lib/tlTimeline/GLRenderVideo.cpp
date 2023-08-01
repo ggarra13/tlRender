@@ -61,12 +61,24 @@ namespace tl
                     compareOptions);
                 break;
             case CompareMode::Difference:
-                _drawVideoDifference(
-                    videoData,
-                    bbox,
-                    imageOptions,
-                    displayOptions,
-                    compareOptions);
+                if (videoData.size() > 1)
+                {
+                    _drawVideoDifference(
+                        videoData,
+                        bbox,
+                        imageOptions,
+                        displayOptions,
+                        compareOptions);
+                }
+                else
+                {
+                    _drawVideoA(
+                        videoData,
+                        bbox,
+                        imageOptions,
+                        displayOptions,
+                        compareOptions);
+                }
                 break;
             case CompareMode::Horizontal:
             case CompareMode::Vertical:
@@ -344,8 +356,8 @@ namespace tl
             if (!videoData.empty() && !bbox.empty())
             {
                 const imaging::Size offscreenBufferSize(
-                    p.viewport.w(),
-                    p.viewport.h());
+                    bbox[0].w(),
+                    bbox[0].h());
                 gl::OffscreenBufferOptions offscreenBufferOptions;
                 offscreenBufferOptions.colorType = imaging::PixelType::RGBA_F32;
                 if (!imageOptions.empty())
@@ -444,6 +456,10 @@ namespace tl
                             imageOptions.size() > 1 ? std::make_shared<ImageOptions>(imageOptions[1]) : nullptr,
                             displayOptions.size() > 1 ? displayOptions[1] : DisplayOptions());
                     }
+                }
+                else
+                {
+                    p.buffers["difference1"].reset();
                 }
 
                 if (p.buffers["difference0"] && p.buffers["difference1"])

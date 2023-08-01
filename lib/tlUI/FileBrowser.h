@@ -33,12 +33,12 @@ namespace tl
             void _init(
                 const std::string&,
                 const std::shared_ptr<system::Context>&,
-                const std::shared_ptr<IWidget>& parent = nullptr);
+                const std::shared_ptr<IWidget>& parent);
 
             FileBrowser();
 
         public:
-            ~FileBrowser() override;
+            virtual ~FileBrowser();
 
             //! Create a new widget.
             static std::shared_ptr<FileBrowser> create(

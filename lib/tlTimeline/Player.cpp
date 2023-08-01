@@ -30,7 +30,11 @@ namespace tl
             "FramePrevX100",
             "FrameNext",
             "FrameNextX10",
-            "FrameNextX100");
+            "FrameNextX100",
+            "JumpBack1s",
+            "JumpBack10s",
+            "JumpForward1s",
+            "JumpForward10s");
         TLRENDER_ENUM_SERIALIZE_IMPL(TimeAction);
 
         namespace
@@ -101,11 +105,15 @@ namespace tl
             p.currentAudioData = observer::List<AudioData>::create();
             p.cacheOptions = observer::Value<PlayerCacheOptions>::create(playerOptions.cache);
             p.cacheInfo = observer::Value<PlayerCacheInfo>::create();
+            auto weak = std::weak_ptr<Player>(shared_from_this());
             p.timelineObserver = observer::ValueObserver<bool>::create(
                 p.timeline->observeTimelineChanges(),
-                [this](bool)
+                [weak](bool)
                 {
-                    clearCache();
+                    if (auto player = weak.lock())
+                    {
+                        player->clearCache();
+                    }
                 });
 
             // Create a new thread.
@@ -556,34 +564,53 @@ namespace tl
         void Player::timeAction(TimeAction time)
         {
             TLRENDER_P();
-            setPlayback(timeline::Playback::Stop);
             const auto& timeRange = p.timeline->getTimeRange();
             const auto& currentTime = p.currentTime->get();
             switch (time)
             {
             case TimeAction::Start:
+                setPlayback(timeline::Playback::Stop);
                 seek(p.inOutRange->get().start_time());
                 break;
             case TimeAction::End:
+                setPlayback(timeline::Playback::Stop);
                 seek(p.inOutRange->get().end_time_inclusive());
                 break;
             case TimeAction::FramePrev:
+                setPlayback(timeline::Playback::Stop);
                 seek(currentTime - otime::RationalTime(1, timeRange.duration().rate()));
                 break;
             case TimeAction::FramePrevX10:
+                setPlayback(timeline::Playback::Stop);
                 seek(currentTime - otime::RationalTime(10, timeRange.duration().rate()));
                 break;
             case TimeAction::FramePrevX100:
+                setPlayback(timeline::Playback::Stop);
                 seek(currentTime - otime::RationalTime(100, timeRange.duration().rate()));
                 break;
             case TimeAction::FrameNext:
+                setPlayback(timeline::Playback::Stop);
                 seek(currentTime + otime::RationalTime(1, timeRange.duration().rate()));
                 break;
             case TimeAction::FrameNextX10:
+                setPlayback(timeline::Playback::Stop);
                 seek(currentTime + otime::RationalTime(10, timeRange.duration().rate()));
                 break;
             case TimeAction::FrameNextX100:
+                setPlayback(timeline::Playback::Stop);
                 seek(currentTime + otime::RationalTime(100, timeRange.duration().rate()));
+                break;
+            case TimeAction::JumpBack1s:
+                seek(currentTime - otime::RationalTime(1.0, 1.0));
+                break;
+            case TimeAction::JumpBack10s:
+                seek(currentTime - otime::RationalTime(10.0, 1.0));
+                break;
+            case TimeAction::JumpForward1s:
+                seek(currentTime + otime::RationalTime(1.0, 1.0));
+                break;
+            case TimeAction::JumpForward10s:
+                seek(currentTime + otime::RationalTime(10.0, 1.0));
                 break;
             default: break;
             }

@@ -18,12 +18,12 @@ namespace tl
         protected:
             void _init(
                 const std::shared_ptr<system::Context>&,
-                const std::shared_ptr<IWidget>& parent = nullptr);
+                const std::shared_ptr<IWidget>& parent);
 
             GroupBox();
 
         public:
-            ~GroupBox() override;
+            virtual ~GroupBox();
 
             //! Create a new widget.
             static std::shared_ptr<GroupBox> create(

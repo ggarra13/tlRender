@@ -25,12 +25,12 @@ namespace tl
                 void _init(
                     const std::vector<ComboBoxItem>&,
                     const std::shared_ptr<system::Context>&,
-                    const std::shared_ptr<IWidget>& parent = nullptr);
+                    const std::shared_ptr<IWidget>& parent);
 
                 ComboBoxMenu();
 
             public:
-                ~ComboBoxMenu() override;
+                virtual ~ComboBoxMenu();
 
                 static std::shared_ptr<ComboBoxMenu> create(
                     const std::vector<ComboBoxItem>&,
@@ -550,7 +550,6 @@ namespace tl
                     event.accept = true;
                     _commitIndex(p.currentIndex + 1);
                     break;
-                case Key::Space:
                 case Key::Enter:
                     event.accept = true;
                     _click();

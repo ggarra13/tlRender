@@ -29,12 +29,12 @@ namespace tl
                 int,
                 const ItemData&,
                 const std::shared_ptr<system::Context>&,
-                const std::shared_ptr<IWidget>& parent = nullptr);
+                const std::shared_ptr<IWidget>& parent);
 
             TrackItem();
 
         public:
-            ~TrackItem() override;
+            virtual ~TrackItem();
 
             //! Create a new item.
             static std::shared_ptr<TrackItem> create(

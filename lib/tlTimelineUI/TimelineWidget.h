@@ -21,12 +21,12 @@ namespace tl
             void _init(
                 const std::shared_ptr<timeline::ITimeUnitsModel>&,
                 const std::shared_ptr<system::Context>&,
-                const std::shared_ptr<IWidget>& parent = nullptr);
+                const std::shared_ptr<IWidget>& parent);
 
             TimelineWidget();
 
         public:
-            ~TimelineWidget() override;
+            virtual ~TimelineWidget();
 
             //! Create a new widget.
             static std::shared_ptr<TimelineWidget> create(

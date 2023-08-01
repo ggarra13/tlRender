@@ -18,12 +18,12 @@ namespace tl
         protected:
             void _init(
                 const std::shared_ptr<system::Context>&,
-                const std::shared_ptr<IWidget>& parent = nullptr);
+                const std::shared_ptr<IWidget>& parent);
 
             GridLayout();
 
         public:
-            ~GridLayout() override;
+            virtual ~GridLayout();
 
             //! Create a new layout.
             static std::shared_ptr<GridLayout> create(

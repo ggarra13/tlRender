@@ -23,12 +23,12 @@ namespace tl
             void _init(
                 const std::shared_ptr<RecentFilesModel>&,
                 const std::shared_ptr<system::Context>&,
-                const std::shared_ptr<IWidget>& parent = nullptr);
+                const std::shared_ptr<IWidget>& parent);
 
             PathsWidget();
 
         public:
-            ~PathsWidget() override;
+            virtual ~PathsWidget();
 
             static std::shared_ptr<PathsWidget> create(
                 const std::shared_ptr<RecentFilesModel>&,
@@ -59,12 +59,12 @@ namespace tl
             void _init(
                 const file::FileInfo&,
                 const std::shared_ptr<system::Context>&,
-                const std::shared_ptr<IWidget>& parent = nullptr);
+                const std::shared_ptr<IWidget>& parent);
 
             Button();
 
         public:
-            ~Button() override;
+            virtual ~Button();
 
             static std::shared_ptr<Button> create(
                 const file::FileInfo&,
@@ -97,22 +97,22 @@ namespace tl
         protected:
             void _init(
                 const std::shared_ptr<system::Context>&,
-                const std::shared_ptr<IWidget>& parent = nullptr);
+                const std::shared_ptr<IWidget>& parent);
 
             DirectoryWidget();
 
         public:
-            ~DirectoryWidget() override;
+            virtual ~DirectoryWidget();
 
             static std::shared_ptr<DirectoryWidget> create(
                 const std::shared_ptr<system::Context>&,
                 const std::shared_ptr<IWidget>& parent = nullptr);
 
-            void setPath(const std::string&);
+            void setPath(const file::Path&);
 
-            void setFileCallback(const std::function<void(const std::string&)>&);
+            void setFileCallback(const std::function<void(const file::Path&)>&);
 
-            void setPathCallback(const std::function<void(const std::string&)>&);
+            void setPathCallback(const std::function<void(const file::Path&)>&);
 
             void setOptions(const FileBrowserOptions&);
 
@@ -135,12 +135,12 @@ namespace tl
             void _init(
                 const std::string&,
                 const std::shared_ptr<system::Context>&,
-                const std::shared_ptr<IWidget>& parent = nullptr);
+                const std::shared_ptr<IWidget>& parent);
 
             FileBrowserWidget();
 
         public:
-            ~FileBrowserWidget() override;
+            virtual ~FileBrowserWidget();
 
             static std::shared_ptr<FileBrowserWidget> create(
                 const std::string&,

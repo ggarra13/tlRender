@@ -11,6 +11,8 @@ namespace tl
     namespace ui
     {
         //! Text label.
+        //! 
+        //! \todo Add text wrapping.
         class Label : public IWidget
         {
             TLRENDER_NON_COPYABLE(Label);
@@ -18,12 +20,12 @@ namespace tl
         protected:
             void _init(
                 const std::shared_ptr<system::Context>&,
-                const std::shared_ptr<IWidget>& parent = nullptr);
+                const std::shared_ptr<IWidget>& parent);
 
             Label();
 
         public:
-            ~Label() override;
+            virtual ~Label();
 
             //! Create a new widget.
             static std::shared_ptr<Label> create(

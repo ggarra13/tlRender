@@ -24,12 +24,12 @@ namespace tl
             void _init(
                 const std::shared_ptr<timeline::TimeUnitsModel>&,
                 const std::shared_ptr<system::Context>&,
-                const std::shared_ptr<IWidget>& parent = nullptr);
+                const std::shared_ptr<IWidget>& parent);
 
             TimeLabel();
 
         public:
-            ~TimeLabel() override;
+            virtual ~TimeLabel();
 
             //! Create a new widget.
             static std::shared_ptr<TimeLabel> create(

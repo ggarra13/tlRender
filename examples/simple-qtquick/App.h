@@ -31,7 +31,8 @@ namespace tl
                     int& argc,
                     char** argv,
                     const std::shared_ptr<system::Context>&);
-                ~App() override;
+                
+                virtual ~App();
 
             private:
                 std::string _input;
@@ -39,7 +40,7 @@ namespace tl
                 qt::ContextObject* _contextObject = nullptr;
                 std::shared_ptr<timeline::TimeUnitsModel> _timeUnitsModel;
                 qt::TimeObject* _timeObject = nullptr;
-                qt::TimelinePlayer* _timelinePlayer = nullptr;
+                QScopedPointer<qt::TimelinePlayer> _timelinePlayer;
 
                 QQmlApplicationEngine* _qmlEngine = nullptr;
                 QObject* _qmlObject = nullptr;

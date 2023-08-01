@@ -30,12 +30,12 @@ namespace tl
             void _init(
                 const std::shared_ptr<system::Context>&,
                 ScrollType,
-                const std::shared_ptr<IWidget>& parent = nullptr);
+                const std::shared_ptr<IWidget>& parent);
 
             ScrollArea();
 
         public:
-            ~ScrollArea() override;
+            virtual ~ScrollArea();
 
             //! Create a new widget.
             static std::shared_ptr<ScrollArea> create(

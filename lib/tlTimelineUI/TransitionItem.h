@@ -20,12 +20,12 @@ namespace tl
                 const otio::SerializableObject::Retainer<otio::Transition>&,
                 const ItemData&,
                 const std::shared_ptr<system::Context>&,
-                const std::shared_ptr<IWidget>& parent = nullptr);
+                const std::shared_ptr<IWidget>& parent);
 
             TransitionItem();
 
         public:
-            ~TransitionItem() override;
+            virtual ~TransitionItem();
 
             //! Create a new item.
             static std::shared_ptr<TransitionItem> create(

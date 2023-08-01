@@ -40,9 +40,10 @@ namespace tl
         void PlaybackMenu::_init(
             const std::shared_ptr<MainWindow>& mainWindow,
             const std::shared_ptr<App>& app,
-            const std::shared_ptr<system::Context>& context)
+            const std::shared_ptr<system::Context>& context,
+            const std::shared_ptr<IWidget>& parent)
         {
-            Menu::_init(context);
+            Menu::_init(context, parent);
             TLRENDER_P();
 
             p.mainWindow = mainWindow;
@@ -110,6 +111,64 @@ namespace tl
                         {
                             _p->playbackPrev = playback;
                         }
+                    }
+                });
+            addItem(item);
+
+            addDivider();
+
+            item = std::make_shared<ui::MenuItem>(
+                "Jump Back 1s",
+                ui::Key::J,
+                static_cast<int>(ui::KeyModifier::Shift),
+                [this]
+                {
+                    close();
+                if (_p->player)
+                {
+                    _p->player->timeAction(timeline::TimeAction::JumpBack1s);
+                }
+                });
+            addItem(item);
+
+            item = std::make_shared<ui::MenuItem>(
+                "Jump Back 10s",
+                ui::Key::J,
+                static_cast<int>(ui::KeyModifier::Control),
+                [this]
+                {
+                    close();
+                    if (_p->player)
+                    {
+                        _p->player->timeAction(timeline::TimeAction::JumpBack10s);
+                    }
+                });
+            addItem(item);
+
+            item = std::make_shared<ui::MenuItem>(
+                "Jump Forward 1s",
+                ui::Key::L,
+                static_cast<int>(ui::KeyModifier::Shift),
+                [this]
+                {
+                    close();
+                    if (_p->player)
+                    {
+                        _p->player->timeAction(timeline::TimeAction::JumpForward1s);
+                    }
+                });
+            addItem(item);
+
+            item = std::make_shared<ui::MenuItem>(
+                "Jump Forward 10s",
+                ui::Key::L,
+                static_cast<int>(ui::KeyModifier::Control),
+                [this]
+                {
+                    close();
+                    if (_p->player)
+                    {
+                        _p->player->timeAction(timeline::TimeAction::JumpForward10s);
                     }
                 });
             addItem(item);
@@ -371,10 +430,11 @@ namespace tl
         std::shared_ptr<PlaybackMenu> PlaybackMenu::create(
             const std::shared_ptr<MainWindow>& mainWindow,
             const std::shared_ptr<App>& app,
-            const std::shared_ptr<system::Context>& context)
+            const std::shared_ptr<system::Context>& context,
+            const std::shared_ptr<IWidget>& parent)
         {
             auto out = std::shared_ptr<PlaybackMenu>(new PlaybackMenu);
-            out->_init(mainWindow, app, context);
+            out->_init(mainWindow, app, context, parent);
             return out;
         }
 

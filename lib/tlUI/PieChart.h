@@ -35,12 +35,12 @@ namespace tl
         protected:
             void _init(
                 const std::shared_ptr<system::Context>&,
-                const std::shared_ptr<IWidget>& parent = nullptr);
+                const std::shared_ptr<IWidget>& parent);
 
             PieChart();
 
         public:
-            ~PieChart() override;
+            virtual ~PieChart();
 
             //! Create a new widget.
             static std::shared_ptr<PieChart> create(

@@ -18,12 +18,12 @@ namespace tl
         protected:
             void _init(
                 const std::shared_ptr<system::Context>&,
-                const std::shared_ptr<IWidget>& parent = nullptr);
+                const std::shared_ptr<IWidget>& parent);
 
             ToolButton();
 
         public:
-            ~ToolButton() override;
+            virtual ~ToolButton();
 
             //! Create a new widget.
             static std::shared_ptr<ToolButton> create(
