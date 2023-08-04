@@ -32,7 +32,7 @@ if(WIN32)
     # in "bin" instead.
     set(USD_INSTALL_COMMAND
         ${CMAKE_COMMAND} -E copy_directory ${CMAKE_INSTALL_PREFIX}/lib/usd  ${CMAKE_INSTALL_PREFIX}/bin/usd
-        COMMAND copy "${CMAKE_INSTALL_PREFIX}/lib/*.dll" "${CMAKE_INSTALL_PREFIX}/bin"
+        COMMAND copy "${CMAKE_INSTALL_PREFIX}/lib/*.dll" "${CMAKE_INSTALL_PREFIX}/bin")
 endif()
 
 ExternalProject_Add(
