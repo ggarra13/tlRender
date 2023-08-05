@@ -13,6 +13,8 @@ namespace tl
 {
     namespace ui
     {
+        class RecentFilesModel;
+
         //! File browser options.
         struct FileBrowserOptions
         {
@@ -31,7 +33,7 @@ namespace tl
 
         protected:
             void _init(
-                const std::string&,
+                const std::string& path,
                 const std::shared_ptr<system::Context>&,
                 const std::shared_ptr<IWidget>& parent);
 
@@ -40,23 +42,26 @@ namespace tl
         public:
             virtual ~FileBrowser();
 
-            //! Create a new widget.
+            //! Create a new dialog.
             static std::shared_ptr<FileBrowser> create(
-                const std::string&,
+                const std::string& path,
                 const std::shared_ptr<system::Context>&,
                 const std::shared_ptr<IWidget>& parent = nullptr);
 
-            //! Set the file callback.
-            void setFileCallback(const std::function<void(const file::Path&)>&);
+            //! Set the callback.
+            void setCallback(const std::function<void(const file::FileInfo&)>&);
 
             //! Get the path.
-            const file::Path& getPath() const;
+            const std::string& getPath() const;
 
             //! Get the options.
             const FileBrowserOptions& getOptions() const;
 
             //! Set the options.
             void setOptions(const FileBrowserOptions&);
+
+            //! Set the recent files model.
+            void setRecentFilesModel(const std::shared_ptr<RecentFilesModel>&);
 
         private:
             TLRENDER_PRIVATE();
@@ -81,7 +86,7 @@ namespace tl
             //! Open the file browser.
             void open(
                 const std::shared_ptr<EventLoop>&,
-                const std::function<void(const file::Path&)>&);
+                const std::function<void(const file::FileInfo&)>&);
 
             //! Get whether the native file dialog is used.
             bool isNativeFileDialog() const;
@@ -100,6 +105,9 @@ namespace tl
 
             //! Set the options.
             void setOptions(const FileBrowserOptions&);
+
+            //! Get the recent files model.
+            const std::shared_ptr<RecentFilesModel>& getRecentFilesModel() const;
 
         private:
             TLRENDER_PRIVATE();

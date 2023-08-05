@@ -62,12 +62,12 @@ namespace tl
             return out;
         }
 
-        void FileBrowser::setFileCallback(const std::function<void(const file::Path&)>& value)
+        void FileBrowser::setCallback(const std::function<void(const file::FileInfo&)>& value)
         {
-            _p->widget->setFileCallback(value);
+            _p->widget->setCallback(value);
         }
 
-        const file::Path& FileBrowser::getPath() const
+        const std::string& FileBrowser::getPath() const
         {
             return _p->widget->getPath();
         }
@@ -80,6 +80,11 @@ namespace tl
         void FileBrowser::setOptions(const FileBrowserOptions& value)
         {
             _p->widget->setOptions(value);
+        }
+
+        void FileBrowser::setRecentFilesModel(const std::shared_ptr<RecentFilesModel>& value)
+        {
+            _p->widget->setRecentFilesModel(value);
         }
 
         void to_json(nlohmann::json& json, const FileBrowserOptions& value)

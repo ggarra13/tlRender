@@ -10,6 +10,7 @@
 #include <tlUI/Label.h>
 #include <tlUI/LineEdit.h>
 #include <tlUI/PushButton.h>
+#include <tlUI/RecentFilesModel.h>
 #include <tlUI/RowLayout.h>
 #include <tlUI/ScrollWidget.h>
 #include <tlUI/Spacer.h>
@@ -29,9 +30,9 @@ namespace tl
     {
         struct FileBrowserWidget::Private
         {
-            file::Path path;
-            std::shared_ptr<RecentFilesModel> recentModel;
+            std::string path;
             std::vector<std::string> extensions;
+            std::shared_ptr<RecentFilesModel> recentFilesModel;
 
             std::shared_ptr<ToolButton> upButton;
             std::shared_ptr<ToolButton> cwdButton;
@@ -50,7 +51,7 @@ namespace tl
             std::shared_ptr<Splitter> splitter;
             std::shared_ptr<VerticalLayout> layout;
 
-            std::function<void(const file::Path&)> fileCallback;
+            std::function<void(const file::FileInfo&)> callback;
             std::function<void(void)> cancelCallback;
         };
 
@@ -66,9 +67,7 @@ namespace tl
             setVStretch(Stretch::Expanding);
             setMouseHover(true);
 
-            p.path = file::Path(path);
-
-            p.recentModel = RecentFilesModel::create(context);
+            p.path = path;
 
             std::vector<std::string> extensionsLabels;
             if (auto context = _context.lock())
@@ -85,11 +84,13 @@ namespace tl
 
             p.upButton = ToolButton::create(context);
             p.upButton->setIcon("DirectoryUp");
+            p.upButton->setToolTip("Go up a directory");
 
             p.pathEdit = LineEdit::create(context);
             p.pathEdit->setHStretch(Stretch::Expanding);
+            p.pathEdit->setToolTip("The current directory");
 
-            p.pathsWidget = PathsWidget::create(p.recentModel, context);
+            p.pathsWidget = PathsWidget::create(context);
             p.pathsScrollWidget = ScrollWidget::create(context);
             p.pathsScrollWidget->setWidget(p.pathsWidget);
             p.pathsScrollWidget->setVStretch(Stretch::Expanding);
@@ -100,19 +101,25 @@ namespace tl
             p.directoryScrollWidget->setVStretch(Stretch::Expanding);
 
             p.filterEdit = LineEdit::create(context);
+            p.filterEdit->setToolTip("Filter the contents of the directory");
             
             p.filterClearButton = ToolButton::create(context);
             p.filterClearButton->setIcon("Clear");
+            p.filterClearButton->setToolTip("Clear the filter");
 
             p.extensionsComboBox = ComboBox::create(extensionsLabels, context);
             if (!extensionsLabels.empty())
             {
                 p.extensionsComboBox->setCurrentIndex(extensionsLabels.size() - 1);
             }
+            p.extensionsComboBox->setToolTip(
+                "Filter the contents of the directory by file extension");
 
             p.sortComboBox = ComboBox::create(file::getListSortLabels(), context);
+            p.sortComboBox->setToolTip("Set the sort mode");
 
             p.reverseSortCheckBox = CheckBox::create("Reverse sort", context);
+            p.reverseSortCheckBox->setToolTip("Reverse the sort");
 
             p.okButton = PushButton::create(context);
             p.okButton->setText("Ok");
@@ -164,65 +171,45 @@ namespace tl
             p.upButton->setClickedCallback(
                 [this]
                 {
-                    TLRENDER_P();
-                    std::string path = p.path.get();
-                    if (file::hasEndSeparator(path))
-                    {
-                        path.pop_back();
-                    }
-                    else
-                    {
-                        path = p.path.getDirectory();
-                        if (file::hasEndSeparator(path))
-                        {
-                            path.pop_back();
-                        }
-                    }
-                    p.path = file::Path(file::Path(path).getDirectory(), "");
+                    _p->path = file::getParent(_p->path);
                     _pathUpdate();
                 });
 
             p.pathEdit->setTextCallback(
                 [this](const std::string& value)
                 {
-                    TLRENDER_P();
-                    if (file::exists(value))
-                    {
-                        p.path = file::Path(value, p.path.get(-1, false));
-                    }
-                    else
-                    {
-                        std::string path = value;
-                        if (file::hasEndSeparator(path))
-                        {
-                            path.pop_back();
-                        }
-                        p.path = file::Path(file::Path(path).getDirectory(), "");
-                    }
+                    _p->path = value;
                     _pathUpdate();
                 });
 
             p.pathsWidget->setCallback(
                 [this](const std::string& value)
                 {
-                    _p->path = file::Path(value, "");
+                    _p->path = value;
                     _pathUpdate();
                 });
 
-            p.directoryWidget->setFileCallback(
-                [this](const file::Path& value)
+            p.directoryWidget->setCallback(
+                [this](const file::FileInfo& value)
                 {
-                    TLRENDER_P();
-                    if (p.fileCallback)
+                    switch (value.getType())
                     {
-                        p.fileCallback(value);
+                    case file::Type::File:
+                        if (_p->recentFilesModel)
+                        {
+                            _p->recentFilesModel->addRecent(value.getPath());
+                        }
+                        if (_p->callback)
+                        {
+                            _p->callback(value);
+                        }
+                        break;
+                    case file::Type::Directory:
+                        _p->path = value.getPath().get();
+                        _pathUpdate();
+                        break;
+                    default: break;
                     }
-                });
-            p.directoryWidget->setPathCallback(
-                [this](const file::Path& value)
-                {
-                    _p->path = value;
-                    _pathUpdate();
                 });
 
             p.filterEdit->setTextChangedCallback(
@@ -273,9 +260,14 @@ namespace tl
                 [this]
                 {
                     TLRENDER_P();
-                    if (p.fileCallback)
+                    const file::Path path(p.path);
+                    if (p.recentFilesModel)
                     {
-                        p.fileCallback(p.path);
+                        p.recentFilesModel->addRecent(path);
+                    }
+                    if (p.callback)
+                    {
+                        p.callback(file::FileInfo(path));
                     }
                 });
 
@@ -307,9 +299,9 @@ namespace tl
             return out;
         }
 
-        void FileBrowserWidget::setFileCallback(const std::function<void(const file::Path&)>& value)
+        void FileBrowserWidget::setCallback(const std::function<void(const file::FileInfo&)>& value)
         {
-            _p->fileCallback = value;
+            _p->callback = value;
         }
 
         void FileBrowserWidget::setCancelCallback(const std::function<void(void)>& value)
@@ -317,7 +309,7 @@ namespace tl
             _p->cancelCallback = value;
         }
 
-        const file::Path& FileBrowserWidget::getPath() const
+        const std::string& FileBrowserWidget::getPath() const
         {
             return _p->path;
         }
@@ -339,6 +331,11 @@ namespace tl
             }
             p.sortComboBox->setCurrentIndex(static_cast<int>(value.list.sort));
             p.reverseSortCheckBox->setChecked(value.list.reverseSort);
+        }
+
+        void FileBrowserWidget::setRecentFilesModel(const std::shared_ptr<RecentFilesModel>& value)
+        {
+            _p->pathsWidget->setRecentFilesModel(value);
         }
 
         void FileBrowserWidget::setGeometry(const math::BBox2i& value)
@@ -371,7 +368,7 @@ namespace tl
         void FileBrowserWidget::_pathUpdate()
         {
             TLRENDER_P();
-            p.pathEdit->setText(p.path.get());
+            p.pathEdit->setText(p.path);
             p.directoryWidget->setPath(p.path);
             p.directoryScrollWidget->setScrollPos(math::Vector2i(0, 0));
         }

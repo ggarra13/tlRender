@@ -6,8 +6,6 @@
 
 #include <tlGLApp/IApp.h>
 
-#include <tlPlay/FilesModel.h>
-
 #include <tlTimeline/Player.h>
 
 namespace tl
@@ -19,11 +17,14 @@ namespace tl
 
     namespace play
     {
+        struct FilesModelItem;
+
         class AudioModel;
         class ColorModel;
+        class FilesModel;
     }
 
-    //! OpenGL playback application.
+    //! "tlplay-gl" application.
     namespace play_gl
     {
         class MainWindow;
@@ -68,9 +69,6 @@ namespace tl
 
             //! Get the files model.
             const std::shared_ptr<play::FilesModel>& getFilesModel() const;
-
-            //! Get the recent files model.
-            const std::shared_ptr<ui::RecentFilesModel>& getRecentFilesModel() const;
 
             //! Observe the active timeline players.
             std::shared_ptr<observer::IList<std::shared_ptr<timeline::Player> > > observeActivePlayers() const;

@@ -35,17 +35,7 @@ namespace tl
             }
             {
                 std::stringstream ss;
-                ss << "UNIX env list separator: " << getEnvListSeparator(EnvListSeparator::UNIX);
-                _print(ss.str());
-            }
-            {
-                std::stringstream ss;
-                ss << "Windows env list separator: " << getEnvListSeparator(EnvListSeparator::Windows);
-                _print(ss.str());
-            }
-            {
-                std::stringstream ss;
-                ss << "Current env list separator: " << getEnvListSeparator();
+                ss << "Environment variable list separator: " << envListSeparator;
                 _print(ss.str());
             }
             {
@@ -81,7 +71,7 @@ namespace tl
             {
                 const std::string env = "OSTEST";
                 const std::vector<std::string> value = { "a", "b", "c" };
-                TLRENDER_ASSERT(setEnv(env, string::join(value, getEnvListSeparator())));
+                TLRENDER_ASSERT(setEnv(env, string::join(value, envListSeparator)));
                 std::vector<std::string> value2;
                 TLRENDER_ASSERT(getEnv(env, value2));
                 TLRENDER_ASSERT(value == value2);

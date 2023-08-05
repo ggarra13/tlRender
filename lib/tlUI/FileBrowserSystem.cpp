@@ -4,6 +4,8 @@
 
 #include <tlUI/FileBrowser.h>
 
+#include <tlUI/RecentFilesModel.h>
+
 #include <tlCore/File.h>
 
 #if defined(TLRENDER_NFD)
@@ -19,7 +21,8 @@ namespace tl
             bool native = true;
             std::string path;
             FileBrowserOptions options;
-            std::shared_ptr<ui::FileBrowser> fileBrowser;
+            std::shared_ptr<FileBrowser> fileBrowser;
+            std::shared_ptr<RecentFilesModel> recentFilesModel;
         };
 
         void FileBrowserSystem::_init(const std::shared_ptr<system::Context>& context)
@@ -29,6 +32,7 @@ namespace tl
 
             p.path = file::getCWD();
             p.options.list.sequence = false;
+            p.recentFilesModel = RecentFilesModel::create(context);
 
 #if defined(TLRENDER_NFD)
             NFD::Init();
@@ -55,7 +59,7 @@ namespace tl
 
         void FileBrowserSystem::open(
             const std::shared_ptr<EventLoop>& eventLoop,
-            const std::function<void(const file::Path&)>& callback)
+            const std::function<void(const file::FileInfo&)>& callback)
         {
             TLRENDER_P();
             bool native = p.native;
@@ -68,7 +72,7 @@ namespace tl
                 {
                     if (callback)
                     {
-                        callback(file::Path(outPath));
+                        callback(file::FileInfo(file::Path(outPath)));
                     }
                     NFD::FreePath(outPath);
                 }
@@ -80,11 +84,12 @@ namespace tl
             {
                 if (auto context = _context.lock())
                 {
-                    p.fileBrowser = ui::FileBrowser::create(p.path, context);
+                    p.fileBrowser = FileBrowser::create(p.path, context);
                     p.fileBrowser->setOptions(p.options);
+                    p.fileBrowser->setRecentFilesModel(p.recentFilesModel);
                     p.fileBrowser->open(eventLoop);
-                    p.fileBrowser->setFileCallback(
-                        [this, callback](const file::Path& value)
+                    p.fileBrowser->setCallback(
+                        [this, callback](const file::FileInfo& value)
                         {
                             if (callback)
                             {
@@ -95,7 +100,7 @@ namespace tl
                     p.fileBrowser->setCloseCallback(
                         [this]
                         {
-                            _p->path = _p->fileBrowser->getPath().get();
+                            _p->path = _p->fileBrowser->getPath();
                             _p->options = _p->fileBrowser->getOptions();
                             _p->fileBrowser.reset();
                         });
@@ -131,6 +136,11 @@ namespace tl
         void FileBrowserSystem::setOptions(const FileBrowserOptions& options)
         {
             _p->options = options;
+        }
+
+        const std::shared_ptr<RecentFilesModel>& FileBrowserSystem::getRecentFilesModel() const
+        {
+            return _p->recentFilesModel;
         }
     }
 }
