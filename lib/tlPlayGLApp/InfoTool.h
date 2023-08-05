@@ -6,6 +6,8 @@
 
 #include <tlPlayGLApp/IToolWidget.h>
 
+#include <tlTimeline/Player.h>
+
 namespace tl
 {
     namespace play_gl
@@ -34,6 +36,8 @@ namespace tl
                 const std::shared_ptr<IWidget>& parent = nullptr);
 
         private:
+            void _widgetUpdate();
+
             TLRENDER_PRIVATE();
         };
     }

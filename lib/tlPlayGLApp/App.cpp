@@ -12,6 +12,7 @@
 
 #include <tlPlay/AudioModel.h>
 #include <tlPlay/ColorModel.h>
+#include <tlPlay/FilesModel.h>
 #include <tlPlay/Util.h>
 
 #include <tlUI/EventLoop.h>
@@ -79,7 +80,6 @@ namespace tl
             std::vector<std::shared_ptr<play::FilesModelItem> > activeFiles;
             std::vector<std::shared_ptr<timeline::Player> > players;
             std::shared_ptr<observer::List<std::shared_ptr<timeline::Player> > > activePlayers;
-            std::shared_ptr<ui::RecentFilesModel> recentFilesModel;
             std::shared_ptr<play::ColorModel> colorModel;
             bool deviceActive = false;
             std::shared_ptr<play::AudioModel> audioModel;
@@ -93,6 +93,7 @@ namespace tl
             std::shared_ptr<observer::ListObserver<int> > layersObserver;
             std::shared_ptr<observer::ValueObserver<float> > volumeObserver;
             std::shared_ptr<observer::ValueObserver<bool> > muteObserver;
+            std::shared_ptr<observer::ValueObserver<double> > syncOffsetObserver;
             std::shared_ptr<observer::ValueObserver<std::string> > settingsObserver;
         };
 
@@ -352,16 +353,6 @@ namespace tl
 
             // Initialize the models.
             p.filesModel = play::FilesModel::create(context);
-            p.recentFilesModel = ui::RecentFilesModel::create(context);
-            int recentFilesMax = 0;
-            p.settings->getValue("Files/RecentMax", recentFilesMax);
-            p.recentFilesModel->setRecentMax(recentFilesMax);
-            std::vector<std::string> recentFiles;
-            p.settings->getValue("Files/Recent", recentFiles);
-            for (const auto& recentFile : recentFiles)
-            {
-                p.recentFilesModel->addRecent(file::Path(recentFile));
-            }
             p.colorModel = play::ColorModel::create(context);
             p.colorModel->setColorConfigOptions(p.options.colorConfigOptions);
             p.colorModel->setLUTOptions(p.options.lutOptions);
@@ -389,6 +380,16 @@ namespace tl
                 ui::FileBrowserOptions options;
                 p.settings->getValue("FileBrowser/Options", options);
                 fileBrowserSystem->setOptions(options);
+                int recentFilesMax = 0;
+                p.settings->getValue("Files/RecentMax", recentFilesMax);
+                auto recentFilesModel = fileBrowserSystem->getRecentFilesModel();
+                recentFilesModel->setRecentMax(recentFilesMax);
+                std::vector<std::string> recentFiles;
+                p.settings->getValue("Files/Recent", recentFiles);
+                for (const auto& recentFile : recentFiles)
+                {
+                    recentFilesModel->addRecent(file::Path(recentFile));
+                }
             }
 
             // Create observers.
@@ -428,6 +429,12 @@ namespace tl
             p.muteObserver = observer::ValueObserver<bool>::create(
                 p.audioModel->observeMute(),
                 [this](bool)
+                {
+                    _audioUpdate();
+                });
+            p.syncOffsetObserver = observer::ValueObserver<double>::create(
+                p.audioModel->observeSyncOffset(),
+                [this](double)
                 {
                     _audioUpdate();
                 });
@@ -525,16 +532,6 @@ namespace tl
             // Save the settings.
             if (p.settings)
             {
-                if (p.recentFilesModel)
-                {
-                    p.settings->setValue("Files/RecentMax", p.recentFilesModel->getRecentMax());
-                    std::vector<std::string> recentFiles;
-                    for (const auto& recentFile : p.recentFilesModel->getRecent())
-                    {
-                        recentFiles.push_back(recentFile.get());
-                    }
-                    p.settings->setValue("Files/Recent", recentFiles);
-                }
                 p.settings->setValue("Window/Size", getWindowSize());
                 p.settings->setValue("Audio/Volume", p.audioModel->getVolume());
                 p.settings->setValue("Audio/Mute", p.audioModel->isMuted());
@@ -546,6 +543,14 @@ namespace tl
                     p.settings->setValue(
                         "FileBrowser/Options",
                         fileBrowserSystem->getOptions());
+                    auto recentFilesModel = fileBrowserSystem->getRecentFilesModel();
+                    p.settings->setValue("Files/RecentMax", recentFilesModel->getRecentMax());
+                    std::vector<std::string> recentFiles;
+                    for (const auto& recentFile : recentFilesModel->getRecent())
+                    {
+                        recentFiles.push_back(recentFile.get());
+                    }
+                    p.settings->setValue("Files/Recent", recentFiles);
                 }
                 p.settings->write(p.settingsFileName);
             }
@@ -568,9 +573,9 @@ namespace tl
             {
                 fileBrowserSystem->open(
                     getEventLoop(),
-                    [this](const file::Path& value)
+                    [this](const file::FileInfo& value)
                     {
-                        open(value.get());
+                        open(value.getPath().get());
                     });
             }
         }
@@ -580,10 +585,10 @@ namespace tl
             TLRENDER_P();
             p.separateAudioDialog = SeparateAudioDialog::create(_context);
             p.separateAudioDialog->open(getEventLoop());
-            p.separateAudioDialog->setFileCallback(
-                [this](const file::Path& value, const file::Path& audio)
+            p.separateAudioDialog->setCallback(
+                [this](const std::string& value, const std::string& audio)
                 {
-                    open(value.get(), audio.get());
+                    open(value, audio);
                     _p->separateAudioDialog->close();
                 });
             p.separateAudioDialog->setCloseCallback(
@@ -604,7 +609,6 @@ namespace tl
                 item->path = path;
                 item->audioPath = file::Path(audioFileName);
                 p.filesModel->add(item);
-                p.recentFilesModel->addRecent(item->path);
             }
         }
 
@@ -616,11 +620,6 @@ namespace tl
         const std::shared_ptr<play::FilesModel>& App::getFilesModel() const
         {
             return _p->filesModel;
-        }
-
-        const std::shared_ptr<ui::RecentFilesModel>& App::getRecentFilesModel() const
-        {
-            return _p->recentFilesModel;
         }
 
         std::shared_ptr<observer::IList<std::shared_ptr<timeline::Player> > > App::observeActivePlayers() const
@@ -896,6 +895,7 @@ namespace tl
                 {
                     player->setVolume(p.audioModel->getVolume());
                     player->setMute(p.audioModel->isMuted() || p.deviceActive);
+                    player->setAudioOffset(p.audioModel->getSyncOffset());
                 }
             }
         }

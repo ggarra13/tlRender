@@ -47,7 +47,7 @@ namespace tl
                 TLRENDER_ASSERT(Path("/tmp/file.txt").get() == "/tmp/file.txt");
                 TLRENDER_ASSERT(Path("/tmp", "file.txt").get() == "/tmp/file.txt");
                 TLRENDER_ASSERT(Path("/tmp/", "file.txt").get() == "/tmp/file.txt");
-                TLRENDER_ASSERT(Path("\\tmp\\file.txt").get() == "/tmp/file.txt");
+                TLRENDER_ASSERT(Path("\\tmp\\file.txt").get() == "\\tmp\\file.txt");
             }
             {
                 TLRENDER_ASSERT(Path("/tmp/", "render.", "0001", 4, ".exr").get() ==
@@ -98,7 +98,7 @@ namespace tl
             }
             {
                 Path a("/");
-                Path b("\\");
+                Path b("/");
                 TLRENDER_ASSERT(a == b);
                 b = Path("/tmp");
                 TLRENDER_ASSERT(a != b);
