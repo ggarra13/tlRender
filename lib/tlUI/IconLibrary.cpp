@@ -146,7 +146,7 @@ namespace tl
             {
                 std::string name;
                 float displayScale = 1.F;
-                std::promise<std::shared_ptr<imaging::Image> > promise;
+                std::promise<std::shared_ptr<image::Image> > promise;
                 std::future<io::VideoData> future;
             };
             const size_t requestTimeout = 5;
@@ -157,7 +157,7 @@ namespace tl
             {
                 std::list<std::shared_ptr<Request> > requests;
                 bool stopped = false;
-                memory::LRUCache<CacheKey, std::shared_ptr<imaging::Image> > cache;
+                memory::LRUCache<CacheKey, std::shared_ptr<image::Image> > cache;
                 std::mutex mutex;
             };
             Mutex mutex;
@@ -311,9 +311,8 @@ namespace tl
                                     i < requestCount && !p.mutex.requests.empty();
                                     ++i)
                                 {
-                                    auto request = p.mutex.requests.front();
+                                    requests.push_back(p.mutex.requests.front());
                                     p.mutex.requests.pop_front();
-                                    requests.push_back(request);
                                 }
                             }
                         }
@@ -347,13 +346,12 @@ namespace tl
                                     }
                                 }
                                 catch (const std::exception&)
-                                {
-                                }
+                                {}
                             }
                         }
                         for (const auto& request : requests)
                         {
-                            std::shared_ptr<imaging::Image> image;
+                            std::shared_ptr<image::Image> image;
                             if (request->future.valid())
                             {
                                 image = request->future.get().image;
@@ -397,7 +395,7 @@ namespace tl
             return out;
         }
 
-        std::future<std::shared_ptr<imaging::Image> > IconLibrary::request(
+        std::future<std::shared_ptr<image::Image> > IconLibrary::request(
             const std::string& name,
             float displayScale)
         {
@@ -407,7 +405,7 @@ namespace tl
             request->displayScale = displayScale;
             auto future = request->promise.get_future();
             bool valid = false;
-            std::shared_ptr<imaging::Image> cached;
+            std::shared_ptr<image::Image> cached;
             {
                 std::unique_lock<std::mutex> lock(p.mutex.mutex);
                 if (!p.mutex.cache.get(std::make_pair(name, displayScale), cached))

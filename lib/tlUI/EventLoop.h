@@ -57,7 +57,7 @@ namespace tl
             void removeWidget(const std::shared_ptr<IWidget>&);
 
             //! Set the user interface display resolution.
-            void setDisplaySize(const imaging::Size&);
+            void setDisplaySize(const image::Size&);
 
             //! Set the user interface display scale. This will scale the size
             //! roles, fonts, and other metrics to support different
@@ -87,7 +87,7 @@ namespace tl
 
             //! Set the custom cursor function.
             void setCursor(const std::function<void(
-                const std::shared_ptr<imaging::Image>&,
+                const std::shared_ptr<image::Image>&,
                 const math::Vector2i&)>&);
 
             //! Handle scrolling (mouse wheel or touch pad).
@@ -106,12 +106,12 @@ namespace tl
             void draw(const std::shared_ptr<timeline::IRender>&);
 
             //! Take a screenshot of a widget.
-            std::shared_ptr<imaging::Image> screenshot(
+            std::shared_ptr<image::Image> screenshot(
                 const std::shared_ptr<IWidget>&);
 
             //! Set the screenshot capture function.
-            void setCapture(const std::function<std::shared_ptr<imaging::Image>(
-                const math::BBox2i&)>&);
+            void setCapture(const std::function<std::shared_ptr<image::Image>(
+                const math::Box2i&)>&);
 
         protected:
             void _tickEvent();
@@ -131,7 +131,7 @@ namespace tl
             void _clipEvent();
             void _clipEvent(
                 const std::shared_ptr<IWidget>&,
-                const math::BBox2i&,
+                const math::Box2i&,
                 bool clipped,
                 const ClipEvent&);
 
@@ -140,7 +140,7 @@ namespace tl
             void _drawEvent(const std::shared_ptr<timeline::IRender>&);
             void _drawEvent(
                 const std::shared_ptr<IWidget>&,
-                const math::BBox2i&,
+                const math::Box2i&,
                 const DrawEvent&);
 
             std::list<std::shared_ptr<IWidget> > _getUnderCursor(const math::Vector2i&);

@@ -275,7 +275,7 @@ namespace tl
             
             const float devicePixelRatio = window()->devicePixelRatio();
             p.eventLoop->setDisplayScale(devicePixelRatio);
-            p.eventLoop->setDisplaySize(imaging::Size(_toUI(w), _toUI(h)));
+            p.eventLoop->setDisplaySize(image::Size(_toUI(w), _toUI(h)));
             
             p.vao.reset();
             p.vbo.reset();
@@ -284,7 +284,7 @@ namespace tl
         void TimelineWidget::paintGL()
         {
             TLRENDER_P();
-            const imaging::Size renderSize(_toUI(width()), _toUI(height()));
+            const image::Size renderSize(_toUI(width()), _toUI(height()));
             if (p.eventLoop->hasDrawUpdate())
             {
                 try
@@ -292,7 +292,7 @@ namespace tl
                     if (renderSize.isValid())
                     {
                         gl::OffscreenBufferOptions offscreenBufferOptions;
-                        offscreenBufferOptions.colorType = imaging::PixelType::RGBA_F32;
+                        offscreenBufferOptions.colorType = image::PixelType::RGBA_F32;
                         if (gl::doCreate(p.buffer, renderSize, offscreenBufferOptions))
                         {
                             p.buffer = gl::OffscreenBuffer::create(renderSize, offscreenBufferOptions);
@@ -352,7 +352,7 @@ namespace tl
                 glActiveTexture(GL_TEXTURE0);
                 glBindTexture(GL_TEXTURE_2D, p.buffer->getColorID());
 
-                const auto mesh = geom::bbox(math::BBox2i(0, 0, renderSize.w, renderSize.h));
+                const auto mesh = geom::box(math::Box2i(0, 0, renderSize.w, renderSize.h));
                 if (!p.vbo)
                 {
                     p.vbo = gl::VBO::create(mesh.triangles.size() * 3, gl::VBOType::Pos2_F32_UV_U16);

@@ -44,7 +44,7 @@ namespace tl
                 std::string audioFileName;
                 std::string compareFileName;
                 timeline::CompareOptions compareOptions;
-                imaging::Size windowSize = imaging::Size(1920, 1080);
+                image::Size windowSize = image::Size(1920, 1080);
                 bool fullscreen = false;
                 bool hud = true;
                 double speed = 0.0;
@@ -91,6 +91,8 @@ namespace tl
             std::shared_ptr<observer::ListObserver<std::shared_ptr<play::FilesModelItem> > > filesObserver;
             std::shared_ptr<observer::ListObserver<std::shared_ptr<play::FilesModelItem> > > activeObserver;
             std::shared_ptr<observer::ListObserver<int> > layersObserver;
+            std::shared_ptr<observer::ValueObserver<timeline::ColorConfigOptions> > colorConfigOptionsObserver;
+            std::shared_ptr<observer::ValueObserver<timeline::LUTOptions> > lutOptionsObserver;
             std::shared_ptr<observer::ValueObserver<float> > volumeObserver;
             std::shared_ptr<observer::ValueObserver<bool> > muteObserver;
             std::shared_ptr<observer::ValueObserver<double> > syncOffsetObserver;
@@ -144,7 +146,7 @@ namespace tl
                     { "-wipeRotation", "-wr" },
                     "A/B comparison wipe rotation.",
                     string::Format("{0}").arg(p.options.compareOptions.wipeRotation)),
-                app::CmdLineValueOption<imaging::Size>::create(
+                app::CmdLineValueOption<image::Size>::create(
                     p.options.windowSize,
                     { "-windowSize", "-ws" },
                     "Window size.",
@@ -323,7 +325,7 @@ namespace tl
                 p.settings->read(p.settingsFileName);
             }
             p.settings->setDefaultValue("Files/RecentMax", 10);
-            imaging::Size windowSize = p.options.windowSize;
+            image::Size windowSize = p.options.windowSize;
             p.settings->setDefaultValue("Window/Size", windowSize);
             p.settings->setDefaultValue("Audio/Volume", 1.F);
             p.settings->setDefaultValue("Audio/Mute", false);
@@ -418,6 +420,19 @@ namespace tl
                             player->setVideoLayer(value[i]);
                         }
                     }
+                });
+
+            p.colorConfigOptionsObserver = observer::ValueObserver<timeline::ColorConfigOptions>::create(
+                p.colorModel->observeColorConfigOptions(),
+                [this](const timeline::ColorConfigOptions& value)
+                {
+                    _setColorConfigOptions(value);
+                });
+            p.lutOptionsObserver = observer::ValueObserver<timeline::LUTOptions>::create(
+                p.colorModel->observeLUTOptions(),
+                [this](const timeline::LUTOptions& value)
+                {
+                    _setLUTOptions(value);
                 });
 
             p.volumeObserver = observer::ValueObserver<float>::create(

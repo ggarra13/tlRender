@@ -46,11 +46,11 @@ namespace tl
                     const TickEvent&) override;
                 void sizeHintEvent(const SizeHintEvent&) override;
                 void clipEvent(
-                    const math::BBox2i&,
+                    const math::Box2i&,
                     bool,
                     const ClipEvent&) override;
                 void drawEvent(
-                    const math::BBox2i&,
+                    const math::Box2i&,
                     const DrawEvent&) override;
                 void keyPressEvent(KeyEvent&) override;
                 void keyReleaseEvent(KeyEvent&) override;
@@ -65,8 +65,8 @@ namespace tl
                 {
                     std::string name;
                     bool init = false;
-                    std::future<std::shared_ptr<imaging::Image> > future;
-                    std::shared_ptr<imaging::Image> image;
+                    std::future<std::shared_ptr<image::Image> > future;
+                    std::shared_ptr<image::Image> image;
                 };
                 IconData _checkedIcon;
                 IconData _uncheckedIcon;
@@ -77,8 +77,8 @@ namespace tl
                     int margin = 0;
                     int spacing = 0;
                     int border = 0;
-                    imaging::FontInfo fontInfo;
-                    imaging::FontMetrics fontMetrics;
+                    image::FontInfo fontInfo;
+                    image::FontMetrics fontMetrics;
                     math::Vector2i textSize;
                     math::Vector2i shortcutSize;
                 };
@@ -86,8 +86,8 @@ namespace tl
 
                 struct DrawData
                 {
-                    std::vector<std::shared_ptr<imaging::Glyph> > textGlyphs;
-                    std::vector<std::shared_ptr<imaging::Glyph> > shortcutGlyphs;
+                    std::vector<std::shared_ptr<image::Glyph> > textGlyphs;
+                    std::vector<std::shared_ptr<image::Glyph> > shortcutGlyphs;
                 };
                 DrawData _draw;
             };
@@ -102,7 +102,9 @@ namespace tl
                 setAcceptsKeyFocus(true);
                 
                 _checkedIcon.name = "MenuChecked";
+                _checkedIcon.init = true;
                 _uncheckedIcon.name = "MenuUnchecked";
+                _uncheckedIcon.init = true;
             }
 
             MenuButton::MenuButton()
@@ -170,13 +172,13 @@ namespace tl
                 {
                     _iconScale = event.displayScale;
                     _checkedIcon.init = true;
-                    _checkedIcon.future = std::future<std::shared_ptr<imaging::Image> >();
+                    _checkedIcon.future = std::future<std::shared_ptr<image::Image> >();
                     _checkedIcon.image.reset();
                     _uncheckedIcon.init = true;
-                    _uncheckedIcon.future = std::future<std::shared_ptr<imaging::Image> >();
+                    _uncheckedIcon.future = std::future<std::shared_ptr<image::Image> >();
                     _uncheckedIcon.image.reset();
                     _subMenuIcon.init = true;
-                    _subMenuIcon.future = std::future<std::shared_ptr<imaging::Image> >();
+                    _subMenuIcon.future = std::future<std::shared_ptr<image::Image> >();
                     _subMenuIcon.image.reset();
                 }
                 if (!_checkedIcon.name.empty() && _checkedIcon.init)
@@ -277,7 +279,7 @@ namespace tl
             }
 
             void MenuButton::clipEvent(
-                const math::BBox2i& clipRect,
+                const math::Box2i& clipRect,
                 bool clipped,
                 const ClipEvent& event)
             {
@@ -290,12 +292,12 @@ namespace tl
             }
 
             void MenuButton::drawEvent(
-                const math::BBox2i& drawRect,
+                const math::Box2i& drawRect,
                 const DrawEvent& event)
             {
                 IButton::drawEvent(drawRect, event);
 
-                const math::BBox2i& g = _geometry;
+                const math::Box2i& g = _geometry;
                 const bool enabled = isEnabled();
 
                 // Draw the key focus.
@@ -330,20 +332,20 @@ namespace tl
                 }
 
                 // Draw the icon.
-                const math::BBox2i g2 = g.margin(-_size.border * 2);
+                const math::Box2i g2 = g.margin(-_size.border * 2);
                 int x = g2.x() + _size.margin;
                 if (_iconImage)
                 {
-                    const imaging::Size& iconSize = _iconImage->getSize();
                     if (_checked)
                     {
                         event.render->drawRect(
-                            math::BBox2i(g2.x(), g2.y(), g2.h(), g2.h()),
+                            math::Box2i(g2.x(), g2.y(), g2.h(), g2.h()),
                             event.style->getColorRole(ColorRole::Checked));
                     }
+                    const image::Size& iconSize = _iconImage->getSize();
                     event.render->drawImage(
                         _iconImage,
-                        math::BBox2i(
+                        math::Box2i(
                             x,
                             g2.y() + g2.h() / 2 - iconSize.h / 2,
                             iconSize.w,
@@ -355,16 +357,13 @@ namespace tl
                 }
                 else if (_checked && _checkedIcon.image)
                 {
-                    const imaging::Size& iconSize = _checkedIcon.image->getSize();
-                    if (_checked)
-                    {
-                        event.render->drawRect(
-                            math::BBox2i(g2.x(), g2.y(), g2.h(), g2.h()),
-                            event.style->getColorRole(ColorRole::Checked));
-                    }
+                    event.render->drawRect(
+                        math::Box2i(g2.x(), g2.y(), g2.h(), g2.h()),
+                        event.style->getColorRole(ColorRole::Checked));
+                    const image::Size& iconSize = _checkedIcon.image->getSize();
                     event.render->drawImage(
                         _checkedIcon.image,
-                        math::BBox2i(
+                        math::Box2i(
                             x,
                             g2.y() + g2.h() / 2 - iconSize.h / 2,
                             iconSize.w,
@@ -376,16 +375,10 @@ namespace tl
                 }
                 else if (!_checked && _uncheckedIcon.image)
                 {
-                    const imaging::Size& iconSize = _uncheckedIcon.image->getSize();
-                    if (_checked)
-                    {
-                        event.render->drawRect(
-                            math::BBox2i(g2.x(), g2.y(), g2.h(), g2.h()),
-                            event.style->getColorRole(ColorRole::Checked));
-                    }
+                    const image::Size& iconSize = _uncheckedIcon.image->getSize();
                     event.render->drawImage(
                         _uncheckedIcon.image,
-                        math::BBox2i(
+                        math::Box2i(
                             x,
                             g2.y() + g2.h() / 2 - iconSize.h / 2,
                             iconSize.w,
@@ -438,10 +431,10 @@ namespace tl
                 // Draw the sub menu icon.
                 if (_subMenuIcon.image)
                 {
-                    const imaging::Size& iconSize = _subMenuIcon.image->getSize();
+                    const image::Size& iconSize = _subMenuIcon.image->getSize();
                     event.render->drawImage(
                       _subMenuIcon.image,
-                      math::BBox2i(
+                      math::Box2i(
                           g2.max.x - _size.margin - iconSize.w,
                           g2.y() + g2.h() / 2 - iconSize.h / 2,
                           iconSize.w,

@@ -47,6 +47,9 @@ namespace tl
             //! Set the comparison options.
             void setCompareOptions(const timeline::CompareOptions&);
 
+            //! Set the comparison callback.
+            void setCompareCallback(const std::function<void(timeline::CompareOptions)>&);
+
             //! Set the timeline players.
             void setPlayers(const std::vector<std::shared_ptr<timeline::Player> >&);
 
@@ -86,14 +89,14 @@ namespace tl
 
             void setVisible(bool) override;
             void setEnabled(bool) override;
-            void setGeometry(const math::BBox2i&) override;
+            void setGeometry(const math::Box2i&) override;
             void sizeHintEvent(const ui::SizeHintEvent&) override;
             void clipEvent(
-                const math::BBox2i&,
+                const math::Box2i&,
                 bool,
                 const ui::ClipEvent&) override;
             void drawEvent(
-                const math::BBox2i&,
+                const math::Box2i&,
                 const ui::DrawEvent&) override;
             void mouseMoveEvent(ui::MouseMoveEvent&) override;
             void mousePressEvent(ui::MouseClickEvent&) override;
@@ -103,7 +106,7 @@ namespace tl
             void keyReleaseEvent(ui::KeyEvent&) override;
 
         private:
-            imaging::Size _renderSize() const;
+            image::Size _renderSize() const;
             math::Vector2i _viewportCenter() const;
             void _frameView();
 

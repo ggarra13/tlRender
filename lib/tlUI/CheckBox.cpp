@@ -17,8 +17,8 @@ namespace tl
                 int margin = 0;
                 int spacing = 0;
                 int border = 0;
-                imaging::FontInfo fontInfo;
-                imaging::FontMetrics fontMetrics;
+                image::FontInfo fontInfo;
+                image::FontMetrics fontMetrics;
                 int checkBox = 0;
                 bool textInit = true;
                 math::Vector2i textSize;
@@ -27,7 +27,7 @@ namespace tl
 
             struct DrawData
             {
-                std::vector<std::shared_ptr<imaging::Glyph> > glyphs;
+                std::vector<std::shared_ptr<image::Glyph> > glyphs;
             };
             DrawData draw;
         };
@@ -109,6 +109,7 @@ namespace tl
                 p.size.fontInfo = fontInfo;
                 p.size.textInit = false;
                 p.size.textSize = event.fontSystem->getSize(_text, fontInfo);
+                p.draw.glyphs.clear();
             }
             p.size.checkBox = p.size.fontMetrics.lineHeight * .8F;
 
@@ -125,7 +126,7 @@ namespace tl
         }
 
         void CheckBox::clipEvent(
-            const math::BBox2i& clipRect,
+            const math::Box2i& clipRect,
             bool clipped,
             const ClipEvent& event)
         {
@@ -138,13 +139,13 @@ namespace tl
         }
 
         void CheckBox::drawEvent(
-            const math::BBox2i& drawRect,
+            const math::Box2i& drawRect,
             const DrawEvent& event)
         {
             IButton::drawEvent(drawRect, event);
             TLRENDER_P();
 
-            const math::BBox2i& g = _geometry;
+            const math::Box2i& g = _geometry;
             const bool enabled = isEnabled();
 
             if (_keyFocus)
@@ -155,7 +156,7 @@ namespace tl
                     event.style->getColorRole(ColorRole::KeyFocus));
             }
 
-            const math::BBox2i g2 = g.margin(-p.size.border * 2);
+            const math::Box2i g2 = g.margin(-p.size.border * 2);
             if (_pressed && _geometry.contains(_cursorPos))
             {
                 event.render->drawRect(
@@ -169,8 +170,8 @@ namespace tl
                     event.style->getColorRole(ColorRole::Hover));
             }
 
-            const math::BBox2i g3 = g2.margin(-p.size.margin);
-            const math::BBox2i checkBox(
+            const math::Box2i g3 = g2.margin(-p.size.margin);
+            const math::Box2i checkBox(
                 g3.x(),
                 g3.y() + g3.h() / 2 - p.size.checkBox / 2,
                 p.size.checkBox,

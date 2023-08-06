@@ -425,6 +425,16 @@ namespace tl
             _viewportUpdate();
             _infoUpdate();
 
+            auto appWeak = std::weak_ptr<App>(app);
+            p.timelineViewport->setCompareCallback(
+                [appWeak](const timeline::CompareOptions& value)
+                {
+                    if (auto app = appWeak.lock())
+                    {
+                        app->getFilesModel()->setCompareOptions(value);
+                    }
+                });
+
             p.currentTimeEdit->setCallback(
                 [this](const otime::RationalTime& value)
                 {
@@ -614,7 +624,7 @@ namespace tl
             }
         }
 
-        void MainWindow::setGeometry(const math::BBox2i& value)
+        void MainWindow::setGeometry(const math::Box2i& value)
         {
             IWidget::setGeometry(value);
             _p->layout->setGeometry(value);

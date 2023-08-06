@@ -18,8 +18,8 @@ namespace tl
                 int margin2 = 0;
                 int spacing = 0;
                 int border = 0;
-                imaging::FontInfo fontInfo;
-                imaging::FontMetrics fontMetrics;
+                image::FontInfo fontInfo;
+                image::FontMetrics fontMetrics;
                 bool textInit = true;
                 math::Vector2i textSize;
             };
@@ -27,7 +27,7 @@ namespace tl
 
             struct DrawData
             {
-                std::vector<std::shared_ptr<imaging::Glyph> > glyphs;
+                std::vector<std::shared_ptr<image::Glyph> > glyphs;
             };
             DrawData draw;
         };
@@ -111,6 +111,7 @@ namespace tl
                     p.size.fontInfo = fontInfo;
                     p.size.textInit = false;
                     p.size.textSize = event.fontSystem->getSize(_text, fontInfo);
+                    p.draw.glyphs.clear();
                 }
 
                 _sizeHint.x = p.size.textSize.x + p.size.margin2 * 2;
@@ -136,7 +137,7 @@ namespace tl
         }
 
         void PushButton::clipEvent(
-            const math::BBox2i& clipRect,
+            const math::Box2i& clipRect,
             bool clipped,
             const ClipEvent& event)
         {
@@ -149,13 +150,13 @@ namespace tl
         }
 
         void PushButton::drawEvent(
-            const math::BBox2i& drawRect,
+            const math::Box2i& drawRect,
             const DrawEvent& event)
         {
             IButton::drawEvent(drawRect, event);
             TLRENDER_P();
 
-            const math::BBox2i& g = _geometry;
+            const math::Box2i& g = _geometry;
             const bool enabled = isEnabled();
 
             // Draw the border.
@@ -175,7 +176,7 @@ namespace tl
             }
 
             // Draw the background and checked state.
-            const math::BBox2i g2 = g.margin(-p.size.border * 2);
+            const math::Box2i g2 = g.margin(-p.size.border * 2);
             const auto mesh = rect(g2);
             const ColorRole colorRole = _checked ? _checkedRole : _buttonRole;
             if (colorRole != ColorRole::None)
@@ -203,7 +204,7 @@ namespace tl
             }
 
             // Draw the icon.
-            const math::BBox2i g3 = g2.margin(
+            const math::Box2i g3 = g2.margin(
                 -p.size.margin,
                 -p.size.margin2,
                 -p.size.margin,
@@ -211,10 +212,10 @@ namespace tl
             int x = g3.x();
             if (_iconImage)
             {
-                const imaging::Size& iconSize = _iconImage->getSize();
+                const image::Size& iconSize = _iconImage->getSize();
                 event.render->drawImage(
                   _iconImage,
-                  math::BBox2i(
+                  math::Box2i(
                       x,
                       g3.y() + g3.h() / 2 - iconSize.h / 2,
                       iconSize.w,

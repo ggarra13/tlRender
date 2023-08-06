@@ -78,6 +78,9 @@ namespace tl
             void viewZoomOut();
 
         Q_SIGNALS:
+            //! This signal is emitted when the comparison options are changed.
+            void compareOptionsChanged(const tl::timeline::CompareOptions&);
+
             //! This signal is emitted when the position and zoom change.
             void viewPosAndZoomChanged(const tl::math::Vector2i&, float);
 
@@ -104,10 +107,9 @@ namespace tl
             void keyPressEvent(QKeyEvent*) override;
 
         private:
-            void _drawHUD();
-
-            imaging::Size _viewportSize() const;
-            imaging::Size _renderSize() const;
+            image::Size _viewportSize() const;
+            image::Size _renderSize() const;
+            
             math::Vector2i _viewportCenter() const;
             void _frameView();
 

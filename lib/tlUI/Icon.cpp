@@ -15,10 +15,10 @@ namespace tl
         struct Icon::Private
         {
             std::string icon;
-            std::shared_ptr<imaging::Image> iconImage;
+            std::shared_ptr<image::Image> iconImage;
             float iconScale = 1.F;
             bool iconInit = false;
-            std::future<std::shared_ptr<imaging::Image> > iconFuture;
+            std::future<std::shared_ptr<image::Image> > iconFuture;
             SizeRole marginRole = SizeRole::None;
 
             struct SizeData
@@ -102,7 +102,7 @@ namespace tl
                 p.iconImage.reset();
                 p.iconScale = event.displayScale;
                 p.iconInit = true;
-                p.iconFuture = std::future<std::shared_ptr<imaging::Image> >();
+                p.iconFuture = std::future<std::shared_ptr<image::Image> >();
             }
             if (!p.icon.empty() && p.iconInit)
             {
@@ -134,7 +134,7 @@ namespace tl
         }
 
         void Icon::clipEvent(
-            const math::BBox2i& clipRect,
+            const math::Box2i& clipRect,
             bool clipped,
             const ClipEvent& event)
         {
@@ -146,18 +146,18 @@ namespace tl
         }
 
         void Icon::drawEvent(
-            const math::BBox2i& drawRect,
+            const math::Box2i& drawRect,
             const DrawEvent& event)
         {
             IWidget::drawEvent(drawRect, event);
             TLRENDER_P();
-            const math::BBox2i g = _geometry.margin(-p.size.margin);
+            const math::Box2i g = _geometry.margin(-p.size.margin);
             if (p.iconImage)
             {
-                const imaging::Size& iconSize = p.iconImage->getSize();
+                const image::Size& iconSize = p.iconImage->getSize();
                 event.render->drawImage(
                     p.iconImage,
-                    math::BBox2i(
+                    math::Box2i(
                         g.x() + g.w() / 2 - iconSize.w / 2,
                         g.y() + g.h() / 2 - iconSize.h / 2,
                         iconSize.w,

@@ -71,13 +71,13 @@ namespace tl
             _p->closeCallback = value;
         }
 
-        void IDialog::setGeometry(const math::BBox2i& value)
+        void IDialog::setGeometry(const math::Box2i& value)
         {
             IPopup::setGeometry(value);
             TLRENDER_P();
             if (!_children.empty())
             {
-                const math::BBox2i g = value.margin(-p.size.margin);
+                const math::Box2i g = value.margin(-p.size.margin);
                 const math::Vector2i& sizeHint = _children.front()->getSizeHint();
                 math::Vector2i size;
                 size.x = std::min(sizeHint.x, g.w());
@@ -90,7 +90,7 @@ namespace tl
                 {
                     size.y = g.h();
                 }
-                _children.front()->setGeometry(math::BBox2i(
+                _children.front()->setGeometry(math::Box2i(
                     g.x() + g.w() / 2 - size.x / 2,
                     g.y() + g.h() / 2 - size.y / 2,
                     size.x,
@@ -108,18 +108,18 @@ namespace tl
         }
 
         void IDialog::drawEvent(
-            const math::BBox2i& drawRect,
+            const math::Box2i& drawRect,
             const DrawEvent& event)
         {
             IPopup::drawEvent(drawRect, event);
             TLRENDER_P();
             //event.render->drawRect(
             //    _geometry,
-            //    imaging::Color4f(0.F, 0.F, 0.F, .2F));
+            //    image::Color4f(0.F, 0.F, 0.F, .2F));
             if (!_children.empty())
             {
-                const math::BBox2i g = _children.front()->getGeometry();
-                const math::BBox2i g2(
+                const math::Box2i g = _children.front()->getGeometry();
+                const math::Box2i g2(
                     g.min.x - p.size.shadow,
                     g.min.y,
                     g.w() + p.size.shadow * 2,
@@ -127,7 +127,7 @@ namespace tl
                 event.render->drawColorMesh(
                     shadow(g2, p.size.shadow),
                     math::Vector2i(),
-                    imaging::Color4f(1.F, 1.F, 1.F));
+                    image::Color4f(1.F, 1.F, 1.F));
 
                 event.render->drawMesh(
                     border(g.margin(p.size.border), p.size.border),

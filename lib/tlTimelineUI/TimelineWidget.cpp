@@ -250,7 +250,7 @@ namespace tl
             }
         }
 
-        void TimelineWidget::setGeometry(const math::BBox2i& value)
+        void TimelineWidget::setGeometry(const math::Box2i& value)
         {
             const bool changed = value != _geometry;
             IWidget::setGeometry(value);
@@ -297,7 +297,7 @@ namespace tl
         }
 
         void TimelineWidget::clipEvent(
-            const math::BBox2i& clipRect,
+            const math::Box2i& clipRect,
             bool clipped,
             const ui::ClipEvent& event)
         {
@@ -475,7 +475,7 @@ namespace tl
                 const double duration = timeRange.duration().rescaled_to(1.0).value();
                 if (duration > 0.0)
                 {
-                    const math::BBox2i scrollViewport = p.scrollWidget->getViewport();
+                    const math::Box2i scrollViewport = p.scrollWidget->getViewport();
                     out = scrollViewport.w() / duration;
                 }
             }

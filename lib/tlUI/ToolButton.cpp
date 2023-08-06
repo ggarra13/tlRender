@@ -17,8 +17,8 @@ namespace tl
                 int margin = 0;
                 int spacing = 0;
                 int border = 0;
-                imaging::FontInfo fontInfo;
-                imaging::FontMetrics fontMetrics;
+                image::FontInfo fontInfo;
+                image::FontMetrics fontMetrics;
                 bool textInit = true;
                 math::Vector2i textSize;
             };
@@ -26,7 +26,7 @@ namespace tl
 
             struct DrawData
             {
-                std::vector<std::shared_ptr<imaging::Glyph> > glyphs;
+                std::vector<std::shared_ptr<image::Glyph> > glyphs;
             };
             DrawData draw;
         };
@@ -110,6 +110,7 @@ namespace tl
                     p.size.fontInfo = fontInfo;
                     p.size.textInit = false;
                     p.size.textSize = event.fontSystem->getSize(_text, fontInfo);
+                    p.draw.glyphs.clear();
                 }
                 _sizeHint.x = p.size.textSize.x + p.size.margin * 2;
                 _sizeHint.y = p.size.fontMetrics.lineHeight;
@@ -140,7 +141,7 @@ namespace tl
         }
 
         void ToolButton::clipEvent(
-            const math::BBox2i& clipRect,
+            const math::Box2i& clipRect,
             bool clipped,
             const ClipEvent& event)
         {
@@ -153,13 +154,13 @@ namespace tl
         }
 
         void ToolButton::drawEvent(
-            const math::BBox2i& drawRect,
+            const math::Box2i& drawRect,
             const DrawEvent& event)
         {
             IButton::drawEvent(drawRect, event);
             TLRENDER_P();
 
-            const math::BBox2i& g = _geometry;
+            const math::Box2i& g = _geometry;
             const bool enabled = isEnabled();
 
             if (_keyFocus)
@@ -170,7 +171,7 @@ namespace tl
                     event.style->getColorRole(ColorRole::KeyFocus));
             }
 
-            const math::BBox2i g2 = g.margin(-p.size.border * 2);
+            const math::Box2i g2 = g.margin(-p.size.border * 2);
             const ColorRole colorRole = _checked ? _checkedRole : _buttonRole;
             if (colorRole != ColorRole::None)
             {
@@ -192,14 +193,14 @@ namespace tl
                     event.style->getColorRole(ColorRole::Hover));
             }
 
-            const math::BBox2i g3 = g2.margin(-p.size.margin);
+            const math::Box2i g3 = g2.margin(-p.size.margin);
             int x = g3.x();
             if (_iconImage)
             {
-                const imaging::Size& iconSize = _iconImage->getSize();
+                const image::Size& iconSize = _iconImage->getSize();
                 event.render->drawImage(
                   _iconImage,
-                  math::BBox2i(
+                  math::Box2i(
                       x,
                       g3.y() + g3.h() / 2 - iconSize.h / 2,
                       iconSize.w,

@@ -26,8 +26,8 @@ namespace tl
             struct SizeData
             {
                 int margin = 0;
-                imaging::FontInfo fontInfo;
-                imaging::FontMetrics fontMetrics;
+                image::FontInfo fontInfo;
+                image::FontMetrics fontMetrics;
                 math::Vector2i textSize;
                 math::Vector2i formatSize;
             };
@@ -35,7 +35,7 @@ namespace tl
 
             struct DrawData
             {
-                std::vector<std::shared_ptr<imaging::Glyph> > glyphs;
+                std::vector<std::shared_ptr<image::Glyph> > glyphs;
             };
             DrawData draw;
 
@@ -145,7 +145,7 @@ namespace tl
         }
 
         void TimeLabel::clipEvent(
-            const math::BBox2i& clipRect,
+            const math::Box2i& clipRect,
             bool clipped,
             const ClipEvent& event)
         {
@@ -158,15 +158,15 @@ namespace tl
         }
 
         void TimeLabel::drawEvent(
-            const math::BBox2i& drawRect,
+            const math::Box2i& drawRect,
             const DrawEvent& event)
         {
             IWidget::drawEvent(drawRect, event);
             TLRENDER_P();
 
-            //event.render->drawRect(_geometry, imaging::Color4f(.5F, .3F, .3F));
+            //event.render->drawRect(_geometry, image::Color4f(.5F, .3F, .3F));
 
-            const math::BBox2i g = align(
+            const math::Box2i g = align(
                 _geometry,
                 _sizeHint,
                 Stretch::Fixed,

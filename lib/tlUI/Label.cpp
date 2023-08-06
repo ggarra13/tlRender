@@ -25,8 +25,8 @@ namespace tl
             struct SizeData
             {
                 int margin = 0;
-                imaging::FontInfo fontInfo;
-                imaging::FontMetrics fontMetrics;
+                image::FontInfo fontInfo;
+                image::FontMetrics fontMetrics;
                 bool textInit = true;
                 math::Vector2i textSize;
             };
@@ -34,7 +34,7 @@ namespace tl
 
             struct DrawData
             {
-                std::vector<std::vector<std::shared_ptr<imaging::Glyph> > > glyphs;
+                std::vector<std::vector<std::shared_ptr<image::Glyph> > > glyphs;
             };
             DrawData draw;
         };
@@ -145,6 +145,7 @@ namespace tl
                 p.size.fontInfo = fontInfo;
                 p.size.textInit = false;
                 p.size.textSize = event.fontSystem->getSize(p.textTmp, fontInfo);
+                p.draw.glyphs.clear();
             }
 
             _sizeHint.x =
@@ -156,7 +157,7 @@ namespace tl
         }
 
         void Label::clipEvent(
-            const math::BBox2i& clipRect,
+            const math::Box2i& clipRect,
             bool clipped,
             const ClipEvent& event)
         {
@@ -169,15 +170,15 @@ namespace tl
         }
 
         void Label::drawEvent(
-            const math::BBox2i& drawRect,
+            const math::Box2i& drawRect,
             const DrawEvent& event)
         {
             IWidget::drawEvent(drawRect, event);
             TLRENDER_P();
 
-            //event.render->drawRect(_geometry, imaging::Color4f(.5F, .3F, .3F));
+            //event.render->drawRect(_geometry, image::Color4f(.5F, .3F, .3F));
 
-            const math::BBox2i g = align(
+            const math::Box2i g = align(
                 _geometry,
                 _sizeHint,
                 Stretch::Fixed,

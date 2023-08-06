@@ -117,7 +117,7 @@ namespace tl
             return _p->options;
         }
 
-        void DirectoryWidget::setGeometry(const math::BBox2i& value)
+        void DirectoryWidget::setGeometry(const math::Box2i& value)
         {
             IWidget::setGeometry(value);
             TLRENDER_P();
@@ -210,12 +210,12 @@ namespace tl
                 {
                     const file::FileInfo& fileInfo = p.fileInfos[i];
                     bool keep = true;
-                    if (!p.options.filter.empty())
+                    if (!p.options.search.empty())
                     {
                         const std::string fileName = fileInfo.getPath().get(-1, false);
                         keep = string::contains(
                             fileName,
-                            p.options.filter,
+                            p.options.search,
                             string::Compare::CaseInsensitive);
                     }
                     if (file::Type::File == fileInfo.getType() &&

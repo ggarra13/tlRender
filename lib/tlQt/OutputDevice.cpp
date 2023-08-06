@@ -153,7 +153,7 @@ namespace tl
             p.cv.notify_one();
         }
 
-        void OutputDevice::setHDR(device::HDRMode hdrMode, const imaging::HDRData& hdrData)
+        void OutputDevice::setHDR(device::HDRMode hdrMode, const image::HDRData& hdrData)
         {
             TLRENDER_P();
             {
@@ -422,11 +422,11 @@ namespace tl
             std::vector<timeline::ImageOptions> imageOptions;
             std::vector<timeline::DisplayOptions> displayOptions;
             device::HDRMode hdrMode = device::HDRMode::FromFile;
-            imaging::HDRData hdrData;
+            image::HDRData hdrData;
             timeline::CompareOptions compareOptions;
             timeline::Playback playback = timeline::Playback::Stop;
             otime::RationalTime currentTime = time::invalidTime;
-            std::vector<imaging::Size> sizes;
+            std::vector<image::Size> sizes;
             math::Vector2i viewPos;
             float viewZoom = 1.F;
             bool frameView = true;
@@ -549,7 +549,7 @@ namespace tl
                     offscreenBuffer2.reset();
                     offscreenBuffer.reset();
                     device.reset();
-                    imaging::Size deviceSize;
+                    image::Size deviceSize;
                     otime::RationalTime deviceFrameRate = time::invalidTime;
                     if (deviceIndex != -1 &&
                         displayModeIndex != -1 &&
@@ -587,7 +587,7 @@ namespace tl
                     glGenBuffers(pbo.size(), pbo.data());
                     if (device)
                     {
-                        const imaging::Size viewportSize = device->getSize();
+                        const image::Size viewportSize = device->getSize();
                         for (size_t i = 0; i < pbo.size(); ++i)
                         {
                             glBindBuffer(GL_PIXEL_PACK_BUFFER, pbo[i]);
@@ -604,9 +604,9 @@ namespace tl
                 {
                     try
                     {
-                        const imaging::Size renderSize = timeline::getRenderSize(_p->compareOptions.mode, sizes);
+                        const image::Size renderSize = timeline::getRenderSize(_p->compareOptions.mode, sizes);
                         gl::OffscreenBufferOptions offscreenBufferOptions;
-                        offscreenBufferOptions.colorType = imaging::PixelType::RGBA_F32;
+                        offscreenBufferOptions.colorType = image::PixelType::RGBA_F32;
                         if (!displayOptions.empty())
                         {
                             offscreenBufferOptions.colorFilters = displayOptions[0].imageFilters;
@@ -628,14 +628,14 @@ namespace tl
                                 lutOptions);
                             render->drawVideo(
                                 videoData,
-                                timeline::getBBoxes(compareOptions.mode, sizes),
+                                timeline::getBoxes(compareOptions.mode, sizes),
                                 imageOptions,
                                 displayOptions,
                                 compareOptions);
                             render->end();
                         }
 
-                        const imaging::Size viewportSize = device->getSize();
+                        const image::Size viewportSize = device->getSize();
                         offscreenBufferOptions = gl::OffscreenBufferOptions();
                         offscreenBufferOptions.colorType = getOffscreenType(pixelType);
                         if (!displayOptions.empty())
@@ -731,7 +731,7 @@ namespace tl
                             glActiveTexture(GL_TEXTURE0);
                             glBindTexture(GL_TEXTURE_2D, offscreenBuffer->getColorID());
 
-                            auto mesh = geom::bbox(math::BBox2i(0, 0, renderSize.w, renderSize.h));
+                            auto mesh = geom::box(math::Box2i(0, 0, renderSize.w, renderSize.h));
                             if (!vbo)
                             {
                                 vbo = gl::VBO::create(mesh.triangles.size() * 3, gl::VBOType::Pos2_F32_UV_U16);
@@ -784,7 +784,7 @@ namespace tl
 
                                 glBindTexture(GL_TEXTURE_2D, overlayTexture->getID());
 
-                                mesh = geom::bbox(math::BBox2i(0, 0, viewportSize.w, viewportSize.h));
+                                mesh = geom::box(math::Box2i(0, 0, viewportSize.w, viewportSize.h));
                                 if (!overlayVbo)
                                 {
                                     overlayVbo = gl::VBO::create(mesh.triangles.size() * 3, gl::VBOType::Pos2_F32_UV_U16);
@@ -841,7 +841,7 @@ namespace tl
                                     pboTime[pboIndex % pbo.size()]);
                                 //std::cout << "time: " << pixelData->getTime() << std::endl;
 
-                                std::shared_ptr<imaging::HDRData> hdrDataP;
+                                std::shared_ptr<image::HDRData> hdrDataP;
                                 switch (hdrMode)
                                 {
                                 case device::HDRMode::FromFile:
@@ -851,7 +851,7 @@ namespace tl
                                     }
                                     break;
                                 case device::HDRMode::Custom:
-                                    hdrDataP.reset(new imaging::HDRData(hdrData));
+                                    hdrDataP.reset(new image::HDRData(hdrData));
                                     break;
                                 default: break;
                                 }

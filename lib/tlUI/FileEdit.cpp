@@ -71,6 +71,11 @@ namespace tl
                 [this]
                 {
                     _p->lineEdit->clearText();
+                    _p->path = std::string();
+                    if (_p->callback)
+                    {
+                        _p->callback(_p->path);
+                    }
                 });
         }
 
@@ -109,7 +114,7 @@ namespace tl
             _p->callback = value;
         }
 
-        void FileEdit::setGeometry(const math::BBox2i& value)
+        void FileEdit::setGeometry(const math::Box2i& value)
         {
             IWidget::setGeometry(value);
             _p->layout->setGeometry(value);

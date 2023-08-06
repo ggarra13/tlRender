@@ -12,13 +12,16 @@ namespace tl
     {
         struct ListButton::Private
         {
+            SizeRole labelMarginRole = SizeRole::MarginInside;
+
             struct SizeData
             {
                 int margin = 0;
+                int margin2 = 0;
                 int spacing = 0;
                 int border = 0;
-                imaging::FontInfo fontInfo;
-                imaging::FontMetrics fontMetrics;
+                image::FontInfo fontInfo;
+                image::FontMetrics fontMetrics;
                 bool textInit = true;
                 math::Vector2i textSize;
             };
@@ -26,7 +29,7 @@ namespace tl
 
             struct DrawData
             {
-                std::vector<std::shared_ptr<imaging::Glyph> > glyphs;
+                std::vector<std::shared_ptr<image::Glyph> > glyphs;
             };
             DrawData draw;
         };
@@ -67,6 +70,16 @@ namespace tl
             return out;
         }
 
+        void ListButton::setLabelMarginRole(SizeRole value)
+        {
+            TLRENDER_P();
+            if (value == p.labelMarginRole)
+                return;
+            p.labelMarginRole = value;
+            _updates |= Update::Size;
+            _updates |= Update::Draw;
+        }
+
         void ListButton::setText(const std::string& value)
         {
             const bool changed = value != _text;
@@ -97,6 +110,7 @@ namespace tl
             TLRENDER_P();
 
             p.size.margin = event.style->getSizeRole(SizeRole::MarginInside, event.displayScale);
+            p.size.margin2 = event.style->getSizeRole(p.labelMarginRole, event.displayScale);
             p.size.spacing = event.style->getSizeRole(SizeRole::SpacingSmall, event.displayScale);
             p.size.border = event.style->getSizeRole(SizeRole::Border, event.displayScale);
 
@@ -110,8 +124,9 @@ namespace tl
                     p.size.fontInfo = fontInfo;
                     p.size.textInit = false;
                     p.size.textSize = event.fontSystem->getSize(_text, fontInfo);
+                    p.draw.glyphs.clear();
                 }
-                _sizeHint.x = p.size.textSize.x + p.size.margin * 2;
+                _sizeHint.x = p.size.textSize.x + p.size.margin2 * 2;
                 _sizeHint.y = p.size.fontMetrics.lineHeight + p.size.margin * 2;
             }
             if (_iconImage || _checkedIconImage)
@@ -139,7 +154,7 @@ namespace tl
         }
 
         void ListButton::clipEvent(
-            const math::BBox2i& clipRect,
+            const math::Box2i& clipRect,
             bool clipped,
             const ClipEvent& event)
         {
@@ -152,13 +167,13 @@ namespace tl
         }
 
         void ListButton::drawEvent(
-            const math::BBox2i& drawRect,
+            const math::Box2i& drawRect,
             const DrawEvent& event)
         {
             IButton::drawEvent(drawRect, event);
             TLRENDER_P();
 
-            const math::BBox2i& g = _geometry;
+            const math::Box2i& g = _geometry;
             const bool enabled = isEnabled();
 
             // Draw the background and checked state.
@@ -194,14 +209,14 @@ namespace tl
             }
 
             // Draw the icon.
-            const math::BBox2i g2 = g.margin(-p.size.border * 2);
+            const math::Box2i g2 = g.margin(-p.size.border * 2);
             int x = g2.x();
             if (_checked && _checkedIconImage)
             {
-                const imaging::Size& iconSize = _checkedIconImage->getSize();
+                const image::Size& iconSize = _checkedIconImage->getSize();
                 event.render->drawImage(
                     _checkedIconImage,
-                    math::BBox2i(
+                    math::Box2i(
                         x,
                         g2.y() + g2.h() / 2 - iconSize.h / 2,
                         iconSize.w,
@@ -213,10 +228,10 @@ namespace tl
             }
             else if (_iconImage)
             {
-                const imaging::Size& iconSize = _iconImage->getSize();
+                const image::Size& iconSize = _iconImage->getSize();
                 event.render->drawImage(
                   _iconImage,
-                  math::BBox2i(
+                  math::Box2i(
                       x,
                       g2.y() + g2.h() / 2 - iconSize.h / 2,
                       iconSize.w,
@@ -235,7 +250,7 @@ namespace tl
                     p.draw.glyphs = event.fontSystem->getGlyphs(_text, p.size.fontInfo);
                 }
                 const math::Vector2i pos(
-                    x + p.size.margin,
+                    x + p.size.margin2,
                     g2.y() + g2.h() / 2 - p.size.textSize.y / 2 +
                     p.size.fontMetrics.ascender);
                 event.render->drawText(

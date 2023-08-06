@@ -30,8 +30,8 @@ namespace tl
             struct SizeData
             {
                 int margin = 0;
-                imaging::FontInfo fontInfo = imaging::FontInfo("", 0);
-                imaging::FontMetrics fontMetrics;
+                image::FontInfo fontInfo = image::FontInfo("", 0);
+                image::FontMetrics fontMetrics;
                 bool textUpdate = true;
                 math::Vector2i labelSize;
                 math::Vector2i durationSize;
@@ -40,8 +40,8 @@ namespace tl
 
             struct DrawData
             {
-                std::vector<std::shared_ptr<imaging::Glyph> > labelGlyphs;
-                std::vector<std::shared_ptr<imaging::Glyph> > durationGlyphs;
+                std::vector<std::shared_ptr<image::Glyph> > labelGlyphs;
+                std::vector<std::shared_ptr<image::Glyph> > durationGlyphs;
             };
             DrawData draw;
         };
@@ -184,7 +184,7 @@ namespace tl
             }
         }
 
-        void TrackItem::setGeometry(const math::BBox2i& value)
+        void TrackItem::setGeometry(const math::Box2i& value)
         {
             IItem::setGeometry(value);
             TLRENDER_P();
@@ -198,13 +198,13 @@ namespace tl
                 if (i != p.itemTimeRanges.end())
                 {
                     const math::Vector2i& sizeHint = item->getSizeHint();
-                    const math::BBox2i bbox(
+                    const math::Box2i box(
                         _geometry.min.x +
                         i->second.start_time().rescaled_to(1.0).value() * _scale,
                         y,
                         sizeHint.x,
                         sizeHint.y);
-                    item->setGeometry(bbox);
+                    item->setGeometry(box);
                     h = std::max(h, sizeHint.y);
                 }
             }
@@ -215,13 +215,13 @@ namespace tl
                 if (i != p.itemTimeRanges.end())
                 {
                     const math::Vector2i& sizeHint = item->getSizeHint();
-                    const math::BBox2i bbox(
+                    const math::Box2i box(
                         _geometry.min.x +
                         i->second.start_time().rescaled_to(1.0).value() * _scale,
                         y,
                         sizeHint.x,
                         sizeHint.y);
-                    item->setGeometry(bbox);
+                    item->setGeometry(box);
                 }
             }
         }
@@ -233,7 +233,7 @@ namespace tl
 
             p.size.margin = event.style->getSizeRole(ui::SizeRole::MarginInside, event.displayScale);
 
-            auto fontInfo = imaging::FontInfo(
+            auto fontInfo = image::FontInfo(
                 _options.regularFont,
                 _options.fontSize * event.displayScale);
             if (fontInfo != p.size.fontInfo || p.size.textUpdate)
@@ -242,6 +242,8 @@ namespace tl
                 p.size.fontMetrics = event.fontSystem->getMetrics(fontInfo);
                 p.size.labelSize = event.fontSystem->getSize(p.label, fontInfo);
                 p.size.durationSize = event.fontSystem->getSize(p.durationLabel, fontInfo);
+                p.draw.labelGlyphs.clear();
+                p.draw.durationGlyphs.clear();
             }
             p.size.textUpdate = false;
 
@@ -268,21 +270,21 @@ namespace tl
         }
 
         void TrackItem::drawEvent(
-            const math::BBox2i& drawRect,
+            const math::Box2i& drawRect,
             const ui::DrawEvent& event)
         {
             IItem::drawEvent(drawRect, event);
             TLRENDER_P();
 
-            const math::BBox2i& g = _geometry;
-            const math::BBox2i labelGeometry(
+            const math::Box2i& g = _geometry;
+            const math::Box2i labelGeometry(
                 g.min.x +
                 p.size.margin,
                 g.min.y +
                 p.size.margin,
                 p.size.labelSize.x,
                 p.size.fontMetrics.lineHeight);
-            const math::BBox2i durationGeometry(
+            const math::Box2i durationGeometry(
                 g.max.x -
                 p.size.durationSize.x -
                 p.size.margin,

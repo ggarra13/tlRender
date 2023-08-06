@@ -14,7 +14,7 @@ namespace tl
         class Context;
     }
 
-    namespace imaging
+    namespace image
     {
         //! Get font data.
         std::vector<uint8_t> getFontData(const std::string&);
@@ -58,12 +58,12 @@ namespace tl
         //! Font glyph.
         struct Glyph
         {
-            GlyphInfo                       info;
-            std::shared_ptr<imaging::Image> image;
-            math::Vector2i                  offset;
-            int16_t                         advance  = 0;
-            int32_t                         lsbDelta = 0;
-            int32_t                         rsbDelta = 0;
+            GlyphInfo                     info;
+            std::shared_ptr<image::Image> image;
+            math::Vector2i                offset;
+            int16_t                       advance  = 0;
+            int32_t                       lsbDelta = 0;
+            int32_t                       rsbDelta = 0;
         };
 
         //! Font system.
@@ -112,8 +112,8 @@ namespace tl
                 const FontInfo&,
                 uint16_t maxLineWidth = 0);
 
-            //! Get the character bounding boxes.
-            std::vector<math::BBox2i> getBBox(
+            //! Get the character boxes.
+            std::vector<math::Box2i> getBox(
                 const std::string&,
                 const FontInfo&,
                 uint16_t maxLineWidth = 0);

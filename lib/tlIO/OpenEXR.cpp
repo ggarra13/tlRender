@@ -604,7 +604,7 @@ namespace tl
 
         } // namespace
 
-        void readTags(const Imf::Header& header, imaging::Tags& tags)
+        void readTags(const Imf::Header& header, image::Tags& tags)
         {
             // Predefined attributes.
             tags["Display Window"] = serialize(header.displayWindow());
@@ -917,7 +917,7 @@ namespace tl
             }
         }
 
-        void writeTags(const imaging::Tags& tags, double speed, Imf::Header& header)
+        void writeTags(const image::Tags& tags, double speed, Imf::Header& header)
         {
             auto i = tags.find("Chromaticities");
             if (i != tags.end())
@@ -1029,9 +1029,9 @@ namespace tl
                 Imf::Rational(speedRational.first, speedRational.second));
         }
 
-        math::BBox2i fromImath(const Imath::Box2i& value)
+        math::Box2i fromImath(const Imath::Box2i& value)
         {
-            return math::BBox2i(math::Vector2i(value.min.x, value.min.y), math::Vector2i(value.max.x, value.max.y));
+            return math::Box2i(math::Vector2i(value.min.x, value.min.y), math::Vector2i(value.max.x, value.max.y));
         }
 
         Channel fromImf(const std::string& name, const Imf::Channel& channel)
@@ -1077,15 +1077,15 @@ namespace tl
             return Read::create(path, memory, io::merge(options, _options), _logSystem);
         }
 
-        imaging::Info Plugin::getWriteInfo(
-            const imaging::Info& info,
+        image::Info Plugin::getWriteInfo(
+            const image::Info& info,
             const io::Options& options) const
         {
-            imaging::Info out;
+            image::Info out;
             out.size = info.size;
             switch (info.pixelType)
             {
-            case imaging::PixelType::RGBA_F16:
+            case image::PixelType::RGBA_F16:
                 out.pixelType = info.pixelType;
                 break;
             default: break;

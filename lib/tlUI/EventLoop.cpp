@@ -23,9 +23,9 @@ namespace tl
             std::weak_ptr<system::Context> context;
             std::shared_ptr<Style> style;
             std::shared_ptr<IconLibrary> iconLibrary;
-            std::shared_ptr<imaging::FontSystem> fontSystem;
+            std::shared_ptr<image::FontSystem> fontSystem;
             std::shared_ptr<IClipboard> clipboard;
-            imaging::Size displaySize;
+            image::Size displaySize;
             float displayScale = 1.F;
             std::list<std::weak_ptr<IWidget> > topLevelWidgets;
             math::Vector2i cursorPos;
@@ -38,11 +38,11 @@ namespace tl
             KeyEvent keyEvent;
             std::function<void(StandardCursor)> cursor;
             std::function<void(
-                const std::shared_ptr<imaging::Image>&,
+                const std::shared_ptr<image::Image>&,
                 const math::Vector2i&)> customCursor;
             std::shared_ptr<DragAndDropData> dndData;
             std::weak_ptr<IWidget> dragAndDropHover;
-            std::function<std::shared_ptr<imaging::Image>(const math::BBox2i&)> capture;
+            std::function<std::shared_ptr<image::Image>(const math::Box2i&)> capture;
             std::shared_ptr<ToolTip> toolTip;
             math::Vector2i toolTipPos;
             std::chrono::steady_clock::time_point toolTipTimer;
@@ -64,7 +64,7 @@ namespace tl
             p.context = context;
             p.style = style;
             p.iconLibrary = iconLibrary;
-            p.fontSystem = context->getSystem<imaging::FontSystem>();
+            p.fontSystem = context->getSystem<image::FontSystem>();
             p.clipboard = clipboard;
             p.logTimer = std::chrono::steady_clock::now();
 
@@ -95,7 +95,7 @@ namespace tl
             return out;
         }
 
-        void EventLoop::setDisplaySize(const imaging::Size& value)
+        void EventLoop::setDisplaySize(const image::Size& value)
         {
             TLRENDER_P();
             if (value == p.displaySize )
@@ -504,7 +504,7 @@ namespace tl
         }
 
         void EventLoop::setCursor(const std::function<void(
-            const std::shared_ptr<imaging::Image>&,
+            const std::shared_ptr<image::Image>&,
             const math::Vector2i&)>& value)
         {
             _p->customCursor = value;
@@ -545,7 +545,7 @@ namespace tl
                 {
                     if (auto widget = i.lock())
                     {
-                        widget->setGeometry(math::BBox2i(
+                        widget->setGeometry(math::Box2i(
                             0,
                             0,
                             p.displaySize.w,
@@ -642,15 +642,15 @@ namespace tl
             _p->updates &= ~static_cast<int>(Update::Draw);
         }
 
-        std::shared_ptr<imaging::Image> EventLoop::screenshot(
+        std::shared_ptr<image::Image> EventLoop::screenshot(
             const std::shared_ptr<IWidget>& widget)
         {
             TLRENDER_P();
             return p.capture ? p.capture(widget->getGeometry()) : nullptr;
         }
 
-        void EventLoop::setCapture(const std::function<std::shared_ptr<imaging::Image>(
-            const math::BBox2i&)>& value)
+        void EventLoop::setCapture(const std::function<std::shared_ptr<image::Image>(
+            const math::Box2i&)>& value)
         {
             _p->capture = value;
         }
@@ -784,20 +784,20 @@ namespace tl
 
         void EventLoop::_clipEvent(
             const std::shared_ptr<IWidget>& widget,
-            const math::BBox2i& clipRect,
+            const math::Box2i& clipRect,
             bool clipped,
             const ClipEvent& event)
         {
-            const math::BBox2i& g = widget->getGeometry();
+            const math::Box2i& g = widget->getGeometry();
             clipped |= !g.intersects(clipRect);
             clipped |= !widget->isVisible(false);
-            const math::BBox2i clipRect2 = g.intersect(clipRect);
+            const math::Box2i clipRect2 = g.intersect(clipRect);
             widget->clipEvent(clipRect2, clipped, event);
-            const math::BBox2i childrenClipRect =
+            const math::Box2i childrenClipRect =
                 widget->getChildrenClipRect().intersect(clipRect2);
             for (const auto& child : widget->getChildren())
             {
-                const math::BBox2i& childGeometry = child->getGeometry();
+                const math::Box2i& childGeometry = child->getGeometry();
                 _clipEvent(
                     child,
                     childGeometry.intersect(childrenClipRect),
@@ -861,7 +861,7 @@ namespace tl
                 {
                     _drawEvent(
                         widget,
-                        math::BBox2i(0, 0, p.displaySize.w, p.displaySize.h),
+                        math::Box2i(0, 0, p.displaySize.w, p.displaySize.h),
                         event);
                 }
             }
@@ -870,19 +870,20 @@ namespace tl
 
         void EventLoop::_drawEvent(
             const std::shared_ptr<IWidget>& widget,
-            const math::BBox2i& drawRect,
+            const math::Box2i& drawRect,
             const DrawEvent& event)
         {
-            if (!widget->isClipped() && widget->getGeometry().isValid())
+            const math::Box2i& g = widget->getGeometry();
+            if (!widget->isClipped() && g.w() > 0 && g.h() > 0)
             {
                 event.render->setClipRect(drawRect);
                 widget->drawEvent(drawRect, event);
-                const math::BBox2i childrenClipRect =
+                const math::Box2i childrenClipRect =
                     widget->getChildrenClipRect().intersect(drawRect);
                 event.render->setClipRect(childrenClipRect);
                 for (const auto& child : widget->getChildren())
                 {
-                    const math::BBox2i& childGeometry = child->getGeometry();
+                    const math::Box2i& childGeometry = child->getGeometry();
                     if (childGeometry.intersects(childrenClipRect))
                     {
                         _drawEvent(
