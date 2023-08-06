@@ -108,7 +108,7 @@ namespace tl
             void keyPressEvent(ui::KeyEvent&) override;
             void keyReleaseEvent(ui::KeyEvent&) override;
 
-            const math::BBox2i& getTimelineItemGeometry() const;
+            const math::Box2i& getTimelineItemGeometry() const;
             double getScale() const;
             
         private:

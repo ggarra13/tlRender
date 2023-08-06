@@ -52,7 +52,6 @@ namespace tl
             std::shared_ptr<gl::VBO> vbo;
             std::shared_ptr<gl::VAO> vao;
             std::shared_ptr<imaging::FontSystem> fontSystem;
-            bool                     drawHUD = true;
             uint64_t                 skippedFrames = 0;
             otio::RationalTime       lastTime;
         };
@@ -449,10 +448,6 @@ namespace tl
                     p.vao->bind();
                     p.vao->draw(GL_TRIANGLES, 0, p.vbo->getSize());
                 }
-                if(p.drawHUD)
-                {
-                    _drawHUD();
-                }
             }
         }
 
@@ -466,51 +461,6 @@ namespace tl
             math::Vector2i shadowPos{ pos.x + 2, pos.y + 2 };
             render->drawText( glyphs, shadowPos, shadowColor );
             render->drawText( glyphs, pos, labelColor );
-        }
-        
-        void TimelineViewport::_drawHUD()
-        {
-            TLRENDER_P();
-
-            const auto& viewportSize = _viewportSize();
-            
-            timeline::RenderOptions renderOptions;
-            renderOptions.clear = false;
-            p.render->begin(
-                viewportSize, timeline::ColorConfigOptions(),
-                timeline::LUTOptions(), renderOptions);
-
-            static const std::string fontFamily = "NotoSans-Regular";
-
-            const imaging::Color4f labelColor(255.F, 255.F, 0.F);
-            uint16_t fontSize = 12;
-
-            const imaging::FontInfo fontInfo(fontFamily, fontSize);
-            const imaging::FontMetrics fontMetrics =
-                p.fontSystem->getMetrics(fontInfo);
-            auto lineHeight = fontMetrics.lineHeight;
-            math::Vector2i pos(20, lineHeight * 2);
-        
-            if (p.timelinePlayers.empty()) return;
-            
-            const auto& player = p.timelinePlayers[0];
-            const otime::RationalTime& time = p.videoData[0].time;
-        
-            char buf[512];
-            if ( player->playback() != timeline::Playback::Stop )
-            {
-                int64_t frame_diff = (time.value() - p.lastTime.value());
-                int64_t absdiff = std::abs(frame_diff);
-                if (absdiff > 1 && absdiff < 60)
-                    p.skippedFrames += absdiff - 1;
-            }
-            snprintf(buf, 512, "SF: %" PRIu64, p.skippedFrames);
-            _drawText(
-                p.render, p.fontSystem->getGlyphs(buf, fontInfo), pos,
-                lineHeight, labelColor);
-
-            p.lastTime = time;
-        
         }
         
 #if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))

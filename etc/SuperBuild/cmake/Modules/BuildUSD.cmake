@@ -32,7 +32,7 @@ endif()
 list(APPEND USD_ARGS --no-python)
 
 
-set(USD_INSTALL_COMMAND true)
+set(USD_INSTALL_COMMAND )
 if(WIN32)
     # \todo On Windows the USD cmake build system installs the "*.dll" files
     # and "usd" directory into "lib", however it seems like they need to be

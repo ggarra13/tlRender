@@ -87,7 +87,7 @@ namespace tl
             return p.scale;
         }
         
-        const math::BBox2i& TimelineWidget::getTimelineItemGeometry() const
+        const math::Box2i& TimelineWidget::getTimelineItemGeometry() const
         {
             TLRENDER_P();
             return p.timelineItem->getGeometry();
