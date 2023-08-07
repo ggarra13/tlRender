@@ -51,9 +51,6 @@ namespace tl
             std::shared_ptr<tl::gl::OffscreenBuffer> buffer;
             std::shared_ptr<gl::VBO> vbo;
             std::shared_ptr<gl::VAO> vao;
-            std::shared_ptr<imaging::FontSystem> fontSystem;
-            uint64_t                 skippedFrames = 0;
-            otio::RationalTime       lastTime;
         };
 
         TimelineViewport::TimelineViewport(
@@ -280,15 +277,6 @@ namespace tl
                 {
                     p.render = timeline::GLRender::create(context);
                 }
-
-
-                if ( !p.fontSystem )
-                {
-                    if (auto context = p.context.lock())
-                    {
-                        p.fontSystem = imaging::FontSystem::create(context);
-                    }
-                }
             
                 const std::string vertexSource =
                     "#version 410\n"
@@ -451,17 +439,6 @@ namespace tl
             }
         }
 
-        void _drawText(
-            const std::shared_ptr<timeline::IRender>& render,
-            const std::vector<std::shared_ptr<imaging::Glyph> >& glyphs,
-            math::Vector2i& pos, const int16_t lineHeight,
-            const imaging::Color4f& labelColor) noexcept
-        {
-            const imaging::Color4f shadowColor(0.F, 0.F, 0.F, 0.7F);
-            math::Vector2i shadowPos{ pos.x + 2, pos.y + 2 };
-            render->drawText( glyphs, shadowPos, shadowColor );
-            render->drawText( glyphs, pos, labelColor );
-        }
         
 #if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
         void TimelineViewport::enterEvent(QEvent* event)
