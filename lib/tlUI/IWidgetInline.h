@@ -6,9 +6,9 @@ namespace tl
 {
     namespace ui
     {
-        inline const std::string& IWidget::getName() const
+        inline const std::string& IWidget::getObjectName() const
         {
-            return _name;
+            return _objectName;
         }
 
         inline int IWidget::getUpdates() const
@@ -105,7 +105,7 @@ namespace tl
 
         inline bool IWidget::hasMouseHover()
         {
-            return _mouseHover;
+            return _mouse.hoverEnabled;
         }
 
         inline bool IWidget::acceptsKeyFocus() const

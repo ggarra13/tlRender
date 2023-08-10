@@ -22,7 +22,7 @@ namespace tl
 
         protected:
             void _init(
-                const std::string& name,
+                const std::string& objectName,
                 const std::shared_ptr<system::Context>&,
                 const std::shared_ptr<IWidget>& parent);
 
@@ -31,11 +31,11 @@ namespace tl
         public:
             virtual ~IWidget() = 0;
 
-            //! Get the widget name.
-            const std::string& getName() const;
+            //! Get the object name.
+            const std::string& getObjectName() const;
 
-            //! Set the widget name.
-            void setName(const std::string&);
+            //! Set the object name.
+            void setObjectName(const std::string&);
 
             //! Set the background role.
             void setBackgroundRole(ColorRole);
@@ -152,9 +152,6 @@ namespace tl
             //! Does the widget support mouse enter and leave events?
             bool hasMouseHover();
 
-            //! Set whether the widget supports mouse enter and leave events.
-            void setMouseHover(bool);
-
             ///@}
 
             //! Key Focus
@@ -267,8 +264,10 @@ namespace tl
             ///@}
 
         protected:
+            virtual void _releaseMouse();
+
             std::weak_ptr<system::Context> _context;
-            std::string _name;
+            std::string _objectName;
             ColorRole _backgroundRole = ColorRole::None;
             int _updates = 0;
             std::weak_ptr<IWidget> _parent;
@@ -285,7 +284,16 @@ namespace tl
             bool _clipped = false;
             bool _enabled = true;
             bool _parentsEnabled = true;
-            bool _mouseHover = false;
+            struct MouseData
+            {
+                bool hoverEnabled = false;
+                bool pressEnabled = false;
+                bool inside = false;
+                math::Vector2i pos;
+                bool press = false;
+                math::Vector2i pressPos;
+            };
+            MouseData _mouse;
             bool _acceptsKeyFocus = false;
             bool _keyFocus = false;
             std::string _toolTip;

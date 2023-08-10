@@ -6,12 +6,12 @@
 
 #include <tlUI/DrawUtil.h>
 
+#include <tlUI/EventLoop.h>
+
 #include <tlGL/OffscreenBuffer.h>
 
 #include <tlTimeline/RenderUtil.h>
 #include <tlTimeline/Util.h>
-
-#include <opentimelineio/track.h>
 
 #include <sstream>
 
@@ -19,13 +19,23 @@ namespace tl
 {
     namespace timelineui
     {
+        VideoDragAndDropData::VideoDragAndDropData(const std::shared_ptr<VideoClipItem>& item) :
+            _item(item)
+        {}
+
+        VideoDragAndDropData::~VideoDragAndDropData()
+        {}
+
+        const std::shared_ptr<VideoClipItem>& VideoDragAndDropData::getItem() const
+        {
+            return _item;
+        }
+
         struct VideoClipItem::Private
         {
             otio::SerializableObject::Retainer<otio::Clip> clip;
-            otio::SerializableObject::Retainer<otio::Track> track;
             file::Path path;
             std::vector<file::MemoryRead> memoryRead;
-            otime::TimeRange timeRange = time::invalidTimeRange;
             otime::TimeRange availableRange = time::invalidTimeRange;
             bool ioInfoInit = true;
             io::Info ioInfo;
@@ -33,6 +43,7 @@ namespace tl
             struct SizeData
             {
                 int thumbnailWidth = 0;
+                int dragLength = 0;
                 math::Box2i clipRect;
             };
             SizeData size;
@@ -51,36 +62,34 @@ namespace tl
 
         void VideoClipItem::_init(
             const otio::SerializableObject::Retainer<otio::Clip>& clip,
+            const otime::TimeRange& timeRange,
             const ItemData& itemData,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
         {
-            const auto rangeOpt = clip->trimmed_range_in_parent();
             const auto path = timeline::getPath(
                 clip->media_reference(),
                 itemData.directory,
                 itemData.options.pathOptions);
             IBasicItem::_init(
-                rangeOpt.has_value() ? rangeOpt.value() : time::invalidTimeRange,
                 !clip->name().empty() ? clip->name() : path.get(-1, false),
                 ui::ColorRole::VideoClip,
                 getMarkers(clip),
                 "tl::timelineui::VideoClipItem",
+                timeRange,
                 itemData,
                 context,
                 parent);
             TLRENDER_P();
 
+            _mouse.hoverEnabled = true;
+            _mouse.pressEnabled = true;
+
             p.clip = clip;
-            p.track = dynamic_cast<otio::Track*>(clip->parent());
 
             p.path = path;
             p.memoryRead = timeline::getMemoryRead(clip->media_reference());
 
-            if (rangeOpt.has_value())
-            {
-                p.timeRange = rangeOpt.value();
-            }
             otio::ErrorStatus error;
             const otime::TimeRange availableRange = clip->available_range(&error);
             if (!otio::is_error(error))
@@ -109,13 +118,19 @@ namespace tl
 
         std::shared_ptr<VideoClipItem> VideoClipItem::create(
             const otio::SerializableObject::Retainer<otio::Clip>& clip,
+            const otime::TimeRange& timeRange,
             const ItemData& itemData,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
         {
             auto out = std::shared_ptr<VideoClipItem>(new VideoClipItem);
-            out->_init(clip, itemData, context, parent);
+            out->_init(clip, timeRange, itemData, context, parent);
             return out;
+        }
+
+        const otio::SerializableObject::Retainer<otio::Clip>& VideoClipItem::getClip() const
+        {
+            return _p->clip;
         }
 
         void VideoClipItem::setScale(double value)
@@ -209,6 +224,7 @@ namespace tl
                 p.bufferPool.clear();
                 _updates |= ui::Update::Draw;
             }
+            p.size.dragLength = event.style->getSizeRole(ui::SizeRole::DragLength, event.displayScale);
             if (_options.thumbnails)
             {
                 _sizeHint.y += _options.thumbnailHeight;
@@ -243,6 +259,26 @@ namespace tl
             if (_options.thumbnails)
             {
                 _drawThumbnails(drawRect, event);
+            }
+        }
+
+        void VideoClipItem::mouseMoveEvent(ui::MouseMoveEvent& event)
+        {
+            IWidget::mouseMoveEvent(event);
+            TLRENDER_P();
+            if (_mouse.press)
+            {
+                const float length = math::length(event.pos - _mouse.pressPos);
+                if (length > p.size.dragLength)
+                {
+                    if (auto eventLoop = getEventLoop().lock())
+                    {
+                        event.dndData = std::make_shared<VideoDragAndDropData>(
+                            std::dynamic_pointer_cast<VideoClipItem>(shared_from_this()));
+                        event.dndCursor = eventLoop->screenshot(shared_from_this());
+                        event.dndCursorHotspot = _mouse.pos - _geometry.min;
+                    }
+                }
             }
         }
 
@@ -359,10 +395,10 @@ namespace tl
                     if (box.intersects(clipRect))
                     {
                         const otime::RationalTime time = time::floor(otime::RationalTime(
-                            p.timeRange.start_time().value() +
+                            _timeRange.start_time().value() +
                             (w > 0 ? (x / static_cast<double>(w - 1)) : 0) *
-                            p.timeRange.duration().value(),
-                            p.timeRange.duration().rate()));
+                            _timeRange.duration().value(),
+                            _timeRange.duration().rate()));
 
                         const auto i = p.thumbnails.find(time);
                         if (i != p.thumbnails.end())
@@ -387,7 +423,6 @@ namespace tl
                             {
                                 const auto mediaTime = timeline::toVideoMediaTime(
                                     time,
-                                    p.track,
                                     p.clip,
                                     p.ioInfo);
                                 p.videoDataFutures[time] = _data.ioManager->readVideo(

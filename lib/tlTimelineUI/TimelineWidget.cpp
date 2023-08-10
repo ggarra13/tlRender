@@ -34,7 +34,6 @@ namespace tl
             };
             struct MouseData
             {
-                math::Vector2i pressPos;
                 MouseMode mode = MouseMode::None;
                 math::Vector2i scrollPos;
                 std::chrono::steady_clock::time_point wheelTimer;
@@ -49,6 +48,9 @@ namespace tl
         {
             IWidget::_init("tl::ui::TimelineWidget", context, parent);
             TLRENDER_P();
+
+            _mouse.hoverEnabled = true;
+            _mouse.pressEnabled = true;
 
             p.timeUnitsModel = timeUnitsModel;
 
@@ -267,26 +269,6 @@ namespace tl
             }
         }
 
-        void TimelineWidget::setVisible(bool value)
-        {
-            const bool changed = value != _visible;
-            IWidget::setVisible(value);
-            if (changed && !_visible)
-            {
-                _resetMouse();
-            }
-        }
-
-        void TimelineWidget::setEnabled(bool value)
-        {
-            const bool changed = value != _enabled;
-            IWidget::setEnabled(value);
-            if (changed && !_enabled)
-            {
-                _resetMouse();
-            }
-        }
-
         void TimelineWidget::sizeHintEvent(const ui::SizeHintEvent& event)
         {
             IWidget::sizeHintEvent(event);
@@ -296,28 +278,15 @@ namespace tl
             _sizeHint.y = sa * 2;
         }
 
-        void TimelineWidget::clipEvent(
-            const math::Box2i& clipRect,
-            bool clipped,
-            const ui::ClipEvent& event)
-        {
-            const bool changed = clipped != _clipped;
-            IWidget::clipEvent(clipRect, clipped, event);
-            if (changed && clipped)
-            {
-                _resetMouse();
-            }
-        }
-
         void TimelineWidget::mouseMoveEvent(ui::MouseMoveEvent& event)
         {
+            IWidget::mouseMoveEvent(event);
             TLRENDER_P();
-            event.accept = true;
             switch (p.mouse.mode)
             {
             case Private::MouseMode::Scroll:
             {
-                const math::Vector2i d = event.pos - p.mouse.pressPos;
+                const math::Vector2i d = event.pos - _mouse.pressPos;
                 p.scrollWidget->setScrollPos(p.mouse.scrollPos - d);
                 setFrameView(false);
                 break;
@@ -328,10 +297,9 @@ namespace tl
 
         void TimelineWidget::mousePressEvent(ui::MouseClickEvent& event)
         {
+            IWidget::mousePressEvent(event);
             TLRENDER_P();
-            event.accept = true;
             takeKeyFocus();
-            p.mouse.pressPos = event.pos;
             if (event.modifiers & static_cast<int>(p.scrollKeyModifier))
             {
                 p.mouse.mode = Private::MouseMode::Scroll;
@@ -351,8 +319,8 @@ namespace tl
 
         void TimelineWidget::mouseReleaseEvent(ui::MouseClickEvent& event)
         {
+            IWidget::mouseReleaseEvent(event);
             TLRENDER_P();
-            event.accept = true;
             p.mouse.mode = Private::MouseMode::None;
         }
 
@@ -436,6 +404,13 @@ namespace tl
             event.accept = true;
         }
 
+        void TimelineWidget::_releaseMouse()
+        {
+            IWidget::_releaseMouse();
+            TLRENDER_P();
+            p.mouse.mode = Private::MouseMode::None;
+        }
+
         void TimelineWidget::_setViewZoom(
             double zoomNew,
             double zoomPrev,
@@ -509,12 +484,6 @@ namespace tl
                 _setItemOptions(child, value);
             }
         }
-
-        void TimelineWidget::_resetMouse()
-        {
-            TLRENDER_P();
-            p.mouse.mode = Private::MouseMode::None;
-        }
         
         void TimelineWidget::_timelineUpdate()
         {
@@ -536,7 +505,11 @@ namespace tl
                         context);
                     itemData.timeUnitsModel = p.timeUnitsModel;
 
-                    p.timelineItem = TimelineItem::create(p.player, itemData, context);
+                    p.timelineItem = TimelineItem::create(
+                        p.player,
+                        p.player->getTimeRange(),
+                        itemData,
+                        context);
                     p.timelineItem->setStopOnScrub(p.stopOnScrub->get());
                     p.scrollWidget->setScrollPos(math::Vector2i());
                     _setItemOptions(p.timelineItem, p.itemOptions->get());

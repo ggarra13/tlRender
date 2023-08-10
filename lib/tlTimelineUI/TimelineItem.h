@@ -18,6 +18,7 @@ namespace tl
         protected:
             void _init(
                 const std::shared_ptr<timeline::Player>&,
+                const otime::TimeRange&,
                 const ItemData&,
                 const std::shared_ptr<system::Context>&,
                 const std::shared_ptr<IWidget>& parent);
@@ -30,6 +31,7 @@ namespace tl
             //! Create a new item.
             static std::shared_ptr<TimelineItem> create(
                 const std::shared_ptr<timeline::Player>&,
+                const otime::TimeRange&,
                 const ItemData&,
                 const std::shared_ptr<system::Context>&,
                 const std::shared_ptr<IWidget>& parent = nullptr);
@@ -37,19 +39,11 @@ namespace tl
             //! Set whether playback stops when scrubbing.
             void setStopOnScrub(bool);
 
-            void setVisible(bool) override;
-            void setEnabled(bool) override;
             void setGeometry(const math::Box2i&) override;
             void sizeHintEvent(const ui::SizeHintEvent&) override;
-            void clipEvent(
-                const math::Box2i&,
-                bool,
-                const ui::ClipEvent&) override;
             void drawOverlayEvent(
                 const math::Box2i&,
                 const ui::DrawEvent&) override;
-            void mouseEnterEvent() override;
-            void mouseLeaveEvent() override;
             void mouseMoveEvent(ui::MouseMoveEvent&) override;
             void mousePressEvent(ui::MouseClickEvent&) override;
             void mouseReleaseEvent(ui::MouseClickEvent&) override;
@@ -58,6 +52,8 @@ namespace tl
 
         protected:
             void _timeUnitsUpdate() override;
+
+            void _releaseMouse() override;
 
         private:
             void _drawInOutPoints(
@@ -72,11 +68,6 @@ namespace tl
             void _drawCurrentTime(
                 const math::Box2i&,
                 const ui::DrawEvent&);
-
-            otime::RationalTime _posToTime(float) const;
-            int _timeToPos(const otime::RationalTime&) const;
-
-            void _resetMouse();
 
             TLRENDER_PRIVATE();
         };

@@ -94,13 +94,7 @@ namespace tl
             void setItemOptions(const ItemOptions&);
 
             void setGeometry(const math::Box2i&) override;
-            void setVisible(bool) override;
-            void setEnabled(bool) override;
             void sizeHintEvent(const ui::SizeHintEvent&) override;
-            void clipEvent(
-                const math::Box2i&,
-                bool,
-                const ui::ClipEvent&) override;
             void mouseMoveEvent(ui::MouseMoveEvent&) override;
             void mousePressEvent(ui::MouseClickEvent&) override;
             void mouseReleaseEvent(ui::MouseClickEvent&) override;
@@ -111,6 +105,9 @@ namespace tl
             const math::Box2i& getTimelineItemGeometry() const;
             double getScale() const;
             
+        protected:
+            void _releaseMouse() override;
+
         private:
             void _setViewZoom(
                 double zoomNew,
@@ -126,8 +123,6 @@ namespace tl
             void _setItemOptions(
                 const std::shared_ptr<IWidget>&,
                 const ItemOptions&);
-
-            void _resetMouse();
 
             void _timelineUpdate();
 
