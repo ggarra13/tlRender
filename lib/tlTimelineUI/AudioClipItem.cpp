@@ -10,11 +10,6 @@
 #include <tlTimeline/RenderUtil.h>
 #include <tlTimeline/Util.h>
 
-#include <tlCore/AudioConvert.h>
-#include <tlCore/Mesh.h>
-
-#include <sstream>
-
 namespace tl
 {
     namespace timelineui
@@ -37,8 +32,6 @@ namespace tl
             file::Path path;
             std::vector<file::MemoryRead> memoryRead;
             otime::TimeRange availableRange = time::invalidTimeRange;
-            bool ioInfoInit = true;
-            io::Info ioInfo;
 
             struct SizeData
             {
@@ -47,23 +40,10 @@ namespace tl
             };
             SizeData size;
 
-            struct AudioFuture
-            {
-                std::future<io::AudioData> future;
-                math::Vector2i size;
-            };
-            std::map<otime::RationalTime, AudioFuture> audioDataFutures;
-            struct AudioData
-            {
-                io::AudioData audio;
-                math::Vector2i size;
-                std::future<std::shared_ptr<geom::TriangleMesh2> > meshFuture;
-                std::shared_ptr<geom::TriangleMesh2> mesh;
-                std::future<std::shared_ptr<image::Image> > imageFuture;
-                std::shared_ptr<image::Image> image;
-                std::chrono::steady_clock::time_point time;
-            };
-            std::map<otime::RationalTime, AudioData> audioData;
+            std::future<io::Info> infoFuture;
+            std::unique_ptr<io::Info> ioInfo;
+            std::map<otime::RationalTime, std::future<std::shared_ptr<geom::TriangleMesh2> > > waveformFutures;
+            std::map<otime::RationalTime, std::shared_ptr<geom::TriangleMesh2> > waveforms;
             std::shared_ptr<observer::ValueObserver<bool> > cancelObserver;
         };
 
@@ -89,8 +69,8 @@ namespace tl
                 parent);
             TLRENDER_P();
 
-            _mouse.hoverEnabled = true;
-            _mouse.pressEnabled = true;
+            _setMouseHover(true);
+            _setMousePress(true, 0, 0);
 
             p.clip = clip;
 
@@ -112,7 +92,8 @@ namespace tl
                 _data.ioManager->observeCancelRequests(),
                 [this](bool)
                 {
-                    _p->audioDataFutures.clear();
+                    _p->infoFuture = std::future<io::Info>();
+                    _p->waveformFutures.clear();
                 });
         }
 
@@ -142,8 +123,8 @@ namespace tl
             TLRENDER_P();
             if (changed)
             {
+                p.waveforms.clear();
                 _data.ioManager->cancelRequests();
-                p.audioData.clear();
                 _updates |= ui::Update::Draw;
             }
         }
@@ -159,129 +140,9 @@ namespace tl
             TLRENDER_P();
             if (thumbnailsChanged)
             {
+                p.waveforms.clear();
                 _data.ioManager->cancelRequests();
-                p.audioData.clear();
                 _updates |= ui::Update::Draw;
-            }
-        }
-
-        namespace
-        {
-            std::shared_ptr<geom::TriangleMesh2> audioMesh(
-                const std::shared_ptr<audio::Audio>& audio,
-                const math::Vector2i& size)
-            {
-                auto out = std::shared_ptr<geom::TriangleMesh2>(new geom::TriangleMesh2);
-                const auto& info = audio->getInfo();
-                const size_t sampleCount = audio->getSampleCount();
-                if (sampleCount > 0)
-                {
-                    switch (info.dataType)
-                    {
-                    case audio::DataType::F32:
-                    {
-                        const audio::F32_T* data = reinterpret_cast<const audio::F32_T*>(
-                            audio->getData());
-                        for (int x = 0; x < size.x; ++x)
-                        {
-                            const int x0 = std::min(
-                                static_cast<size_t>((x + 0) / static_cast<double>(size.x - 1) * (sampleCount - 1)),
-                                sampleCount - 1);
-                            const int x1 = std::min(
-                                static_cast<size_t>((x + 1) / static_cast<double>(size.x - 1) * (sampleCount - 1)),
-                                sampleCount - 1);
-                            //std::cout << x << ": " << x0 << " " << x1 << std::endl;
-                            audio::F32_T min = 0.F;
-                            audio::F32_T max = 0.F;
-                            if (x0 < x1)
-                            {
-                                min = audio::F32Range.getMax();
-                                max = audio::F32Range.getMin();
-                                for (int i = x0; i < x1; ++i)
-                                {
-                                    const audio::F32_T v = *(data + i * info.channelCount);
-                                    min = std::min(min, v);
-                                    max = std::max(max, v);
-                                }
-                            }
-                            const int h2 = size.y / 2;
-                            const math::Box2i box(
-                                math::Vector2i(
-                                    x,
-                                    h2 - h2 * max),
-                                math::Vector2i(
-                                    x + 1,
-                                    h2 - h2 * min));
-                            if (box.isValid())
-                            {
-                                const size_t j = 1 + out->v.size();
-                                out->v.push_back(math::Vector2f(box.x(), box.y()));
-                                out->v.push_back(math::Vector2f(box.x() + box.w(), box.y()));
-                                out->v.push_back(math::Vector2f(box.x() + box.w(), box.y() + box.h()));
-                                out->v.push_back(math::Vector2f(box.x(), box.y() + box.h()));
-                                out->triangles.push_back(geom::Triangle2({ j + 0, j + 1, j + 2 }));
-                                out->triangles.push_back(geom::Triangle2({ j + 2, j + 3, j + 0 }));
-                            }
-                        }
-                        break;
-                    }
-                    default: break;
-                    }
-                }
-                return out;
-            }
-
-            std::shared_ptr<image::Image> audioImage(
-                const std::shared_ptr<audio::Audio>& audio,
-                const math::Vector2i& size)
-            {
-                auto out = image::Image::create(size.x, size.y, image::PixelType::L_U8);
-                const auto& info = audio->getInfo();
-                const size_t sampleCount = audio->getSampleCount();
-                if (sampleCount > 0)
-                {
-                    switch (info.dataType)
-                    {
-                    case audio::DataType::F32:
-                    {
-                        const audio::F32_T* data = reinterpret_cast<const audio::F32_T*>(
-                            audio->getData());
-                        for (int x = 0; x < size.x; ++x)
-                        {
-                            const int x0 = std::min(
-                                static_cast<size_t>((x + 0) / static_cast<double>(size.x - 1) * (sampleCount - 1)),
-                                sampleCount - 1);
-                            const int x1 = std::min(
-                                static_cast<size_t>((x + 1) / static_cast<double>(size.x - 1) * (sampleCount - 1)),
-                                sampleCount - 1);
-                            //std::cout << x << ": " << x0 << " " << x1 << std::endl;
-                            audio::F32_T min = 0.F;
-                            audio::F32_T max = 0.F;
-                            if (x0 < x1)
-                            {
-                                min = audio::F32Range.getMax();
-                                max = audio::F32Range.getMin();
-                                for (int i = x0; i < x1; ++i)
-                                {
-                                    const audio::F32_T v = *(data + i * info.channelCount);
-                                    min = std::min(min, v);
-                                    max = std::max(max, v);
-                                }
-                            }
-                            uint8_t* p = out->getData() + x;
-                            for (int y = 0; y < size.y; ++y)
-                            {
-                                const float v = y / static_cast<float>(size.y - 1) * 2.F - 1.F;
-                                *p = (v > min && v < max) ? 255 : 0;
-                                p += size.x;
-                            }
-                        }
-                        break;
-                    }
-                    default: break;
-                    }
-                }
-                return out;
             }
         }
 
@@ -292,87 +153,31 @@ namespace tl
         {
             IWidget::tickEvent(parentsVisible, parentsEnabled, event);
             TLRENDER_P();
-            auto i = p.audioDataFutures.begin();
-            while (i != p.audioDataFutures.end())
+
+            // Check if the I/O information is finished.
+            if (p.infoFuture.valid() &&
+                p.infoFuture.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
             {
-                if (i->second.future.valid() &&
-                    i->second.future.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+                p.ioInfo = std::make_unique<io::Info>(p.infoFuture.get());
+                _updates |= ui::Update::Size;
+                _updates |= ui::Update::Draw;
+            }
+
+            // Check if any audio waveforms are finished.
+            auto i = p.waveformFutures.begin();
+            while (i != p.waveformFutures.end())
+            {
+                if (i->second.valid() &&
+                    i->second.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
                 {
-                    const auto audio = i->second.future.get();
-                    const auto size = i->second.size;
-                    Private::AudioData audioData;
-                    audioData.audio = audio;
-                    audioData.size = size;
-                    if (audio.audio)
-                    {
-                        switch (_options.waveformPrim)
-                        {
-                        case WaveformPrim::Mesh:
-                            audioData.meshFuture = std::async(
-                                std::launch::async,
-                                [audio, size]
-                                {
-                                    auto convert = audio::AudioConvert::create(
-                                        audio.audio->getInfo(),
-                                        audio::Info(1, audio::DataType::F32, audio.audio->getSampleRate()));
-                                const auto convertedAudio = convert->convert(audio.audio);
-                                return audioMesh(convertedAudio, size);
-                                });
-                            break;
-                        case WaveformPrim::Image:
-                            audioData.imageFuture = std::async(
-                                std::launch::async,
-                                [audio, size]
-                                {
-                                    auto convert = audio::AudioConvert::create(
-                                        audio.audio->getInfo(),
-                                        audio::Info(1, audio::DataType::F32, audio.audio->getSampleRate()));
-                                const auto convertedAudio = convert->convert(audio.audio);
-                                return audioImage(convertedAudio, size);
-                                });
-                            break;
-                        default: break;
-                        }
-                    }
-                    p.audioData[i->first] = std::move(audioData);
-                    i = p.audioDataFutures.erase(i);
+                    const auto mesh = i->second.get();
+                    p.waveforms[i->first] = mesh;
+                    i = p.waveformFutures.erase(i);
+                    _updates |= ui::Update::Draw;
                 }
                 else
                 {
                     ++i;
-                }
-            }
-
-            const auto now = std::chrono::steady_clock::now();
-            for (auto& audioData : p.audioData)
-            {
-                switch (_options.waveformPrim)
-                {
-                case WaveformPrim::Mesh:
-                    if (audioData.second.meshFuture.valid() &&
-                        audioData.second.meshFuture.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
-                    {
-                        const auto mesh = audioData.second.meshFuture.get();
-                        audioData.second.mesh = mesh;
-                        audioData.second.time = now;
-                        _updates |= ui::Update::Draw;
-                    }
-                    break;
-                case WaveformPrim::Image:
-                    if (audioData.second.imageFuture.valid() &&
-                        audioData.second.imageFuture.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
-                    {
-                        const auto image = audioData.second.imageFuture.get();
-                        audioData.second.image = image;
-                        audioData.second.time = now;
-                        _updates |= ui::Update::Draw;
-                    }
-                    break;
-                }
-                const std::chrono::duration<float> diff = now - audioData.second.time;
-                if (diff.count() < _options.thumbnailFade)
-                {
-                    _updates |= ui::Update::Draw;
                 }
             }
         }
@@ -398,8 +203,12 @@ namespace tl
             if (clipRect == p.size.clipRect)
                 return;
             p.size.clipRect = clipRect;
-            _data.ioManager->cancelRequests();
-            _updates |= ui::Update::Draw;
+            if (clipped)
+            {
+                p.waveforms.clear();
+                _data.ioManager->cancelRequests();
+                _updates |= ui::Update::Draw;
+            }
         }
 
         void AudioClipItem::drawEvent(
@@ -441,7 +250,6 @@ namespace tl
 
             const math::Box2i g = _getInsideGeometry();
             const int m = _getMargin();
-            const auto now = std::chrono::steady_clock::now();
 
             const math::Box2i box(
                 g.min.x,
@@ -457,10 +265,10 @@ namespace tl
             event.render->setClipRectEnabled(true);
             event.render->setClipRect(box.intersect(clipRectState.getClipRect()));
 
-            std::set<otime::RationalTime> audioDataDelete;
-            for (const auto& audioData : p.audioData)
+            std::set<otime::RationalTime> waveformsDelete;
+            for (const auto& waveform : p.waveforms)
             {
-                audioDataDelete.insert(audioData.first);
+                waveformsDelete.insert(waveform.first);
             }
 
             const math::Box2i clipRect = _getClipRect(
@@ -468,15 +276,12 @@ namespace tl
                 _options.clipRectScale);
             if (g.intersects(clipRect))
             {
-                if (p.ioInfoInit)
+                if (!p.ioInfo && !p.infoFuture.valid())
                 {
-                    p.ioInfoInit = false;
-                    p.ioInfo = _data.ioManager->getInfo(
+                    p.infoFuture = _data.ioManager->requestInfo(
                         p.path,
                         p.memoryRead,
-                        p.availableRange.start_time()).get();
-                    _updates |= ui::Update::Size;
-                    _updates |= ui::Update::Draw;
+                        p.availableRange.start_time());
                 }
             }
 
@@ -499,40 +304,22 @@ namespace tl
                             (w > 0 ? (x / static_cast<double>(w)) : 0) *
                             _timeRange.duration().value(),
                             _timeRange.duration().rate()));
-                        auto i = p.audioData.find(time);
-                        if (i != p.audioData.end())
+                        auto i = p.waveforms.find(time);
+                        if (i != p.waveforms.end())
                         {
-                            switch (_options.waveformPrim)
+                            if (i->second)
                             {
-                            case WaveformPrim::Mesh:
-                                if (i->second.mesh)
-                                {
-                                    const std::chrono::duration<float> diff = now - i->second.time;
-                                    const float a = std::min(diff.count() / _options.thumbnailFade, 1.F);
-                                    event.render->drawMesh(
-                                        *i->second.mesh,
-                                        box.min,
-                                        image::Color4f(1.F, 1.F, 1.F, a));
-                                }
-                                break;
-                            case WaveformPrim::Image:
-                                if (i->second.image)
-                                {
-                                    const std::chrono::duration<float> diff = now - i->second.time;
-                                    const float a = std::min(diff.count() / _options.thumbnailFade, 1.F);
-                                    event.render->drawImage(
-                                        (i->second).image,
-                                        box,
-                                        image::Color4f(1.F, 1.F, 1.F, a));
-                                }
-                                break;
+                                event.render->drawMesh(
+                                    *i->second,
+                                    box.min,
+                                    image::Color4f(1.F, 1.F, 1.F));
                             }
-                            audioDataDelete.erase(time);
+                            waveformsDelete.erase(time);
                         }
-                        else if (p.ioInfo.audio.isValid())
+                        else if (p.ioInfo && p.ioInfo->audio.isValid())
                         {
-                            const auto j = p.audioDataFutures.find(time);
-                            if (j == p.audioDataFutures.end())
+                            const auto j = p.waveformFutures.find(time);
+                            if (j == p.waveformFutures.end())
                             {
                                 const otime::RationalTime time2 = time::round(otime::RationalTime(
                                     _timeRange.start_time().value() +
@@ -542,25 +329,25 @@ namespace tl
                                 const otime::TimeRange mediaRange = timeline::toAudioMediaTime(
                                     otime::TimeRange::range_from_start_end_time(time, time2),
                                     p.clip,
-                                    p.ioInfo);
-                                p.audioDataFutures[time].future = _data.ioManager->readAudio(
+                                    p.ioInfo->audio.sampleRate);
+                                p.waveformFutures[time] = _data.ioManager->requestAudio(
+                                    image::Size(box.w(), box.h()),
                                     p.path,
                                     p.memoryRead,
                                     p.availableRange.start_time(),
                                     mediaRange);
-                                p.audioDataFutures[time].size = box.getSize();
                             }
                         }
                     }
                 }
             }
 
-            for (auto i : audioDataDelete)
+            for (auto i : waveformsDelete)
             {
-                const auto j = p.audioData.find(i);
-                if (j != p.audioData.end())
+                const auto j = p.waveforms.find(i);
+                if (j != p.waveforms.end())
                 {
-                    p.audioData.erase(j);
+                    p.waveforms.erase(j);
                 }
             }
         }
