@@ -9,6 +9,7 @@
 #include <tlIO/IOSystem.h>
 
 #include <tlGL/OffscreenBuffer.h>
+#include <tlGL/Init.h>
 
 #include <tlCore/AudioConvert.h>
 #include <tlCore/LRUCache.h>
@@ -128,6 +129,7 @@ namespace tl
                 {
                     TLRENDER_P();
                     glfwMakeContextCurrent(p.glfwWindow);
+                    tl::gl::initGLAD();
                     _run();
                     {
                         std::unique_lock<std::mutex> lock(p.mutex.mutex);
