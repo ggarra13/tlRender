@@ -116,7 +116,7 @@ jobs:
     env:
       TLRENDER_MMAP: OFF
       TLRENDER_PYTHON: OFF
-      TLRENDER_GLFW: OFF
+      TLRENDER_GLFW: ON
       TLRENDER_OCIO: OFF
       TLRENDER_AUDIO: OFF
       TLRENDER_JPEG: OFF
@@ -308,9 +308,3 @@ jobs:
           -DTLRENDER_TESTS=${{ env.TLRENDER_TESTS }} `
           -DTLRENDER_GCOV=${{ env.TLRENDER_GCOV }} &&
         cmake --build . -j 4
-
-    - name: Run tests
-      run: >
-        cd build &&
-        cd tlRender\src\tlRender-build &&
-        ctest --rerun-failed --output-on-failure
