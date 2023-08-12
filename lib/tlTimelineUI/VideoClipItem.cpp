@@ -238,6 +238,14 @@ namespace tl
             }
         }
 
+        void VideoClipItem::mousePressEvent(ui::MouseClickEvent& event)
+        {
+            IBasicItem::mousePressEvent(event);
+            TLRENDER_P();
+            
+            setSelected(isSelected() ^ _mouse.press);
+        }
+
         void VideoClipItem::mouseMoveEvent(ui::MouseMoveEvent& event)
         {
             IWidget::mouseMoveEvent(event);
@@ -247,6 +255,7 @@ namespace tl
                 const float length = math::length(event.pos - _mouse.pressPos);
                 if (length > p.size.dragLength)
                 {
+                    setSelected(false);
                     if (auto eventLoop = getEventLoop().lock())
                     {
                         event.dndData = std::make_shared<VideoDragAndDropData>(

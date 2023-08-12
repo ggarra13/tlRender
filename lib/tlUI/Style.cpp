@@ -88,7 +88,8 @@ namespace tl
             "Blue",
             "Cyan",
             "Magenta",
-            "Yellow");
+            "Yellow",
+            "Black");
         TLRENDER_ENUM_SERIALIZE_IMPL(ColorRole);
 
         std::map<ColorRole, image::Color4f> defaultColorRoles()
@@ -125,6 +126,7 @@ namespace tl
             out[ColorRole::Cyan] = image::Color4f(.3F, .6F, .6F);
             out[ColorRole::Magenta] = image::Color4f(.6F, .3F, .6F);
             out[ColorRole::Yellow] = image::Color4f(.6F, .6F, .3F);
+            out[ColorRole::Black] = image::Color4f(.0F, .0F, .0F);
             return out;
         }
 

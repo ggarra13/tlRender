@@ -116,6 +116,11 @@ namespace tl
             return out;
         }
 
+        const otio::SerializableObject::Retainer<otio::Clip>& AudioClipItem::getClip() const
+        {
+            return _p->clip;
+        }
+        
         void AudioClipItem::setScale(double value)
         {
             const bool changed = value != _scale;
@@ -222,6 +227,14 @@ namespace tl
             }
         }
 
+        void AudioClipItem::mousePressEvent(ui::MouseClickEvent& event)
+        {
+            IBasicItem::mousePressEvent(event);
+            TLRENDER_P();
+            
+            setSelected(isSelected() ^ _mouse.press);
+        }
+        
         void AudioClipItem::mouseMoveEvent(ui::MouseMoveEvent& event)
         {
             IWidget::mouseMoveEvent(event);
@@ -231,6 +244,7 @@ namespace tl
                 const float length = math::length(event.pos - _mouse.pressPos);
                 if (length > p.size.dragLength)
                 {
+                    setSelected(true);
                     if (auto eventLoop = getEventLoop().lock())
                     {
                         event.dndData = std::make_shared<AudioDragAndDropData>(

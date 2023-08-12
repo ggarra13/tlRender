@@ -77,6 +77,7 @@ namespace tl
             Cyan,
             Magenta,
             Yellow,
+            Black,
 
             Count,
             First = None

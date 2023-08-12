@@ -52,6 +52,8 @@ namespace tl
                 const std::shared_ptr<system::Context>&,
                 const std::shared_ptr<IWidget>& parent = nullptr);
 
+            const otio::SerializableObject::Retainer<otio::Clip>& getClip() const;
+
             void setScale(double) override;
             void setOptions(const ItemOptions&) override;
 
@@ -67,6 +69,7 @@ namespace tl
             void drawEvent(
                 const math::Box2i&,
                 const ui::DrawEvent&) override;
+            void mousePressEvent(ui::MouseClickEvent&) override;
             void mouseMoveEvent(ui::MouseMoveEvent&) override;
 
         private:

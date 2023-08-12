@@ -2,6 +2,7 @@
 // Copyright (c) 2021-2023 Darby Johnston
 // All rights reserved.
 
+#include <tlTimelineUI/IBasicItem.h>
 #include <tlTimelineUI/TimelineWidget.h>
 
 #include <tlUI/ScrollWidget.h>
@@ -406,6 +407,15 @@ namespace tl
             event.accept = true;
         }
 
+        std::vector<std::shared_ptr<ui::IWidget>>
+        TimelineWidget::getSelectedItems() const
+        {
+            std::vector<std::shared_ptr<IWidget>> out;
+            TLRENDER_P();
+            _getSelectedItems(out, p.timelineItem);
+            return out;
+        }
+        
         void TimelineWidget::_releaseMouse()
         {
             IWidget::_releaseMouse();
@@ -519,5 +529,23 @@ namespace tl
                 }
             }
         }
+
+        void
+        TimelineWidget::_getSelectedItems(
+            std::vector<std::shared_ptr<IWidget>>& out,
+            const std::shared_ptr<IWidget>& widget) const
+        {
+            TLRENDER_P();
+            if (auto item = std::dynamic_pointer_cast<IBasicItem>(widget))
+            {
+                if (item->isSelected())
+                    out.push_back(widget);
+            }
+            for (const auto& child : widget->getChildren())
+            {
+                _getSelectedItems(out, child);
+            }
+        }
+        
     }
 }

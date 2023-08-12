@@ -6,6 +6,8 @@
 
 #include <tlTimelineUI/TimelineItem.h>
 
+#include <vector>
+
 namespace tl
 {
     namespace timelineui
@@ -93,6 +95,15 @@ namespace tl
             //! Set the item options.
             void setItemOptions(const ItemOptions&);
 
+            //! Get timeline item geometry. 
+            const math::Box2i& getTimelineItemGeometry() const;
+
+            //! Get timeline scale.
+            double getScale() const;
+
+            //! Get all selected items.
+            std::vector<std::shared_ptr<IWidget>> getSelectedItems() const;
+            
             void setGeometry(const math::Box2i&) override;
             void sizeHintEvent(const ui::SizeHintEvent&) override;
             void mouseMoveEvent(ui::MouseMoveEvent&) override;
@@ -101,9 +112,6 @@ namespace tl
             void scrollEvent(ui::ScrollEvent&) override;
             void keyPressEvent(ui::KeyEvent&) override;
             void keyReleaseEvent(ui::KeyEvent&) override;
-
-            const math::Box2i& getTimelineItemGeometry() const;
-            double getScale() const;
             
         protected:
             void _releaseMouse() override;
@@ -116,6 +124,10 @@ namespace tl
                 const math::Vector2i& scrollPos);
 
             double _getTimelineScale() const;
+
+            void _getSelectedItems(
+                std::vector<std::shared_ptr<IWidget>>&,
+                const std::shared_ptr<IWidget>&) const;
 
             void _setItemScale(
                 const std::shared_ptr<IWidget>&,
