@@ -129,7 +129,7 @@ namespace tl
                 {
                     TLRENDER_P();
                     glfwMakeContextCurrent(p.glfwWindow);
-                    tl::gl::initGLAD();
+                    gl::initGLAD();
                     _run();
                     {
                         std::unique_lock<std::mutex> lock(p.mutex.mutex);
