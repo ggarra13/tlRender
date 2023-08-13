@@ -152,6 +152,10 @@ namespace tl
             {
                 p.thread.thread.join();
             }
+            if (p.glfwWindow)
+            {
+                glfwDestroyWindow(p.glfwWindow);
+            }
         }
 
         std::shared_ptr<IOManager> IOManager::create(
