@@ -8,18 +8,13 @@
 
 #include <tlIO/IOSystem.h>
 
+#include <tlGL/GL.h>
 #include <tlGL/OffscreenBuffer.h>
 #include <tlGL/Init.h>
 
 #include <tlCore/AudioConvert.h>
 #include <tlCore/LRUCache.h>
 #include <tlCore/StringFormat.h>
-
-#if defined(TLRENDER_GL_DEBUG)
-#include <tlGladDebug/gl.h>
-#else // TLRENDER_GL_DEBUG
-#include <tlGlad/gl.h>
-#endif // TLRENDER_GL_DEBUG
 
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
@@ -48,7 +43,7 @@ namespace tl
 
             struct VideoRequest
             {
-                image::Size size;
+                math::Size2i size;
                 file::Path path;
                 std::vector<file::MemoryRead> memoryRead;
                 otime::RationalTime startTime = time::invalidTime;
@@ -59,7 +54,7 @@ namespace tl
 
             struct AudioRequest
             {
-                image::Size size;
+                math::Size2i size;
                 file::Path path;
                 std::vector<file::MemoryRead> memoryRead;
                 otime::RationalTime startTime = time::invalidTime;
@@ -122,7 +117,11 @@ namespace tl
             {
                 throw std::runtime_error("Cannot create window");
             }
-            
+
+            p.thread.infoCache.setMax(1000);
+            p.thread.thumbnailCache.setMax(1000);
+            p.thread.waveformCache.setMax(1000);
+            p.thread.ioCache.setMax(1000);
             p.thread.running = true;
             p.thread.thread = std::thread(
                 [this]
@@ -199,7 +198,7 @@ namespace tl
         }
 
         std::future<std::shared_ptr<image::Image> > IOManager::requestVideo(
-            const image::Size& size,
+            const math::Size2i& size,
             const file::Path& path,
             const std::vector<file::MemoryRead>& memoryRead,
             const otime::RationalTime& startTime,
@@ -236,7 +235,7 @@ namespace tl
         }
 
         std::future<std::shared_ptr<geom::TriangleMesh2> > IOManager::requestAudio(
-            const image::Size& size,
+            const math::Size2i& size,
             const file::Path& path,
             const std::vector<file::MemoryRead>& memoryRead,
             const otime::RationalTime& startTime,
@@ -288,7 +287,7 @@ namespace tl
         {
             std::shared_ptr<geom::TriangleMesh2> audioMesh(
                 const std::shared_ptr<audio::Audio>& audio,
-                const image::Size& size)
+                const math::Size2i& size)
             {
                 auto out = std::shared_ptr<geom::TriangleMesh2>(new geom::TriangleMesh2);
                 const auto& info = audio->getInfo();
@@ -352,9 +351,9 @@ namespace tl
 
             std::shared_ptr<image::Image> audioImage(
                 const std::shared_ptr<audio::Audio>& audio,
-                const image::Size& size)
+                const math::Size2i& size)
             {
-                auto out = image::Image::create(size, image::PixelType::L_U8);
+                auto out = image::Image::create(size.w, size.h, image::PixelType::L_U8);
                 const auto& info = audio->getInfo();
                 const size_t sampleCount = audio->getSampleCount();
                 if (sampleCount > 0)
@@ -413,7 +412,7 @@ namespace tl
             }
 
             std::string getVideoKey(
-                const image::Size& size,
+                const math::Size2i& size,
                 const file::Path& path,
                 const otime::RationalTime& startTime,
                 const otime::RationalTime& time,
@@ -428,7 +427,7 @@ namespace tl
             }
 
             std::string getAudioKey(
-                const image::Size& size,
+                const math::Size2i& size,
                 const file::Path& path,
                 const otime::RationalTime& startTime,
                 const otime::TimeRange& timeRange)
@@ -587,7 +586,10 @@ namespace tl
                                         videoData.image,
                                         { math::Box2i(0, 0, videoRequest->size.w, videoRequest->size.h) });
                                     render->end();
-                                    image = image::Image::create(videoRequest->size, image::PixelType::RGBA_U8);
+                                    image = image::Image::create(
+                                        videoRequest->size.w,
+                                        videoRequest->size.h,
+                                        image::PixelType::RGBA_U8);
                                     glPixelStorei(GL_PACK_ALIGNMENT, 1);
                                     glReadPixels(
                                         0,

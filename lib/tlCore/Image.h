@@ -25,37 +25,34 @@ namespace tl
         //! \name Sizes
         ///@{
 
-        //! Image size type.
-        typedef uint16_t SizeType;
-
         //! Image size.
         class Size
         {
         public:
-            constexpr Size() noexcept;
+            constexpr Size();
             constexpr Size(
-                SizeType w,
-                SizeType h,
-                float pixelAspectRatio = 1.F) noexcept;
+                int w,
+                int h,
+                float pixelAspectRatio = 1.F);
 
-            SizeType w = 0;
-            SizeType h = 0;
+            int w = 0;
+            int h = 0;
             float pixelAspectRatio = 1.F;
 
-            //! Is this size valid?
-            constexpr bool isValid() const noexcept;
+            //! Is the size valid?
+            constexpr bool isValid() const;
 
             //! Get the aspect ratio.
-            constexpr float getAspect() const noexcept;
+            constexpr float getAspect() const;
 
-            constexpr bool operator == (const Size&) const noexcept;
-            constexpr bool operator != (const Size&) const noexcept;
-            bool operator < (const Size&) const noexcept;
+            constexpr bool operator == (const Size&) const;
+            constexpr bool operator != (const Size&) const;
+            bool operator < (const Size&) const;
         };
 
         //! Get a box with the given aspect ratio that fits within
         //! the given box.
-        math::Box2i getBox(float aspect, const math::Box2i&) noexcept;
+        math::Box2i getBox(float aspect, const math::Box2i&);
 
         ///@}
 
@@ -153,7 +150,7 @@ namespace tl
         TLRENDER_ENUM_SERIALIZE(YUVCoefficients);
 
         //! Get YUV coefficients.
-        math::Vector4f getYUVCoefficients(YUVCoefficients) noexcept;
+        math::Vector4f getYUVCoefficients(YUVCoefficients);
 
         //! 10-bit MSB pixel data.
         struct U10_MSB
@@ -163,8 +160,8 @@ namespace tl
             uint32_t b : 10;
             uint32_t pad : 2;
 
-            constexpr bool operator == (const U10_MSB&) const noexcept;
-            constexpr bool operator != (const U10_MSB&) const noexcept;
+            constexpr bool operator == (const U10_MSB&) const;
+            constexpr bool operator != (const U10_MSB&) const;
         };
 
         //! 10-bit LSB pixel data.
@@ -175,8 +172,8 @@ namespace tl
             uint32_t g : 10;
             uint32_t r : 10;
 
-            constexpr bool operator == (const U10_LSB&) const noexcept;
-            constexpr bool operator != (const U10_LSB&) const noexcept;
+            constexpr bool operator == (const U10_LSB&) const;
+            constexpr bool operator != (const U10_LSB&) const;
         };
 #if defined(TLRENDER_ENDIAN_MSB)
         typedef U10_MSB U10;
@@ -185,16 +182,16 @@ namespace tl
 #endif // TLRENDER_ENDIAN_MSB
 
         //! Get the number of channels for the given pixel type.
-        uint8_t getChannelCount(PixelType) noexcept;
+        int getChannelCount(PixelType);
 
         //! Get the bit-depth for the given pixel type.
-        uint8_t getBitDepth(PixelType) noexcept;
+        int getBitDepth(PixelType);
 
         //! Determine the integer pixel type for a given channel count and bit depth.
-        PixelType getIntType(std::size_t channelCount, std::size_t bitDepth) noexcept;
+        PixelType getIntType(std::size_t channelCount, std::size_t bitDepth);
 
         //! Determine the floating point pixel type for a given channel count and bit depth.
-        PixelType getFloatType(std::size_t channelCount, std::size_t bitDepth) noexcept;
+        PixelType getFloatType(std::size_t channelCount, std::size_t bitDepth);
 
         //! Get the closest pixel type for the given pixel type.
         PixelType getClosest(PixelType, const std::vector<PixelType>&);
@@ -205,32 +202,32 @@ namespace tl
         class Mirror
         {
         public:
-            constexpr Mirror() noexcept;
-            constexpr Mirror(bool x, bool y) noexcept;
+            constexpr Mirror();
+            constexpr Mirror(bool x, bool y);
 
             bool x = false;
             bool y = false;
 
-            constexpr bool operator == (const Mirror&) const noexcept;
-            constexpr bool operator != (const Mirror&) const noexcept;
+            constexpr bool operator == (const Mirror&) const;
+            constexpr bool operator != (const Mirror&) const;
         };
 
         //! Image data layout.
         class Layout
         {
         public:
-            Layout() noexcept;
+            Layout();
             Layout(
                 const Mirror&  mirror,
-                uint8_t        alignment = 1,
-                memory::Endian endian    = memory::getEndian()) noexcept;
+                int            alignment = 1,
+                memory::Endian endian    = memory::getEndian());
 
             Mirror         mirror;
-            uint8_t        alignment = 1;
+            int            alignment = 1;
             memory::Endian endian    = memory::getEndian();
 
-            bool operator == (const Layout&) const noexcept;
-            bool operator != (const Layout&) const noexcept;
+            constexpr bool operator == (const Layout&) const;
+            constexpr bool operator != (const Layout&) const;
         };
 
         //! Image information.
@@ -239,7 +236,7 @@ namespace tl
         public:
             Info();
             explicit Info(const Size&, PixelType);
-            explicit Info(SizeType w, SizeType h, PixelType);
+            explicit Info(int w, int h, PixelType);
 
             std::string     name             = "Default";
             Size            size;
@@ -284,7 +281,7 @@ namespace tl
             static std::shared_ptr<Image> create(const Size&, PixelType);
 
             //! Create a new image.
-            static std::shared_ptr<Image> create(SizeType w, SizeType h, PixelType);
+            static std::shared_ptr<Image> create(int w, int h, PixelType);
 
             //! Get the image information.
             const Info& getInfo() const;
@@ -293,10 +290,10 @@ namespace tl
             const Size& getSize() const;
 
             //! Get the image width.
-            SizeType getWidth() const;
+            int getWidth() const;
 
             //! Get the image height.
-            SizeType getHeight() const;
+            int getHeight() const;
 
             //! Get the aspect ratio.
             float getAspect() const;

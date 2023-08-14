@@ -12,22 +12,6 @@ namespace tl
 {
     namespace timelineui
     {
-        class AudioClipItem;
-
-        //! Audio drag and drop data.
-        class AudioDragAndDropData : public ui::DragAndDropData
-        {
-        public:
-            AudioDragAndDropData(const std::shared_ptr<AudioClipItem>&);
-
-            virtual ~AudioDragAndDropData();
-
-            const std::shared_ptr<AudioClipItem>& getItem() const;
-
-        private:
-            std::shared_ptr<AudioClipItem> _item;
-        };
-
         //! Audio clip item.
         class AudioClipItem : public IBasicItem
         {
@@ -52,6 +36,7 @@ namespace tl
                 const std::shared_ptr<system::Context>&,
                 const std::shared_ptr<IWidget>& parent = nullptr);
 
+            //! Get the associated clip.
             const otio::SerializableObject::Retainer<otio::Clip>& getClip() const;
 
             void setScale(double) override;

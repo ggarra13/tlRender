@@ -14,18 +14,6 @@ namespace tl
 {
     namespace timelineui
     {
-        AudioDragAndDropData::AudioDragAndDropData(const std::shared_ptr<AudioClipItem>& item) :
-            _item(item)
-        {}
-
-        AudioDragAndDropData::~AudioDragAndDropData()
-        {}
-
-        const std::shared_ptr<AudioClipItem>& AudioDragAndDropData::getItem() const
-        {
-            return _item;
-        }
-
         struct AudioClipItem::Private
         {
             otio::SerializableObject::Retainer<otio::Clip> clip;
@@ -120,7 +108,7 @@ namespace tl
         {
             return _p->clip;
         }
-        
+
         void AudioClipItem::setScale(double value)
         {
             const bool changed = value != _scale;
@@ -247,8 +235,8 @@ namespace tl
                     setSelected(true);
                     if (auto eventLoop = getEventLoop().lock())
                     {
-                        event.dndData = std::make_shared<AudioDragAndDropData>(
-                            std::dynamic_pointer_cast<AudioClipItem>(shared_from_this()));
+                        event.dndData = std::make_shared<DragAndDropData>(
+                            std::dynamic_pointer_cast<IItem>(shared_from_this()));
                         event.dndCursor = eventLoop->screenshot(shared_from_this());
                         event.dndCursorHotspot = _mouse.pos - _geometry.min;
                     }
@@ -345,7 +333,7 @@ namespace tl
                                     p.clip,
                                     p.ioInfo->audio.sampleRate);
                                 p.waveformFutures[time] = _data.ioManager->requestAudio(
-                                    image::Size(box.w(), box.h()),
+                                    box.getSize(),
                                     p.path,
                                     p.memoryRead,
                                     p.availableRange.start_time(),
