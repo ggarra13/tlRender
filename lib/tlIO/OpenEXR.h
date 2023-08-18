@@ -108,6 +108,9 @@ namespace tl
         //! Convert from an Imf channel.
         Channel fromImf(const std::string& name, const Imf::Channel&);
 
+        //! Convert to an Imf pixel type.
+        Imf::PixelType toImf(const image::PixelType&);
+        
         //! Input stream.
         class IStream : public Imf::IStream
         {
@@ -201,6 +204,7 @@ namespace tl
 
         private:
             Compression _compression = Compression::ZIP;
+            image::PixelType _pixelType = image::PixelType::RGBA_F16;
             float _dwaCompressionLevel = 45.F;
             int   _zipCompressionLevel = 4;
         };

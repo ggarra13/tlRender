@@ -6,13 +6,36 @@
 
 #include <tlCore/StringFormat.h>
 
-#include <ImfRgbaFile.h>
+#include <ImfHeader.h>
+#include <ImfChannelList.h>
+#include <ImfPartType.h>
+#include <ImfFrameBuffer.h>
 #include <ImfStandardAttributes.h>
+#include <ImfMultiPartOutputFile.h>
+#include <ImfOutputPart.h>
 
 namespace tl
 {
     namespace exr
     {
+        namespace
+        {
+            void flipImageY(
+                char* dst, const char* src, const size_t height,
+                const size_t bytes)
+            {
+                for (size_t row = 0; row < height; ++row)
+                {
+                    const char* srcRow = src + row * bytes;
+                    char* destRow = dst + (height - row - 1) * bytes;
+
+                    // Copy the row from the source image to the destination
+                    // image
+                    std::memcpy(destRow, srcRow, bytes);
+                }
+            }
+        }
+        
         void Write::_init(
             const file::Path& path,
             const io::Info& info,
@@ -26,6 +49,12 @@ namespace tl
             {
                 std::stringstream ss(i->second);
                 ss >> _compression;
+            }
+            i = options.find("OpenEXR/PixelType");
+            if (i != options.end())
+            {
+                std::stringstream ss(i->second);
+                ss >> _pixelType;
             }
             i = options.find("OpenEXR/ZipCompressionLevel");
             if (i != options.end())
@@ -75,11 +104,74 @@ namespace tl
             header.zipCompressionLevel() = _zipCompressionLevel;
             header.dwaCompressionLevel() = _dwaCompressionLevel;
             writeTags(image->getTags(), io::sequenceDefaultSpeed, header);
-            Imf::RgbaOutputFile f(fileName.c_str(), header);
-            const size_t scanlineSize = static_cast<size_t>(info.size.w) * 4 * 2;
-            const uint8_t* p = image->getData() + (info.size.h - 1) * scanlineSize;
-            f.setFrameBuffer(reinterpret_cast<const Imf::Rgba*>(p), 1, -info.size.w);
-            f.writePixels(info.size.h);
+            
+            std::vector<Imf::FrameBuffer> fbs;
+            Imf::FrameBuffer fb;
+            const uint8_t bitDepth = getBitDepth(_pixelType) / 8;
+            const uint8_t channelCount = getChannelCount(_pixelType);
+
+            switch (channelCount)
+            {
+            case 2:
+                header.channels().insert("A", Imf::Channel(toImf(_pixelType)));
+                // no break here
+            case 1:
+                header.channels().insert("L", Imf::Channel(toImf(_pixelType)));
+                break;
+            case 4:
+                header.channels().insert("A", Imf::Channel(toImf(_pixelType)));
+                // no break here
+            case 3:
+                header.channels().insert("B", Imf::Channel(toImf(_pixelType)));
+                header.channels().insert("G", Imf::Channel(toImf(_pixelType)));
+                header.channels().insert("R", Imf::Channel(toImf(_pixelType)));
+                break;
+            }
+
+            
+            header.setName(fileName);
+            header.setType(Imf::SCANLINEIMAGE);
+            header.setVersion(1);
+            
+            std::vector<char*> slices;
+
+            auto ci = header.channels().begin();
+            auto ce = header.channels().end();
+            uint8_t* base = image->getData();
+            const size_t xStride = bitDepth * channelCount;
+            const size_t yStride = bitDepth * channelCount * info.size.w;
+            int k = 3;
+            for ( ; ci != ce; ++ci)
+            {
+                const std::string& name = ci.name();
+                char* buf = reinterpret_cast<char*>(base + k-- * bitDepth);
+                char* flip = new char[info.size.h * yStride];
+                flipImageY(flip, buf, info.size.h, yStride);
+                fb.insert(
+                    name,
+                    Imf::Slice(toImf(_pixelType), flip, xStride, yStride));
+                slices.push_back(flip);
+            }
+            
+            fbs.push_back(fb);
+
+            std::vector<Imf::Header> headers;
+            headers.push_back(header);
+            
+            const int numParts = static_cast<int>(headers.size());
+            Imf::MultiPartOutputFile multi(
+                fileName.c_str(), &headers[0], numParts);
+            for (int part = 0; part < numParts; ++part)
+            {
+                Imf::OutputPart out(multi, part);
+                const Imf::Header& header = multi.header(part);
+                const Imath::Box2i& daw = header.dataWindow();
+                out.setFrameBuffer(fbs[part]);
+                out.writePixels(daw.max.y - daw.min.y + 1);
+            }
+
+            for (auto& slice : slices)
+                delete [] slice;
         }
     }
 }
