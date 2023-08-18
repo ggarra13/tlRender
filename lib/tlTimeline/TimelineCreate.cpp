@@ -223,7 +223,7 @@ namespace tl
                         otio::Timeline::from_json_string(buf.data(), errorStatus));
 
                     auto fileIO = file::FileIO::create(fileName, file::Mode::Read);
-                    for (auto clip : out->children_if<otio::Clip>())
+                    for (auto clip : out->find_children<otio::Clip>())
                     {
                         if (auto externalReference =
                             dynamic_cast<otio::ExternalReference*>(clip->media_reference()))
