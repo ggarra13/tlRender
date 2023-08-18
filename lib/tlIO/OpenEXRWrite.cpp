@@ -87,6 +87,42 @@ namespace tl
             return out;
         }
 
+        void Write::_writeLayer(
+            const std::shared_ptr<image::Image>& image,
+            int layerId)
+        {
+            const uint8_t channelCount = getChannelCount(_pixelType);
+            const uint8_t bitDepth = getBitDepth(_pixelType) / 8;
+            Imf::OutputPart out(*_outputFile, layerId);
+            const Imf::Header& header = _outputFile->header(layerId);
+            const Imath::Box2i& daw = header.dataWindow();
+
+            const size_t width   = (daw.max.x - daw.min.x);
+            const size_t height  = (daw.max.y - daw.min.y) + 1;
+            const size_t xStride = bitDepth * channelCount;
+            const size_t yStride = bitDepth * channelCount * width;
+                
+            char* base = const_cast<char*>(reinterpret_cast<const char*>(image->getData()));
+            char* flip = new char[height * yStride];
+            flipImageY(flip, base, height, yStride);
+                
+            Imf::FrameBuffer fb;
+            auto ci = header.channels().begin();
+            auto ce = header.channels().end();
+            for (int k = 3; ci != ce; ++ci)
+            {
+                const std::string& name = ci.name();
+                char* buf = flip + k-- * bitDepth;
+                fb.insert(
+                    name,
+                    Imf::Slice(toImf(_pixelType), buf, xStride, yStride));
+            }
+
+            out.setFrameBuffer(fb);
+            out.writePixels(height);
+            delete flip;
+        }
+    
         void Write::_writeVideo(
             const std::string& fileName,
             const otime::RationalTime&,
@@ -103,13 +139,10 @@ namespace tl
                 toImf(_compression));
             header.zipCompressionLevel() = _zipCompressionLevel;
             header.dwaCompressionLevel() = _dwaCompressionLevel;
-            writeTags(image->getTags(), io::sequenceDefaultSpeed, header);
-            
-            std::vector<Imf::FrameBuffer> fbs;
-            Imf::FrameBuffer fb;
-            const uint8_t bitDepth = getBitDepth(_pixelType) / 8;
-            const uint8_t channelCount = getChannelCount(_pixelType);
+            const auto tags = image->getTags();
+            writeTags(tags, io::sequenceDefaultSpeed, header);
 
+            const uint8_t channelCount = getChannelCount(_pixelType);
             switch (channelCount)
             {
             case 2:
@@ -126,52 +159,61 @@ namespace tl
                 header.channels().insert("G", Imf::Channel(toImf(_pixelType)));
                 header.channels().insert("R", Imf::Channel(toImf(_pixelType)));
                 break;
+            default:
+                throw std::runtime_error("Invalid channel count");
+                break;
             }
 
-            
-            header.setName(fileName);
+            const std::string layerName = fileName;
+            header.setName(layerName);
             header.setType(Imf::SCANLINEIMAGE);
             header.setVersion(1);
-            
-            std::vector<char*> slices;
 
-            auto ci = header.channels().begin();
-            auto ce = header.channels().end();
-            uint8_t* base = image->getData();
-            const size_t xStride = bitDepth * channelCount;
-            const size_t yStride = bitDepth * channelCount * info.size.w;
-            int k = 3;
-            for ( ; ci != ce; ++ci)
+            header.displayWindow() = Imath::Box2i(Imath::V2i(0,0),
+                                                  Imath::V2i(info.size.w,
+                                                             info.size.h));
+            header.dataWindow() = Imath::Box2i(Imath::V2i(0,0),
+                                               Imath::V2i(info.size.w,
+                                                          info.size.h));
+
+            std::cerr << "tags.size()=" << tags.size() << std::endl;
+            std::cerr << "  info.size=" << info.size << std::endl;
+            auto i = tags.find("Display Window");
+            if ( i != tags.end())
             {
-                const std::string& name = ci.name();
-                char* buf = reinterpret_cast<char*>(base + k-- * bitDepth);
-                char* flip = new char[info.size.h * yStride];
-                flipImageY(flip, buf, info.size.h, yStride);
-                fb.insert(
-                    name,
-                    Imf::Slice(toImf(_pixelType), flip, xStride, yStride));
-                slices.push_back(flip);
+                std::stringstream s(i->second);
+                math::Box2i box;
+                s >> box;
+                header.displayWindow() = Imath::Box2i(
+                    Imath::V2i(box.min.x, box.min.y),
+                    Imath::V2i(box.max.x, box.max.y));
+                std::cerr << "Display Window=" << box << std::endl;
+            }
+            i = tags.find("Data Window");
+            if ( i != tags.end())
+            {
+                std::stringstream s(i->second);
+                math::Box2i box;
+                s >> box;
+                header.dataWindow() = Imath::Box2i(
+                    Imath::V2i(box.min.x, box.min.y),
+                    Imath::V2i(box.max.x, box.max.y));
+                std::cerr << "Data Window=" << box << std::endl;
             }
             
-            fbs.push_back(fb);
-
             std::vector<Imf::Header> headers;
             headers.push_back(header);
             
             const int numParts = static_cast<int>(headers.size());
-            Imf::MultiPartOutputFile multi(
+            _outputFile = new Imf::MultiPartOutputFile(
                 fileName.c_str(), &headers[0], numParts);
+
             for (int part = 0; part < numParts; ++part)
             {
-                Imf::OutputPart out(multi, part);
-                const Imf::Header& header = multi.header(part);
-                const Imath::Box2i& daw = header.dataWindow();
-                out.setFrameBuffer(fbs[part]);
-                out.writePixels(daw.max.y - daw.min.y + 1);
+                _writeLayer(image, part);
             }
 
-            for (auto& slice : slices)
-                delete [] slice;
+            delete _outputFile;
         }
     }
 }
