@@ -29,8 +29,6 @@ namespace tl
             void _init(
                 const std::shared_ptr<timeline::Player>&,
                 const otio::SerializableObject::Retainer<otio::Track>&,
-                int trackIndex,
-                const otime::TimeRange&,
                 const ItemData&,
                 const std::shared_ptr<system::Context>&,
                 const std::shared_ptr<IWidget>& parent);
@@ -44,8 +42,6 @@ namespace tl
             static std::shared_ptr<TrackItem> create(
                 const std::shared_ptr<timeline::Player>&,
                 const otio::SerializableObject::Retainer<otio::Track>&,
-                int trackIndex,
-                const otime::TimeRange&,
                 const ItemData&,
                 const std::shared_ptr<system::Context>&,
                 const std::shared_ptr<IWidget>& parent = nullptr);
@@ -57,10 +53,12 @@ namespace tl
             void drawEvent(
                 const math::Box2i&,
                 const ui::DrawEvent&) override;
-            void dragEnterEvent(ui::DragAndDropEvent&) override;
-            void dragLeaveEvent(ui::DragAndDropEvent&) override;
-            void dragMoveEvent(ui::DragAndDropEvent&) override;
-            void dropEvent(ui::DragAndDropEvent&) override;
+            void drawOverlayEvent(
+                const math::Box2i&,
+                const ui::DrawEvent&) override;
+            void mouseMoveEvent(ui::MouseMoveEvent&) override;
+            void mousePressEvent(ui::MouseClickEvent&) override;
+            void mouseReleaseEvent(ui::MouseClickEvent&) override;
 
         protected:
             void _timeUnitsUpdate() override;

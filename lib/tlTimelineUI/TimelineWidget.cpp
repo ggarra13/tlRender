@@ -331,7 +331,7 @@ namespace tl
         {
             TLRENDER_P();
             event.accept = true;
-            if (event.dy > 0)
+            if (event.value.y > 0)
             {
                 const double zoom = p.scale * p.mouseWheelScale;
                 setViewZoom(zoom, event.pos);
@@ -519,7 +519,7 @@ namespace tl
 
                     p.timelineItem = TimelineItem::create(
                         p.player,
-                        p.player->getTimeRange(),
+                        p.player->getTimeline()->getTimeline()->tracks(),
                         itemData,
                         context);
                     p.timelineItem->setStopOnScrub(p.stopOnScrub->get());

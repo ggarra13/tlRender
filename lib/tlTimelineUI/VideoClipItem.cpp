@@ -5,7 +5,6 @@
 #include <tlTimelineUI/VideoClipItem.h>
 
 #include <tlUI/DrawUtil.h>
-#include <tlUI/EventLoop.h>
 
 #include <tlTimeline/RenderUtil.h>
 #include <tlTimeline/Util.h>
@@ -38,7 +37,6 @@ namespace tl
 
         void VideoClipItem::_init(
             const otio::SerializableObject::Retainer<otio::Clip>& clip,
-            const otime::TimeRange& timeRange,
             const ItemData& itemData,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
@@ -50,16 +48,12 @@ namespace tl
             IBasicItem::_init(
                 !clip->name().empty() ? clip->name() : path.get(-1, false),
                 ui::ColorRole::VideoClip,
-                getMarkers(clip),
                 "tl::timelineui::VideoClipItem",
-                timeRange,
+                clip.value,
                 itemData,
                 context,
                 parent);
             TLRENDER_P();
-
-            _setMouseHover(true);
-            _setMousePress(true, 0, 0);
 
             p.clip = clip;
 
@@ -95,13 +89,12 @@ namespace tl
 
         std::shared_ptr<VideoClipItem> VideoClipItem::create(
             const otio::SerializableObject::Retainer<otio::Clip>& clip,
-            const otime::TimeRange& timeRange,
             const ItemData& itemData,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
         {
             auto out = std::shared_ptr<VideoClipItem>(new VideoClipItem);
-            out->_init(clip, timeRange, itemData, context, parent);
+            out->_init(clip, itemData, context, parent);
             return out;
         }
 

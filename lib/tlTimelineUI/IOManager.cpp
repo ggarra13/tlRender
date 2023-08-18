@@ -9,6 +9,7 @@
 #include <tlIO/IOSystem.h>
 
 #include <tlGL/GL.h>
+#include <tlGL/GLFWWindow.h>
 #include <tlGL/OffscreenBuffer.h>
 #include <tlGL/Init.h>
 
@@ -16,22 +17,26 @@
 #include <tlCore/LRUCache.h>
 #include <tlCore/StringFormat.h>
 
-#define GLFW_INCLUDE_NONE
-#include <GLFW/glfw3.h>
-
 #include <sstream>
 
 namespace tl
 {
     namespace timelineui
     {
+        namespace
+        {
+            const size_t infoRequestsMax = 3;
+            const size_t videoRequestsMax = 3;
+            const size_t audioRequestsMax = 3;
+        }
+
         struct IOManager::Private
         {
             std::weak_ptr<system::Context> context;
             io::Options ioOptions;
             std::shared_ptr<observer::Value<bool> > cancelRequests;
 
-            GLFWwindow* glfwWindow = nullptr;
+            std::shared_ptr<gl::GLFWWindow> window;
             
             struct InfoRequest
             {
@@ -106,17 +111,11 @@ namespace tl
             }
             p.cancelRequests = observer::Value<bool>::create(false);
 
-            glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-            glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
-            glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
-            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-            glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-            glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_FALSE);
-            p.glfwWindow = glfwCreateWindow(1, 1, "tl::ui::ThumbnailSystem", NULL, NULL);
-            if (!p.glfwWindow)
-            {
-                throw std::runtime_error("Cannot create window");
-            }
+            p.window = gl::GLFWWindow::create(
+                "tl::timelineui::IOManager",
+                math::Size2i(1, 1),
+                context,
+                static_cast<int>(gl::GLFWWindowOptions::None));
 
             p.thread.infoCache.setMax(1000);
             p.thread.thumbnailCache.setMax(1000);
@@ -127,8 +126,20 @@ namespace tl
                 [this]
                 {
                     TLRENDER_P();
-                    glfwMakeContextCurrent(p.glfwWindow);
-                    gl::initGLAD();
+                    try
+                    {
+                        p.window->makeCurrent();
+                    }
+                    catch (const std::exception& e)
+                    {
+                        if (auto context = p.context.lock())
+                        {
+                            context->log(
+                                "tl::timelineui::IOManager",
+                                string::Format("Cannot make the OpenGL context current: {0}").
+                                    arg(e.what()));
+                        }
+                    }
                     _run();
                     {
                         std::unique_lock<std::mutex> lock(p.mutex.mutex);
@@ -452,9 +463,9 @@ namespace tl
             while (p.thread.running)
             {
                 // Check requests.
-                std::shared_ptr<Private::InfoRequest> infoRequest;
-                std::shared_ptr<Private::VideoRequest> videoRequest;
-                std::shared_ptr<Private::AudioRequest> audioRequest;
+                std::list<std::shared_ptr<Private::InfoRequest> > infoRequests;
+                std::list<std::shared_ptr<Private::VideoRequest> > videoRequests;
+                std::list<std::shared_ptr<Private::AudioRequest> > audioRequests;
                 bool cancelRequests = false;
                 {
                     std::unique_lock<std::mutex> lock(p.mutex.mutex);
@@ -470,19 +481,22 @@ namespace tl
                                 _p->mutex.cancelRequests;
                         }))
                     {
-                        if (!p.mutex.infoRequests.empty())
+                        while (!p.mutex.infoRequests.empty() &&
+                            infoRequests.size() < infoRequestsMax)
                         {
-                            infoRequest = p.mutex.infoRequests.front();
+                            infoRequests.push_back(p.mutex.infoRequests.front());
                             p.mutex.infoRequests.pop_front();
                         }
-                        if (!p.mutex.videoRequests.empty())
+                        if (!p.mutex.videoRequests.empty() &&
+                            videoRequests.size() < videoRequestsMax)
                         {
-                            videoRequest = p.mutex.videoRequests.front();
+                            videoRequests.push_back(p.mutex.videoRequests.front());
                             p.mutex.videoRequests.pop_front();
                         }
-                        if (!p.mutex.audioRequests.empty())
+                        if (!p.mutex.audioRequests.empty() &&
+                            audioRequests.size() < audioRequestsMax)
                         {
-                            audioRequest = p.mutex.audioRequests.front();
+                            audioRequests.push_back(p.mutex.audioRequests.front());
                             p.mutex.audioRequests.pop_front();
                         }
                         if (p.mutex.cancelRequests)
@@ -506,7 +520,7 @@ namespace tl
                 }
                 
                 // Handle information requests.
-                if (infoRequest)
+                for (const auto& infoRequest : infoRequests)
                 {
                     io::Info info;
                     const std::string key = getInfoKey(
@@ -523,11 +537,16 @@ namespace tl
                                 auto ioSystem = context->getSystem<io::System>();
                                 io::Options options = p.ioOptions;
                                 options["FFmpeg/StartTime"] = string::Format("{0}").arg(infoRequest->startTime);
-                                read = ioSystem->read(
-                                    infoRequest->path,
-                                    infoRequest->memoryRead,
-                                    options);
-                                p.thread.ioCache.add(fileName, read);
+                                try
+                                {
+                                    read = ioSystem->read(
+                                        infoRequest->path,
+                                        infoRequest->memoryRead,
+                                        options);
+                                    p.thread.ioCache.add(fileName, read);
+                                }
+                                catch (const std::exception&)
+                                {}
                             }
                         }
                         if (read)
@@ -540,7 +559,7 @@ namespace tl
                 }
                 
                 // Handle video requests.
-                if (videoRequest)
+                for (const auto& videoRequest : videoRequests)
                 {
                     std::shared_ptr<image::Image> image;
                     const std::string key = getVideoKey(
@@ -562,11 +581,16 @@ namespace tl
                                     auto ioSystem = context->getSystem<io::System>();
                                     io::Options options = p.ioOptions;
                                     options["FFmpeg/StartTime"] = string::Format("{0}").arg(videoRequest->startTime);
-                                    read = ioSystem->read(
-                                        videoRequest->path,
-                                        videoRequest->memoryRead,
-                                        options);
-                                    p.thread.ioCache.add(fileName, read);
+                                    try
+                                    {
+                                        read = ioSystem->read(
+                                            videoRequest->path,
+                                            videoRequest->memoryRead,
+                                            options);
+                                        p.thread.ioCache.add(fileName, read);
+                                    }
+                                    catch (const std::exception&)
+                                    {}
                                 }
                             }
                             if (read)
@@ -580,25 +604,30 @@ namespace tl
                                 }
                                 if (render && buffer && videoData.image)
                                 {
-                                    gl::OffscreenBufferBinding binding(buffer);
-                                    render->begin(videoRequest->size);
-                                    render->drawImage(
-                                        videoData.image,
-                                        { math::Box2i(0, 0, videoRequest->size.w, videoRequest->size.h) });
-                                    render->end();
-                                    image = image::Image::create(
-                                        videoRequest->size.w,
-                                        videoRequest->size.h,
-                                        image::PixelType::RGBA_U8);
-                                    glPixelStorei(GL_PACK_ALIGNMENT, 1);
-                                    glReadPixels(
-                                        0,
-                                        0,
-                                        videoRequest->size.w,
-                                        videoRequest->size.h,
-                                        GL_RGBA,
-                                        GL_UNSIGNED_BYTE,
-                                        image->getData());
+                                    try
+                                    {
+                                        gl::OffscreenBufferBinding binding(buffer);
+                                        render->begin(videoRequest->size);
+                                        render->drawImage(
+                                            videoData.image,
+                                            { math::Box2i(0, 0, videoRequest->size.w, videoRequest->size.h) });
+                                        render->end();
+                                        image = image::Image::create(
+                                            videoRequest->size.w,
+                                            videoRequest->size.h,
+                                            image::PixelType::RGBA_U8);
+                                        glPixelStorei(GL_PACK_ALIGNMENT, 1);
+                                        glReadPixels(
+                                            0,
+                                            0,
+                                            videoRequest->size.w,
+                                            videoRequest->size.h,
+                                            GL_RGBA,
+                                            GL_UNSIGNED_BYTE,
+                                            image->getData());
+                                    }
+                                    catch (const std::exception&)
+                                    {}
                                 }
                             }
                         }
@@ -610,7 +639,7 @@ namespace tl
                 }
                 
                 // Handle audio requests.
-                if (audioRequest)
+                for (const auto& audioRequest : audioRequests)
                 {
                     std::shared_ptr<geom::TriangleMesh2> mesh;
                     const std::string key = getAudioKey(
@@ -631,11 +660,16 @@ namespace tl
                                     auto ioSystem = context->getSystem<io::System>();
                                     io::Options options = p.ioOptions;
                                     options["FFmpeg/StartTime"] = string::Format("{0}").arg(audioRequest->startTime);
-                                    read = ioSystem->read(
-                                        audioRequest->path,
-                                        audioRequest->memoryRead,
-                                        options);
-                                    p.thread.ioCache.add(fileName, read);
+                                    try
+                                    {
+                                        read = ioSystem->read(
+                                            audioRequest->path,
+                                            audioRequest->memoryRead,
+                                            options);
+                                        p.thread.ioCache.add(fileName, read);
+                                    }
+                                    catch (const std::exception&)
+                                    {}
                                 }
                             }
                             if (read)
