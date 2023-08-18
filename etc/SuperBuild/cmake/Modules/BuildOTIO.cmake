@@ -1,7 +1,7 @@
 include(ExternalProject)
 
 set(OTIO_GIT_REPOSITORY "https://github.com/ggarra13/OpenTimelineIO.git")
-set(OTIO_GIT_TAG "edit_commands")
+set(OTIO_GIT_TAG "test_edit_commands")
 
 #set(OTIO_GIT_REPOSITORY "https://github.com/PixarAnimationStudios/OpenTimelineIO.git")
 #set(OTIO_GIT_TAG "v0.15")
