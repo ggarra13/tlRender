@@ -97,8 +97,8 @@ namespace tl
             const Imf::Header& header = _outputFile->header(layerId);
             const Imath::Box2i& daw = header.dataWindow();
 
-            const size_t width   = (daw.max.x - daw.min.x);
-            const size_t height  = (daw.max.y - daw.min.y) + 1;
+            const size_t width   = daw.max.x - daw.min.x;
+            const size_t height  = daw.max.y - daw.min.y;
             const size_t xStride = bitDepth * channelCount;
             const size_t yStride = bitDepth * channelCount * width;
                 
@@ -119,7 +119,7 @@ namespace tl
             }
 
             out.setFrameBuffer(fb);
-            out.writePixels(height);
+            out.writePixels(height + 1);
             delete flip;
         }
     
@@ -168,13 +168,6 @@ namespace tl
             header.setName(layerName);
             header.setType(Imf::SCANLINEIMAGE);
             header.setVersion(1);
-
-            header.displayWindow() = Imath::Box2i(Imath::V2i(0,0),
-                                                  Imath::V2i(info.size.w,
-                                                             info.size.h));
-            header.dataWindow() = Imath::Box2i(Imath::V2i(0,0),
-                                               Imath::V2i(info.size.w,
-                                                          info.size.h));
 
             auto i = tags.find("Display Window");
             if ( i != tags.end())
