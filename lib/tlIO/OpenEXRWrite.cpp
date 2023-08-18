@@ -176,8 +176,6 @@ namespace tl
                                                Imath::V2i(info.size.w,
                                                           info.size.h));
 
-            std::cerr << "tags.size()=" << tags.size() << std::endl;
-            std::cerr << "  info.size=" << info.size << std::endl;
             auto i = tags.find("Display Window");
             if ( i != tags.end())
             {
@@ -187,7 +185,6 @@ namespace tl
                 header.displayWindow() = Imath::Box2i(
                     Imath::V2i(box.min.x, box.min.y),
                     Imath::V2i(box.max.x, box.max.y));
-                std::cerr << "Display Window=" << box << std::endl;
             }
             i = tags.find("Data Window");
             if ( i != tags.end())
@@ -198,7 +195,6 @@ namespace tl
                 header.dataWindow() = Imath::Box2i(
                     Imath::V2i(box.min.x, box.min.y),
                     Imath::V2i(box.max.x, box.max.y));
-                std::cerr << "Data Window=" << box << std::endl;
             }
             
             std::vector<Imf::Header> headers;
