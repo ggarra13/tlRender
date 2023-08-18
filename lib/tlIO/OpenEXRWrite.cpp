@@ -132,7 +132,7 @@ namespace tl
             Imf::Header header(
                 info.size.w,
                 info.size.h,
-                1.F,
+                info.size.pixelAspectRatio,
                 Imath::V2f(0.F, 0.F),
                 1.F,
                 Imf::INCREASING_Y,
