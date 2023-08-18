@@ -1115,9 +1115,12 @@ namespace tl
             case image::PixelType::RGBA_F16:
             case image::PixelType::RGB_F32:
             case image::PixelType::RGBA_F32:
+            case image::PixelType::L_U32:
+            case image::PixelType::LA_U32:
+            case image::PixelType::RGB_U32:
+            case image::PixelType::RGBA_U32:
                 out.pixelType = info.pixelType;;
             }
-            out.layout.mirror.y = false;
             return out;
         }
 
