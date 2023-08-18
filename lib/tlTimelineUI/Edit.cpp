@@ -78,8 +78,8 @@ namespace tl
                     otio::Timeline::from_json_string(s)));
 
             const auto tracks = out->tracks()->children();
-            const int itemTrackIndex = getChildIndex(item->parent());
-            const int itemIndex = getChildIndex(item);
+            const int itemTrackIndex = getIndex(item->parent());
+            const int itemIndex = getIndex(item);
             if (itemTrackIndex >= 0 && itemTrackIndex < tracks.size())
             {
                 if (auto track = dynamic_cast<otio::Track*>(
@@ -133,8 +133,8 @@ namespace tl
                     otio::Timeline::from_json_string(s)));
 
             const auto tracks = out->tracks()->children();
-            const int itemTrackIndex = getChildIndex(item->parent());
-            const int itemIndex = getChildIndex(item);
+            const int itemTrackIndex = getIndex(item->parent());
+            const int itemIndex = getIndex(item);
             if (itemTrackIndex >= 0 && itemTrackIndex < tracks.size())
             {
                 if (auto track = dynamic_cast<otio::Track*>(

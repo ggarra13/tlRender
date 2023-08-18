@@ -226,13 +226,6 @@ namespace tl
                 if (length > p.size.dragLength)
                 {
                     setSelected(true);
-                    if (auto eventLoop = getEventLoop().lock())
-                    {
-                        event.dndData = std::make_shared<DragAndDropData>(
-                            std::dynamic_pointer_cast<IItem>(shared_from_this()));
-                        event.dndCursor = eventLoop->screenshot(shared_from_this());
-                        event.dndCursorHotspot = _mouse.pos - _geometry.min;
-                    }
                 }
             }
         }

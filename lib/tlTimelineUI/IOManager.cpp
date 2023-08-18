@@ -146,7 +146,6 @@ namespace tl
                         p.mutex.stopped = true;
                     }
                     _cancelRequests();
-                    glfwMakeContextCurrent(nullptr);
                 });
         }
 
@@ -161,10 +160,6 @@ namespace tl
             if (p.thread.thread.joinable())
             {
                 p.thread.thread.join();
-            }
-            if (p.glfwWindow)
-            {
-                glfwDestroyWindow(p.glfwWindow);
             }
         }
 
