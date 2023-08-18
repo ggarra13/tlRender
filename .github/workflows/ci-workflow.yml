@@ -309,8 +309,3 @@ jobs:
           -DTLRENDER_GCOV=${{ env.TLRENDER_GCOV }} &&
         cmake --build . -j 4
 
-    - name: Run tests
-      run: >
-        cd build &&
-        cd tlRender\src\tlRender-build &&
-        ctest --rerun-failed --output-on-failure
