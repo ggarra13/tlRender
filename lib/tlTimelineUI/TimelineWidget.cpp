@@ -407,15 +407,6 @@ namespace tl
             event.accept = true;
         }
 
-        std::vector<std::shared_ptr<ui::IWidget>>
-        TimelineWidget::getSelectedItems() const
-        {
-            std::vector<std::shared_ptr<IWidget>> out;
-            TLRENDER_P();
-            _getSelectedItems(out, p.timelineItem);
-            return out;
-        }
-        
         void TimelineWidget::_releaseMouse()
         {
             IWidget::_releaseMouse();
@@ -527,23 +518,6 @@ namespace tl
                     _setItemOptions(p.timelineItem, p.itemOptions->get());
                     p.scrollWidget->setWidget(p.timelineItem);
                 }
-            }
-        }
-
-        void
-        TimelineWidget::_getSelectedItems(
-            std::vector<std::shared_ptr<IWidget>>& out,
-            const std::shared_ptr<IWidget>& widget) const
-        {
-            TLRENDER_P();
-            if (auto item = std::dynamic_pointer_cast<IBasicItem>(widget))
-            {
-                if (item->isSelected())
-                    out.push_back(widget);
-            }
-            for (const auto& child : widget->getChildren())
-            {
-                _getSelectedItems(out, child);
             }
         }
         

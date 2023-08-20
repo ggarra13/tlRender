@@ -100,9 +100,6 @@ namespace tl
 
             //! Get timeline scale.
             double getScale() const;
-
-            //! Get all selected items.
-            std::vector<std::shared_ptr<IWidget>> getSelectedItems() const;
             
             void setGeometry(const math::Box2i&) override;
             void sizeHintEvent(const ui::SizeHintEvent&) override;
@@ -124,10 +121,6 @@ namespace tl
                 const math::Vector2i& scrollPos);
 
             double _getTimelineScale() const;
-
-            void _getSelectedItems(
-                std::vector<std::shared_ptr<IWidget>>&,
-                const std::shared_ptr<IWidget>&) const;
 
             void _setItemScale(
                 const std::shared_ptr<IWidget>&,

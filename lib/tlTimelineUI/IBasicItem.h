@@ -30,8 +30,6 @@ namespace tl
         public:
             virtual ~IBasicItem() = 0;
 
-            bool isSelected() const;
-            void setSelected(const bool);
             void sizeHintEvent(const ui::SizeHintEvent&) override;
             void clipEvent(
                 const math::Box2i&,

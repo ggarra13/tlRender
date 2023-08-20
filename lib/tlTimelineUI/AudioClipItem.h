@@ -52,9 +52,6 @@ namespace tl
             void drawEvent(
                 const math::Box2i&,
                 const ui::DrawEvent&) override;
-            
-            void mousePressEvent(ui::MouseClickEvent&) override;
-            void mouseMoveEvent(ui::MouseMoveEvent&) override;
 
         private:
             void _drawWaveforms(

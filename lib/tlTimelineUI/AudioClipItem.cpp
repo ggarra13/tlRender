@@ -208,28 +208,6 @@ namespace tl
             }
         }
 
-        void AudioClipItem::mousePressEvent(ui::MouseClickEvent& event)
-        {
-            IBasicItem::mousePressEvent(event);
-            TLRENDER_P();
-            
-            setSelected(isSelected() ^ _mouse.press);
-        }
-        
-        void AudioClipItem::mouseMoveEvent(ui::MouseMoveEvent& event)
-        {
-            IWidget::mouseMoveEvent(event);
-            TLRENDER_P();
-            if (_mouse.press)
-            {
-                const float length = math::length(event.pos - _mouse.pressPos);
-                if (length > p.size.dragLength)
-                {
-                    setSelected(true);
-                }
-            }
-        }
-
         void AudioClipItem::_drawWaveforms(
             const math::Box2i& drawRect,
             const ui::DrawEvent& event)

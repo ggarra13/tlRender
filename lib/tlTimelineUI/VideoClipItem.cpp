@@ -219,28 +219,6 @@ namespace tl
             }
         }
 
-        void VideoClipItem::mousePressEvent(ui::MouseClickEvent& event)
-        {
-            IBasicItem::mousePressEvent(event);
-            TLRENDER_P();
-            
-            setSelected(isSelected() ^ _mouse.press);
-        }
-
-        void VideoClipItem::mouseMoveEvent(ui::MouseMoveEvent& event)
-        {
-            IWidget::mouseMoveEvent(event);
-            TLRENDER_P();
-            if (_mouse.press)
-            {
-                const float length = math::length(event.pos - _mouse.pressPos);
-                if (length > p.size.dragLength)
-                {
-                    setSelected(false);
-                }
-            }
-        }
-
         void VideoClipItem::_drawThumbnails(
             const math::Box2i& drawRect,
             const ui::DrawEvent& event)
