@@ -17,20 +17,5 @@ namespace tl
             const otio::Composable*,
             int trackIndex,
             int insertIndex);
-
-        // Slice an item.
-        //
-        // | A | B | -> |A|A| B |
-        //   ^
-        otio::SerializableObject::Retainer<otio::Timeline> slice(
-            const otio::Timeline*, const otio::Item*,
-            const otime::RationalTime&);
-
-        // Remove an item, replacing it with a gap.
-        //
-        // | A | B | -> | G | B |
-        //   ^
-        otio::SerializableObject::Retainer<otio::Timeline>
-        remove(const otio::Timeline*, const otio::Item*);
     }
 }

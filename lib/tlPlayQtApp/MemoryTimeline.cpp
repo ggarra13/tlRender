@@ -23,7 +23,7 @@ namespace tl
             const file::PathOptions& pathOptions)
         {
             // Recursively iterate over all clips in the timeline.
-            for (auto clip : otioTimeline->children_if<otio::Clip>())
+            for (auto clip : otioTimeline->find_children<otio::Clip>())
             {
                 if (auto externalReference =
                     dynamic_cast<otio::ExternalReference*>(clip->media_reference()))
