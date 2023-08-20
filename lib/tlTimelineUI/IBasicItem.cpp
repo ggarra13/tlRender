@@ -17,7 +17,6 @@ namespace tl
             std::string label;
             std::string durationLabel;
             ui::ColorRole colorRole = ui::ColorRole::VideoClip;
-            bool          selected = false;
             std::vector<Marker> markers;
 
             struct SizeData
@@ -74,7 +73,7 @@ namespace tl
 
         IBasicItem::~IBasicItem()
         {}
-        
+
         void IBasicItem::sizeHintEvent(const ui::SizeHintEvent& event)
         {
             IItem::sizeHintEvent(event);
@@ -140,7 +139,6 @@ namespace tl
             IItem::drawEvent(drawRect, event);
             TLRENDER_P();
 
-
             const math::Box2i& g = _geometry;
             ui::ColorRole colorRole = getSelectRole();
             if (colorRole != ui::ColorRole::None)
@@ -172,17 +170,13 @@ namespace tl
                 {
                     p.draw.labelGlyphs = event.fontSystem->getGlyphs(p.label, p.size.fontInfo);
                 }
-                if (p.selected)
-                    color = event.style->getColorRole(ui::ColorRole::Black);
-                else
-                    color = event.style->getColorRole(ui::ColorRole::Text);
                 event.render->drawText(
                     p.draw.labelGlyphs,
                     math::Vector2i(
                         labelGeometry.min.x,
                         labelGeometry.min.y +
                         p.size.fontMetrics.ascender),
-                    color);
+                    event.style->getColorRole(ui::ColorRole::Text));
             }
 
             const math::Box2i durationGeometry(
@@ -199,17 +193,13 @@ namespace tl
                 {
                     p.draw.durationGlyphs = event.fontSystem->getGlyphs(p.durationLabel, p.size.fontInfo);
                 }
-                if (p.selected)
-                    color = event.style->getColorRole(ui::ColorRole::Black);
-                else
-                    color = event.style->getColorRole(ui::ColorRole::Text);
                 event.render->drawText(
                     p.draw.durationGlyphs,
                     math::Vector2i(
                         durationGeometry.min.x,
                         durationGeometry.min.y +
                         p.size.fontMetrics.ascender),
-                    color);
+                    event.style->getColorRole(ui::ColorRole::Text));
             }
 
             if (_options.showMarkers)
@@ -266,20 +256,6 @@ namespace tl
             }
         }
 
-        bool IBasicItem::isSelected() const
-        {
-            return _p->selected;
-        }
-        
-        void IBasicItem::setSelected(const bool value)
-        {
-            TLRENDER_P();
-            if (value == p.selected)
-                return;
-            p.selected = value;
-            _updates |= ui::Update::Draw;
-        }
-        
         int IBasicItem::_getMargin() const
         {
             return _p->size.margin;
