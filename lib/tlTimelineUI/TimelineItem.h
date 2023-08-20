@@ -58,6 +58,8 @@ namespace tl
             //void keyPressEvent(ui::KeyEvent&) override;
             //void keyReleaseEvent(ui::KeyEvent&) override;
 
+            bool isDragging() const;
+            
         protected:
             void _timeUnitsUpdate() override;
 

@@ -303,6 +303,12 @@ namespace tl
             }
         }
 
+        bool TimelineWidget::isDragging() const
+        {
+            TLRENDER_P();
+            return p.timelineItem->isDragging();
+        }
+        
         void TimelineWidget::mousePressEvent(ui::MouseClickEvent& event)
         {
             IWidget::mousePressEvent(event);

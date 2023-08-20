@@ -109,6 +109,8 @@ namespace tl
             void scrollEvent(ui::ScrollEvent&) override;
             void keyPressEvent(ui::KeyEvent&) override;
             void keyReleaseEvent(ui::KeyEvent&) override;
+
+            bool isDragging() const;
             
         protected:
             void _releaseMouse() override;
