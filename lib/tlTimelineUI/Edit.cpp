@@ -27,7 +27,8 @@ namespace tl
         {
             const int oldIndex = getIndex(composable);
             const int oldTrackIndex = getIndex(composable->parent());
-            
+
+            // Sanity checks
             if (oldIndex == -1 ||
                 oldTrackIndex == -1 ||
                 insertIndex < 0 ||
@@ -38,14 +39,26 @@ namespace tl
 
             const auto& tracks = timeline->tracks()->children();
 
+            // We should not make the timeline or composable cont*
+            // as we modify the timeline in place.
+            // This has the benefit that all pointers do not get invalidated.
             auto constItem = dynamic_cast<const otio::Item*>(composable);
             auto insert_item = const_cast<otio::Item*>(constItem);
 
-            auto track = otio::dynamic_retainer_cast<otio::Track>(tracks[oldTrackIndex]);
-            
-            otime::RationalTime time = time::invalidTime;
+            // Original track
+            auto track = otio::dynamic_retainer_cast<otio::Track>(tracks[oldTrackIndex]);            
 
+            // Remove item from original track
+            track->remove_child(oldIndex);
+
+            // Switch to insert track
+            track = otio::dynamic_retainer_cast<otio::Track>(tracks[trackIndex]);
+            // Time to insert into insert track
+            otime::RationalTime time = time::invalidTime;
+            
             const auto& children = track->children();
+
+            // Find insert index's time to insert into
             if (insertIndex < children.size())
             {
                 auto item = otio::dynamic_retainer_cast<otio::Item>(
@@ -53,15 +66,19 @@ namespace tl
                 time = item->trimmed_range_in_parent().value().start_time();
             }
 
-            track->remove_child(oldIndex);
-
+            // If time is not valid, it means we are inserting at the end
             if (!time::isValid(time))
             {
                 time = track->trimmed_range().end_time_exclusive();
             }
             
             otio::ErrorStatus errorStatus;
-            otio::algo::insert(insert_item, track, time);
+            otio::algo::insert(
+                insert_item, track, time, true, nullptr, &errorStatus);
+            
+            // Note: timeline may have grown in size if the item was moved from
+            //       one video track to another.  tlRender needs to take care
+            //       of that.
             return timeline;
         }        
     }
