@@ -109,6 +109,9 @@ namespace tl
 
             //! Get timeline scale.
             double getScale() const;
+
+            //! Return whether a clip is getting dragged.
+            bool isDragging() const;
             
             void setGeometry(const math::Box2i&) override;
             void sizeHintEvent(const ui::SizeHintEvent&) override;
@@ -118,8 +121,6 @@ namespace tl
             void scrollEvent(ui::ScrollEvent&) override;
             void keyPressEvent(ui::KeyEvent&) override;
             void keyReleaseEvent(ui::KeyEvent&) override;
-
-            bool isDragging() const;
             
         protected:
             void _releaseMouse() override;

@@ -247,7 +247,10 @@ namespace tl
 
         const otime::TimeRange& Timeline::getTimeRange() const
         {
-            return _p->timeRange;
+            TLRENDER_P();
+            if (p.otioTimeline.value)
+                p.timeRange = timeline::getTimeRange(p.otioTimeline.value);
+            return p.timeRange;
         }
 
         const io::Info& Timeline::getIOInfo() const

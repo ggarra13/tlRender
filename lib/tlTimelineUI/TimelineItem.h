@@ -49,7 +49,10 @@ namespace tl
 
             //! Set whether playback stops when scrubbing.
             void setStopOnScrub(bool);
-
+            
+            //! Returns whether a clip is getting dragged.
+            bool isDragging() const;
+            
             void setGeometry(const math::Box2i&) override;
             void sizeHintEvent(const ui::SizeHintEvent&) override;
             void drawOverlayEvent(
@@ -61,7 +64,6 @@ namespace tl
             //void keyPressEvent(ui::KeyEvent&) override;
             //void keyReleaseEvent(ui::KeyEvent&) override;
 
-            bool isDragging() const;
             
         protected:
             void _timeUnitsUpdate() override;
