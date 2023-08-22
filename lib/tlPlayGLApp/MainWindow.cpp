@@ -22,6 +22,8 @@
 #include <tlPlayGLApp/RenderMenu.h>
 #include <tlPlayGLApp/Settings.h>
 #include <tlPlayGLApp/SpeedPopup.h>
+#include <tlPlayGLApp/TimelineActions.h>
+#include <tlPlayGLApp/TimelineMenu.h>
 #include <tlPlayGLApp/ToolsActions.h>
 #include <tlPlayGLApp/ToolsMenu.h>
 #include <tlPlayGLApp/ToolsToolBar.h>
@@ -100,6 +102,7 @@ namespace tl
             std::shared_ptr<RenderActions> renderActions;
             std::shared_ptr<PlaybackActions> playbackActions;
             std::shared_ptr<FrameActions> frameActions;
+            std::shared_ptr<TimelineActions> timelineActions;
             std::shared_ptr<AudioActions> audioActions;
             std::shared_ptr<ToolsActions> toolsActions;
             std::shared_ptr<FileMenu> fileMenu;
@@ -109,6 +112,7 @@ namespace tl
             std::shared_ptr<RenderMenu> renderMenu;
             std::shared_ptr<PlaybackMenu> playbackMenu;
             std::shared_ptr<FrameMenu> frameMenu;
+            std::shared_ptr<TimelineMenu> timelineMenu;
             std::shared_ptr<AudioMenu> audioMenu;
             std::shared_ptr<ToolsMenu> toolsMenu;
             std::shared_ptr<ui::MenuBar> menuBar;
@@ -167,13 +171,18 @@ namespace tl
             WindowOptions windowOptions;
             settings->setDefaultValue("Window/Options", windowOptions);
             settings->getValue("Window/Options", windowOptions);
+            bool editable = true;
+            settings->setDefaultValue("Timeline/Editable", editable);
+            settings->getValue("Timeline/Editable", editable);
+            timelineui::ItemOptions itemOptions;
+            settings->setDefaultValue("Timeline/EditAssociatedClips", itemOptions.editAssociatedClips);
+            settings->getValue("Timeline/EditAssociatedClips", itemOptions.editAssociatedClips);
             bool frameView = true;
             settings->setDefaultValue("Timeline/FrameView", frameView);
             settings->getValue("Timeline/FrameView", frameView);
             bool stopOnScrub = true;
             settings->setDefaultValue("Timeline/StopOnScrub", stopOnScrub);
             settings->getValue("Timeline/FrameView", stopOnScrub);
-            timelineui::ItemOptions itemOptions;
             settings->setDefaultValue("Timeline/Thumbnails",
                 itemOptions.thumbnails);
             settings->getValue("Timeline/Thumbnails", itemOptions.thumbnails);
@@ -200,8 +209,9 @@ namespace tl
             p.timelineViewport = timelineui::TimelineViewport::create(context);
 
             p.timelineWidget = timelineui::TimelineWidget::create(p.timeUnitsModel, context);
-            p.timelineWidget->setScrollBarsVisible(false);
+            p.timelineWidget->setEditable(editable);
             p.timelineWidget->setFrameView(frameView);
+            p.timelineWidget->setScrollBarsVisible(false);
             p.timelineWidget->setStopOnScrub(stopOnScrub);
             p.timelineWidget->setItemOptions(itemOptions);
 
@@ -221,6 +231,10 @@ namespace tl
                 app,
                 context);
             p.frameActions = FrameActions::create(
+                std::dynamic_pointer_cast<MainWindow>(shared_from_this()),
+                app,
+                context);
+            p.timelineActions = TimelineActions::create(
                 std::dynamic_pointer_cast<MainWindow>(shared_from_this()),
                 app,
                 context);
@@ -258,6 +272,11 @@ namespace tl
                 p.frameActions->getActions(),
                 app,
                 context);
+            p.timelineMenu = TimelineMenu::create(
+                p.timelineActions->getActions(),
+                std::dynamic_pointer_cast<MainWindow>(shared_from_this()),
+                app,
+                context);
             p.audioMenu = AudioMenu::create(
                 p.audioActions->getActions(),
                 app,
@@ -274,6 +293,7 @@ namespace tl
             p.menuBar->addMenu("Render", p.renderMenu);
             p.menuBar->addMenu("Playback", p.playbackMenu);
             p.menuBar->addMenu("Frame", p.frameMenu);
+            p.menuBar->addMenu("Timeline", p.timelineMenu);
             p.menuBar->addMenu("Audio", p.audioMenu);
             p.menuBar->addMenu("Tools", p.toolsMenu);
 
@@ -565,11 +585,15 @@ namespace tl
             if (auto settings = p.settings.lock())
             {
                 settings->setValue("Window/Options", p.windowOptions->get());
+                settings->setValue("Timeline/Editable",
+                    p.timelineWidget->isEditable());
+                const auto& timelineItemOptions = p.timelineWidget->getItemOptions();
+                settings->setValue("Timeline/EditAssociatedClips",
+                    timelineItemOptions.editAssociatedClips);
                 settings->setValue("Timeline/FrameView",
                     p.timelineWidget->hasFrameView());
                 settings->setValue("Timeline/StopOnScrub",
                     p.timelineWidget->hasStopOnScrub());
-                const auto& timelineItemOptions = p.timelineWidget->getItemOptions();
                 settings->setValue("Timeline/Thumbnails",
                     timelineItemOptions.thumbnails);
                 settings->setValue("Timeline/ThumbnailsSize",

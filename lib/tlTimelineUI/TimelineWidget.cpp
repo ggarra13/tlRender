@@ -17,6 +17,7 @@ namespace tl
             std::shared_ptr<IOManager> ioManager;
             std::shared_ptr<timeline::Player> player;
             std::shared_ptr<observer::ValueObserver<bool> > timelineObserver;
+            std::shared_ptr<observer::Value<bool> > editable;
             std::shared_ptr<observer::Value<bool> > frameView;
             std::function<void(bool)> frameViewCallback;
             ui::KeyModifier scrollKeyModifier = ui::KeyModifier::Control;
@@ -56,6 +57,7 @@ namespace tl
 
             p.timeUnitsModel = timeUnitsModel;
 
+            p.editable = observer::Value<bool>::create(false);
             p.frameView = observer::Value<bool>::create(true);
             p.stopOnScrub = observer::Value<bool>::create(true);
             p.itemOptions = observer::Value<ItemOptions>::create();
@@ -130,6 +132,28 @@ namespace tl
             {
                 p.scale = _getTimelineScale();
                 _setItemScale(p.timelineItem, p.scale);
+            }
+        }
+
+        bool TimelineWidget::isEditable() const
+        {
+            return _p->editable->get();
+        }
+
+        std::shared_ptr<observer::IValue<bool> > TimelineWidget::observeEditable() const
+        {
+            return _p->editable;
+        }
+
+        void TimelineWidget::setEditable(bool value)
+        {
+            TLRENDER_P();
+            if (p.editable->setIfChanged(value))
+            {
+                if (p.timelineItem)
+                {
+                    p.timelineItem->setEditable(value);
+                }
             }
         }
 
@@ -282,8 +306,8 @@ namespace tl
             IWidget::sizeHintEvent(event);
             TLRENDER_P();
             const int sa = event.style->getSizeRole(ui::SizeRole::ScrollArea, event.displayScale);
-            _sizeHint.x = sa;
-            _sizeHint.y = sa * 2;
+            _sizeHint.w = sa;
+            _sizeHint.h = sa * 2;
         }
 
         void TimelineWidget::mouseMoveEvent(ui::MouseMoveEvent& event)
@@ -519,6 +543,7 @@ namespace tl
                         p.player->getTimeline()->getTimeline()->tracks(),
                         itemData,
                         context);
+                    p.timelineItem->setEditable(p.editable->get());
                     p.timelineItem->setStopOnScrub(p.stopOnScrub->get());
                     p.scrollWidget->setScrollPos(scrollPos);
                     _setItemOptions(p.timelineItem, p.itemOptions->get());

@@ -19,6 +19,12 @@ namespace tl
             static std::shared_ptr<VectorTest> create(const std::shared_ptr<system::Context>&);
 
             void run() override;
+
+        private:
+            void _ctors();
+            void _components();
+            void _operators();
+            void _serialize();
         };
     }
 }
