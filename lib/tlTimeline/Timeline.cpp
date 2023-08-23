@@ -223,6 +223,8 @@ namespace tl
         {
             TLRENDER_P();
             p.otioTimeline = value;
+            if (p.otioTimeline.value)
+                p.timeRange = timeline::getTimeRange(p.otioTimeline.value);
             std::unique_lock<std::mutex> lock(p.mutex.mutex);
             if (!p.mutex.stopped)
             {
@@ -247,10 +249,7 @@ namespace tl
 
         const otime::TimeRange& Timeline::getTimeRange() const
         {
-            TLRENDER_P();
-            if (p.otioTimeline.value)
-                p.timeRange = timeline::getTimeRange(p.otioTimeline.value);
-            return p.timeRange;
+            return _p->timeRange;
         }
 
         const io::Info& Timeline::getIOInfo() const
