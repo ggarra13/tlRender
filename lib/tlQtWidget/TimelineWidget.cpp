@@ -443,7 +443,6 @@ namespace tl
         {
             TLRENDER_P();
             event->accept();
-            setFocus();
             int button = -1;
             if (event->button() == Qt::LeftButton)
             {
@@ -599,6 +598,10 @@ namespace tl
             {
                 event->accept();
             }
+            else
+            {
+                QOpenGLWidget::keyPressEvent(event);
+            }
         }
 
         void TimelineWidget::keyReleaseEvent(QKeyEvent* event)
@@ -610,6 +613,10 @@ namespace tl
                 fromQtModifiers(event->modifiers())))
             {
                 event->accept();
+            }
+            else
+            {
+                QOpenGLWidget::keyPressEvent(event);
             }
         }
 
