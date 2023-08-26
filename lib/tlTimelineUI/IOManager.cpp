@@ -146,6 +146,7 @@ namespace tl
                         p.mutex.stopped = true;
                     }
                     _cancelRequests();
+                    p.window.reset();
                 });
         }
 
