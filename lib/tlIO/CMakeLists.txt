@@ -1,21 +1,23 @@
 set(HEADERS
-    stb_image.h
-    stb_image_write.h
+    Cache.h
     Cineon.h
     DPX.h
     IO.h
     IOInline.h
-    IOSystem.h
-    IOSystemInline.h
     Init.h
     PPM.h
-    SequenceIO.h
+    Plugin.h
+    PluginInline.h
     SGI.h
-    STB.h)
+    SequenceIO.h
+    STB.h
+    System.h
+    SystemInline.h)
 set(HEADERS_PRIVATE
     SequenceIOReadPrivate.h)
 
 set(SOURCE
+    Cache.cpp
     CineonRead.cpp
     CineonWrite.cpp
     Cineon.cpp
@@ -23,19 +25,20 @@ set(SOURCE
     DPXWrite.cpp
     DPX.cpp
     IO.cpp
-    IOSystem.cpp
     Init.cpp
     PPM.cpp
     PPMRead.cpp
     PPMWrite.cpp
-    SequenceIORead.cpp
-    SequenceIOWrite.cpp
+    Plugin.cpp
     SGI.cpp
     SGIRead.cpp
     SGIWrite.cpp
     STB.cpp
     STBRead.cpp
-    STBWrite.cpp)
+    STBWrite.cpp
+    SequenceIORead.cpp
+    SequenceIOWrite.cpp
+    System.cpp)
 
 set(LIBRARIES)
 set(LIBRARIES_PRIVATE)
@@ -59,10 +62,9 @@ if(TLRENDER_PNG)
     list(APPEND LIBRARIES_PRIVATE PNG)
 endif()
 if(TLRENDER_EXR)
-    # \todo Make this library private.
-    list(APPEND HEADERS OpenEXR.h)
+    list(APPEND HEADERS_PRIVATE OpenEXR.h)
     list(APPEND SOURCE OpenEXR.cpp OpenEXRRead.cpp OpenEXRWrite.cpp)
-    list(APPEND LIBRARIES OpenEXR::OpenEXR)
+    list(APPEND LIBRARIES_PRIVATE OpenEXR::OpenEXR)
 endif()
 if(TLRENDER_FFMPEG)
     list(APPEND HEADERS_PRIVATE FFmpeg.h FFmpegReadPrivate.h)

@@ -4,18 +4,46 @@
 
 #include <tlTimelineUI/TimelineViewport.h>
 
-#include <tlGL/OffscreenBuffer.h>
+#include <tlUI/DrawUtil.h>
 
 #include <tlTimeline/RenderUtil.h>
+
+#include <tlGL/OffscreenBuffer.h>
+
+#include <tlCore/Error.h>
+#include <tlCore/String.h>
 
 namespace tl
 {
     namespace timelineui
     {
+        TLRENDER_ENUM_IMPL(
+            ViewportBackground,
+            "Solid",
+            "Checkers");
+        TLRENDER_ENUM_SERIALIZE_IMPL(ViewportBackground);
+
+        bool ViewportBackgroundOptions::operator == (const ViewportBackgroundOptions& other) const
+        {
+            return
+                type == other.type &&
+                solidColor == other.solidColor &&
+                checkersColor0 == other.checkersColor0 &&
+                checkersColor1 == other.checkersColor1 &&
+                checkersSize == other.checkersSize;
+        }
+
+        bool ViewportBackgroundOptions::operator != (const ViewportBackgroundOptions& other) const
+        {
+            return !(*this == other);
+        }
+
         struct TimelineViewport::Private
         {
+            ViewportBackgroundOptions backgroundOptions;
             timeline::ColorConfigOptions colorConfigOptions;
             timeline::LUTOptions lutOptions;
+            timeline::RenderOptions renderOptions;
             std::vector<timeline::ImageOptions> imageOptions;
             std::vector<timeline::DisplayOptions> displayOptions;
             timeline::CompareOptions compareOptions;
@@ -77,6 +105,16 @@ namespace tl
             auto out = std::shared_ptr<TimelineViewport>(new TimelineViewport);
             out->_init(context, parent);
             return out;
+        }
+
+        void TimelineViewport::setBackgroundOptions(const ViewportBackgroundOptions& value)
+        {
+            TLRENDER_P();
+            if (value == p.backgroundOptions)
+                return;
+            p.backgroundOptions = value;
+            p.renderBuffer = true;
+            _updates |= ui::Update::Draw;
         }
 
         void TimelineViewport::setColorConfigOptions(const timeline::ColorConfigOptions& value)
@@ -284,8 +322,6 @@ namespace tl
 
             const math::Box2i& g = _geometry;
 
-            event.render->drawRect(g, image::Color4f(0.F, 0.F, 0.F));
-
             if (p.renderBuffer)
             {
                 p.renderBuffer = false;
@@ -296,7 +332,7 @@ namespace tl
                 const timeline::TransformState transformState(event.render);
                 const timeline::RenderSizeState renderSizeState(event.render);
 
-                const math::Size2i size(g.w(), g.h());
+                const math::Size2i size = g.getSize();
                 gl::OffscreenBufferOptions options;
                 options.colorType = gl::OffscreenColorDefault;
 #if defined(TLRENDER_API_GL_4_1)
@@ -314,6 +350,32 @@ namespace tl
                     event.render->setRenderSize(size);
                     event.render->setViewport(math::Box2i(0, 0, g.w(), g.h()));
                     event.render->setClipRectEnabled(false);
+                    event.render->setTransform(math::ortho(
+                        0.F,
+                        static_cast<float>(g.w()),
+                        static_cast<float>(g.h()),
+                        0.F,
+                        -1.F,
+                        1.F));
+                    switch (p.backgroundOptions.type)
+                    {
+                    case ViewportBackground::Solid:
+                        event.render->clearViewport(
+                            p.backgroundOptions.solidColor);
+                        break;
+                    case ViewportBackground::Checkers:
+                        event.render->clearViewport(image::Color4f(0.F, 0.F, 0.F));
+                        event.render->drawColorMesh(
+                            ui::checkers(
+                                math::Box2i(0, 0, g.w(), g.h()),
+                                p.backgroundOptions.checkersColor0,
+                                p.backgroundOptions.checkersColor1,
+                                p.backgroundOptions.checkersSize * event.displayScale),
+                            math::Vector2i(),
+                            image::Color4f(1.F, 1.F, 1.F));
+                        break;
+                    default: break;
+                    }
                     math::Matrix4x4f vm;
                     vm = vm * math::translate(math::Vector3f(p.viewPos.x, p.viewPos.y, 0.F));
                     vm = vm * math::scale(math::Vector3f(p.viewZoom, p.viewZoom, 1.F));
@@ -325,7 +387,6 @@ namespace tl
                         -1.F,
                         1.F);
                     event.render->setTransform(pm * vm);
-                    event.render->clearViewport(image::Color4f(0.F, 0.F, 0.F));
                     event.render->drawVideo(
                         p.videoData,
                         timeline::getBoxes(p.compareOptions.mode, p.timelineSizes),
@@ -526,6 +587,27 @@ namespace tl
             p.videoData[index] = value;
             p.renderBuffer = true;
             _updates |= ui::Update::Draw;
+        }
+
+        void to_json(nlohmann::json& json, const ViewportBackgroundOptions& in)
+        {
+            json = nlohmann::json
+            {
+                { "type", in.type },
+                { "solidColor", in.solidColor },
+                { "checkersColor0", in.checkersColor0 },
+                { "checkersColor1", in.checkersColor1 },
+                { "checkersSize", in.checkersSize },
+            };
+        }
+
+        void from_json(const nlohmann::json& json, ViewportBackgroundOptions& out)
+        {
+            json.at("type").get_to(out.type);
+            json.at("solidColor").get_to(out.solidColor);
+            json.at("checkersColor0").get_to(out.checkersColor0);
+            json.at("checkersColor1").get_to(out.checkersColor1);
+            json.at("checkersSize").get_to(out.checkersSize);
         }
     }
 }

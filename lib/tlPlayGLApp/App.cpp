@@ -13,6 +13,7 @@
 #include <tlPlay/AudioModel.h>
 #include <tlPlay/ColorModel.h>
 #include <tlPlay/FilesModel.h>
+#include <tlPlay/ViewportModel.h>
 #include <tlPlay/Util.h>
 
 #include <tlUI/EventLoop.h>
@@ -21,7 +22,7 @@
 
 #include <tlTimeline/Util.h>
 
-#include <tlIO/IOSystem.h>
+#include <tlIO/System.h>
 
 #include <tlCore/AudioSystem.h>
 #include <tlCore/File.h>
@@ -44,8 +45,6 @@ namespace tl
                 std::string audioFileName;
                 std::string compareFileName;
                 timeline::CompareOptions compareOptions;
-                math::Size2i windowSize = math::Size2i(1920, 1080);
-                bool fullscreen = false;
                 bool hud = true;
                 double speed = 0.0;
                 timeline::Playback playback = timeline::Playback::Stop;
@@ -74,12 +73,14 @@ namespace tl
             std::shared_ptr<file::FileLogSystem> fileLogSystem;
             std::string settingsFileName;
             std::shared_ptr<Settings> settings;
+            size_t cacheSize = 4;
             timeline::PlayerCacheOptions playerCacheOptions;
             std::shared_ptr<play::FilesModel> filesModel;
             std::vector<std::shared_ptr<play::FilesModelItem> > files;
             std::vector<std::shared_ptr<play::FilesModelItem> > activeFiles;
             std::vector<std::shared_ptr<timeline::Player> > players;
             std::shared_ptr<observer::List<std::shared_ptr<timeline::Player> > > activePlayers;
+            std::shared_ptr<play::ViewportModel> viewportModel;
             std::shared_ptr<play::ColorModel> colorModel;
             bool deviceActive = false;
             std::shared_ptr<play::AudioModel> audioModel;
@@ -105,14 +106,16 @@ namespace tl
             const std::shared_ptr<system::Context>& context)
         {
             TLRENDER_P();
-            const std::string appDirPath = play::appDirPath("tlplay-gl");
-            std::string logFileName = play::logFileName(appDirPath);
-            const std::string settingsFileName = play::settingsName(appDirPath);
+            const std::string appName = "tlplay-gl";
+            const std::string appDirPath = play::appDirPath();
+            std::string logFileName = play::logFileName(appName, appDirPath);
+            const std::string settingsFileName =
+                play::settingsName(appName, appDirPath);
             IApp::_init(
                 argc,
                 argv,
                 context,
-                "tlplay-gl",
+                appName,
                 "Example GLFW playback application.",
                 {
                     app::CmdLineValueArg<std::string>::create(
@@ -146,15 +149,6 @@ namespace tl
                     { "-wipeRotation", "-wr" },
                     "A/B comparison wipe rotation.",
                     string::Format("{0}").arg(p.options.compareOptions.wipeRotation)),
-                app::CmdLineValueOption<math::Size2i>::create(
-                    p.options.windowSize,
-                    { "-windowSize", "-ws" },
-                    "Window size.",
-                    string::Format("{0}x{1}").arg(p.options.windowSize.w).arg(p.options.windowSize.h)),
-                app::CmdLineFlagOption::create(
-                    p.options.fullscreen,
-                    { "-fullscreen", "-fs" },
-                    "Enable full screen mode."),
                 app::CmdLineValueOption<bool>::create(
                     p.options.hud,
                     { "-hud" },
@@ -325,10 +319,12 @@ namespace tl
                 p.settings->read(p.settingsFileName);
             }
             p.settings->setDefaultValue("Files/RecentMax", 10);
-            math::Size2i windowSize = p.options.windowSize;
-            p.settings->setDefaultValue("Window/Size", windowSize);
+            p.settings->setDefaultValue("Window/Size", _options.windowSize);
+            p.settings->setDefaultValue("Viewport/Background",
+                timelineui::ViewportBackgroundOptions());
             p.settings->setDefaultValue("Audio/Volume", 1.F);
             p.settings->setDefaultValue("Audio/Mute", false);
+            p.settings->setDefaultValue("Cache/Size", p.cacheSize);
             p.settings->setDefaultValue("Cache/ReadAhead",
                 p.playerCacheOptions.readAhead.value());
             p.settings->setDefaultValue("Cache/ReadBehind",
@@ -355,6 +351,10 @@ namespace tl
 
             // Initialize the models.
             p.filesModel = play::FilesModel::create(context);
+            p.viewportModel = play::ViewportModel::create(context);
+            timelineui::ViewportBackgroundOptions viewportBackgroundOptions;
+            p.settings->getValue("Viewport/Background", viewportBackgroundOptions);
+            p.viewportModel->setBackgroundOptions(viewportBackgroundOptions);
             p.colorModel = play::ColorModel::create(context);
             p.colorModel->setColorConfigOptions(p.options.colorConfigOptions);
             p.colorModel->setLUTOptions(p.options.lutOptions);
@@ -460,6 +460,15 @@ namespace tl
                 {
                     TLRENDER_P();
                     {
+                        int value = 0;
+                        p.settings->getValue("Cache/Size", value);
+                        if (value != p.cacheSize)
+                        {
+                            p.cacheSize = value;
+                            _cacheUpdate();
+                        }
+                    }
+                    {
                         double value = 0.0;
                         p.settings->getValue("Cache/ReadAhead", value);
                         if (value != p.playerCacheOptions.readAhead.value())
@@ -526,6 +535,7 @@ namespace tl
             }
 
             // Create the main window.
+            math::Size2i windowSize = _options.windowSize;
             p.settings->getValue("Window/Size", windowSize);
             setWindowSize(windowSize);
             p.mainWindow = MainWindow::create(
@@ -548,6 +558,8 @@ namespace tl
             if (p.settings)
             {
                 p.settings->setValue("Window/Size", getWindowSize());
+                p.settings->setValue("Viewport/Background",
+                    p.viewportModel->getBackgroundOptions());
                 p.settings->setValue("Audio/Volume", p.audioModel->getVolume());
                 p.settings->setValue("Audio/Mute", p.audioModel->isMuted());
                 if (auto fileBrowserSystem = _context->getSystem<ui::FileBrowserSystem>())
@@ -640,6 +652,11 @@ namespace tl
         std::shared_ptr<observer::IList<std::shared_ptr<timeline::Player> > > App::observeActivePlayers() const
         {
             return _p->activePlayers;
+        }
+
+        const std::shared_ptr<play::ViewportModel>& App::getViewportModel() const
+        {
+            return _p->viewportModel;
         }
 
         const std::shared_ptr<play::ColorModel>& App::getColorModel() const
@@ -851,7 +868,7 @@ namespace tl
             TLRENDER_P();
             const size_t activeCount = p.activeFiles.size();
             return otime::RationalTime(
-                p.playerCacheOptions.readAhead.value() / static_cast<double>(activeCount),
+                activeCount > 0 ? (p.playerCacheOptions.readAhead.value() / static_cast<double>(activeCount)) : 0.0,
                 1.0);
         }
 
@@ -860,7 +877,7 @@ namespace tl
             TLRENDER_P();
             const size_t activeCount = p.activeFiles.size();
             return otime::RationalTime(
-                p.playerCacheOptions.readBehind.value() / static_cast<double>(activeCount),
+                activeCount > 0 ? (p.playerCacheOptions.readBehind.value() / static_cast<double>(activeCount)) : 0.0,
                 1.0);
         }
 
@@ -868,12 +885,15 @@ namespace tl
         {
             TLRENDER_P();
 
-            const auto activePlayers = _getActivePlayers();
+            // Update the I/O cache.
+            auto ioSystem = _context->getSystem<io::System>();
+            ioSystem->getCache()->setMax(p.cacheSize * memory::gigabyte);
 
             // Update inactive players.
             timeline::PlayerCacheOptions cacheOptions;
             cacheOptions.readAhead = time::invalidTime;
             cacheOptions.readBehind = time::invalidTime;
+            const auto activePlayers = _getActivePlayers();
             for (const auto& player : p.players)
             {
                 const auto j = std::find(

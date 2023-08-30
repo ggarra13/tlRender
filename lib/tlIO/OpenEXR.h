@@ -79,56 +79,6 @@ namespace tl
         TLRENDER_ENUM(Compression);
         TLRENDER_ENUM_SERIALIZE(Compression);
 
-        //! Convert to Imf.
-        Imf::Compression toImf(Compression);
-
-        //! Get a layer name from a list of channel names.
-        std::string getLayerName(const std::vector<std::string>&);
-
-        //! Get the channels that aren't in any layer.
-        Imf::ChannelList getDefaultLayer(const Imf::ChannelList&);
-
-        //! Find a channel by name.
-        const Imf::Channel* find(const Imf::ChannelList&, std::string&);
-
-        //! Get a list of layers from Imf channels.
-        std::vector<Layer> getLayers(const Imf::ChannelList&, ChannelGrouping);
-
-        //! Read the tags from an Imf header.
-        void readTags(const Imf::Header&, image::Tags&);
-
-        //! Write tags to an Imf header.
-        //!
-        //! \todo Write all the tags that are handled by readTags().
-        void writeTags(const image::Tags&, double speed, Imf::Header&);
-
-        //! Convert an Imath box type.
-        math::Box2i fromImath(const Imath::Box2i&);
-
-        //! Convert from an Imf channel.
-        Channel fromImf(const std::string& name, const Imf::Channel&);
-
-        //! Input stream.
-        class IStream : public Imf::IStream
-        {
-            TLRENDER_NON_COPYABLE(IStream);
-
-        public:
-            IStream(const std::string& fileName);
-            IStream(const std::string& fileName, const uint8_t*, size_t);
-
-            virtual ~IStream();
-
-            bool isMemoryMapped() const override;
-            char* readMemoryMapped(int n) override;
-            bool read(char c[], int n) override;
-            uint64_t tellg() override;
-            void seekg(uint64_t pos) override;
-
-        private:
-            TLRENDER_PRIVATE();
-        };
-
         //! OpenEXR reader.
         class Read : public io::ISequenceRead
         {
@@ -137,6 +87,7 @@ namespace tl
                 const file::Path&,
                 const std::vector<file::MemoryRead>&,
                 const io::Options&,
+                const std::shared_ptr<io::Cache>&,
                 const std::weak_ptr<log::System>&);
 
             Read();
@@ -148,6 +99,7 @@ namespace tl
             static std::shared_ptr<Read> create(
                 const file::Path&,
                 const io::Options&,
+                const std::shared_ptr<io::Cache>&,
                 const std::weak_ptr<log::System>&);
 
             //! Create a new reader.
@@ -155,6 +107,7 @@ namespace tl
                 const file::Path&,
                 const std::vector<file::MemoryRead>&,
                 const io::Options&,
+                const std::shared_ptr<io::Cache>&,
                 const std::weak_ptr<log::System>&);
 
         protected:
@@ -209,13 +162,17 @@ namespace tl
         class Plugin : public io::IPlugin
         {
         protected:
-            void _init(const std::weak_ptr<log::System>&);
+            void _init(
+                const std::shared_ptr<io::Cache>&,
+                const std::weak_ptr<log::System>&);
 
             Plugin();
 
         public:
             //! Create a new plugin.
-            static std::shared_ptr<Plugin> create(const std::weak_ptr<log::System>&);
+            static std::shared_ptr<Plugin> create(
+                const std::shared_ptr<io::Cache>&,
+                const std::weak_ptr<log::System>&);
 
             std::shared_ptr<io::IRead> read(
                 const file::Path&,

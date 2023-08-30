@@ -30,7 +30,7 @@
 
 #include <tlTimeline/Util.h>
 
-#include <tlIO/IOSystem.h>
+#include <tlIO/System.h>
 #if defined(TLRENDER_USD)
 #include <tlIO/USD.h>
 #endif // TLRENDER_USD
@@ -113,14 +113,16 @@ namespace tl
             _p(new Private)
         {
             TLRENDER_P();
-            const std::string appDirPath = play::appDirPath("tlplay-qt");
-            std::string logFileName = play::logFileName(appDirPath);
-            const std::string settingsFileName = play::settingsName(appDirPath);
+            const std::string appName = "tlplay-qt";
+            const std::string appDirPath = play::appDirPath();
+            std::string logFileName = play::logFileName(appName, appDirPath);
+            const std::string settingsFileName =
+                play::settingsName(appName, appDirPath);
             IApp::_init(
                 argc,
                 argv,
                 context,
-                "tlplay-qt",
+                appName,
                 "Play timelines, movies, and image sequences.",
                 {
                     app::CmdLineValueArg<std::string>::create(
@@ -263,7 +265,7 @@ namespace tl
 
             // Initialize Qt.
             setOrganizationName("tlRender");
-            setApplicationName("tlplay-qt");
+            setApplicationName(QString::fromUtf8(appName.c_str()));
             setStyle("Fusion");
             setPalette(qtwidget::darkStyle());
             setStyleSheet(qtwidget::styleSheet());
@@ -320,6 +322,7 @@ namespace tl
             p.settingsObject->setDefaultValue("Timeline/ThumbnailsSize", 100);
             p.settingsObject->setDefaultValue("Timeline/Transitions", false);
             p.settingsObject->setDefaultValue("Timeline/Markers", false);
+            p.settingsObject->setDefaultValue("Cache/Size", 4);
             p.settingsObject->setDefaultValue(
                 "Cache/ReadAhead",
                 timeline::PlayerCacheOptions().readAhead.value());
@@ -349,7 +352,8 @@ namespace tl
                 &SettingsObject::valueChanged,
                 [this](const QString& name, const QVariant& value)
                 {
-                    if ("Cache/ReadAhead" == name ||
+                    if ("Cache/Size" == name ||
+                        "Cache/ReadAhead" == name ||
                         "Cache/ReadBehind" == name)
                     {
                         _cacheUpdate();
@@ -856,6 +860,11 @@ namespace tl
             TLRENDER_P();
 
             const auto activePlayers = _activePlayers();
+
+            // Update the I/O cache.
+            auto ioSystem = _context->getSystem<io::System>();
+            ioSystem->getCache()->setMax(
+                p.settingsObject->value("Cache/Size").toInt() * memory::gigabyte);
 
             // Update inactive players.
             timeline::PlayerCacheOptions cacheOptions;

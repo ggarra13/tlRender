@@ -113,6 +113,19 @@ endif()
 
 set(CMAKE_FIND_FRAMEWORK LAST)
 
+if(WIN32)
+elseif(APPLE)
+    set(CMAKE_SKIP_BUILD_RPATH FALSE)
+    set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+    set(CMAKE_INSTALL_RPATH "@executable_path/../lib")
+    set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+else()
+    set(CMAKE_SKIP_BUILD_RPATH FALSE)
+    set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+    set(CMAKE_INSTALL_RPATH "../lib")
+    set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+endif()
+
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 #-------------------------------------------------------------------------------
@@ -236,3 +249,11 @@ endif()
 if(TLRENDER_EXAMPLES)
     add_subdirectory(examples)
 endif()
+add_subdirectory(etc)
+
+#-------------------------------------------------------------------------------
+# Packaging
+
+include(Package)
+include(CPack)
+include(InstallRequiredSystemLibraries)

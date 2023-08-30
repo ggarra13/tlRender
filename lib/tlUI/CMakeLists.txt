@@ -4,6 +4,9 @@ set(HEADERS
     Bellows.h
     CheckBox.h
     ComboBox.h
+    ColorPopup.h
+    ColorSwatch.h
+    ColorWidget.h
     Divider.h
     DoubleEdit.h
     DoubleEditSlider.h
@@ -29,6 +32,7 @@ set(HEADERS
     IWidget.h
     IWidgetInline.h
     IWidgetOptions.h
+    IWidgetPopup.h
     IconLibrary.h
     Icon.h
     IncButtons.h
@@ -46,6 +50,7 @@ set(HEADERS
     MDIWidget.h
     Menu.h
     MenuBar.h
+    MessageDialog.h
     PieChart.h
     PushButton.h
     RecentFilesModel.h
@@ -73,6 +78,9 @@ set(SOURCE
     Bellows.cpp
     CheckBox.cpp
     ComboBox.cpp
+    ColorPopup.cpp
+    ColorSwatch.cpp
+    ColorWidget.cpp
     Divider.cpp
     DoubleEdit.cpp
     DoubleEditSlider.cpp
@@ -102,6 +110,7 @@ set(SOURCE
     IPopup.cpp
     IWidget.cpp
     IWidgetOptions.cpp
+    IWidgetPopup.cpp
     IconLibrary.cpp
     Icon.cpp
     IncButtons.cpp
@@ -119,6 +128,7 @@ set(SOURCE
     MDIWidget.cpp
     Menu.cpp
     MenuBar.cpp
+    MessageDialog.cpp
     PieChart.cpp
     PushButton.cpp
     RecentFilesModel.cpp
