@@ -35,12 +35,13 @@ namespace tl
         struct Layer
         {
             Layer(
-                const std::vector<Channel>& channels        = std::vector<Channel>(),
+                const std::vector<Channel>& channels = std::vector<Channel>(),
                 bool                        luminanceChroma = false);
 
             std::string          name;
             std::vector<Channel> channels;
             bool                 luminanceChroma = false;
+            int                  partNumber = 0;
         };
 
         //! Convert to Imf.

@@ -46,19 +46,6 @@ namespace tl
             math::Vector2i sampling  = math::Vector2i(1, 1);
         };
 
-        //! Image layer.
-        struct Layer
-        {
-            Layer(
-                const std::vector<Channel>& channels = std::vector<Channel>(),
-                bool                        luminanceChroma = false);
-
-            std::string          name;
-            std::vector<Channel> channels;
-            bool                 luminanceChroma = false;
-            int                  partNumber = 0;
-        };
-
         //! Compression types.
         enum class Compression
         {
