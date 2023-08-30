@@ -32,20 +32,6 @@ namespace tl
         TLRENDER_ENUM(ChannelGrouping);
         TLRENDER_ENUM_SERIALIZE(ChannelGrouping);
 
-        //! Image channel.
-        struct Channel
-        {
-            Channel();
-            Channel(
-                const std::string&    name,
-                Imf::PixelType        pixelType,
-                const math::Vector2i& sampling  = math::Vector2i(1, 1));
-
-            std::string    name;
-            Imf::PixelType pixelType = Imf::PixelType::HALF;
-            math::Vector2i sampling  = math::Vector2i(1, 1);
-        };
-
         //! Compression types.
         enum class Compression
         {
