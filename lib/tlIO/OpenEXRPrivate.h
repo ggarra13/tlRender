@@ -12,6 +12,7 @@
 #include <ImfHeader.h>
 #include <ImfInputFile.h>
 #include <ImfPixelType.h>
+#include <ImfMultiPartInputFile.h>
 
 namespace tl
 {

@@ -1,8 +1,6 @@
 include(ExternalProject)
 
 set(OTIO_GIT_REPOSITORY "https://github.com/ggarra13/OpenTimelineIO.git")
-
-# set(OTIO_GIT_TAG "test_edit_commands") # For internal use
 set(OTIO_GIT_TAG "edit_commands")  # stable branch
 
 

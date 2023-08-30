@@ -8,12 +8,6 @@
 
 #include <tlCore/Box.h>
 
-#include <ImathBox.h>
-#include <ImfHeader.h>
-#include <ImfInputFile.h>
-#include <ImfMultiPartInputFile.h>
-#include <ImfPixelType.h>
-
 namespace tl
 {
     //! OpenEXR image I/O.
