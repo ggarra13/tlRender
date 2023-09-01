@@ -1120,6 +1120,8 @@ namespace tl
             case image::PixelType::RGB_U32:
             case image::PixelType::RGBA_U32:
                 out.pixelType = info.pixelType;;
+            default:
+                break;
             }
             return out;
         }
