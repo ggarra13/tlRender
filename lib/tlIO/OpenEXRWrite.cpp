@@ -120,7 +120,7 @@ namespace tl
 
             out.setFrameBuffer(fb);
             out.writePixels(height + 1);
-            delete flip;
+            delete [] flip;
         }
     
         void Write::_writeVideo(
