@@ -1099,12 +1099,20 @@ namespace tl
             out.size = info.size;
             switch (info.pixelType)
             {
+            case image::PixelType::L_F16:
+            case image::PixelType::LA_F16:
+            case image::PixelType::RGB_F16:
             case image::PixelType::RGBA_F16:
-                out.pixelType = info.pixelType;
+            case image::PixelType::RGB_F32:
+            case image::PixelType::RGBA_F32:
+            case image::PixelType::L_U32:
+            case image::PixelType::LA_U32:
+            case image::PixelType::RGB_U32:
+            case image::PixelType::RGBA_U32:
+                out.pixelType = info.pixelType;;
+            default:
                 break;
-            default: break;
             }
-            out.layout.mirror.y = true;
             return out;
         }
 

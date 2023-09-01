@@ -119,8 +119,14 @@ namespace tl
                 const otime::RationalTime&,
                 const std::shared_ptr<image::Image>&) override;
 
+            void _writeLayer(
+                const std::shared_ptr<image::Image>& image,
+                int layerId = 0);
+            
         private:
+            Imf::MultiPartOutputFile* _outputFile = nullptr;
             Compression _compression = Compression::ZIP;
+            image::PixelType _pixelType = image::PixelType::RGBA_F16;
             float _dwaCompressionLevel = 45.F;
             int   _zipCompressionLevel = 4;
         };
