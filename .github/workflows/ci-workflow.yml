@@ -176,61 +176,6 @@ jobs:
         cd tlRender/src/tlRender-build &&
         ctest --rerun-failed --output-on-failure
 
-  linux-package:
-    runs-on: ubuntu-latest
-
-    env:
-      TLRENDER_USD: ON
-      TLRENDER_EXAMPLES: OFF
-      TLRENDER_TESTS: OFF
-
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        submodules: recursive
-
-    - name: Update
-      run: sudo apt-get update
-
-    - name: Install OpenGL dev
-      run: sudo apt-get install xorg-dev libglu1-mesa-dev mesa-common-dev
-
-    - name: Install ALSA dev
-      run: sudo apt-get install libasound2-dev
-
-    - name: Install PulseAudio dev
-      run: sudo apt-get install libpulse-dev
-
-    - name: Setup environment
-      run: >
-        echo "$PWD/build/install/bin" >> $GITHUB_PATH &&
-        echo "LD_LIBRARY_PATH=$PWD/build/install/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV &&
-        echo "PYTHONPATH=$PWD/build/install/lib:$PYTHONPATH" >> $GITHUB_ENV
-
-    - name: Build tlRender
-      run: >
-        mkdir build &&
-        cd build &&
-        cmake ../etc/SuperBuild \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_INSTALL_PREFIX=$PWD/install \
-          -DCMAKE_PREFIX_PATH=$PWD/install \
-          -DTLRENDER_USD=$TLRENDER_USD \
-          -DTLRENDER_EXAMPLES=$TLRENDER_EXAMPLES \
-          -DTLRENDER_TESTS=$TLRENDER_TESTS &&
-        cmake --build . -j 4
-
-    - name: Package
-      run: >
-        cd build &&
-        cd tlRender/src/tlRender-build &&
-        cmake --build . --target package
-
-    - uses: actions/upload-artifact@v3
-      with:
-        name: tlRender-Linux-Packages
-        path: build/tlRender/src/tlRender-build/tlRender-*.tar.gz
-
   macos-build:
     runs-on: macos-latest
 
@@ -302,53 +247,6 @@ jobs:
         cd tlRender/src/tlRender-build &&
         tests/tltest/tltest
 
-  macos-package:
-    runs-on: macos-latest
-
-    env:
-      TLRENDER_USD: ON
-      TLRENDER_EXAMPLES: OFF
-      TLRENDER_TESTS: OFF
-      CMAKE_OSX_DEPLOYMENT_TARGET: 10.15
-
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        submodules: recursive
-
-    # \bug DYLD_LIBRARY_PATH is not being set here?
-    - name: Setup environment
-      run: >
-        echo "$PWD/build/install/bin" >> $GITHUB_PATH &&
-        echo "DYLD_LIBRARY_PATH=$PWD/build/install/lib:$DYLD_LIBRARY_PATH" >> $GITHUB_ENV &&
-        echo "PYTHONPATH=$PWD/build/install/lib:$PYTHONPATH" >> $GITHUB_ENV
-
-    - name: Build tlRender
-      run: >
-        export DYLD_LIBRARY_PATH=$PWD/build/install/lib:$DYLD_LIBRARY_PATH &&
-        mkdir build &&
-        cd build &&
-        cmake ../etc/SuperBuild \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_INSTALL_PREFIX=$PWD/install \
-          -DCMAKE_PREFIX_PATH=$PWD/install \
-          -DTLRENDER_USD=$TLRENDER_USD \
-          -DTLRENDER_EXAMPLES=$TLRENDER_EXAMPLES \
-          -DTLRENDER_TESTS=$TLRENDER_TESTS \
-          -DCMAKE_OSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET} &&
-        cmake --build . -j 4
-
-    - name: Package
-      run: >
-        cd build &&
-        cd tlRender/src/tlRender-build &&
-        cmake --build . --target package
-
-    - uses: actions/upload-artifact@v3
-      with:
-        name: tlRender-macOS-Packages
-        path: build/tlRender/src/tlRender-build/tlRender-*.dmg
-
   windows-build:
     runs-on: windows-latest
 
@@ -414,47 +312,3 @@ jobs:
         tests\tltest\Debug\tltest
         #ctest --rerun-failed --output-on-failure
 
-  windows-package:
-    runs-on: windows-latest
-
-    # \bug How can we build FFmpeg on Windows?
-    env:
-      TLRENDER_FFMPEG: OFF
-      TLRENDER_USD: ON
-      TLRENDER_EXAMPLES: OFF
-      TLRENDER_TESTS: OFF
-
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        submodules: recursive
-
-    - name: Setup environment
-      run: >
-        echo "$pwd\build\install\bin;$pwd\build\install\lib;$env:path" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8
-        
-    # \bug Release mode currently fails with OpenColorIO unable to find ZLIB
-    - name: Build tlRender
-      run: >
-        mkdir build &&
-        cd build &&
-        cmake ..\etc\SuperBuild `
-          -DCMAKE_BUILD_TYPE=Debug `
-          -DCMAKE_INSTALL_PREFIX=install `
-          -DCMAKE_PREFIX_PATH=install `
-          -DTLRENDER_FFMPEG=${{ env.TLRENDER_FFMPEG }} `
-          -DTLRENDER_USD=${{ env.TLRENDER_USD }} `
-          -DTLRENDER_EXAMPLES=${{ env.TLRENDER_EXAMPLES }} `
-          -DTLRENDER_TESTS=${{ env.TLRENDER_TESTS }} &&
-        cmake --build . -j 4
-
-    - name: Package
-      run: >
-        cd build &&
-        cd tlRender\src\tlRender-build &&
-        cmake --build . --target package
-
-    - uses: actions/upload-artifact@v3
-      with:
-        name: tlRender-Windows-Packages
-        path: build\tlRender\src\tlRender-build\tlRender-*.zip
