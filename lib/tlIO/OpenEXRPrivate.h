@@ -48,6 +48,9 @@ namespace tl
         //! Convert to Imf.
         Imf::Compression toImf(Compression);
 
+        //! Convert to an Imf pixel type.
+        Imf::PixelType toImf(const image::PixelType&);
+        
         //! Get a layer name from a list of channel names.
         std::string getLayerName(const std::vector<std::string>&);
 

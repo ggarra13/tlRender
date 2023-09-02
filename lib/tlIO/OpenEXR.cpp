@@ -1042,6 +1042,30 @@ namespace tl
                 math::Vector2i(channel.xSampling, channel.ySampling));
         }
 
+        //! Convert to an Imf pixel type.
+        Imf::PixelType toImf(const image::PixelType& pixelType)
+        {
+            switch(pixelType)
+            {
+            case image::PixelType::L_F32:
+            case image::PixelType::LA_F32:
+            case image::PixelType::RGB_F32:
+            case image::PixelType::RGBA_F32:
+                return Imf::FLOAT;
+            case image::PixelType::L_U32:
+            case image::PixelType::LA_U32:
+            case image::PixelType::RGB_U32:
+            case image::PixelType::RGBA_U32:
+                return Imf::UINT;
+            case image::PixelType::L_F16:
+            case image::PixelType::LA_F16:
+            case image::PixelType::RGB_F16:
+            case image::PixelType::RGBA_F16:
+            default:
+                return Imf::HALF;
+            }
+        }
+        
         void Plugin::_init(
             const std::shared_ptr<io::Cache>& cache,
             const std::weak_ptr<log::System>& logSystem)
