@@ -252,8 +252,8 @@ endif()
 add_subdirectory(etc)
 
 #-------------------------------------------------------------------------------
-# Packaging
+# Packaging (not used by mrv2)
 
-include(Package)
-include(CPack)
-include(InstallRequiredSystemLibraries)
+#include(Package)
+#include(CPack)
+#include(InstallRequiredSystemLibraries)
