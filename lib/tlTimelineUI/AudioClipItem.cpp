@@ -5,6 +5,7 @@
 #include <tlTimelineUI/AudioClipItem.h>
 
 #include <tlUI/DrawUtil.h>
+#include <tlUI/ThumbnailSystem.h>
 
 #include <tlTimeline/RenderUtil.h>
 #include <tlTimeline/Util.h>
@@ -18,7 +19,7 @@ namespace tl
             otio::SerializableObject::Retainer<otio::Clip> clip;
             file::Path path;
             std::vector<file::MemoryRead> memoryRead;
-            otime::TimeRange availableRange = time::invalidTimeRange;
+            std::weak_ptr<ui::ThumbnailSystem> thumbnailSystem;
 
             struct SizeData
             {
@@ -27,16 +28,15 @@ namespace tl
             };
             SizeData size;
 
-            std::future<io::Info> infoFuture;
+            ui::InfoRequest infoRequest;
             std::unique_ptr<io::Info> ioInfo;
-            std::map<otime::RationalTime, std::future<std::shared_ptr<geom::TriangleMesh2> > > waveformFutures;
+            std::map<otime::RationalTime, ui::WaveformRequest> waveformRequests;
             struct Waveform
             {
                 std::shared_ptr<geom::TriangleMesh2> mesh;
                 std::chrono::steady_clock::time_point time;
             };
             std::map<otime::RationalTime, Waveform> waveforms;
-            std::shared_ptr<observer::ValueObserver<bool> > cancelObserver;
         };
 
         void AudioClipItem::_init(
@@ -58,30 +58,10 @@ namespace tl
                 context,
                 parent);
             TLRENDER_P();
-
             p.clip = clip;
-
             p.path = path;
             p.memoryRead = timeline::getMemoryRead(clip->media_reference());
-
-            otio::ErrorStatus error;
-            const otime::TimeRange availableRange = clip->available_range(&error);
-            if (!otio::is_error(error))
-            {
-                p.availableRange = availableRange;
-            }
-            else if (clip->source_range().has_value())
-            {
-                p.availableRange = clip->source_range().value();
-            }
-
-            p.cancelObserver = observer::ValueObserver<bool>::create(
-                _data.ioManager->observeCancelRequests(),
-                [this](bool)
-                {
-                    _p->infoFuture = std::future<io::Info>();
-                    _p->waveformFutures.clear();
-                });
+            p.thumbnailSystem = context->getSystem<ui::ThumbnailSystem>();
         }
 
         AudioClipItem::AudioClipItem() :
@@ -89,7 +69,9 @@ namespace tl
         {}
 
         AudioClipItem::~AudioClipItem()
-        {}
+        {
+            _cancelRequests();
+        }
 
         std::shared_ptr<AudioClipItem> AudioClipItem::create(
             const otio::SerializableObject::Retainer<otio::Clip>& clip,
@@ -115,7 +97,7 @@ namespace tl
             if (changed)
             {
                 p.waveforms.clear();
-                _data.ioManager->cancelRequests();
+                _cancelRequests();
                 _updates |= ui::Update::Draw;
             }
         }
@@ -132,7 +114,7 @@ namespace tl
             if (thumbnailsChanged)
             {
                 p.waveforms.clear();
-                _data.ioManager->cancelRequests();
+                _cancelRequests();
                 _updates |= ui::Update::Draw;
             }
         }
@@ -146,25 +128,25 @@ namespace tl
             TLRENDER_P();
 
             // Check if the I/O information is finished.
-            if (p.infoFuture.valid() &&
-                p.infoFuture.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+            if (p.infoRequest.future.valid() &&
+                p.infoRequest.future.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
             {
-                p.ioInfo = std::make_unique<io::Info>(p.infoFuture.get());
+                p.ioInfo = std::make_unique<io::Info>(p.infoRequest.future.get());
                 _updates |= ui::Update::Size;
                 _updates |= ui::Update::Draw;
             }
 
             // Check if any audio waveforms are finished.
             const auto now = std::chrono::steady_clock::now();
-            auto i = p.waveformFutures.begin();
-            while (i != p.waveformFutures.end())
+            auto i = p.waveformRequests.begin();
+            while (i != p.waveformRequests.end())
             {
-                if (i->second.valid() &&
-                    i->second.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+                if (i->second.future.valid() &&
+                    i->second.future.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
                 {
-                    const auto mesh = i->second.get();
+                    const auto mesh = i->second.future.get();
                     p.waveforms[i->first] = { mesh, now };
-                    i = p.waveformFutures.erase(i);
+                    i = p.waveformRequests.erase(i);
                     _updates |= ui::Update::Draw;
                 }
                 else
@@ -208,7 +190,7 @@ namespace tl
             if (clipped)
             {
                 p.waveforms.clear();
-                _data.ioManager->cancelRequests();
+                _cancelRequests();
                 _updates |= ui::Update::Draw;
             }
         }
@@ -256,18 +238,18 @@ namespace tl
             const math::Box2i clipRect = _getClipRect(
                 drawRect,
                 _options.clipRectScale);
+            auto thumbnailSystem = p.thumbnailSystem.lock();
             if (g.intersects(clipRect))
             {
-                if (!p.ioInfo && !p.infoFuture.valid())
+                if (!p.ioInfo && !p.infoRequest.future.valid() && thumbnailSystem)
                 {
-                    p.infoFuture = _data.ioManager->requestInfo(
+                    p.infoRequest = thumbnailSystem->getInfo(
                         p.path,
-                        p.memoryRead,
-                        p.availableRange.start_time());
+                        p.memoryRead);
                 }
             }
 
-            if (_options.waveformWidth > 0)
+            if (_options.waveformWidth > 0 && thumbnailSystem)
             {
                 const auto now = std::chrono::steady_clock::now();
                 const int w = _sizeHint.w;
@@ -307,8 +289,8 @@ namespace tl
                         }
                         else if (p.ioInfo && p.ioInfo->audio.isValid())
                         {
-                            const auto j = p.waveformFutures.find(time);
-                            if (j == p.waveformFutures.end())
+                            const auto j = p.waveformRequests.find(time);
+                            if (j == p.waveformRequests.end())
                             {
                                 const otime::RationalTime time2 = time::round(otime::RationalTime(
                                     _timeRange.start_time().value() +
@@ -319,11 +301,10 @@ namespace tl
                                     otime::TimeRange::range_from_start_end_time(time, time2),
                                     p.clip,
                                     p.ioInfo->audio.sampleRate);
-                                p.waveformFutures[time] = _data.ioManager->requestAudio(
+                                p.waveformRequests[time] = thumbnailSystem->getWaveform(
                                     box.getSize(),
                                     p.path,
                                     p.memoryRead,
-                                    p.availableRange.start_time(),
                                     mediaRange);
                             }
                         }
@@ -338,6 +319,26 @@ namespace tl
                 {
                     p.waveforms.erase(j);
                 }
+            }
+        }
+
+        void AudioClipItem::_cancelRequests()
+        {
+            TLRENDER_P();
+            if (auto thumbnailSystem = p.thumbnailSystem.lock())
+            {
+                std::vector<uint64_t> ids;
+                if (p.infoRequest.future.valid())
+                {
+                    ids.push_back(p.infoRequest.id);
+                    p.infoRequest = ui::InfoRequest();
+                }
+                for (const auto& i : p.waveformRequests)
+                {
+                    ids.push_back(i.second.id);
+                }
+                p.waveformRequests.clear();
+                thumbnailSystem->cancelRequests(ids);
             }
         }
     }

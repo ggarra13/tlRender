@@ -5,6 +5,7 @@
 #include <tlTimelineUI/VideoClipItem.h>
 
 #include <tlUI/DrawUtil.h>
+#include <tlUI/ThumbnailSystem.h>
 
 #include <tlTimeline/RenderUtil.h>
 #include <tlTimeline/Util.h>
@@ -18,26 +19,24 @@ namespace tl
             otio::SerializableObject::Retainer<otio::Clip> clip;
             file::Path path;
             std::vector<file::MemoryRead> memoryRead;
-            otime::TimeRange availableRange = time::invalidTimeRange;
+            std::weak_ptr<ui::ThumbnailSystem> thumbnailSystem;
 
             struct SizeData
             {
-                int thumbnailWidth = 0;
                 int dragLength = 0;
                 math::Box2i clipRect;
             };
             SizeData size;
 
-            std::future<io::Info> infoFuture;
+            ui::InfoRequest infoRequest;
             std::unique_ptr<io::Info> ioInfo;
-            std::map<otime::RationalTime, std::future<std::shared_ptr<image::Image> > > thumbnailFutures;
+            std::map<otime::RationalTime, ui::ThumbnailRequest> thumbnailRequests;
             struct Thumbnail
             {
                 std::shared_ptr<image::Image> image;
                 std::chrono::steady_clock::time_point time;
             };
             std::map<otime::RationalTime, Thumbnail> thumbnails;
-            std::shared_ptr<observer::ValueObserver<bool> > cancelObserver;
         };
 
         void VideoClipItem::_init(
@@ -59,30 +58,10 @@ namespace tl
                 context,
                 parent);
             TLRENDER_P();
-
             p.clip = clip;
-
             p.path = path;
             p.memoryRead = timeline::getMemoryRead(clip->media_reference());
-
-            otio::ErrorStatus error;
-            const otime::TimeRange availableRange = clip->available_range(&error);
-            if (!otio::is_error(error))
-            {
-                p.availableRange = availableRange;
-            }
-            else if (clip->source_range().has_value())
-            {
-                p.availableRange = clip->source_range().value();
-            }
-
-            p.cancelObserver = observer::ValueObserver<bool>::create(
-                _data.ioManager->observeCancelRequests(),
-                [this](bool)
-                {
-                    _p->infoFuture = std::future<io::Info>();
-                    _p->thumbnailFutures.clear();
-                });
+            p.thumbnailSystem = context->getSystem<ui::ThumbnailSystem>();
         }
 
         VideoClipItem::VideoClipItem() :
@@ -90,7 +69,9 @@ namespace tl
         {}
 
         VideoClipItem::~VideoClipItem()
-        {}
+        {
+            _cancelRequests();
+        }
 
         std::shared_ptr<VideoClipItem> VideoClipItem::create(
             const otio::SerializableObject::Retainer<otio::Clip>& clip,
@@ -116,7 +97,7 @@ namespace tl
             if (changed)
             {
                 p.thumbnails.clear();
-                _data.ioManager->cancelRequests();
+                _cancelRequests();
                 _updates |= ui::Update::Draw;
             }
         }
@@ -131,7 +112,7 @@ namespace tl
             if (thumbnailsChanged)
             {
                 p.thumbnails.clear();
-                _data.ioManager->cancelRequests();
+                _cancelRequests();
                 _updates |= ui::Update::Draw;
             }
         }
@@ -145,25 +126,25 @@ namespace tl
             TLRENDER_P();
 
             // Check if the I/O information is finished.
-            if (p.infoFuture.valid() &&
-                p.infoFuture.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+            if (p.infoRequest.future.valid() &&
+                p.infoRequest.future.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
             {
-                p.ioInfo = std::make_unique<io::Info>(p.infoFuture.get());
+                p.ioInfo = std::make_unique<io::Info>(p.infoRequest.future.get());
                 _updates |= ui::Update::Size;
                 _updates |= ui::Update::Draw;
             }
 
             // Check if any thumbnails are finished.
             const auto now = std::chrono::steady_clock::now();
-            auto i = p.thumbnailFutures.begin();
-            while (i != p.thumbnailFutures.end())
+            auto i = p.thumbnailRequests.begin();
+            while (i != p.thumbnailRequests.end())
             {
-                if (i->second.valid() &&
-                    i->second.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+                if (i->second.future.valid() &&
+                    i->second.future.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
                 {
-                    const auto image = i->second.get();
+                    const auto image = i->second.future.get();
                     p.thumbnails[i->first] = { image, now };
-                    i = p.thumbnailFutures.erase(i);
+                    i = p.thumbnailRequests.erase(i);
                     _updates |= ui::Update::Draw;
                 }
                 else
@@ -187,18 +168,6 @@ namespace tl
         {
             IBasicItem::sizeHintEvent(event);
             TLRENDER_P();
-            const int thumbnailWidth =
-                (_options.thumbnails && p.ioInfo && !p.ioInfo->video.empty()) ?
-                static_cast<int>(_options.thumbnailHeight * p.ioInfo->video[0].size.getAspect()) :
-                0;
-            if (thumbnailWidth != p.size.thumbnailWidth)
-            {
-                p.size.thumbnailWidth = thumbnailWidth;
-
-                p.thumbnails.clear();
-                _data.ioManager->cancelRequests();
-                _updates |= ui::Update::Draw;
-            }
             p.size.dragLength = event.style->getSizeRole(ui::SizeRole::DragLength, event.displayScale);
             if (_options.thumbnails)
             {
@@ -219,7 +188,7 @@ namespace tl
             if (clipped)
             {
                 p.thumbnails.clear();
-                _data.ioManager->cancelRequests();
+                _cancelRequests();
                 _updates |= ui::Update::Draw;
             }
         }
@@ -267,29 +236,31 @@ namespace tl
             const math::Box2i clipRect = _getClipRect(
                 drawRect,
                 _options.clipRectScale);
+            auto thumbnailSystem = p.thumbnailSystem.lock();
             if (g.intersects(clipRect))
             {
-                if (!p.ioInfo && !p.infoFuture.valid())
+                if (!p.ioInfo && !p.infoRequest.future.valid() && thumbnailSystem)
                 {
-                    p.infoFuture = _data.ioManager->requestInfo(
-                        p.path,
-                        p.memoryRead,
-                        p.availableRange.start_time());
+                    p.infoRequest = thumbnailSystem->getInfo(p.path, p.memoryRead);
                 }
             }
 
-            if (p.size.thumbnailWidth > 0)
+            const int thumbnailWidth =
+                (_options.thumbnails && p.ioInfo && !p.ioInfo->video.empty()) ?
+                static_cast<int>(_options.thumbnailHeight * p.ioInfo->video[0].size.getAspect()) :
+                0;
+            if (thumbnailWidth > 0 && thumbnailSystem)
             {
                 const auto now = std::chrono::steady_clock::now();
                 const int w = _sizeHint.w;
-                for (int x = 0; x < w; x += p.size.thumbnailWidth)
+                for (int x = 0; x < w; x += thumbnailWidth)
                 {
                     const math::Box2i box(
                         g.min.x +
                         x,
                         g.min.y +
                         _getLineHeight() + m * 2,
-                        p.size.thumbnailWidth,
+                        thumbnailWidth,
                         _options.thumbnailHeight);
                     if (box.intersects(clipRect))
                     {
@@ -319,18 +290,17 @@ namespace tl
                         }
                         else if (p.ioInfo && !p.ioInfo->video.empty())
                         {
-                            const auto k = p.thumbnailFutures.find(time);
-                            if (k == p.thumbnailFutures.end())
+                            const auto k = p.thumbnailRequests.find(time);
+                            if (k == p.thumbnailRequests.end())
                             {
                                 const auto mediaTime = timeline::toVideoMediaTime(
                                     time,
                                     p.clip,
                                     p.ioInfo->videoTime.duration().rate());
-                                p.thumbnailFutures[time] = _data.ioManager->requestVideo(
-                                    math::Size2i(p.size.thumbnailWidth, _options.thumbnailHeight),
+                                p.thumbnailRequests[time] = thumbnailSystem->getThumbnail(
+                                    _options.thumbnailHeight,
                                     p.path,
                                     p.memoryRead,
-                                    p.availableRange.start_time(),
                                     mediaTime);
                             }
                         }
@@ -345,6 +315,26 @@ namespace tl
                 {
                     p.thumbnails.erase(j);
                 }
+            }
+        }
+
+        void VideoClipItem::_cancelRequests()
+        {
+            TLRENDER_P();
+            if (auto thumbnailSystem = p.thumbnailSystem.lock())
+            {
+                std::vector<uint64_t> ids;
+                if (p.infoRequest.future.valid())
+                {
+                    ids.push_back(p.infoRequest.id);
+                    p.infoRequest = ui::InfoRequest();
+                }
+                for (const auto& i : p.thumbnailRequests)
+                {
+                    ids.push_back(i.second.id);
+                }
+                p.thumbnailRequests.clear();
+                thumbnailSystem->cancelRequests(ids);
             }
         }
     }
