@@ -4,13 +4,6 @@
 
 #pragma once
 
-#include <ImathBox.h>
-#include <ImfHeader.h>
-#include <ImfInputFile.h>
-#include <ImfMultiPartInputFile.h>
-#include <ImfMultiPartOutputFile.h>
-#include <ImfPixelType.h>
-
 #include <tlIO/SequenceIO.h>
 
 #include <tlCore/Box.h>
@@ -131,9 +124,9 @@ namespace tl
                 int layerId = 0);
 
         private:
-            Imf::MultiPartOutputFile* _outputFile = nullptr;
+            TLRENDER_PRIVATE();
+            
             Compression _compression = Compression::ZIP;
-            image::PixelType _pixelType = image::PixelType::RGBA_F16;
             float _dwaCompressionLevel = 45.F;
             int   _zipCompressionLevel = 4;
         };
