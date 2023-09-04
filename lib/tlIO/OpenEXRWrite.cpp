@@ -108,8 +108,8 @@ namespace tl
             const Imf::Header& header = p.outputFile->header(layerId);
             const Imath::Box2i& daw = header.dataWindow();
 
-            const size_t width   = daw.max.x - daw.min.x;
-            const size_t height  = daw.max.y - daw.min.y;
+            const size_t width   = daw.max.x - daw.min.x + 1;
+            const size_t height  = daw.max.y - daw.min.y + 1;
             const size_t xStride = bitDepth * channelCount;
             const size_t yStride = bitDepth * channelCount * width;
                 
@@ -130,7 +130,7 @@ namespace tl
             }
 
             out.setFrameBuffer(fb);
-            out.writePixels(height + 1);
+            out.writePixels(height);
             delete [] flip;
         }
     
