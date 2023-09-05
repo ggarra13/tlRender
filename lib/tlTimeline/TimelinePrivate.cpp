@@ -258,7 +258,12 @@ namespace tl
                                     {
                                         AudioLayerData audioData;
                                         audioData.seconds = request->seconds;
-                                        audioData.timeRange = requestTimeRange.clamped(clipTimeRange);
+                                        // audioData.timeRange = requestTimeRange.clamped(clipTimeRange);
+                                        otime::RationalTime end_time = requestTimeRange.end_time_exclusive();
+                                        if (end_time > clipTimeRange.end_time_exclusive())
+                                            end_time = clipTimeRange.end_time_exclusive();
+                                        audioData.timeRange = otime::TimeRange::range_from_start_end_time(
+                                                requestTimeRange.start_time(), end_time);
                                         if (auto otioClip = dynamic_cast<const otio::Clip*>(otioItem))
                                         {
                                             audioData.audio = readAudio(otioClip, requestTimeRange);
