@@ -5,7 +5,6 @@
 #include <tlUI/FileBrowserPrivate.h>
 
 #include <tlUI/DrawUtil.h>
-#include <tlUI/ThumbnailSystem.h>
 
 #include <tlCore/StringFormat.h>
 
@@ -17,16 +16,8 @@ namespace tl
     {
         struct Button::Private
         {
-            file::FileInfo fileInfo;
-            FileBrowserOptions options;
             std::vector<std::string> labels;
             std::vector<int> columns;
-            std::weak_ptr<ThumbnailSystem> thumbnailSystem;
-            InfoRequest infoRequest;
-            std::unique_ptr<io::Info> ioInfo;
-            ThumbnailRequest thumbnailRequest;
-            std::shared_ptr<image::Image> thumbnail;
-            std::chrono::steady_clock::time_point thumbnailTime;
 
             struct SizeData
             {
@@ -49,18 +40,13 @@ namespace tl
 
         void Button::_init(
             const file::FileInfo& fileInfo,
-            const FileBrowserOptions& options,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
         {
             IButton::_init("tl::ui::ListButton", context, parent);
             TLRENDER_P();
 
-            setButtonRole(ColorRole::None);
             setAcceptsKeyFocus(true);
-
-            p.fileInfo = fileInfo;
-            p.options = options;
 
             p.labels.push_back(fileInfo.getPath().get(-1, false));
 
@@ -102,7 +88,7 @@ namespace tl
             std::strftime(buffer, 32, "%a %d/%m/%Y %H:%M:%S", localtime);
             p.labels.push_back(buffer);
 
-            p.thumbnailSystem = context->getSystem<ThumbnailSystem>();
+            setButtonRole(ColorRole::None);
         }
 
         Button::Button() :
@@ -114,12 +100,11 @@ namespace tl
 
         std::shared_ptr<Button> Button::create(
             const file::FileInfo& fileInfo,
-            const FileBrowserOptions& options,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
         {
             auto out = std::shared_ptr<Button>(new Button);
-            out->_init(fileInfo, options, context, parent);
+            out->_init(fileInfo, context, parent);
             return out;
         }
 
@@ -131,31 +116,6 @@ namespace tl
         void Button::setColumns(const std::vector<int>& value)
         {
             _p->columns = value;
-        }
-
-        void Button::tickEvent(
-            bool parentsVisible,
-            bool parentsEnabled,
-            const TickEvent& event)
-        {
-            IButton::tickEvent(parentsVisible, parentsEnabled, event);
-            TLRENDER_P();
-            if (p.infoRequest.future.valid() &&
-                p.infoRequest.future.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
-            {
-                p.ioInfo = std::make_unique<io::Info>(p.infoRequest.future.get());
-                _updates |= ui::Update::Size;
-                _updates |= ui::Update::Draw;
-            }
-            const auto now = std::chrono::steady_clock::now();
-            if (p.thumbnailRequest.future.valid() &&
-                p.thumbnailRequest.future.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
-            {
-                p.thumbnail = p.thumbnailRequest.future.get();
-                p.thumbnailTime = now;
-                _updates |= ui::Update::Size;
-                _updates |= ui::Update::Draw;
-            }
         }
 
         void Button::sizeHintEvent(const SizeHintEvent& event)
@@ -186,12 +146,7 @@ namespace tl
                 }
                 _sizeHint.h = p.size.fontMetrics.lineHeight;
             }
-            if (p.thumbnail)
-            {
-                _sizeHint.w += p.thumbnail->getWidth();
-                _sizeHint.h = std::max(_sizeHint.h, p.thumbnail->getHeight());
-            }
-            else if (_iconImage)
+            if (_iconImage)
             {
                 _sizeHint.w += _iconImage->getWidth();
                 if (!p.labels.empty())
@@ -215,24 +170,8 @@ namespace tl
         {
             IWidget::clipEvent(clipRect, clipped, event);
             TLRENDER_P();
-            if (!clipped)
+            if (clipped)
             {
-                if (p.options.thumbnails)
-                {
-                    if (auto thumbnailSystem = p.thumbnailSystem.lock())
-                    {
-                        p.infoRequest = thumbnailSystem->getInfo(p.fileInfo.getPath());
-                        p.thumbnailRequest = thumbnailSystem->getThumbnail(
-                            p.options.thumbnailHeight,
-                            p.fileInfo.getPath());
-                    }
-                }
-            }
-            else
-            {
-                p.infoRequest = InfoRequest();
-                p.thumbnailRequest = ThumbnailRequest();
-                p.thumbnail.reset();
                 p.draw.glyphs.clear();
             }
         }
@@ -281,38 +220,23 @@ namespace tl
                     event.style->getColorRole(ColorRole::Hover));
             }
 
-            // Draw the thumbnail or icon.
+            // Draw the icon.
             const math::Box2i g2 = g.margin(-p.size.border * 2);
             int x = g2.x() + p.size.margin;
-            if (p.thumbnail)
+            if (_iconImage)
             {
-                const image::Size& size = p.thumbnail->getSize();
-                event.render->drawImage(
-                    p.thumbnail,
-                    math::Box2i(
-                        x,
-                        g2.y() + g2.h() / 2 - size.h / 2,
-                        size.w,
-                        size.h),
-                    event.style->getColorRole(enabled ?
-                        ColorRole::Text :
-                        ColorRole::TextDisabled));
-                x += size.w + p.size.spacing;
-            }
-            else if (_iconImage)
-            {
-                const image::Size& size = _iconImage->getSize();
+                const image::Size& iconSize = _iconImage->getSize();
                 event.render->drawImage(
                     _iconImage,
                     math::Box2i(
                         x,
-                        g2.y() + g2.h() / 2 - size.h / 2,
-                        size.w,
-                        size.h),
+                        g2.y() + g2.h() / 2 - iconSize.h / 2,
+                        iconSize.w,
+                        iconSize.h),
                     event.style->getColorRole(enabled ?
                         ColorRole::Text :
                         ColorRole::TextDisabled));
-                x += size.w + p.size.spacing;
+                x += iconSize.w + p.size.spacing;
             }
 
             // Draw the text.
