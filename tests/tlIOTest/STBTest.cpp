@@ -115,7 +115,7 @@ namespace tl
             const std::vector<image::Size> sizes =
             {
                 image::Size(16, 16),
-                image::Size(1, 1),
+                image::Size(2, 2),
                 image::Size(0, 0)
             };
 

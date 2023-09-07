@@ -10,6 +10,7 @@ set(HEADERS
     PluginInline.h
     SGI.h
     SequenceIO.h
+    STB.h
     System.h
     SystemInline.h)
 set(HEADERS_PRIVATE
@@ -32,6 +33,9 @@ set(SOURCE
     SGI.cpp
     SGIRead.cpp
     SGIWrite.cpp
+    STB.cpp
+    STBRead.cpp
+    STBWrite.cpp
     SequenceIORead.cpp
     SequenceIOWrite.cpp
     System.cpp)

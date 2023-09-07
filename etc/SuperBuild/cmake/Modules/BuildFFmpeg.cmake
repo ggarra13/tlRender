@@ -12,17 +12,28 @@ else()
     set(FFmpeg_CXXFLAGS)
     set(FFmpeg_OBJCFLAGS)
     set(FFmpeg_LDFLAGS)
+
     if(APPLE AND CMAKE_OSX_DEPLOYMENT_TARGET)
-        list(APPEND FFmpeg_CFLAGS "--extra-cflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
-        list(APPEND FFmpeg_CXXFLAGS "--extra-cxxflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
-        list(APPEND FFmpeg_OBJCFLAGS "--extra-objcflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
-        list(APPEND FFmpeg_LDFLAGS "--extra-ldflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+	list(APPEND FFmpeg_CFLAGS "--extra-cflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+	list(APPEND FFmpeg_CXXFLAGS "--extra-cxxflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+	list(APPEND FFmpeg_OBJCFLAGS "--extra-objcflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+	list(APPEND FFmpeg_LDFLAGS "--extra-ldflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+    endif()
+    if(TLRENDER_VPX)
+	list(APPEND FFmpeg_CONFIGURE_ARGS
+	    --enable-libvpx)
+	#
+	# Make sure we pick the static libvpx we compiled, not the system one
+	#
+	list(APPEND FFmpeg_LDFLAGS
+	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libvpx.a")
+	list(APPEND FFmpeg_DEPS VPX)
     endif()
     if(FFmpeg_DEBUG)
-        list(APPEND FFmpeg_CFLAGS "--extra-cflags=-g")
-        list(APPEND FFmpeg_CXXFLAGS "--extra-cxxflags=-g")
-        list(APPEND FFmpeg_OBJCFLAGS "--extra-objcflags=-g")
-        list(APPEND FFmpeg_LDFLAGS "--extra-ldflags=-g")
+	list(APPEND FFmpeg_CFLAGS "--extra-cflags=-g")
+	list(APPEND FFmpeg_CXXFLAGS "--extra-cxxflags=-g")
+	list(APPEND FFmpeg_OBJCFLAGS "--extra-objcflags=-g")
+	list(APPEND FFmpeg_LDFLAGS "--extra-ldflags=-g")
     endif()
     set(FFmpeg_CONFIGURE_ARGS
         --prefix=${CMAKE_INSTALL_PREFIX}
@@ -65,24 +76,24 @@ else()
         ${FFmpeg_LDFLAGS}
         --x86asmexe=${CMAKE_INSTALL_PREFIX}/bin/nasm)
     if(UNIX)
-        list(APPEND FFmpeg_CONFIGURE_ARGS
-            --disable-libxcb
-            --disable-libxcb-shm
-            --disable-libxcb-xfixes
-            --disable-libxcb-shape
-            --disable-xlib)
+	list(APPEND FFmpeg_CONFIGURE_ARGS
+	    --disable-libxcb
+	    --disable-libxcb-shm
+	    --disable-libxcb-xfixes
+	    --disable-libxcb-shape
+	    --disable-xlib)
     endif()
     if(FFmpeg_SHARED_LIBS)
-        list(APPEND FFmpeg_CONFIGURE_ARGS
-            --disable-static
-            --enable-shared)
+	list(APPEND FFmpeg_CONFIGURE_ARGS
+	    --disable-static
+	    --enable-shared)
     endif()
     if(FFmpeg_DEBUG)
-        list(APPEND FFmpeg_CONFIGURE_ARGS
-            --disable-optimizations
-            --disable-stripping
-            --enable-debug=3
-            --assert-level=2)
+	list(APPEND FFmpeg_CONFIGURE_ARGS
+	    --disable-optimizations
+	    --disable-stripping
+	    --enable-debug=3
+	    --assert-level=2)
     endif()
     set(FFmpeg_INSTALL make install)
     if(APPLE)

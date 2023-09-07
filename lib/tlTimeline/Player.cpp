@@ -232,7 +232,7 @@ namespace tl
                             audioOffset,
                             cacheDirection,
                             cacheOptions);
-
+                        
                         // Update the current video data.
                         const auto& timeRange = p.timeline->getTimeRange();
                         if (!p.ioInfo.video.empty())
@@ -925,6 +925,7 @@ namespace tl
                 currentAudioData = p.mutex.currentAudioData;
                 cacheInfo = p.mutex.cacheInfo;
             }
+            
             p.currentVideoData->setIfChanged(currentVideoData);
             p.currentAudioData->setIfChanged(currentAudioData);
             p.cacheInfo->setIfChanged(cacheInfo);

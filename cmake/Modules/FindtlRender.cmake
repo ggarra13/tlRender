@@ -30,6 +30,7 @@ find_package(OpenColorIO REQUIRED)
 find_package(OTIO REQUIRED)
 find_package(libsamplerate REQUIRED)
 find_package(RtAudio REQUIRED)
+find_package(GLFW REQUIRED)
 find_package(JPEG)
 find_package(TIFF)
 find_package(PNG)
@@ -50,7 +51,8 @@ set(tlRender_INCLUDE_DIRS
     ${TIFF_INCLUDE_DIRS}
     ${PNG_INCLUDE_DIRS}
     ${OpenEXR_INCLUDE_DIRS}
-    ${FFmpeg_INCLUDE_DIRS})
+    ${FFmpeg_INCLUDE_DIRS}
+    ${GLFW_INCLUDE_DIRS})
 
 if(CMAKE_BUILD_TYPE MATCHES "^Debug$")
     find_library(tlRender_tlCore_LIBRARY NAMES tlCore)
@@ -86,7 +88,8 @@ set(tlRender_LIBRARIES
     ${TIFF_LIBRARIES}
     ${PNG_LIBRARIES}
     ${OpenEXR_LIBRARIES}
-    ${FFmpeg_LIBRARIES})
+    ${FFmpeg_LIBRARIES}
+    ${GLFW_LIBRARIES})
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(

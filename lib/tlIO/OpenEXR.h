@@ -6,6 +6,8 @@
 
 #include <tlIO/SequenceIO.h>
 
+#include <tlCore/Box.h>
+
 namespace tl
 {
     //! OpenEXR image I/O.
@@ -117,9 +119,16 @@ namespace tl
                 const otime::RationalTime&,
                 const std::shared_ptr<image::Image>&) override;
 
+            void _writeLayer(
+                const std::shared_ptr<image::Image>& image,
+                int layerId = 0);
+
         private:
+            TLRENDER_PRIVATE();
+            
             Compression _compression = Compression::ZIP;
             float _dwaCompressionLevel = 45.F;
+            int   _zipCompressionLevel = 4;
         };
 
         //! OpenEXR plugin.

@@ -85,6 +85,18 @@ namespace tl
             return out;
         }
 
+        double TimelineWidget::getScale() const
+        {
+            TLRENDER_P();
+            return p.scale;
+        }
+        
+        const math::Box2i& TimelineWidget::getTimelineItemGeometry() const
+        {
+            TLRENDER_P();
+            return p.timelineItem->getGeometry();
+        }
+
         void TimelineWidget::setPlayer(const std::shared_ptr<timeline::Player>& player)
         {
             TLRENDER_P();
@@ -310,6 +322,12 @@ namespace tl
             }
         }
 
+        bool TimelineWidget::isDragging() const
+        {
+            TLRENDER_P();
+            return p.timelineItem->isDragging();
+        }
+        
         void TimelineWidget::mousePressEvent(ui::MouseClickEvent& event)
         {
             IWidget::mousePressEvent(event);

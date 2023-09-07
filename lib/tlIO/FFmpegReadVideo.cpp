@@ -320,7 +320,11 @@ namespace tl
                 }
 
                 otime::RationalTime startTime(0.0, speed);
-                if (!timecode.empty())
+                if (!time::compareExact(_options.startTime, time::invalidTime))
+                {
+                    startTime = _options.startTime;
+                }
+                else if (!timecode.empty())
                 {
                     otime::ErrorStatus errorStatus;
                     const otime::RationalTime time = otime::RationalTime::from_timecode(

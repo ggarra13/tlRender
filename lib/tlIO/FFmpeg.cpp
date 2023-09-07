@@ -182,6 +182,7 @@ namespace tl
                     { ".mp4", io::FileType::Movie },
                     { ".y4m", io::FileType::Movie },
                     { ".mxf", io::FileType::Movie },
+                    { ".webm", io::FileType::Movie },
                     { ".wmv", io::FileType::Movie },
                     { ".avi", io::FileType::Movie },
                     { ".wav", io::FileType::Audio },

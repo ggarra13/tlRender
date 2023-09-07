@@ -277,7 +277,7 @@ namespace tl
                 {
                     p.render = timeline::GLRender::create(context);
                 }
-
+            
                 const std::string vertexSource =
                     "#version 410\n"
                     "\n"
@@ -439,6 +439,7 @@ namespace tl
             }
         }
 
+        
 #if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))
         void TimelineViewport::enterEvent(QEvent* event)
 #else

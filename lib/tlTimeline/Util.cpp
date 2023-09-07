@@ -125,7 +125,7 @@ namespace tl
         {
             otio::optional<otime::RationalTime> out;
             otio::ErrorStatus errorStatus;
-            for (auto track : otioTimeline->children_if<otio::Track>(&errorStatus))
+            for (auto track : otioTimeline->find_children<otio::Track>(&errorStatus))
             {
                 if (kind == track->kind())
                 {

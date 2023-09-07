@@ -110,7 +110,7 @@ jobs:
     env:
       TLRENDER_MMAP: OFF
       TLRENDER_PYTHON: OFF
-      TLRENDER_GLFW: OFF
+      TLRENDER_GLFW: ON
       TLRENDER_OCIO: OFF
       TLRENDER_AUDIO: OFF
       TLRENDER_JPEG: OFF
@@ -176,6 +176,7 @@ jobs:
         cd tlRender/src/tlRender-build &&
         ctest --rerun-failed --output-on-failure
 
+<<<<<<< HEAD
   linux-package:
     runs-on: ubuntu-latest
 
@@ -231,6 +232,8 @@ jobs:
         name: tlRender-Linux-Packages
         path: build/tlRender/src/tlRender-build/tlRender-*.tar.gz
 
+=======
+>>>>>>> 0514ddc35882a01826a12b0b95b79b9ebcf54bfb
   macos-build:
     runs-on: macos-latest
 
@@ -302,6 +305,7 @@ jobs:
         cd tlRender/src/tlRender-build &&
         tests/tltest/tltest
 
+<<<<<<< HEAD
   macos-package:
     runs-on: macos-latest
 
@@ -349,6 +353,8 @@ jobs:
         name: tlRender-macOS-Packages
         path: build/tlRender/src/tlRender-build/tlRender-*.dmg
 
+=======
+>>>>>>> 0514ddc35882a01826a12b0b95b79b9ebcf54bfb
   windows-build:
     runs-on: windows-latest
 
@@ -414,6 +420,7 @@ jobs:
         tests\tltest\Debug\tltest
         #ctest --rerun-failed --output-on-failure
 
+<<<<<<< HEAD
   windows-package:
     runs-on: windows-latest
 
@@ -458,3 +465,5 @@ jobs:
       with:
         name: tlRender-Windows-Packages
         path: build\tlRender\src\tlRender-build\tlRender-*.zip
+=======
+>>>>>>> 0514ddc35882a01826a12b0b95b79b9ebcf54bfb

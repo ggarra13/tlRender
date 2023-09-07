@@ -8,6 +8,7 @@
 #include <tlCore/LogSystem.h>
 #include <tlCore/StringFormat.h>
 
+#include <ImfInputPart.h>
 #include <ImfChannelList.h>
 #include <ImfRgbaFile.h>
 
@@ -18,6 +19,18 @@ namespace tl
 {
     namespace exr
     {
+        namespace
+        {
+            template<typename T>
+            std::string serialize(const Imath::Box<Imath::Vec2<T> >& value)
+            {
+                std::stringstream ss;
+                ss << value.min.x << " " << value.min.y << " " <<
+                    value.max.x << " " << value.max.y;
+                return ss.str();
+            }
+        }
+        
         struct IStream::Private
         {
             std::shared_ptr<file::FileIO> f;
@@ -153,76 +166,88 @@ namespace tl
                     {
                         _s.reset(new IStream(fileName.c_str()));
                     }
-                    _f.reset(new Imf::InputFile(*_s));
+                    _f.reset(new Imf::MultiPartInputFile(*_s));
+                    int numberOfParts = _f->parts();
+                    int partNumber;
 
-                    // Get the display and data windows.
-                    _displayWindow = fromImath(_f->header().displayWindow());
-                    _dataWindow = fromImath(_f->header().dataWindow());
-                    _intersectedWindow = _displayWindow.intersect(_dataWindow);
-                    _fast = _displayWindow == _dataWindow;
-
-                    if (auto logSystem = logSystemWeak.lock())
+                    for (partNumber = 0; partNumber < numberOfParts; ++partNumber)
                     {
-                        const std::string id = string::Format("tl::io::exr::Read {0}").arg(this);
-                        std::vector<std::string> s;
-                        s.push_back(string::Format(
-                            "\n"
-                            "    file name: {0}\n"
-                            "    display window {1}\n"
-                            "    data window: {2}\n"
-                            "    compression: {3}").
-                            arg(fileName).
-                            arg(_displayWindow).
-                            arg(_dataWindow).
-                            arg(getLabel(_f->header().compression())));
-                        const auto& channels = _f->header().channels();
-                        for (auto i = channels.begin(); i != channels.end(); ++i)
-                        {
-                            std::stringstream ss2;
-                            ss2 << "    channel " << i.name() << ": " << getLabel(i.channel().type) << ", " << i.channel().xSampling << "x" << i.channel().ySampling;
-                            s.push_back(ss2.str());
-                        }
-                        logSystem->print(id, string::join(s, '\n'));
-                    }
+                        const Imf::Header& header = _f->header(partNumber);
 
-                    // Get the tags.
-                    readTags(_f->header(), _info.tags);
+                        // Get the display and data windows.
+                        _displayWindow = fromImath(header.displayWindow());
+                        _dataWindow = fromImath(header.dataWindow());
+                        _intersectedWindow = _displayWindow.intersect(_dataWindow);
+                        _fast = _displayWindow == _dataWindow;
 
-                    // Get the layers.
-                    _layers = getLayers(_f->header().channels(), channelGrouping);
-                    _info.video.resize(_layers.size());
-                    for (size_t i = 0; i < _layers.size(); ++i)
-                    {
-                        const auto& layer = _layers[i];
-                        const math::Vector2i sampling(layer.channels[0].sampling.x, layer.channels[0].sampling.y);
-                        if (sampling.x != 1 || sampling.y != 1)
-                            _fast = false;
-                        auto& info = _info.video[i];
-                        info.name = layer.name;
-                        info.size.w = _displayWindow.w();
-                        info.size.h = _displayWindow.h();
-                        info.size.pixelAspectRatio = _f->header().pixelAspectRatio();
-                        switch (layer.channels[0].pixelType)
+                        if (auto logSystem = logSystemWeak.lock())
                         {
-                        case Imf::PixelType::HALF:
-                            info.pixelType = image::getFloatType(layer.channels.size(), 16);
-                            break;
-                        case Imf::PixelType::FLOAT:
-                            info.pixelType = image::getFloatType(layer.channels.size(), 32);
-                            break;
-                        case Imf::PixelType::UINT:
-                            info.pixelType = image::getIntType(layer.channels.size(), 32);
-                            break;
-                        default: break;
+                            const std::string id = string::Format("tl::io::exr::Read {0}").arg(this);
+                            std::vector<std::string> s;
+                            s.push_back(string::Format(
+                                            "\n"
+                                            "    file name: {0}\n"
+                                            "    display window {1}\n"
+                                            "    data window: {2}\n"
+                                            "    compression: {3}").
+                                        arg(fileName).
+                                        arg(_displayWindow).
+                                        arg(_dataWindow).
+                                        arg(getLabel(header.compression())));
+                            const auto& channels = header.channels();
+                            for (auto i = channels.begin(); i != channels.end(); ++i)
+                            {
+                                std::stringstream ss2;
+                                ss2 << "    channel " << i.name() << ": " << getLabel(i.channel().type) << ", " << i.channel().xSampling << "x" << i.channel().ySampling;
+                                s.push_back(ss2.str());
+                            }
+                            logSystem->print(id, string::join(s, '\n'));
                         }
-                        if (image::PixelType::None == info.pixelType)
+
+                        // Get the tags.
+                        readTags(header, _info.tags);
+
+                        // Get the layers.
+                        std::string view;
+                        if (header.hasView()) view = header.view() + " ";
+                        std::vector<Layer> layers = getLayers(header.channels(), channelGrouping);
+                        size_t offset = _info.video.size();
+                        _info.video.resize(offset + layers.size());
+                        for (size_t i = 0; i < layers.size(); ++i)
                         {
-                            throw std::runtime_error(string::Format("{0}: Unsupported image type").arg(fileName));
+                            layers[i].partNumber = partNumber;
+                            const auto& layer = layers[i];
+                            _layers.push_back(layer);
+                            const math::Vector2i sampling(layer.channels[0].sampling.x, layer.channels[0].sampling.y);
+                            if (sampling.x != 1 || sampling.y != 1)
+                                _fast = false;
+                            auto& info = _info.video[offset + i];
+                            info.name = view + layer.name;
+                            info.size.w = _displayWindow.w();
+                            info.size.h = _displayWindow.h();
+                            info.size.pixelAspectRatio = header.pixelAspectRatio();
+                            switch (layer.channels[0].pixelType)
+                            {
+                            case Imf::PixelType::HALF:
+                                info.pixelType = image::getFloatType(layer.channels.size(), 16);
+                                break;
+                            case Imf::PixelType::FLOAT:
+                                info.pixelType = image::getFloatType(layer.channels.size(), 32);
+                                break;
+                            case Imf::PixelType::UINT:
+                                info.pixelType = image::getIntType(layer.channels.size(), 32);
+                                break;
+                            default: break;
+                            }
+                            if (image::PixelType::None == info.pixelType)
+                            {
+                                throw std::runtime_error(string::Format("{0}: Unsupported image type").arg(fileName));
+                            }
+                            info.layout.mirror.y = true;
                         }
-                        info.layout.mirror.y = true;
                     }
                 }
-
+                
                 const io::Info& getInfo() const
                 {
                     return _info;
@@ -234,7 +259,22 @@ namespace tl
                     uint16_t layer)
                 {
                     io::VideoData out;
+                
                     layer = std::min(static_cast<size_t>(layer), _info.video.size() - 1);
+                    const Imf::Header& header = _f->header(_layers[layer].partNumber);
+
+                    // Get the display and data windows which can change
+                    // from frame to frame.
+                    const auto& displayWindow = header.displayWindow();
+                    const auto& dataWindow = header.dataWindow();
+                    
+                    _displayWindow = fromImath(displayWindow);
+                    _dataWindow = fromImath(dataWindow);
+                    _intersectedWindow = _displayWindow.intersect(_dataWindow);
+                    
+                    _info.tags["Display Window"] = serialize(displayWindow);
+                    _info.tags["Data Window"] = serialize(dataWindow);
+                    
                     image::Info imageInfo = _info.video[layer];
                     out.image = image::Image::create(imageInfo);
                     out.image->setTags(_info.tags);
@@ -260,8 +300,9 @@ namespace tl
                                     sampling.y,
                                     0.F));
                         }
-                        _f->setFrameBuffer(frameBuffer);
-                        _f->readPixels(_displayWindow.min.y, _displayWindow.max.y);
+                        Imf::InputPart in(*_f.get(), _layers[layer].partNumber);
+                        in.setFrameBuffer(frameBuffer);
+                        in.readPixels(_displayWindow.min.y, _displayWindow.max.y);
                     }
                     else
                     {
@@ -282,7 +323,8 @@ namespace tl
                                     sampling.y,
                                     0.F));
                         }
-                        _f->setFrameBuffer(frameBuffer);
+                        Imf::InputPart in(*_f.get(), _layers[layer].partNumber);
+                        in.setFrameBuffer(frameBuffer);
                         for (int y = _displayWindow.min.y; y <= _displayWindow.max.y; ++y)
                         {
                             uint8_t* p = out.image->getData() + ((y - _displayWindow.min.y) * scb);
@@ -293,7 +335,7 @@ namespace tl
                                 std::memset(p, 0, size);
                                 p += size;
                                 size = _intersectedWindow.w() * cb;
-                                _f->readPixels(y, y);
+                                in.readPixels(y, y);
                                 std::memcpy(
                                     p,
                                     buf.data() + std::max(_displayWindow.min.x - _dataWindow.min.x, 0) * cb,
@@ -309,10 +351,10 @@ namespace tl
             private:
                 ChannelGrouping                 _channelGrouping = ChannelGrouping::Known;
                 std::unique_ptr<Imf::IStream>   _s;
-                std::unique_ptr<Imf::InputFile> _f;
-                math::Box2i                    _displayWindow;
-                math::Box2i                    _dataWindow;
-                math::Box2i                    _intersectedWindow;
+                std::unique_ptr<Imf::MultiPartInputFile> _f;
+                math::Box2i                     _displayWindow;
+                math::Box2i                     _dataWindow;
+                math::Box2i                     _intersectedWindow;
                 std::vector<Layer>              _layers;
                 bool                            _fast = false;
                 io::Info                        _info;
@@ -376,7 +418,10 @@ namespace tl
             const auto i = out.tags.find("Frame Per Second");
             if (i != out.tags.end())
             {
+                std::string savedLocale = std::setlocale(LC_NUMERIC, NULL);
+                std::setlocale(LC_NUMERIC, "C");
                 speed = std::stof(i->second);
+                std::setlocale(LC_NUMERIC, savedLocale.c_str());
             }
             out.videoTime = otime::TimeRange::range_from_start_end_time_inclusive(
                 otime::RationalTime(_startFrame, speed),

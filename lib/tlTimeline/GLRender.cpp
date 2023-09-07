@@ -647,6 +647,7 @@ namespace tl
         void GLRender::setClipRect(const math::Box2i& value)
         {
             TLRENDER_P();
+            if (!value.isValid()) return;
             p.clipRect = value;
             if (value.w() > 0 && value.h() > 0)
             {

@@ -6,6 +6,8 @@
 
 #include <tlTimelineUI/TimelineItem.h>
 
+#include <vector>
+
 namespace tl
 {
     namespace timelineui
@@ -102,6 +104,15 @@ namespace tl
             //! Set the item options.
             void setItemOptions(const ItemOptions&);
 
+            //! Get timeline item geometry. 
+            const math::Box2i& getTimelineItemGeometry() const;
+
+            //! Get timeline scale.
+            double getScale() const;
+
+            //! Return whether a clip is getting dragged.
+            bool isDragging() const;
+            
             void setGeometry(const math::Box2i&) override;
             void sizeHintEvent(const ui::SizeHintEvent&) override;
             void mouseMoveEvent(ui::MouseMoveEvent&) override;
@@ -110,7 +121,7 @@ namespace tl
             void scrollEvent(ui::ScrollEvent&) override;
             void keyPressEvent(ui::KeyEvent&) override;
             void keyReleaseEvent(ui::KeyEvent&) override;
-
+            
         protected:
             void _releaseMouse() override;
 

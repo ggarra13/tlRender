@@ -541,6 +541,13 @@ namespace tl
             p.mouse.currentDropTarget = -1;
         }
 
+        
+        bool TimelineItem::isDragging() const
+        {
+            TLRENDER_P();
+            return p.mouse.mode == Private::MouseMode::Item;
+        }
+        
         /*void TimelineItem::keyPressEvent(ui::KeyEvent& event)
         {
             TLRENDER_P();

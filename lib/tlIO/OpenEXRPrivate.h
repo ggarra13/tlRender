@@ -12,6 +12,7 @@
 #include <ImfHeader.h>
 #include <ImfInputFile.h>
 #include <ImfPixelType.h>
+#include <ImfMultiPartInputFile.h>
 
 namespace tl
 {
@@ -35,17 +36,21 @@ namespace tl
         struct Layer
         {
             Layer(
-                const std::vector<Channel>& channels        = std::vector<Channel>(),
+                const std::vector<Channel>& channels = std::vector<Channel>(),
                 bool                        luminanceChroma = false);
 
             std::string          name;
             std::vector<Channel> channels;
             bool                 luminanceChroma = false;
+            int                  partNumber = 0;
         };
 
         //! Convert to Imf.
         Imf::Compression toImf(Compression);
 
+        //! Convert to an Imf pixel type.
+        Imf::PixelType toImf(const image::PixelType&);
+        
         //! Get a layer name from a list of channel names.
         std::string getLayerName(const std::vector<std::string>&);
 
