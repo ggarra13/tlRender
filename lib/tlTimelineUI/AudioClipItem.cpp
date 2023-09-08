@@ -292,13 +292,15 @@ namespace tl
                             const auto j = p.waveformRequests.find(time);
                             if (j == p.waveformRequests.end())
                             {
+                                const otime::RationalTime start = p.ioInfo->audioTime.start_time();
                                 const otime::RationalTime time2 = time::round(otime::RationalTime(
                                     _timeRange.start_time().value() +
                                     (w > 0 ? ((x + _options.waveformWidth) / static_cast<double>(w)) : 0) *
                                     _timeRange.duration().value(),
                                     _timeRange.duration().rate()));
                                 const otime::TimeRange mediaRange = timeline::toAudioMediaTime(
-                                    otime::TimeRange::range_from_start_end_time(time, time2),
+                                    otime::TimeRange::range_from_start_end_time(time + start,
+                                                                                time2 + start),
                                     p.clip,
                                     p.ioInfo->audio.sampleRate);
                                 p.waveformRequests[time] = thumbnailSystem->getWaveform(
