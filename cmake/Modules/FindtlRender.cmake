@@ -27,7 +27,6 @@ find_package(nlohmann_json REQUIRED)
 find_package(FreeType REQUIRED)
 find_package(OpenColorIO REQUIRED)
 find_package(OTIO REQUIRED)
-find_package(libsamplerate REQUIRED)
 find_package(RtAudio REQUIRED)
 find_package(GLFW REQUIRED)
 find_package(JPEG)
@@ -43,7 +42,6 @@ set(tlRender_INCLUDE_DIRS
     ${nlohmann_json_INCLUDE_DIRS}
     ${FreeType_INCLUDE_DIRS}
     ${OTIO_INCLUDE_DIRS}
-    ${libsamplerate_INCLUDE_DIRS}
     ${RtAudio_INCLUDE_DIRS}
     ${JPEG_INCLUDE_DIRS}
     ${TIFF_INCLUDE_DIRS}
@@ -79,7 +77,6 @@ set(tlRender_LIBRARIES
     ${nlohmann_json_LIBRARIES}
     ${FreeType_LIBRARIES}
     ${OTIO_LIBRARIES}
-    ${libsamplerate_LIBRARIES}
     ${RtAudio_LIBRARIES}
     ${JPEG_LIBRARIES}
     ${TIFF_LIBRARIES}
@@ -116,7 +113,7 @@ if(tlRender_FOUND AND NOT TARGET tlRender::tlCore)
         IMPORTED_LOCATION "${tlRender_tlCore_LIBRARY}"
         INTERFACE_COMPILE_DEFINITIONS "${tlRender_COMPILE_DEFINITIONS}"
         INTERFACE_INCLUDE_DIRECTORIES "${tlRender_INCLUDE_DIR}"
-        INTERFACE_LINK_LIBRARIES "OTIO;OpenColorIO::OpenColorIO;Imath::Imath;RtAudio;libsamplerate;FreeType;nlohmann_json::nlohmann_json")
+        INTERFACE_LINK_LIBRARIES "OTIO;OpenColorIO::OpenColorIO;Imath::Imath;RtAudio;FreeType;nlohmann_json::nlohmann_json")
 endif()
 if(tlRender_FOUND AND NOT TARGET tlRender::tlIO)
     add_library(tlRender::tlIO UNKNOWN IMPORTED)
