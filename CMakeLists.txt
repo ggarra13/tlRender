@@ -138,11 +138,11 @@ find_package(nlohmann_json REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(minizip REQUIRED)
 find_package(OTIO REQUIRED)
-find_package(FreeType)
+find_package(freetype)
 
 # GLFW dependency
 if(TLRENDER_GLFW)
-    find_package(GLFW REQUIRED)
+    find_package(glfw3 REQUIRED)
     add_definitions(-DTLRENDER_GLFW)
 endif()
 
@@ -154,15 +154,15 @@ endif()
 
 # Audio dependencies
 if(TLRENDER_AUDIO)
-    find_package(libsamplerate REQUIRED)
+    find_package(SampleRate REQUIRED)
     find_package(RtAudio REQUIRED)
     add_definitions(-DTLRENDER_AUDIO)
 endif()
 
 # I/O dependencies
 if(TLRENDER_JPEG)
-    find_package(JPEG)
-    if(JPEG_FOUND)
+    find_package(libjpeg-turbo)
+    if(libjpeg-turbo_FOUND)
         add_definitions(-DTLRENDER_JPEG)
     endif()
 endif()
