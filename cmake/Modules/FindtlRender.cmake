@@ -24,12 +24,12 @@ set(tlRender_VERSION 0.0.1)
 
 find_package(Imath REQUIRED)
 find_package(nlohmann_json REQUIRED)
-find_package(FreeType REQUIRED)
+find_package(freetype REQUIRED)
 find_package(OpenColorIO REQUIRED)
 find_package(OTIO REQUIRED)
 find_package(RtAudio REQUIRED)
-find_package(GLFW REQUIRED)
-find_package(JPEG)
+find_package(glfw3 REQUIRED)
+find_package(libjpeg-turbo)
 find_package(TIFF)
 find_package(PNG)
 find_package(OpenEXR)
@@ -43,12 +43,12 @@ set(tlRender_INCLUDE_DIRS
     ${FreeType_INCLUDE_DIRS}
     ${OTIO_INCLUDE_DIRS}
     ${RtAudio_INCLUDE_DIRS}
-    ${JPEG_INCLUDE_DIRS}
+    ${libjpeg-turbo_INCLUDE_DIRS}
     ${TIFF_INCLUDE_DIRS}
     ${PNG_INCLUDE_DIRS}
     ${OpenEXR_INCLUDE_DIRS}
     ${FFmpeg_INCLUDE_DIRS}
-    ${GLFW_INCLUDE_DIRS})
+    ${glfw3_INCLUDE_DIRS})
 
 if(CMAKE_BUILD_TYPE MATCHES "^Debug$")
     find_library(tlRender_tlCore_LIBRARY NAMES tlCore)
@@ -78,12 +78,12 @@ set(tlRender_LIBRARIES
     ${FreeType_LIBRARIES}
     ${OTIO_LIBRARIES}
     ${RtAudio_LIBRARIES}
-    ${JPEG_LIBRARIES}
+    ${libjpeg-turbo_LIBRARIES}
     ${TIFF_LIBRARIES}
     ${PNG_LIBRARIES}
     ${OpenEXR_LIBRARIES}
     ${FFmpeg_LIBRARIES}
-    ${GLFW_LIBRARIES})
+    ${glfw3_LIBRARIES})
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(
@@ -121,7 +121,7 @@ if(tlRender_FOUND AND NOT TARGET tlRender::tlIO)
         IMPORTED_LOCATION "${tlRender_tlIO_LIBRARY}"
         INTERFACE_COMPILE_DEFINITIONS "${tlRender_COMPILE_DEFINITIONS}"
         INTERFACE_INCLUDE_DIRECTORIES "${tlRender_INCLUDE_DIR}"
-        INTERFACE_LINK_LIBRARIES "JPEG;TIFF;PNG;OpenEXR::OpenEXR;FFmpeg")
+        INTERFACE_LINK_LIBRARIES "libjpeg-turbo::turbojpeg-static;TIFF;PNG;OpenEXR::OpenEXR;FFmpeg")
 endif()
 if(tlRender_FOUND AND NOT TARGET tlRender::tlTimeline)
     add_library(tlRender::tlTimeline UNKNOWN IMPORTED)
