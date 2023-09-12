@@ -186,6 +186,9 @@ namespace tl
                     { ".webm", io::FileType::Movie },
                     { ".wmv", io::FileType::Movie },
                     { ".avi", io::FileType::Movie },
+                    { ".ogg", io::FileType::Audio },
+                    { ".opus", io::FileType::Audio },
+                    { ".vorbis", io::FileType::Audio },
                     { ".wav", io::FileType::Audio },
                     { ".mp3", io::FileType::Audio },
                     { ".aiff", io::FileType::Audio }
