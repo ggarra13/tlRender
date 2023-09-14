@@ -523,7 +523,7 @@ namespace tl
                                     const size_t byteCount = audio->getByteCount();
                                     auto tmp = audio::Audio::create(p->ioInfo.audio, p->ioInfo.audio.sampleRate);
                                     tmp->zero();
-                                    std::memcpy(tmp->getData(), audio->getData(), byteCount );
+                                    std::memcpy(tmp->getData(), audio->getData(), byteCount);
                                     audio = tmp;
                                     audios.push_back(audio);
                                 }
