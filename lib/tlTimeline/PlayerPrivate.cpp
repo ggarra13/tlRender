@@ -480,7 +480,7 @@ namespace tl
 
                     if (backwards)
                     {
-                        frame -=  frameOffset;
+                        frame -= frameOffset;
                     }
                     else
                     {
@@ -521,8 +521,7 @@ namespace tl
                                 if (backwards)
                                 {
                                     const size_t byteCount = audio->getByteCount();
-                                    const size_t sampleCount = audio->getSampleCount();
-                                    auto tmp = audio::Audio::create(p->ioInfo.audio, sampleCount);
+                                    auto tmp = audio::Audio::create(p->ioInfo.audio, p->ioInfo.audio.sampleRate);
                                     tmp->zero();
                                     std::memcpy(tmp->getData(), audio->getData(), byteCount );
                                     audio = tmp;
@@ -548,7 +547,7 @@ namespace tl
                         {
                             if ( p->audioThread.backwardsSize < size )
                                 size = p->audioThread.backwardsSize;
-
+                            
                             audio::reverse(
                                 const_cast<uint8_t**>(audioDataP.data()),
                                 audioDataP.size(),
