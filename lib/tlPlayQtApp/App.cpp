@@ -119,8 +119,7 @@ namespace tl
             const std::string settingsFileName =
                 play::settingsName(appName, appDirPath);
             IApp::_init(
-                argc,
-                argv,
+                app::convert(argc, argv),
                 context,
                 appName,
                 "Play timelines, movies, and image sequences.",
@@ -549,6 +548,7 @@ namespace tl
         App::~App()
         {
             TLRENDER_P();
+            p.mainWindow.reset();
             if (p.settingsObject)
             {
                 QList<QString> recent;

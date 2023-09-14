@@ -114,6 +114,10 @@ namespace tl
             bool isDragging() const;
             
             void setGeometry(const math::Box2i&) override;
+            void tickEvent(
+                bool,
+                bool,
+                const ui::TickEvent&) override;
             void sizeHintEvent(const ui::SizeHintEvent&) override;
             void mouseMoveEvent(ui::MouseMoveEvent&) override;
             void mousePressEvent(ui::MouseClickEvent&) override;
@@ -134,6 +138,7 @@ namespace tl
 
             double _getTimelineScale() const;
 
+            void _setItemScale();
             void _setItemScale(
                 const std::shared_ptr<IWidget>&,
                 double);
