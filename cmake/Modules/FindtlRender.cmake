@@ -40,7 +40,7 @@ set(tlRender_INCLUDE_DIRS
     ${tlRender_INCLUDE_DIR}
     ${Imath_INCLUDE_DIRS}
     ${nlohmann_json_INCLUDE_DIRS}
-    ${freetype_INCLUDE_DIRS}
+    ${FREETYPE_INCLUDE_DIRS}
     ${OTIO_INCLUDE_DIRS}
     ${RtAudio_INCLUDE_DIRS}
     ${libjpeg-turbo_INCLUDE_DIRS}
@@ -75,7 +75,7 @@ set(tlRender_LIBRARIES
     ${tlRender_glad_LIBRARY}
     ${Imath_LIBRARIES}
     ${nlohmann_json_LIBRARIES}
-    ${freetype_LIBRARIES}
+    ${FREETYPE_LIBRARIES}
     ${OTIO_LIBRARIES}
     ${RtAudio_LIBRARIES}
     ${libjpeg-turbo_LIBRARIES}
@@ -113,7 +113,7 @@ if(tlRender_FOUND AND NOT TARGET tlRender::tlCore)
         IMPORTED_LOCATION "${tlRender_tlCore_LIBRARY}"
         INTERFACE_COMPILE_DEFINITIONS "${tlRender_COMPILE_DEFINITIONS}"
         INTERFACE_INCLUDE_DIRECTORIES "${tlRender_INCLUDE_DIR}"
-        INTERFACE_LINK_LIBRARIES "OTIO;OpenColorIO::OpenColorIO;Imath::Imath;RtAudio;freetype;nlohmann_json::nlohmann_json")
+        INTERFACE_LINK_LIBRARIES "OTIO;OpenColorIO::OpenColorIO;Imath::Imath;RtAudio;Freetype::Freetype;nlohmann_json::nlohmann_json")
 endif()
 if(tlRender_FOUND AND NOT TARGET tlRender::tlIO)
     add_library(tlRender::tlIO UNKNOWN IMPORTED)
