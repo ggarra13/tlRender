@@ -24,7 +24,7 @@ set(tlRender_VERSION 0.0.1)
 
 find_package(Imath REQUIRED)
 find_package(nlohmann_json REQUIRED)
-find_package(freetype REQUIRED)
+find_package(Freetype REQUIRED)
 find_package(OpenColorIO REQUIRED)
 find_package(OTIO REQUIRED)
 find_package(RtAudio REQUIRED)
