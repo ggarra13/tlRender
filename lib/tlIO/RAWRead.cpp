@@ -26,30 +26,10 @@ namespace tl
                         
                     if (memory)
                     {
-                        res = rawi_info_from_memory(memory->p, memory->size, &w,
-                                                    &h, &n);
-                        if (res == 0)
-                            throw std::runtime_error(
-                                string::Format("{0}: {1}")
-                                    .arg(fileName)
-                                    .arg("Corrupted image type"));
-                            
-                        _info.size.w = w;
-                        _info.size.h = h;
-                            
-                        res = rawi_is_16_bit_from_memory(memory->p, memory->size);
-                        if (res) bits = 16;
-                            
-                        _info.pixelType = image::getIntType(n, bits);
-                            
-                        if (image::PixelType::None == _info.pixelType)
-                        {
-                            throw std::runtime_error(
-                                string::Format("{0}: {1}")
-                                    .arg(fileName)
-                                    .arg("Unsupported image type"));
-                        }
-                        _info.layout.endian = memory::Endian::MSB;
+                        throw std::runtime_error(
+                            string::Format("{0}: {1}")
+                            .arg(fileName)
+                            .arg("Unsupported memory read"));
                     }
                     else
                     {
