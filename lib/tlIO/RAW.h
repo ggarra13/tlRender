@@ -16,7 +16,7 @@ namespace tl
     //! https://www.libraw.org/
     namespace raw
     {
-        //! STB reader.
+        //! RAW reader.
         class Read : public io::ISequenceRead
         {
         protected:
@@ -58,7 +58,7 @@ namespace tl
                 uint16_t layer) override;
         };
 
-        //! STB plugin.
+        //! RAW plugin.
         class Plugin : public io::IPlugin
         {
         protected:

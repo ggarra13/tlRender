@@ -20,8 +20,6 @@ namespace tl
             public:
                 File(const std::string& fileName, const file::MemoryRead* memory)
                 {
-                    int res = 0, w = 0, h = 0, n = 0, bits = 8;
-
                     _memory = memory;
                         
                     if (memory)
@@ -36,6 +34,14 @@ namespace tl
 
                         // Open the file and read the metadata
                         int ret = iProcessor.open_file(fileName.c_str());
+                        if (ret != 0)
+                        {
+                            throw std::runtime_error(
+                                string::Format("{0}: {1} - Error {2}")
+                                .arg(fileName)
+                                .arg("open_file failed")
+                                .arg(ret));
+                        }
                         
                         _info.size.w = iProcessor.imgdata.sizes.width;
                         _info.size.h = iProcessor.imgdata.sizes.height;
