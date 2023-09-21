@@ -1,8 +1,6 @@
 include(ExternalProject)
 
 
-find_package(LCMS2 REQUIRED)
-
 set(LibRaw_URL "https://www.libraw.org/data/LibRaw-0.21.1.tar.gz")
 
 
