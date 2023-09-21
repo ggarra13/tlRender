@@ -23,10 +23,14 @@ set(LibRaw_INCLUDE_DIRS
 
 if(CMAKE_BUILD_TYPE MATCHES "^Debug$")
     find_library(LibRaw_LIBRARY
-        NAMES rawd raw)
+        NAMES raw)
+    find_library(LibRaw_r_LIBRARY
+        NAMES raw_r)
 else()
     find_library(LibRaw_LIBRARY
         NAMES raw)
+    find_library(LibRaw_r_LIBRARY
+        NAMES raw_r)
 endif()
 set(LibRaw_LIBRARIES
     ${LibRaw_LIBRARY}
@@ -44,7 +48,15 @@ if(LibRaw_FOUND AND NOT TARGET LibRaw::libraw)
         IMPORTED_LOCATION "${LibRaw_LIBRARY}"
         INTERFACE_COMPILE_DEFINITIONS LibRaw_FOUND
         INTERFACE_INCLUDE_DIRECTORIES "${LibRaw_INCLUDE_DIR}"
-        INTERFACE_LINK_LIBRARIES "ZLIB OpenMP::OpenMP_CXX")
+        INTERFACE_LINK_LIBRARIES "ZLIB;OpenMP::OpenMP_CXX")
+endif()
+if(LibRaw_FOUND AND NOT TARGET LibRaw::libraw_r)
+    add_library(LibRaw::libraw_r UNKNOWN IMPORTED)
+    set_target_properties(LibRaw::libraw PROPERTIES
+        IMPORTED_LOCATION "${LibRaw_r_LIBRARY}"
+        INTERFACE_COMPILE_DEFINITIONS LibRaw_FOUND
+        INTERFACE_INCLUDE_DIRECTORIES "${LibRaw_INCLUDE_DIR}"
+        INTERFACE_LINK_LIBRARIES "ZLIB;OpenMP::OpenMP_CXX")
 endif()
 if(LibRaw_FOUND AND NOT TARGET LibRaw)
     add_library(LibRaw INTERFACE)
