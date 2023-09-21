@@ -26,7 +26,7 @@ set(LibRaw_ARGS
 )
 
 set(LibRaw_PATCH
-    ${CMAKE_COMMAND} -E copy_if_different <SOURCE_DIR>_cmake/CMakeLists.txt . &&
+    ${CMAKE_COMMAND} -E copy_if_different <SOURCE_DIR>_cmake/CMakeLists.txt <SOURCE_DIR> &&
     ${CMAKE_COMMAND} -E copy_directory <SOURCE_DIR>_cmake/cmake
     )
 
