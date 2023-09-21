@@ -26,8 +26,10 @@ namespace tl
             out->_init(
                 "RAW",
                 {
+                    { ".arw", io::FileType::Sequence },
                     { ".crw", io::FileType::Sequence },
                     { ".cr2", io::FileType::Sequence },
+                    { ".cr3", io::FileType::Sequence },
                     { ".dcr", io::FileType::Sequence },
                     { ".dng", io::FileType::Sequence },
                     { ".kdc", io::FileType::Sequence },
@@ -35,6 +37,7 @@ namespace tl
                     { ".nef", io::FileType::Sequence },
                     { ".raf", io::FileType::Sequence },
                     { ".raw", io::FileType::Sequence },
+                    { ".rw2", io::FileType::Sequence },
                     { ".red", io::FileType::Sequence },
                 },
                 cache,
