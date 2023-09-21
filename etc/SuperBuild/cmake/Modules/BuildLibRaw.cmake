@@ -19,6 +19,8 @@ ExternalProject_Add(
 
 set(LibRaw_ARGS
     ${TLRENDER_EXTERNAL_ARGS}
+    -DBUILD_SHARED_LIBS=ON
+    -DBUILD_STATIC_LIBS=OFF
     -DENABLE_OPENMP=ON 
     -DENABLE_LCMS=ON
     -DENABLE_EXAMPLES=OFF
@@ -34,7 +36,7 @@ ExternalProject_Add(
      LibRaw
      PREFIX ${CMAKE_CURRENT_BINARY_DIR}/LibRaw
      URL ${LibRaw_URL}
-     DEPENDS LibRaw_cmake ZLIB libjpeg-turbo # LCMS2
+     DEPENDS LibRaw_cmake ZLIB libjpeg-turbo 
      PATCH_COMMAND ${LibRaw_PATCH}
      LIST_SEPARATOR |
      CMAKE_ARGS ${LibRaw_ARGS}
