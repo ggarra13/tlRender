@@ -13,6 +13,7 @@ else()
 
     ExternalProject_Add(
         LCMS2
+	PREFIX ${CMAKE_CURRENT_BINARY_DIR}/LCMS2
 	GIT_REPOSITORY "https://github.com/mm2/Little-CMS.git"
 	GIT_TAG lcms2.15
 	GIT_PROGRESS 1
