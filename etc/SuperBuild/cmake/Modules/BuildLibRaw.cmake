@@ -10,7 +10,7 @@ ExternalProject_Add(
     BUILD_IN_SOURCE 0
     BUILD_ALWAYS 0
     UPDATE_COMMAND ""
-    SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/LibRaw_cmake
+    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/LibRaw_cmake
     INSTALL_DIR ${CMAKE_INSTALL_PREFIX}
     CONFIGURE_COMMAND ""
     BUILD_COMMAND ""
@@ -26,8 +26,8 @@ set(LibRaw_ARGS
 )
 
 set(LibRaw_PATCH
-    ${CMAKE_COMMAND} -E copy_if_different <SOURCE_DIR>_cmake/CMakeLists.txt <SOURCE_DIR> &&
-    ${CMAKE_COMMAND} -E copy_directory <SOURCE_DIR>_cmake/cmake
+    ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_BINARY_DIR}/LibRaw_cmake/CMakeLists.txt <SOURCE_DIR> &&
+    ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_BINARY_DIR}/LibRaw_cmake/cmake <SOURCE_DIR>/cmake
     )
 
 ExternalProject_Add(
