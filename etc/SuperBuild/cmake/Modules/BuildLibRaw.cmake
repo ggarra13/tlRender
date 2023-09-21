@@ -28,8 +28,8 @@ set(LibRaw_ARGS
 )
 
 set(LibRaw_PATCH
-    ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_BINARY_DIR}/LibRaw_cmake/CMakeLists.txt <SOURCE_DIR> &&
-    ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_BINARY_DIR}/LibRaw_cmake/cmake <SOURCE_DIR>/cmake
+    ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_BINARY_DIR}/LibRaw_cmake/src/LibRaw_cmake/CMakeLists.txt <SOURCE_DIR> &&
+    ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_BINARY_DIR}/LibRaw_cmake/src/LibRaw_cmake/cmake <SOURCE_DIR>/cmake
     )
 
 ExternalProject_Add(
