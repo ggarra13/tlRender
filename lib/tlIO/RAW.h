@@ -81,12 +81,16 @@ namespace tl
                 const image::Info&,
                 const io::Options& = io::Options()) const override
                 {
+                    image::Info out;
+                    return out;
                 }
             std::shared_ptr<io::IWrite> write(
                 const file::Path&,
                 const io::Info&,
                 const io::Options& = io::Options()) override
                 {
+                    std::shared_ptr<io::IWrite> out;
+                    return out;
                 }
         };
     }

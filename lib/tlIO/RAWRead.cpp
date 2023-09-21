@@ -110,7 +110,7 @@ namespace tl
                     const size_t bytes = image::getBitDepth(_info.pixelType) / 8;
                                                        
                     memcpy(
-                        out.image->getData(), data,
+                        out.image->getData(), iProcessor.imgdata.image,
                         iProcessor.imgdata.sizes.iwidth *
                         iProcessor.imgdata.sizes.iheight * channels * bytes);
 
