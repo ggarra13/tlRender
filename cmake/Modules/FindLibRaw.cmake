@@ -22,10 +22,10 @@ set(LIBRAW_INCLUDE_DIRS
 
 if(CMAKE_BUILD_TYPE MATCHES "^Debug$")
     find_library(LIBRAW_LIBRARY
-        NAMES libraw16d liblibraw16d liblibraw16_staticd librawd libraw16 libraw16_static liblibraw16_static libraw)
+        NAMES rawd raw)
 else()
     find_library(LIBRAW_LIBRARY
-        NAMES libraw16 liblibraw16 libraw16_static liblibraw16_static libraw)
+        NAMES raw)
 endif()
 set(LIBRAW_LIBRARIES
     ${LIBRAW_LIBRARY}
