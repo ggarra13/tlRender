@@ -36,6 +36,6 @@ ExternalProject_Add(
      URL ${LibRaw_URL}
      DEPENDS LibRaw_cmake ZLIB libjpeg-turbo # LCMS2
      PATCH_COMMAND ${LibRaw_PATCH}
-     CONFIGURE_COMMAND ${LibRaw_CONFIGURE}
+     LIST_SEPARATOR |
      CMAKE_ARGS ${LibRaw_ARGS}
 )
