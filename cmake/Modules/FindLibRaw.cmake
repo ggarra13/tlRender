@@ -14,6 +14,7 @@
 # * LibRaw
 
 find_package(ZLIB REQUIRED)
+find_package(OpenMP REQUIRED)
 
 find_path(LibRaw_INCLUDE_DIR NAMES libraw/libraw.h)
 set(LibRaw_INCLUDE_DIRS
@@ -43,7 +44,7 @@ if(LibRaw_FOUND AND NOT TARGET LibRaw::libraw)
         IMPORTED_LOCATION "${LibRaw_LIBRARY}"
         INTERFACE_COMPILE_DEFINITIONS LibRaw_FOUND
         INTERFACE_INCLUDE_DIRECTORIES "${LibRaw_INCLUDE_DIR}"
-        INTERFACE_LINK_LIBRARIES "ZLIB")
+        INTERFACE_LINK_LIBRARIES "ZLIB OpenMP::OpenMP_CXX")
 endif()
 if(LibRaw_FOUND AND NOT TARGET LibRaw)
     add_library(LibRaw INTERFACE)
