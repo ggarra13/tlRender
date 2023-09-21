@@ -34,6 +34,11 @@ namespace tl
                         _info.video.resize(1);
                         auto& info = _info.video[0];
                         iProcessor.imgdata.params.output_bps = 16;
+                        iProcessor.imgdata.params.no_auto_bright = 1;
+                        iProcessor.imgdata.params.adjust_maximum_thr = 0.0f;
+                        iProcessor.imgdata.params.user_sat = 0;
+                        iProcessor.imgdata.params.use_camera_wb = 0;
+                        iProcessor.imgdata.params.use_camera_matrix = 1;
 
                         // Open the file and read the metadata
 #ifdef _WIN32
@@ -47,11 +52,13 @@ namespace tl
                                 string::Format("{0}: {1} - Error {2}")
                                 .arg(fileName)
                                 .arg("open_file failed")
-                                .arg(ret));
+                                .arg(libraw_strerror(ret)));
                         }
 
                         const libraw_iparams_t& idata(iProcessor.imgdata.idata);
+                        const libraw_colordata_t& color(iProcessor.imgdata.color);
                         const libraw_image_sizes_t& sizes(iProcessor.imgdata.sizes);
+                        const libraw_imgother_t& other(iProcessor.imgdata.other);
                         switch(sizes.flip)
                         {
                         case 5:
@@ -60,9 +67,9 @@ namespace tl
                             info.size.h = sizes.width;
                             info.size.w = sizes.height;
                             break;
-                        case 0: // no rotation
+                        case 0:
                             info.layout.mirror.y = true;
-                        case 3:
+                        case 3: // no rotation
                         default:
                             info.size.w = sizes.width;
                             info.size.h = sizes.height;
@@ -76,9 +83,47 @@ namespace tl
                             ss << sizes.flip;
                             tags["flip"] = ss.str();
                         }
-                        tags["Camera Manufacturer"] = idata.make;
-                        tags["Camera Model"] = idata.model;
-                        tags["Software"] = idata.software;
+                        if (idata.make[0])
+                            tags["Camera Manufacturer"] = idata.make;
+                        if (idata.model[0])
+                            tags["Camera Model"] = idata.model;
+                        tags["Normalized Make"] = idata.normalized_make;
+                        tags["Normaliized Model"] = idata.normalized_model;
+                        if (idata.software[0])
+                            tags["Software"] = idata.software;
+                        else if(color.model2[0])
+                            tags["Software"] = color.model2;
+                        {
+                            std::stringstream ss;
+                            ss << other.iso_speed;
+                            tags["Exif:ISOSpeedRatings"] = ss.str();
+                        }
+                        {
+                            std::stringstream ss;
+                            ss << other.shutter;
+                            tags["ExposureTime"] = ss.str();
+                        }
+                        {
+                            std::stringstream ss;
+                            ss << -std::log2(other.shutter);
+                            tags["Exif:ShutterSpeedValue"] = ss.str();
+                        }
+                        {
+                            std::stringstream ss;
+                            ss << other.aperture;
+                            tags["FNumber"] = ss.str();
+                        }
+                        {
+                            std::stringstream ss;
+                            ss << 2.0f * std::log2(other.aperture);
+                            tags["Exif:ApertureValue"] = ss.str();
+                        }
+                        {
+                            std::stringstream ss;
+                            ss << other.focal_len;
+                            tags["Exif:FocalLength"] = ss.str();
+                        }
+    
                         info.pixelType = image::PixelType::RGB_U16;
                         info.layout.endian = memory::Endian::LSB;
                     }
@@ -109,7 +154,7 @@ namespace tl
                             string::Format("{0}: {1} - Error {2}")
                             .arg(fileName)
                             .arg("open_file failed")
-                            .arg(ret));
+                            .arg(libraw_strerror(ret)));
                     }
                     
                     const libraw_image_sizes_t& sizes(iProcessor.imgdata.sizes);
@@ -122,7 +167,7 @@ namespace tl
                             string::Format("{0}: {1} - Error {2}")
                             .arg(fileName)
                             .arg("unpack failed")
-                            .arg(ret));
+                            .arg(libraw_strerror(ret)));
                     }
                     
                     ret = iProcessor.dcraw_process();
@@ -132,7 +177,7 @@ namespace tl
                             string::Format("{0}: {1} - Error {2}")
                             .arg(fileName)
                             .arg("dcraw_process failed")
-                            .arg(ret));
+                            .arg(libraw_strerror(ret)));
                     }
                     
                     const int channels = image::getChannelCount(info.pixelType);
@@ -145,7 +190,7 @@ namespace tl
                             string::Format("{0}: {1} - Error {2}")
                             .arg(fileName)
                             .arg("dcraw_make_mem_image")
-                            .arg(ret));
+                            .arg(libraw_strerror(ret)));
                     }
 
                     if (image->type != LIBRAW_IMAGE_BITMAP)
@@ -155,9 +200,29 @@ namespace tl
                             .arg(fileName)
                             .arg("Not a bitmap image"));
                     }
+                    if (image->colors != 3 && image->colors != 1)
+                    {
+                        throw std::runtime_error(
+                            string::Format("{0}: {1}")
+                            .arg(fileName)
+                            .arg("Not supported color depth"));
+                    }
 
-                    memcpy(out.image->getData(), image->data, image->data_size);
-
+                    if (image->colors == 3)
+                    {
+                        memcpy(out.image->getData(), image->data, image->data_size);
+                    }
+                    else // image->colors == 1
+                    {
+                        for (size_t i = 0; i < image->data_size; ++i)
+                        {
+                            const size_t j = i * 3;
+                            data[j] = image[i];
+                            data[j + 1] = image[i];
+                            data[j + 2] = image[i];
+                        }
+                    }
+                    
                     iProcessor.dcraw_clear_mem(image);
                     iProcessor.recycle();
 
