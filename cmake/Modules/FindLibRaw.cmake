@@ -15,7 +15,7 @@
 
 find_package(ZLIB REQUIRED)
 
-find_path(LibRaw_INCLUDE_DIR NAMES libraw.h)
+find_path(LibRaw_INCLUDE_DIR NAMES libraw/libraw.h)
 set(LibRaw_INCLUDE_DIRS
     ${LibRaw_INCLUDE_DIR}
     ${ZLIB_INCLUDE_DIRS})
