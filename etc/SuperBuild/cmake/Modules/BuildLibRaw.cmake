@@ -3,44 +3,39 @@ include(ExternalProject)
 
 set(LibRaw_URL "https://www.libraw.org/data/LibRaw-0.21.1.tar.gz")
 
-
-if(WIN32)
-    set(LibRaw_CFLAGS)
-    set(LibRaw_CXXFLAGS)
-    set(LibRaw_OBJCFLAGS)
-    set(LibRaw_LDFLAGS)
-    
-    set(LibRaw_PATCH "")
-    set(LibRaw_BUILD nmake -f Makefile.msvc)
-else()
-    set(LibRaw_CFLAGS)
-    set(LibRaw_CXXFLAGS)
-    set(LibRaw_OBJCFLAGS)
-    set(LibRaw_LDFLAGS)
-
-    set(LibRaw_CONFIGURE_ARGS
-        --prefix=${CMAKE_INSTALL_PREFIX}
-	--enable-lcms2
-	--enable-zlib
-	--enable-jpeg
-	--enable-static
-	--disable-shared
-	--disable-examples
-    )
-    set(LibRaw_PATCH "")
-    set(LibRaw_CONFIGURE ./configure ${LibRaw_CONFIGURE_ARGS})
-    set(LibRaw_BUILD make -j 4)
-    set(LibRaw_INSTALL make -j 4 install)
-endif()
-    
 ExternalProject_Add(
-    LibRaw
-    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/LibRaw
-    URL ${LibRaw_URL}
-    DEPENDS ZLIB libjpeg-turbo
-    PATCH_COMMAND ${LibRaw_PATCH}
-    CONFIGURE_COMMAND ${LibRaw_CONFIGURE}
-    BUILD_COMMAND ${LibRaw_BUILD}
-    INSTALL_COMMAND ${LibRaw_INSTALL}
-    BUILD_IN_SOURCE 1
+    LibRaw_cmake
+    GIT_REPOSITORY "https://github.com/LibRaw/LibRaw-cmake"
+    GIT_TAG master
+    BUILD_IN_SOURCE 0
+    BUILD_ALWAYS 0
+    UPDATE_COMMAND ""
+    SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/LibRaw_cmake
+    INSTALL_DIR ${CMAKE_INSTALL_PREFIX}
+    CONFIGURE_COMMAND ""
+    BUILD_COMMAND ""
+    INSTALL_COMMAND ""
+)
+
+set(LibRaw_ARGS
+    ${TLRENDER_EXTERNAL_ARGS}
+    -DENABLE_OPENMP=ON 
+    -DENABLE_EXAMPLES=OFF
+    -DENABLE_LCMS=OFF
+    -DBUILD_TESTING=OFF
+)
+
+set(LibRaw_PATCH
+    ${CMAKE_COMMAND} -E copy_if_different <SOURCE_DIR>_cmake/CMakeLists.txt . &&
+    ${CMAKE_COMMAND} -E copy_directory <SOURCE_DIR>_cmake/cmake
+    )
+
+ExternalProject_Add(
+     LibRaw
+     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/LibRaw
+     URL ${LibRaw_URL}
+     DEPENDS LibRaw_cmake ZLIB libjpeg-turbo # LCMS2
+     PATCH_COMMAND ${LibRaw_PATCH}
+     CONFIGURE_COMMAND ${LibRaw_CONFIGURE}
+     CMAKE_ARGS ${LibRaw_ARGS}
 )
