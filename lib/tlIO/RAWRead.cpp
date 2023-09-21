@@ -2,11 +2,12 @@
 // Copyright (c) 2021-2023 Darby Johnston
 // All rights reserved.
 
-#include <libraw/libraw.h>
 
 #include <tlIO/RAW.h>
 
 #include <tlCore/StringFormat.h>
+
+#include <libraw/libraw.h>
 
 namespace tl
 {
