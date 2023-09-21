@@ -20,9 +20,9 @@ find_path(LCMS2_INCLUDE_DIR NAMES lcms2.h)
 set(LCMS2_INCLUDE_DIRS ${LCMS2_INCLUDE_DIR})
 
 if(CMAKE_BUILD_TYPE MATCHES "^Debug$")
-    find_library(LCMS2_LIBRARY NAMES lcms2d lcms2)
+    find_library(LCMS2_LIBRARY NAMES lcms2d lcms2 liblcms2d liblcms2)
 else()
-    find_library(LCMS2_LIBRARY NAMES lcms2)
+    find_library(LCMS2_LIBRARY NAMES lcms2 liblcms2)
 endif()
 set(LCMS2_LIBRARIES ${LCMS2_LIBRARY})
 
