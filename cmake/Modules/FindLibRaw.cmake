@@ -15,6 +15,7 @@
 
 find_package(ZLIB REQUIRED)
 find_package(OpenMP REQUIRED)
+find_package(LCMS2)
 
 find_path(LibRaw_INCLUDE_DIR NAMES libraw/libraw.h)
 set(LibRaw_INCLUDE_DIRS
@@ -48,15 +49,15 @@ if(LibRaw_FOUND AND NOT TARGET LibRaw::libraw)
         IMPORTED_LOCATION "${LibRaw_LIBRARY}"
         INTERFACE_COMPILE_DEFINITIONS LibRaw_FOUND
         INTERFACE_INCLUDE_DIRECTORIES "${LibRaw_INCLUDE_DIR}"
-        INTERFACE_LINK_LIBRARIES "ZLIB;OpenMP::OpenMP_CXX")
+        INTERFACE_LINK_LIBRARIES "ZLIB;LCMS2;OpenMP::OpenMP_CXX")
 endif()
 if(LibRaw_FOUND AND NOT TARGET LibRaw::libraw_r)
     add_library(LibRaw::libraw_r UNKNOWN IMPORTED)
-    set_target_properties(LibRaw::libraw PROPERTIES
+    set_target_properties(LibRaw::libraw_r PROPERTIES
         IMPORTED_LOCATION "${LibRaw_r_LIBRARY}"
         INTERFACE_COMPILE_DEFINITIONS LibRaw_FOUND
         INTERFACE_INCLUDE_DIRECTORIES "${LibRaw_INCLUDE_DIR}"
-        INTERFACE_LINK_LIBRARIES "ZLIB;OpenMP::OpenMP_CXX")
+        INTERFACE_LINK_LIBRARIES "ZLIB;LCMS2;OpenMP::OpenMP_CXX")
 endif()
 if(LibRaw_FOUND AND NOT TARGET LibRaw)
     add_library(LibRaw INTERFACE)
