@@ -2,8 +2,8 @@
 #
 # This module defines the following variables:
 #
-# * LIBRAW_INCLUDE_DIRS
-# * LIBRAW_LIBRARIES
+# * LibRaw_INCLUDE_DIRS
+# * LibRaw_LIBRARIES
 #
 # This module defines the following imported targets:
 #
@@ -15,37 +15,37 @@
 
 find_package(ZLIB REQUIRED)
 
-find_path(LIBRAW_INCLUDE_DIR NAMES libraw.h)
-set(LIBRAW_INCLUDE_DIRS
-    ${LIBRAW_INCLUDE_DIR}
+find_path(LibRaw_INCLUDE_DIR NAMES libraw.h)
+set(LibRaw_INCLUDE_DIRS
+    ${LibRaw_INCLUDE_DIR}
     ${ZLIB_INCLUDE_DIRS})
 
 if(CMAKE_BUILD_TYPE MATCHES "^Debug$")
-    find_library(LIBRAW_LIBRARY
+    find_library(LibRaw_LIBRARY
         NAMES rawd raw)
 else()
-    find_library(LIBRAW_LIBRARY
+    find_library(LibRaw_LIBRARY
         NAMES raw)
 endif()
-set(LIBRAW_LIBRARIES
-    ${LIBRAW_LIBRARY}
+set(LibRaw_LIBRARIES
+    ${LibRaw_LIBRARY}
     ${ZLIB_LIBRARIES})
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(
-    LIBRAW
-    REQUIRED_VARS LIBRAW_INCLUDE_DIR LIBRAW_LIBRARY)
-mark_as_advanced(LIBRAW_INCLUDE_DIR LIBRAW_LIBRARY)
+    LibRaw
+    REQUIRED_VARS LibRaw_INCLUDE_DIR LibRaw_LIBRARY)
+mark_as_advanced(LibRaw_INCLUDE_DIR LibRaw_LIBRARY)
 
-if(LIBRAW_FOUND AND NOT TARGET LibRaw::libraw)
+if(LibRaw_FOUND AND NOT TARGET LibRaw::libraw)
     add_library(LibRaw::libraw UNKNOWN IMPORTED)
     set_target_properties(LibRaw::libraw PROPERTIES
-        IMPORTED_LOCATION "${LIBRAW_LIBRARY}"
-        INTERFACE_COMPILE_DEFINITIONS LIBRAW_FOUND
-        INTERFACE_INCLUDE_DIRECTORIES "${LIBRAW_INCLUDE_DIR}"
+        IMPORTED_LOCATION "${LibRaw_LIBRARY}"
+        INTERFACE_COMPILE_DEFINITIONS LibRaw_FOUND
+        INTERFACE_INCLUDE_DIRECTORIES "${LibRaw_INCLUDE_DIR}"
         INTERFACE_LINK_LIBRARIES "ZLIB")
 endif()
-if(LIBRAW_FOUND AND NOT TARGET LibRaw)
+if(LibRaw_FOUND AND NOT TARGET LibRaw)
     add_library(LibRaw INTERFACE)
     target_link_libraries(LibRaw INTERFACE LibRaw::libraw)
 endif()
