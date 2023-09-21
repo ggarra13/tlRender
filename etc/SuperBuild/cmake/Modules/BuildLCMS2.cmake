@@ -2,7 +2,7 @@
 if(WIN32)
 else()
 
-    set(LCMS2_BUILD_COMMAND ./configure --enable-static --prefix=${CMAKE_INSTALL_PREFIX})
+    set(LCMS2_BUILD_COMMAND ./configure --disable-shared --enable-static --prefix=${CMAKE_INSTALL_PREFIX})
 
     ExternalProject_Add(
         LCMS2
