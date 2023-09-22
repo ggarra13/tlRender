@@ -17,6 +17,10 @@ ExternalProject_Add(
     INSTALL_COMMAND ""
 )
 
+if(APPLE)
+    set(CMAKE_CXX_FLAGS "-Wno-register ${CMAKE_CXX_FLAGS}")
+endif()
+
 set(LibRaw_ARGS
     ${TLRENDER_EXTERNAL_ARGS}
     -DBUILD_SHARED_LIBS=ON
@@ -28,15 +32,23 @@ set(LibRaw_ARGS
 )
 
 set(LibRaw_PATCH
-    ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_BINARY_DIR}/LibRaw_cmake/src/LibRaw_cmake/CMakeLists.txt <SOURCE_DIR> &&
+    ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/LibRaw-patch/CMakeLists.txt <SOURCE_DIR> &&
     ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_BINARY_DIR}/LibRaw_cmake/src/LibRaw_cmake/cmake <SOURCE_DIR>/cmake
-    )
+)
 
+set(LibRaw_DEPS LibRaw_cmake ZLIB)
+if(TLRENDER_JPEG)
+    list(APPEND LibRaw_DEPS libjpeg-turbo)
+endif()
+if(UNIX)
+    list(APPEND LibRaw_DEPS LCMS2)
+endif()
+    
 ExternalProject_Add(
      LibRaw
      PREFIX ${CMAKE_CURRENT_BINARY_DIR}/LibRaw
      URL ${LibRaw_URL}
-     DEPENDS LibRaw_cmake ZLIB libjpeg-turbo 
+     DEPENDS ${LibRaw_DEPS}
      PATCH_COMMAND ${LibRaw_PATCH}
      LIST_SEPARATOR |
      CMAKE_ARGS ${LibRaw_ARGS}

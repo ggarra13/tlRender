@@ -2,11 +2,17 @@
 if(WIN32)
 else()
 
+    if(APPLE)
+        set(LCMS2_CXX_FLAGS "-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET} ${CMAKE_CXX_FLAGS}")
+        set(LCMS2_C_FLAGS "-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET} ${CMAKE_C_FLAGS}")
+    endif()
+
     set(LCMS2_BUILD_ARGS
 	--enable-shared
 	--disable-static
 	--prefix=${CMAKE_INSTALL_PREFIX}
-	--without-pthreads
+        "CFLAGS=${LCMS2_C_FLAGS}"
+        "CXXFLAGS=${LCMS2_CXX_FLAGS}"
 	)
     
     set(LCMS2_BUILD_COMMAND ./configure ${LCMS2_BUILD_ARGS})

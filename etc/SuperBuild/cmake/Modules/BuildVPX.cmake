@@ -15,6 +15,11 @@ else()
     set(VPX_OBJCFLAGS)
     set(VPX_LDFLAGS)
 
+    if(APPLE)
+        set(VPX_CXX_FLAGS "-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET} ${CMAKE_CXX_FLAGS}")
+        set(VPX_C_FLAGS "-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET} ${CMAKE_C_FLAGS}")
+    endif()
+
     set(VPX_CONFIGURE_ARGS
         --prefix=${CMAKE_INSTALL_PREFIX}
         --enable-pic
@@ -23,6 +28,8 @@ else()
         --disable-tools
         --disable-docs
         --disable-unit-tests
+        "CFLAGS=${VPX_C_FLAGS}"
+        "CXXFLAGS=${VPX_CXX_FLAGS}"
     )
 
     set( YASM_BIN_PATH $ENV{PATH} )

@@ -69,7 +69,7 @@ namespace tl
                     { ".srf", io::FileType::Sequence },
                     { ".srw", io::FileType::Sequence },
                     { ".sti", io::FileType::Sequence },
-                    { ".x3f", io::FileType::Sequence },
+                    { ".x3f", io::FileType::Sequence }
                 },
                 cache,
                 logSystem);
