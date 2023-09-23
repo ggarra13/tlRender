@@ -7,7 +7,7 @@ set(VPX_TAG v1.12.0) # proven to work
 
 
 if(WIN32 OR NOT TLRENDER_FFMPEG)
-    # Use media_autobuild-suite to build FFmpeg with VPX support on Windows
+     # Compiled with MSys scripts
 else()
 
     set(VPX_CFLAGS)
