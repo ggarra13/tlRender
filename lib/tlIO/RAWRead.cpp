@@ -115,7 +115,7 @@ namespace tl
                     else if(color.model2[0])
                         tags["Software"] = color.model2;
                     
-                    _getTag("Orientation", sizes.flip);
+                    _getTag("Orientation", _getOrientation(sizes.flip));
                     _getTag("ISO Speed Ratings", other.iso_speed);
                     _getTag("Exposure Time", other.shutter);
                     _getTag("Shutter Speed Value",
@@ -337,6 +337,23 @@ namespace tl
             return out;
         }
 
+        const char* Read::_getOrientation(int flip)
+        {
+            switch(sizes.flip)
+            {
+            case 5:  // 90 deg counter clockwise
+                return "90 Degrees Counter Clockwise";
+            case 6:  // 90 deg clockwise
+                return "90 Degrees Clockwise";
+            case 0: // no rotation
+                return "No Rotation";
+            case 3: // 180 degree rotation
+                return "180 degree rotation";
+            default:
+                return "Unknown";
+            }
+        }
+        
         io::Info Read::_getInfo(
             const std::string& fileName,
             const file::MemoryRead* memory)
