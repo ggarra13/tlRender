@@ -1,9 +1,7 @@
 include(ExternalProject)
 
 
-set(X264_TAG main) # live on the cutting-edge!
-
-# set(X264_TAG ???) # proven to work
+set(X264_TAG master) # live on the cutting-edge!
 
 
 if(WIN32 OR NOT TLRENDER_FFMPEG)
@@ -33,7 +31,7 @@ else()
         X264
         PREFIX ${CMAKE_CURRENT_BINARY_DIR}/X264
         DEPENDS ${TLRENDER_YASM_DEP} NASM
-        GIT_REPOSITORY "https://github.com/webmproject/libvpx.git"
+        GIT_REPOSITORY "https://code.videolan.org/videolan/x264.git"
         GIT_TAG ${X264_TAG}
         CONFIGURE_COMMAND ./configure ${X264_CONFIGURE_ARGS}
         BUILD_IN_SOURCE 1
