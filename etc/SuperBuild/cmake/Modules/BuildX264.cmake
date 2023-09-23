@@ -30,7 +30,7 @@ else()
     ExternalProject_Add(
         X264
         PREFIX ${CMAKE_CURRENT_BINARY_DIR}/X264
-        DEPENDS ${TLRENDER_YASM_DEP} NASM
+        DEPENDS NASM
         GIT_REPOSITORY "https://code.videolan.org/videolan/x264.git"
         GIT_TAG ${X264_TAG}
         CONFIGURE_COMMAND ./configure ${X264_CONFIGURE_ARGS}
