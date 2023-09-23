@@ -66,9 +66,6 @@ namespace tl
                 {
                     int ret;
                     {
-                        // LibRaw is not thread safe.  We use a static mutex
-                        // so only one threads constructs a LibRaw at a time.
-                        static std::mutex mutex;
                         std::lock_guard<std::mutex> lock(mutex);
                         iProcessor.reset(new LibRaw());
                     }
@@ -192,9 +189,12 @@ namespace tl
                         const libraw_image_sizes_t& sizes(iProcessor->imgdata.sizes);
                         
                         // Let us unpack the image
-                        ret = iProcessor->unpack();
-                        LIBRAW_ERROR(unpack, ret);
-                    
+                        {
+                            std::lock_guard<std::mutex> lock(mutex);
+                            ret = iProcessor->unpack();
+                            LIBRAW_ERROR(unpack, ret);
+                        }
+                        
                         ret = iProcessor->raw2image_ex(/*substract_black=*/true);
                         LIBRAW_ERROR(raw2image_ex, ret);
                         
@@ -259,6 +259,8 @@ namespace tl
             protected:
                 void _openFile(const std::string& fileName) const
                 {
+                    std::lock_guard<std::mutex> lock(mutex);
+                    
                     int ret;
                     if (_memory)
                     {
@@ -306,12 +308,17 @@ namespace tl
                     }
                 
             private:
+                // LibRaw is not thread safe.  We use a static mutex
+                // so only one threads constructs a LibRaw at a time.
+                static std::mutex mutex;
                 std::unique_ptr<LibRaw> iProcessor;
                 libraw_processed_image_t* image = nullptr; 
                 io::Info _info;
                 const file::MemoryRead* _memory;
             };
         }
+
+        std::mutex File::mutex;
 
         void Read::_init(
             const file::Path& path,
