@@ -82,15 +82,15 @@ namespace tl
                     const libraw_imgother_t& other(iProcessor->imgdata.other);
                     switch(sizes.flip)
                     {
-                    case 5:
+                    case 5:  // 90 deg counter clockwise
+                    case 6:  // 90 deg clockwise
                         info.layout.mirror.y = true;
-                    case 6:
                         info.size.h = sizes.width;
                         info.size.w = sizes.height;
                         break;
-                    case 0:
+                    case 0: // no rotation
                         info.layout.mirror.y = true;
-                    case 3: // no rotation
+                    case 3: // 180 degree rotation
                     default:
                         info.size.w = sizes.width;
                         info.size.h = sizes.height;
