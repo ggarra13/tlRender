@@ -48,7 +48,6 @@ namespace tl
                 const std::weak_ptr<log::System>&);
 
         protected:
-            const char* _getOrientation(int flip);
             io::Info _getInfo(
                 const std::string& fileName,
                 const file::MemoryRead*) override;

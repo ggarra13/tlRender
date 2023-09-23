@@ -280,6 +280,23 @@ namespace tl
                     }
                 }
                 
+                const char* _getOrientation(int flip)
+                    {
+                        switch(flip)
+                        {
+                        case 5:  // 90 deg counter clockwise
+                            return "90 Degrees Counter Clockwise";
+                        case 6:  // 90 deg clockwise
+                            return "90 Degrees Clockwise";
+                        case 0: // no rotation
+                            return "No Rotation";
+                        case 3: // 180 degree rotation
+                            return "180 degree rotation";
+                        default:
+                            return "Unknown";
+                        }
+                    }
+                
                 template<typename T>
                 void _getTag(const char* tag, const T& value)
                     {
@@ -335,23 +352,6 @@ namespace tl
             auto out = std::shared_ptr<Read>(new Read);
             out->_init(path, memory, options, cache, logSystem);
             return out;
-        }
-
-        const char* Read::_getOrientation(int flip)
-        {
-            switch(sizes.flip)
-            {
-            case 5:  // 90 deg counter clockwise
-                return "90 Degrees Counter Clockwise";
-            case 6:  // 90 deg clockwise
-                return "90 Degrees Clockwise";
-            case 0: // no rotation
-                return "No Rotation";
-            case 3: // 180 degree rotation
-                return "180 degree rotation";
-            default:
-                return "Unknown";
-            }
         }
         
         io::Info Read::_getInfo(
