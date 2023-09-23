@@ -2,6 +2,9 @@
 // Copyright (c) 2021-2023 Darby Johnston
 // All rights reserved.
 
+//
+// Small portions of this code have been borrowed from OpenImageIO.  
+//
 
 #include <tlIO/RAW.h>
 
@@ -113,14 +116,14 @@ namespace tl
                         tags["Software"] = color.model2;
                     
                     _getTag("Orientation", sizes.flip);
-                    _getTag("Exif:ISOSpeedRatings", other.iso_speed);
-                    _getTag("ExposureTime", other.shutter);
-                    _getTag("Exif:ShutterSpeedValue",
+                    _getTag("ISO Speed Ratings", other.iso_speed);
+                    _getTag("Exposure Time", other.shutter);
+                    _getTag("Shutter Speed Value",
                             -std::log2(other.shutter));
                     _getTag("FNumber", other.aperture);
-                    _getTag("Exif:ApertureValue",
+                    _getTag("Aperture Value",
                             2.0f * std::log2(other.aperture));
-                    _getTag("Exif:FocalLength", other.focal_len);
+                    _getTag("Focal Length", other.focal_len);
     
                     info.pixelType = image::PixelType::RGB_U16;
                     info.layout.endian = memory::Endian::LSB;
