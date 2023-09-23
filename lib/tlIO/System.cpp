@@ -29,6 +29,9 @@
 #if defined(TLRENDER_USD)
 #include <tlIO/USD.h>
 #endif // TLRENDER_USD
+#if defined(TLRENDER_RAW)
+#include <tlIO/RAW.h>
+#endif // TLRENDER_RAW
 
 #include <tlCore/Context.h>
 #include <tlCore/File.h>
@@ -81,6 +84,9 @@ namespace tl
 #if defined(TLRENDER_USD)
                 _plugins.push_back(usd::Plugin::create(p.cache, logSystem));
 #endif // TLRENDER_USD
+#if defined(TLRENDER_RAW)
+                _plugins.push_back(raw::Plugin::create(p.cache, logSystem));
+#endif // TLRENDER_RAW
             }
         }
 

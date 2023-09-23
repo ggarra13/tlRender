@@ -6,7 +6,7 @@ set(FFmpeg_SHARED_LIBS ON)
 set(FFmpeg_DEBUG OFF)
 
 if(WIN32)
-    # See the directions for building FFmpeg on Windows in "docs/build_windows.html".
+     # Compiled with MSYS script.
 else()
     set(FFmpeg_CFLAGS)
     set(FFmpeg_CXXFLAGS)
@@ -28,6 +28,16 @@ else()
 	list(APPEND FFmpeg_LDFLAGS
 	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libvpx.a")
 	list(APPEND FFmpeg_DEPS VPX)
+    endif()
+    if(TLRENDER_X264)
+	list(APPEND FFmpeg_CONFIGURE_ARGS
+	    --enable-libx264)
+	#
+	# Make sure we pick the static libx264 we compiled, not the system one
+	#
+	list(APPEND FFmpeg_LDFLAGS
+	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libx264.a")
+	list(APPEND FFmpeg_DEPS X264)
     endif()
     if(FFmpeg_DEBUG)
 	list(APPEND FFmpeg_CFLAGS "--extra-cflags=-g")

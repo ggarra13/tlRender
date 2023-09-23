@@ -24,7 +24,7 @@ set(tlRender_VERSION 0.0.1)
 
 find_package(Imath REQUIRED)
 find_package(nlohmann_json REQUIRED)
-find_package(freetype REQUIRED)
+find_package(Freetype REQUIRED)
 find_package(OpenColorIO REQUIRED)
 find_package(OTIO REQUIRED)
 find_package(RtAudio REQUIRED)
@@ -34,6 +34,7 @@ find_package(TIFF)
 find_package(PNG)
 find_package(OpenEXR)
 find_package(FFmpeg)
+find_package(LibRaw)
 
 find_path(tlRender_INCLUDE_DIR NAMES tlCore/Util.h PATH_SUFFIXES tlRender)
 set(tlRender_INCLUDE_DIRS
@@ -48,6 +49,7 @@ set(tlRender_INCLUDE_DIRS
     ${PNG_INCLUDE_DIRS}
     ${OpenEXR_INCLUDE_DIRS}
     ${FFmpeg_INCLUDE_DIRS}
+    ${LibRaw_INCLUDE_DIRS}
     ${glfw3_INCLUDE_DIRS})
 
 if(CMAKE_BUILD_TYPE MATCHES "^Debug$")
@@ -83,6 +85,7 @@ set(tlRender_LIBRARIES
     ${PNG_LIBRARIES}
     ${OpenEXR_LIBRARIES}
     ${FFmpeg_LIBRARIES}
+    ${LibRaw_LIBRARIES}
     ${glfw3_LIBRARIES})
 
 include(FindPackageHandleStandardArgs)
@@ -121,7 +124,7 @@ if(tlRender_FOUND AND NOT TARGET tlRender::tlIO)
         IMPORTED_LOCATION "${tlRender_tlIO_LIBRARY}"
         INTERFACE_COMPILE_DEFINITIONS "${tlRender_COMPILE_DEFINITIONS}"
         INTERFACE_INCLUDE_DIRECTORIES "${tlRender_INCLUDE_DIR}"
-        INTERFACE_LINK_LIBRARIES "libjpeg-turbo::turbojpeg-static;TIFF;PNG;OpenEXR::OpenEXR;FFmpeg")
+        INTERFACE_LINK_LIBRARIES "libjpeg-turbo::turbojpeg-static;TIFF;PNG;OpenEXR::OpenEXR;FFmpeg;LibRaw")
 endif()
 if(tlRender_FOUND AND NOT TARGET tlRender::tlTimeline)
     add_library(tlRender::tlTimeline UNKNOWN IMPORTED)

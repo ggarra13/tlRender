@@ -417,8 +417,6 @@ namespace tl
                 "chromaticities",
                 "whiteLuminance",
                 "adoptedNeutral",
-                "renderingTransform",
-                "lookModTransform",
                 "xDensity",
                 "owner",
                 "comments",
@@ -670,14 +668,6 @@ namespace tl
             if (hasAdoptedNeutral(header))
             {
                 tags["Adopted Neutral"] = serialize(adoptedNeutralAttribute(header).value());
-            }
-            if (hasRenderingTransform(header))
-            {
-                tags["Rendering Transform"] = renderingTransformAttribute(header).value();
-            }
-            if (hasLookModTransform(header))
-            {
-                tags["Look Modification Transform"] = lookModTransformAttribute(header).value();
             }
             if (hasXDensity(header))
             {
