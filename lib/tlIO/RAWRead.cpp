@@ -3,7 +3,10 @@
 // All rights reserved.
 
 //
-// Small portions of this code have been borrowed from OpenImageIO.  
+// Small portions of this code have been borrowed from OpenImageIO.
+// Copyright Contributors to the OpenImageIO project.
+// SPDX-License-Identifier: Apache-2.0
+// https://github.com/OpenImageIO/oiio
 //
 
 #include <tlIO/RAW.h>
