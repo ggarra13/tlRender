@@ -31,7 +31,7 @@ else()
     endif()
     if(TLRENDER_X264)
 	list(APPEND FFmpeg_CONFIGURE_ARGS
-	    --enable-libx264)
+	    --enable-libx264 --enable-gpl)
 	#
 	# Make sure we pick the static libx264 we compiled, not the system one
 	#
