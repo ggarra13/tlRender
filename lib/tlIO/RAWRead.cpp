@@ -17,8 +17,7 @@
     if (ret)                                        \
     {                                               \
         throw std::runtime_error(                   \
-            string::Format("{0}: {1} - {2}")        \
-            .arg(fileName)                          \
+            string::Format("{0} - {1}")             \
             .arg(#function)                         \
             .arg(libraw_strerror(ret)));            \
     }
@@ -214,24 +213,17 @@ namespace tl
                         if (!image)
                         {
                             throw std::runtime_error(
-                                string::Format("{0}: {1}")
-                                .arg(fileName)
-                                .arg("dcraw_make_mem_image returne null"));
+                                "dcraw_make_mem_image returned null");
                         }
 
                         if (image->type != LIBRAW_IMAGE_BITMAP)
                         {
-                            throw std::runtime_error(
-                                string::Format("{0}: {1}")
-                                .arg(fileName)
-                                .arg("Not a bitmap image"));
+                            throw std::runtime_error("Not a bitmap image");
                         }
                         if (image->colors != 3 && image->colors != 1)
                         {
                             throw std::runtime_error(
-                                string::Format("{0}: {1}")
-                                .arg(fileName)
-                                .arg("Not supported color depth"));
+                                "Not supported color depth");
                         }
 
                         if (image->colors == 3)
