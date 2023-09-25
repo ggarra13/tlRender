@@ -191,8 +191,11 @@ namespace tl
                         const libraw_image_sizes_t& sizes(_processor->imgdata.sizes);
                         
                         // Let us unpack the image
-                        ret = _processor->unpack();
-                        LIBRAW_ERROR(unpack, ret);
+                        {
+                            std::lock_guard<std::mutex> lock(_mutex);
+                            ret = _processor->unpack();
+                            LIBRAW_ERROR(unpack, ret);
+                        }
                         
                         ret = _processor->raw2image_ex(/*substract_black=*/true);
                         LIBRAW_ERROR(raw2image_ex, ret);
@@ -252,6 +255,8 @@ namespace tl
             protected:
                 void _openFile(const std::string& fileName)
                 {
+                    std::lock_guard<std::mutex> lock(_mutex);
+                    
                     int ret;
                     if (_memory)
                     {
