@@ -71,8 +71,9 @@ namespace tl
                         std::lock_guard<std::mutex> lock(_mutex);
                         _processor.reset(new LibRaw());
                     }
+                    
                     _memory = memory;
-
+                    
                     _openFile(fileName);
                     
                     _info.video.resize(1);
@@ -104,15 +105,15 @@ namespace tl
                     auto& tags = _info.tags;
 
                     if (idata.make[0])
-                        tags["Camera Manufacturer"] = idata.make;
+                        _storeTag("Camera Manufacturer", idata.make);
                     if (idata.model[0])
-                        tags["Camera Model"] = idata.model;
-                    tags["Normalized Make"] = idata.normalized_make;
-                    tags["Normaliized Model"] = idata.normalized_model;
+                        _storeTag("Camera Model", idata.model);
+                    _storeTag("Normalized Make", idata.normalized_make);
+                    _storeTag("Normaliized Model", idata.normalized_model);
                     if (idata.software[0])
-                        tags["Software"] = idata.software;
+                        _storeTag("Software", idata.software);
                     else if(color.model2[0])
-                        tags["Software"] = color.model2;
+                        _storeTag("Software", color.model2);
                     
                     _storeTag("Orientation", _getOrientation(sizes.flip));
                     _storeTag("ISO Speed Ratings", other.iso_speed);
@@ -126,6 +127,7 @@ namespace tl
     
                     info.pixelType = image::PixelType::RGB_U16;
                     info.layout.endian = memory::Endian::LSB;
+                    _processor->recycle();
                 }
             
 
@@ -196,7 +198,11 @@ namespace tl
                             ret = _processor->unpack();
                             LIBRAW_ERROR(unpack, ret);
                         }
-                        
+
+#if 0
+                        ret = _processor->adjust_sizes_info_only();
+                        LIBRAW_ERROR(adjust_sizes_info_only, ret);
+#endif                   
                         ret = _processor->raw2image_ex(/*substract_black=*/true);
                         LIBRAW_ERROR(raw2image_ex, ret);
                         
@@ -262,7 +268,7 @@ namespace tl
                     {
                         ret = _processor->open_buffer(_memory->p,
                                                       _memory->size);
-                        LIBRAW_ERROR(open_buffer, ret);
+                        // LIBRAW_ERROR(open_buffer, ret);
                     }
                     else
                     {
@@ -274,7 +280,7 @@ namespace tl
 #else
                         ret = _processor->open_file(fileName.c_str());
 #endif
-                        LIBRAW_ERROR(open_file, ret);
+                        // LIBRAW_ERROR(open_file, ret);
                     }
                 }
                 
