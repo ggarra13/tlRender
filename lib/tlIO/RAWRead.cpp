@@ -68,8 +68,8 @@ namespace tl
                 {
                     int ret;
                     {
-                        std::lock_guard<std::mutex> lock(mutex);
-                        iProcessor.reset(new LibRaw());
+                        std::lock_guard<std::mutex> lock(_mutex);
+                        _processor.reset(new LibRaw());
                     }
                     _memory = memory;
 
@@ -78,10 +78,10 @@ namespace tl
                     _info.video.resize(1);
                     auto& info = _info.video[0];
 
-                    const libraw_iparams_t& idata(iProcessor->imgdata.idata);
-                    const libraw_colordata_t& color(iProcessor->imgdata.color);
-                    const libraw_image_sizes_t& sizes(iProcessor->imgdata.sizes);
-                    const libraw_imgother_t& other(iProcessor->imgdata.other);
+                    const libraw_iparams_t& idata(_processor->imgdata.idata);
+                    const libraw_colordata_t& color(_processor->imgdata.color);
+                    const libraw_image_sizes_t& sizes(_processor->imgdata.sizes);
+                    const libraw_imgother_t& other(_processor->imgdata.other);
                     switch(sizes.flip)
                     {
                     case 5:  // 90 deg counter clockwise
@@ -114,15 +114,15 @@ namespace tl
                     else if(color.model2[0])
                         tags["Software"] = color.model2;
                     
-                    _getTag("Orientation", _getOrientation(sizes.flip));
-                    _getTag("ISO Speed Ratings", other.iso_speed);
-                    _getTag("Exposure Time", other.shutter);
-                    _getTag("Shutter Speed Value",
+                    _storeTag("Orientation", _getOrientation(sizes.flip));
+                    _storeTag("ISO Speed Ratings", other.iso_speed);
+                    _storeTag("Exposure Time", other.shutter);
+                    _storeTag("Shutter Speed Value",
                             -std::log2(other.shutter));
-                    _getTag("FNumber", other.aperture);
-                    _getTag("Aperture Value",
+                    _storeTag("FNumber", other.aperture);
+                    _storeTag("Aperture Value",
                             2.0f * std::log2(other.aperture));
-                    _getTag("Focal Length", other.focal_len);
+                    _storeTag("Focal Length", other.focal_len);
     
                     info.pixelType = image::PixelType::RGB_U16;
                     info.layout.endian = memory::Endian::LSB;
@@ -144,7 +144,7 @@ namespace tl
                         const auto& info = _info.video[0];
                         out.image = image::Image::create(info);
 
-                        auto& params(iProcessor->imgdata.params);
+                        auto& params(_processor->imgdata.params);
     
                         // Output 16-bit images
                         params.output_bps = 16;
@@ -156,8 +156,8 @@ namespace tl
                         params.use_camera_wb = 1;
 
                         // Handle white balance
-                        auto& color  = iProcessor->imgdata.color;
-                        auto& idata  = iProcessor->imgdata.idata;
+                        auto& color  = _processor->imgdata.color;
+                        auto& idata  = _processor->imgdata.idata;
                         
                         auto is_rgbg_or_bgrg = [&](unsigned int filters) {
                             std::string filter(libraw_filter_to_str(filters));
@@ -188,78 +188,74 @@ namespace tl
 
                         _openFile(fileName);
                     
-                        const libraw_image_sizes_t& sizes(iProcessor->imgdata.sizes);
+                        const libraw_image_sizes_t& sizes(_processor->imgdata.sizes);
                         
                         // Let us unpack the image
-                        {
-                            std::lock_guard<std::mutex> lock(mutex);
-                            ret = iProcessor->unpack();
-                            LIBRAW_ERROR(unpack, ret);
-                        }
+                        ret = _processor->unpack();
+                        LIBRAW_ERROR(unpack, ret);
                         
-                        ret = iProcessor->raw2image_ex(/*substract_black=*/true);
+                        ret = _processor->raw2image_ex(/*substract_black=*/true);
                         LIBRAW_ERROR(raw2image_ex, ret);
                         
-                        ret = iProcessor->adjust_maximum();
+                        ret = _processor->adjust_maximum();
                         LIBRAW_ERROR(adjust_maximum, ret);
                         
-                        iProcessor->imgdata.params.adjust_maximum_thr = 1.0;
+                        _processor->imgdata.params.adjust_maximum_thr = 1.0;
                         
-                        ret = iProcessor->adjust_maximum();
+                        ret = _processor->adjust_maximum();
                         LIBRAW_ERROR(adjust_maximum, ret);
                         
-                        ret = iProcessor->dcraw_process();
+                        ret = _processor->dcraw_process();
                         LIBRAW_ERROR(dcraw_process, ret);
                     
-                        image = iProcessor->dcraw_make_mem_image(&ret);
+                        _image = _processor->dcraw_make_mem_image(&ret);
                         LIBRAW_ERROR(dcraw_make_mem_image, ret);
-                        if (!image)
+                        if (!_image)
                         {
                             throw std::runtime_error(
                                 "dcraw_make_mem_image returned null");
                         }
 
-                        if (image->type != LIBRAW_IMAGE_BITMAP)
+                        if (_image->type != LIBRAW_IMAGE_BITMAP)
                         {
                             throw std::runtime_error("Not a bitmap image");
                         }
-                        if (image->colors != 3 && image->colors != 1)
+                        if (_image->colors != 3 && _image->colors != 1)
                         {
                             throw std::runtime_error(
                                 "Not supported color depth");
                         }
 
-                        if (image->colors == 3)
+                        if (_image->colors == 3)
                         {
-                            memcpy(out.image->getData(), image->data, image->data_size);
+                            memcpy(out.image->getData(), _image->data,
+                                   _image->data_size);
                         }
                         else // image->colors == 1
                         {
                             uint16_t* data = reinterpret_cast<uint16_t*>(out.image->getData());
-                            for (size_t i = 0; i < image->data_size; ++i)
+                            for (size_t i = 0; i < _image->data_size; ++i)
                             {
                                 const size_t j = i * 3;
-                                data[j] = image->data[i];
-                                data[j + 1] = image->data[i];
-                                data[j + 2] = image->data[i];
+                                data[j] = _image->data[i];
+                                data[j + 1] = _image->data[i];
+                                data[j + 2] = _image->data[i];
                             }
                         }
                     
-                        iProcessor->dcraw_clear_mem(image);
-                        iProcessor->recycle();
+                        _processor->dcraw_clear_mem(_image);
+                        _processor->recycle();
 
                         return out;
                     }
 
             protected:
-                void _openFile(const std::string& fileName) const
+                void _openFile(const std::string& fileName)
                 {
-                    std::lock_guard<std::mutex> lock(mutex);
-                    
                     int ret;
                     if (_memory)
                     {
-                        ret = iProcessor->open_buffer(_memory->p,
+                        ret = _processor->open_buffer(_memory->p,
                                                       _memory->size);
                         LIBRAW_ERROR(open_buffer, ret);
                     }
@@ -269,9 +265,9 @@ namespace tl
 #ifdef _WIN32
                         const std::wstring wideFileName =
                             string::toWide(fileName);
-                        ret = iProcessor->open_file(wideFileName.c_str());
+                        ret = _processor->open_file(wideFileName.c_str());
 #else
-                        ret = iProcessor->open_file(fileName.c_str());
+                        ret = _processor->open_file(fileName.c_str());
 #endif
                         LIBRAW_ERROR(open_file, ret);
                     }
@@ -295,7 +291,7 @@ namespace tl
                     }
                 
                 template<typename T>
-                void _getTag(const char* tag, const T& value)
+                void _storeTag(const char* tag, const T& value)
                     {
                         std::stringstream ss;
                         ss << value;
@@ -305,15 +301,15 @@ namespace tl
             private:
                 // LibRaw is not thread safe.  We use a static mutex
                 // so only one threads constructs a LibRaw at a time.
-                static std::mutex mutex;
-                std::unique_ptr<LibRaw> iProcessor;
-                libraw_processed_image_t* image = nullptr; 
+                static std::mutex _mutex;
+                std::unique_ptr<LibRaw> _processor;
+                libraw_processed_image_t* _image = nullptr; 
                 io::Info _info;
                 const file::MemoryRead* _memory;
             };
         }
 
-        std::mutex File::mutex;
+        std::mutex File::_mutex;
 
         void Read::_init(
             const file::Path& path,
