@@ -337,6 +337,12 @@ namespace tl
             return p.timelineItem->isDragging();
         }
         
+        //! Sets a callback for inserting items
+        void TimelineWidget::setInsertCallback(const std::function<void(const std::vector<timeline::InsertData>&)>& value)
+        {
+            _p->timelineItem->setInsertCallback(value);
+        }
+        
         void TimelineWidget::mousePressEvent(ui::MouseClickEvent& event)
         {
             IWidget::mousePressEvent(event);
