@@ -29,6 +29,7 @@ namespace tl
             timeline::PlayerCacheInfo cacheInfo;
             bool editable = false;
             bool stopOnScrub = true;
+            std::function<void(const std::vector<timeline::InsertData>&)> insertCallback;
 
             struct Track
             {
@@ -539,6 +540,8 @@ namespace tl
                     insertData.push_back({ item->p->getComposable(), track, dropTarget.index });
                     item->p->setVisible(false);
                 }
+                if (p.insertCallback)
+                    p.insertCallback(insertData);
                 auto otioTimeline = insert(
                     p.player->getTimeline()->getTimeline().value,
                     insertData);
@@ -559,7 +562,12 @@ namespace tl
             TLRENDER_P();
             return p.mouse.mode == Private::MouseMode::Item;
         }
-        
+
+    void TimelineItem::setInsertCallback(const std::function<void(const std::vector<timeline::InsertData>&)>& value)
+    {
+        _p->insertCallback = value;
+    }
+    
         /*void TimelineItem::keyPressEvent(ui::KeyEvent& event)
         {
             TLRENDER_P();
