@@ -199,10 +199,15 @@ namespace tl
                             LIBRAW_ERROR(unpack, ret);
                         }
 
-#if 0
                         ret = _processor->adjust_sizes_info_only();
                         LIBRAW_ERROR(adjust_sizes_info_only, ret);
-#endif                   
+
+                        const math::Size2i size(sizes.iwidth, sizes.iheight);
+                        if (size.w > info.size.w || size.h > info.size.h)
+                            throw std::runtime_error(
+                                "Decoded image size bigger than original size. "
+                                " Cannot display.");
+
                         ret = _processor->raw2image_ex(/*substract_black=*/true);
                         LIBRAW_ERROR(raw2image_ex, ret);
                         
@@ -235,23 +240,76 @@ namespace tl
                                 "Not supported color depth");
                         }
 
-                        if (_image->colors == 3)
+                        if (size.w < info.size.w || size.h < info.size.h)
                         {
-                            memcpy(out.image->getData(), _image->data,
-                                   _image->data_size);
-                        }
-                        else // image->colors == 1
-                        {
-                            uint16_t* data = reinterpret_cast<uint16_t*>(out.image->getData());
-                            for (size_t i = 0; i < _image->data_size; ++i)
+                            out.image->zero();
+                            uint16_t* data = reinterpret_cast<uint16_t*>(
+                                out.image->getData());
+                            size_t step = 3 * sizeof(uint16_t);
+                            size_t xoffset = (info.size.w - size.w) / 2;
+                            size_t yoffset = (info.size.h - size.h) / 2;
+
+                            if (_image->colors == 3)
                             {
-                                const size_t j = i * 3;
-                                data[j] = _image->data[i];
-                                data[j + 1] = _image->data[i];
-                                data[j + 2] = _image->data[i];
+                                for (size_t y = 0; y < size.h; ++y)
+                                {
+                                    memcpy(
+                                        data + (y + yoffset) * info.size.w * 3 +
+                                        xoffset * 3,
+                                        _image->data + y * size.w * step,
+                                        size.w * step);
+                                }
+                            }
+                            else if (_image->colors == 1)
+                            {
+                                for (size_t y = 0; y < size.h; ++y)
+                                {
+                                    uint16_t* dst =
+                                        data + (y + yoffset) * info.size.w * 3 +
+                                        xoffset * 3;
+                                    uint16_t* src = reinterpret_cast<uint16_t*>(
+                                                        _image->data) +
+                                                    y * size.w;
+                                    for (size_t x = 0; x < size.w; ++x)
+                                    {
+                                        const size_t j = y * size.w * 3 + x;
+                                        dst[j]   = src[j];
+                                        dst[j+1] = src[j+1];
+                                        dst[j+2] = src[j+2];
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                throw std::runtime_error(
+                                    "Unsupport color depth");
                             }
                         }
-                    
+                        else
+                        {
+                            if (_image->colors == 3)
+                            {
+                                memcpy(out.image->getData(), _image->data,
+                                       _image->data_size);
+                            }
+                            else if (_image->colors == 1)
+                            {
+                                uint16_t* data = reinterpret_cast<uint16_t*>(
+                                    out.image->getData());
+                                for (size_t i = 0; i < _image->data_size; ++i)
+                                {
+                                    const size_t j = i * 3;
+                                    data[j] = _image->data[i];
+                                    data[j + 1] = _image->data[i];
+                                    data[j + 2] = _image->data[i];
+                                }
+                            }
+                            else
+                            {
+                                throw std::runtime_error(
+                                    "Unsupport color depth");
+                            }
+                        }
                         _processor->dcraw_clear_mem(_image);
                         _processor->recycle();
 
