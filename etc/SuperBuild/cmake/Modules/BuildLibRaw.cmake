@@ -33,12 +33,14 @@ set(LibRaw_ARGS
     -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
 )
 
+#  ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/LibRaw-patch/CMakeLists.txt <SOURCE_DIR> &&
+
 set(LibRaw_PATCH
-    ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/LibRaw-patch/CMakeLists.txt <SOURCE_DIR> &&
+    ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_BINARY_DIR}/LibRaw_cmake/CMakeLists.txt <SOURCE_DIR> &&
     ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_BINARY_DIR}/LibRaw_cmake/src/LibRaw_cmake/cmake <SOURCE_DIR>/cmake
 )
 
-set(LibRaw_DEPS LibRaw_cmake ZLIB)
+set(LibRaw_DEPS LibRaw_cmake jasper ZLIB)
 if(TLRENDER_JPEG)
     list(APPEND LibRaw_DEPS libjpeg-turbo)
 endif()
