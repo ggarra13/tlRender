@@ -268,7 +268,7 @@ namespace tl
                     {
                         ret = _processor->open_buffer(_memory->p,
                                                       _memory->size);
-                        // LIBRAW_ERROR(open_buffer, ret);
+                        LIBRAW_ERROR(open_buffer, ret);
                     }
                     else
                     {
@@ -280,7 +280,7 @@ namespace tl
 #else
                         ret = _processor->open_file(fileName.c_str());
 #endif
-                        // LIBRAW_ERROR(open_file, ret);
+                        LIBRAW_ERROR(open_file, ret);
                     }
                 }
                 
