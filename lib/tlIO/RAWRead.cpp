@@ -65,71 +65,62 @@ namespace tl
             {
             public:
                 File(const std::string& fileName, const file::MemoryRead* memory)
-                {
-                    int ret;
                     {
-                        std::lock_guard<std::mutex> lock(_mutex);
-                        _processor.reset(new LibRaw());
-                    }
+                        int ret;
+                        {
+                            // LibRaw is not thread safe.  We use a static mutex
+                            // so only one threads constructs a LibRaw at a
+                            // time.
+                            std::lock_guard<std::mutex> lock(_mutex);
+                            _processor.reset(new LibRaw());
+                        }
                     
-                    _memory = memory;
+                        _memory = memory;
                     
-                    _openFile(fileName);
+                        _openFile(fileName);
                     
-                    _info.video.resize(1);
-                    auto& info = _info.video[0];
+                        _info.video.resize(1);
+                        auto& info = _info.video[0];
 
-                    const libraw_iparams_t& idata(_processor->imgdata.idata);
-                    const libraw_colordata_t& color(_processor->imgdata.color);
-                    const libraw_image_sizes_t& sizes(_processor->imgdata.sizes);
-                    const libraw_imgother_t& other(_processor->imgdata.other);
-                    switch(sizes.flip)
-                    {
-                    case 5:  // 90 deg counter clockwise
-                    case 6:  // 90 deg clockwise
+                        const auto& sizes(_processor->imgdata.sizes);
+
+                        info.size.w = sizes.iwidth;
+                        info.size.h = sizes.iheight;
+                        info.size.pixelAspectRatio = sizes.pixel_aspect;
                         info.layout.mirror.y = true;
-                        info.size.h = sizes.width;
-                        info.size.w = sizes.height;
-                        break;
-                    case 0: // no rotation
-                        info.layout.mirror.y = true;
-                    case 3: // 180 degree rotation
-                    default:
-                        info.size.w = sizes.width;
-                        info.size.h = sizes.height;
-                        break;
-                    }
-                    info.size.pixelAspectRatio = sizes.pixel_aspect;
 
-                    // Save Tags
-                    auto& tags = _info.tags;
+                        // Save Tags
+                        auto& tags = _info.tags;
 
-                    if (idata.make[0])
-                        _storeTag("Camera Manufacturer", idata.make);
-                    if (idata.model[0])
-                        _storeTag("Camera Model", idata.model);
-                    _storeTag("Normalized Make", idata.normalized_make);
-                    _storeTag("Normaliized Model", idata.normalized_model);
-                    if (idata.software[0])
-                        _storeTag("Software", idata.software);
-                    else if(color.model2[0])
-                        _storeTag("Software", color.model2);
+                        // Use some aliases
+                        const auto& idata(_processor->imgdata.idata);
+                        const auto& color(_processor->imgdata.color);
+                        const auto& other(_processor->imgdata.other);
+                        if (idata.make[0])
+                            _storeTag("Camera Manufacturer", idata.make);
+                        if (idata.model[0])
+                            _storeTag("Camera Model", idata.model);
+                        _storeTag("Normalized Make", idata.normalized_make);
+                        _storeTag("Normaliized Model", idata.normalized_model);
+                        if (idata.software[0])
+                            _storeTag("Software", idata.software);
+                        else if(color.model2[0])
+                            _storeTag("Software", color.model2);
                     
-                    _storeTag("Orientation", _getOrientation(sizes.flip));
-                    _storeTag("ISO Speed Ratings", other.iso_speed);
-                    _storeTag("Exposure Time", other.shutter);
-                    _storeTag("Shutter Speed Value",
-                            -std::log2(other.shutter));
-                    _storeTag("FNumber", other.aperture);
-                    _storeTag("Aperture Value",
-                            2.0f * std::log2(other.aperture));
-                    _storeTag("Focal Length", other.focal_len);
+                        _storeTag("Orientation", _getOrientation(sizes.flip));
+                        _storeTag("ISO Speed Ratings", other.iso_speed);
+                        _storeTag("Exposure Time", other.shutter);
+                        _storeTag("Shutter Speed Value",
+                                  -std::log2(other.shutter));
+                        _storeTag("FNumber", other.aperture);
+                        _storeTag("Aperture Value",
+                                  2.0f * std::log2(other.aperture));
+                        _storeTag("Focal Length", other.focal_len);
     
-                    info.pixelType = image::PixelType::RGB_U16;
-                    info.layout.endian = memory::Endian::LSB;
-                    _processor->recycle();
-                }
-            
+                        info.pixelType = image::PixelType::RGB_U16;
+                        info.layout.endian = memory::Endian::LSB;
+                    }
+                
 
                 const io::Info& getInfo() const
                 {
@@ -158,8 +149,8 @@ namespace tl
                         params.use_camera_wb = 1;
 
                         // Handle white balance
-                        auto& color  = _processor->imgdata.color;
-                        auto& idata  = _processor->imgdata.idata;
+                        const auto& color  = _processor->imgdata.color;
+                        const auto& idata  = _processor->imgdata.idata;
                         
                         auto is_rgbg_or_bgrg = [&](unsigned int filters) {
                             std::string filter(libraw_filter_to_str(filters));
@@ -190,23 +181,7 @@ namespace tl
 
                         _openFile(fileName);
                     
-                        const libraw_image_sizes_t& sizes(_processor->imgdata.sizes);
-                        
-                        // Let us unpack the image
-                        {
-                            std::lock_guard<std::mutex> lock(_mutex);
-                            ret = _processor->unpack();
-                            LIBRAW_ERROR(unpack, ret);
-                        }
-
-                        ret = _processor->adjust_sizes_info_only();
-                        LIBRAW_ERROR(adjust_sizes_info_only, ret);
-
-                        const math::Size2i size(sizes.iwidth, sizes.iheight);
-                        if (size.w > info.size.w || size.h > info.size.h)
-                            throw std::runtime_error(
-                                "Decoded image size bigger than original size. "
-                                " Cannot display.");
+                        const auto& sizes(_processor->imgdata.sizes);
 
                         ret = _processor->raw2image_ex(/*substract_black=*/true);
                         LIBRAW_ERROR(raw2image_ex, ret);
@@ -234,81 +209,28 @@ namespace tl
                         {
                             throw std::runtime_error("Not a bitmap image");
                         }
-                        if (_image->colors != 3 && _image->colors != 1)
-                        {
-                            throw std::runtime_error(
-                                "Not supported color depth");
-                        }
 
-                        if (size.w < info.size.w || size.h < info.size.h)
+                        if (_image->colors == 3)
                         {
-                            out.image->zero();
+                            memcpy(out.image->getData(), _image->data,
+                                   _image->data_size);
+                        }
+                        else if (_image->colors == 1)
+                        {
                             uint16_t* data = reinterpret_cast<uint16_t*>(
                                 out.image->getData());
-                            size_t step = 3 * sizeof(uint16_t);
-                            size_t xoffset = (info.size.w - size.w) / 2;
-                            size_t yoffset = (info.size.h - size.h) / 2;
-
-                            if (_image->colors == 3)
+                            for (size_t i = 0; i < _image->data_size; ++i)
                             {
-                                for (size_t y = 0; y < size.h; ++y)
-                                {
-                                    memcpy(
-                                        data + (y + yoffset) * info.size.w * 3 +
-                                        xoffset * 3,
-                                        _image->data + y * size.w * step,
-                                        size.w * step);
-                                }
-                            }
-                            else if (_image->colors == 1)
-                            {
-                                for (size_t y = 0; y < size.h; ++y)
-                                {
-                                    uint16_t* dst =
-                                        data + (y + yoffset) * info.size.w * 3 +
-                                        xoffset * 3;
-                                    uint16_t* src = reinterpret_cast<uint16_t*>(
-                                                        _image->data) +
-                                                    y * size.w;
-                                    for (size_t x = 0; x < size.w; ++x)
-                                    {
-                                        const size_t j = y * size.w * 3 + x;
-                                        dst[j]   = src[j];
-                                        dst[j+1] = src[j+1];
-                                        dst[j+2] = src[j+2];
-                                    }
-                                }
-                            }
-                            else
-                            {
-                                throw std::runtime_error(
-                                    "Unsupport color depth");
+                                const size_t j = i * 3;
+                                data[j] = _image->data[i];
+                                data[j + 1] = _image->data[i];
+                                data[j + 2] = _image->data[i];
                             }
                         }
                         else
                         {
-                            if (_image->colors == 3)
-                            {
-                                memcpy(out.image->getData(), _image->data,
-                                       _image->data_size);
-                            }
-                            else if (_image->colors == 1)
-                            {
-                                uint16_t* data = reinterpret_cast<uint16_t*>(
-                                    out.image->getData());
-                                for (size_t i = 0; i < _image->data_size; ++i)
-                                {
-                                    const size_t j = i * 3;
-                                    data[j] = _image->data[i];
-                                    data[j + 1] = _image->data[i];
-                                    data[j + 2] = _image->data[i];
-                                }
-                            }
-                            else
-                            {
-                                throw std::runtime_error(
-                                    "Unsupport color depth");
-                            }
+                            throw std::runtime_error(
+                                "Unsupport color depth");
                         }
                         _processor->dcraw_clear_mem(_image);
                         _processor->recycle();
@@ -319,8 +241,6 @@ namespace tl
             protected:
                 void _openFile(const std::string& fileName)
                 {
-                    std::lock_guard<std::mutex> lock(_mutex);
-                    
                     int ret;
                     if (_memory)
                     {
@@ -330,7 +250,6 @@ namespace tl
                     }
                     else
                     {
-                        // Open the file and read the metadata
 #ifdef _WIN32
                         const std::wstring wideFileName =
                             string::toWide(fileName);
@@ -340,6 +259,13 @@ namespace tl
 #endif
                         LIBRAW_ERROR(open_file, ret);
                     }
+                        
+                    // Let us unpack the image
+                    ret = _processor->unpack();
+                    LIBRAW_ERROR(unpack, ret);
+
+                    ret = _processor->adjust_sizes_info_only();
+                    LIBRAW_ERROR(adjust_sizes_info_only, ret);
                 }
                 
                 const char* _getOrientation(int flip)
@@ -368,8 +294,6 @@ namespace tl
                     }
                 
             private:
-                // LibRaw is not thread safe.  We use a static mutex
-                // so only one threads constructs a LibRaw at a time.
                 static std::mutex _mutex;
                 std::unique_ptr<LibRaw> _processor;
                 libraw_processed_image_t* _image = nullptr; 
