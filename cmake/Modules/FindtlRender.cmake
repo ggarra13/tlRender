@@ -119,6 +119,21 @@ mark_as_advanced(
     tlRender_tlGL_LIBRARY
     tlRender_glad_LIBRARY)
 
+set(tlRender_tlIO_LIBRARIES libjpeg-turbo::turbojpeg-static )
+if (TIFF_FOUND)
+   list(APPEND tlRender_tlIO_LIBRARIES TIFF)
+endif()
+if (OpenEXR_FOUND)
+   list(APPEND tlRender_tlIO_LIBRARIES OpenEXR::OpenEXR)
+endif()
+if (FFmpeg_FOUND)
+   list(APPEND tlRender_tlIO_LIBRARIES FFmpeg)
+endif()
+if (LibRaw_FOUND)
+   list(APPEND tlRender_tlIO_LIBRARIES LibRaw)
+endif()
+
+
 set(tlRender_COMPILE_DEFINITIONS tlRender_FOUND)
 
 if(tlRender_FOUND AND NOT TARGET tlRender::tlCore)
@@ -135,7 +150,7 @@ if(tlRender_FOUND AND NOT TARGET tlRender::tlIO)
         IMPORTED_LOCATION "${tlRender_tlIO_LIBRARY}"
         INTERFACE_COMPILE_DEFINITIONS "${tlRender_COMPILE_DEFINITIONS}"
         INTERFACE_INCLUDE_DIRECTORIES "${tlRender_INCLUDE_DIR}"
-        INTERFACE_LINK_LIBRARIES "libjpeg-turbo::turbojpeg-static;TIFF;PNG;OpenEXR::OpenEXR;FFmpeg;LibRaw")
+        INTERFACE_LINK_LIBRARIES "${tlRender_tlIO_LIBRARIES}")
 endif()
 if(tlRender_FOUND AND NOT TARGET tlRender::tlTimeline)
     add_library(tlRender::tlTimeline UNKNOWN IMPORTED)
