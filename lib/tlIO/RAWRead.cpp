@@ -51,6 +51,16 @@ namespace {
         }
         return "";
     }
+
+    void
+    get_local_time(const time_t* time, struct tm* converted_time)
+    {
+#ifdef _WIN32
+        localtime_s(converted_time, time);
+#else
+        localtime_r(time, converted_time);
+#endif
+    }
 }  // namespace
 
 
@@ -97,15 +107,16 @@ namespace tl
                         const auto& color(_processor->imgdata.color);
                         const auto& other(_processor->imgdata.other);
                         if (idata.make[0])
-                            _storeTag("Camera Manufacturer", idata.make);
+                            _storeTag("Make", idata.make);
                         if (idata.model[0])
-                            _storeTag("Camera Model", idata.model);
+                            _storeTag("Model", idata.model);
                         _storeTag("Normalized Make", idata.normalized_make);
                         _storeTag("Normaliized Model", idata.normalized_model);
                         if (idata.software[0])
                             _storeTag("Software", idata.software);
                         else if(color.model2[0])
                             _storeTag("Software", color.model2);
+                        _storeTag("Exif:Flash", (int)color.flash_used);
                     
                         _storeTag("Orientation", _getOrientation(sizes.flip));
                         _storeTag("ISO Speed Ratings", other.iso_speed);
@@ -116,7 +127,42 @@ namespace tl
                         _storeTag("Aperture Value",
                                   2.0f * std::log2(other.aperture));
                         _storeTag("Focal Length", other.focal_len);
-    
+                        
+                        struct tm m_tm;
+                        get_local_time(
+                            &_processor->imgdata.other.timestamp, &m_tm);
+                        char datetime[20];
+                        strftime(datetime, 20, "%Y-%m-%d %H:%M:%S", &m_tm);
+                        _storeTag("DateTime", datetime);
+                        _storeTag("raw:ShotOrder", other.shot_order);
+                        if (other.parsed_gps.gpsparsed) {
+                            _storeTag("GPS:Latitude", other.parsed_gps.latitude);
+                            _storeTag("GPS:Longitude", other.parsed_gps.longitude);
+                            _storeTag("GPS:TimeStamp", other.parsed_gps.gpstimestamp);
+                            _storeTag("GPS:Altitude", other.parsed_gps.altitude);
+                            _storeTag("GPS:LatitudeRef", &other.parsed_gps.latref);
+                            _storeTag("GPS:LongitudeRef", &other.parsed_gps.longref);
+                            _storeTag("GPS:AltitudeRef", &other.parsed_gps.altref);
+                            _storeTag("GPS:Status", &other.parsed_gps.gpsstatus);
+                        }
+
+                        const auto& makernotes(_processor->imgdata.makernotes);
+                        const auto& common(makernotes.common);
+                        _storeTag("Exif:Humidity", common.exifHumidity);
+                        _storeTag("Exif:Pressure", common.exifPressure);
+                        _storeTag("Exif:WaterDepth", common.exifWaterDepth);
+                        _storeTag("Exif:Acceleration", common.exifAcceleration);
+                        _storeTag("Exif:CameraElevationAngle",
+                                  common.exifCameraElevationAngle);
+                        _storeTag("raw:pre_mul", color.pre_mul[0], color.pre_mul[4]);
+                        _storeTag("raw:cam_mul", color.cam_mul[0], color.cam_mul[4]);
+                        _storeTag("raw:rgb_cam", color.rgb_cam[0][0],
+                            color.rgb_cam[2][4]);
+                        _storeTag("raw:cam_xyz", color.cam_xyz[0][0],
+                            color.cam_xyz[3][3]);
+                        
+                        _processor->recycle();
+                        
                         info.pixelType = image::PixelType::RGB_U16;
                         info.layout.endian = memory::Endian::LSB;
                     }
@@ -147,6 +193,8 @@ namespace tl
                         params.adjust_maximum_thr = 0.0f;
                         params.user_sat = 0;
                         params.use_camera_wb = 1;
+                        params.user_flip = -1;
+                        params.user_qual = 3;
 
                         // Handle white balance
                         const auto& color  = _processor->imgdata.color;
@@ -156,8 +204,9 @@ namespace tl
                             std::string filter(libraw_filter_to_str(filters));
                             return filter == "RGBG" || filter == "BGRG";
                         };
-                        float norm[4] = { color.cam_mul[0], color.cam_mul[1], color.cam_mul[2],
-                          color.cam_mul[3] };
+                        float norm[4] = {
+                            color.cam_mul[0], color.cam_mul[1],
+                            color.cam_mul[2], color.cam_mul[3]};
 
                         if (is_rgbg_or_bgrg(idata.filters)) {
                             // normalize white balance around green
@@ -174,6 +223,12 @@ namespace tl
                         // Handle camera matrix
                         params.use_camera_matrix = 1;
 
+                        // Highlight adjustment
+                        // 0  = Clip
+                        // 1  = Unclip
+                        // 2  = Blend
+                        params.highlight = 0;
+                        
                         // Handle LCMS color correction with sRGB as output
                         params.output_color = 1;
                         params.gamm[0] = 1.0 / 2.4;
@@ -181,6 +236,11 @@ namespace tl
 
                         _openFile(fileName);
                     
+                        float old_max_thr = params.adjust_maximum_thr;
+
+                        // Disable max threshold for highlight adjustment
+                        params.adjust_maximum_thr = 0.0f;
+            
                         const auto& sizes(_processor->imgdata.sizes);
 
                         ret = _processor->raw2image_ex(/*substract_black=*/true);
@@ -189,10 +249,16 @@ namespace tl
                         ret = _processor->adjust_maximum();
                         LIBRAW_ERROR(adjust_maximum, ret);
                         
-                        _processor->imgdata.params.adjust_maximum_thr = 1.0;
+                        float unadjusted = _processor->imgdata.color.maximum;
+                        
+                        params.adjust_maximum_thr
+                            = (old_max_thr == 0.0f) ? 1.0 : old_max_thr;
                         
                         ret = _processor->adjust_maximum();
                         LIBRAW_ERROR(adjust_maximum, ret);
+
+                        // Restore old max threashold
+                        params.adjust_maximum_thr = old_max_thr;
                         
                         ret = _processor->dcraw_process();
                         LIBRAW_ERROR(dcraw_process, ret);
@@ -241,6 +307,7 @@ namespace tl
             protected:
                 void _openFile(const std::string& fileName)
                 {
+                    std::lock_guard<std::mutex> lock(_mutex);
                     int ret;
                     if (_memory)
                     {
@@ -290,6 +357,15 @@ namespace tl
                     {
                         std::stringstream ss;
                         ss << value;
+                        _info.tags[tag] = ss.str();
+                    }
+                
+                template<typename T>
+                void _storeTag(const char* tag, const T& value1,
+                               const T& value2)
+                    {
+                        std::stringstream ss;
+                        ss << value1 << " " << value2;
                         _info.tags[tag] = ss.str();
                     }
                 
