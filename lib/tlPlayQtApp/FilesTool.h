@@ -6,6 +6,8 @@
 
 #include <tlPlayQtApp/IToolWidget.h>
 
+#include <tlPlay/FilesModel.h>
+
 #include <QDockWidget>
 
 namespace tl
@@ -20,17 +22,17 @@ namespace tl
             Q_OBJECT
 
         public:
-            FilesTool(
-                const QMap<QString, QAction*>&,
-                App*,
-                QWidget* parent = nullptr);
+            FilesTool(App*, QWidget* parent = nullptr);
 
             virtual ~FilesTool();
 
-        private Q_SLOTS:
-            void _activatedCallback(const QModelIndex&);
-
         private:
+            void _filesUpdate(const std::vector<std::shared_ptr<play::FilesModelItem> >&);
+            void _aUpdate(const std::shared_ptr<play::FilesModelItem>&);
+            void _bUpdate(const std::vector<std::shared_ptr<play::FilesModelItem> >&);
+            void _layersUpdate(const std::vector<int>&);
+            void _compareUpdate(const timeline::CompareOptions&);
+
             TLRENDER_PRIVATE();
         };
 
@@ -40,9 +42,7 @@ namespace tl
             Q_OBJECT
 
         public:
-            FilesDockWidget(
-                FilesTool*,
-                QWidget* parent = nullptr);
+            FilesDockWidget(FilesTool*, QWidget* parent = nullptr);
         };
     }
 }

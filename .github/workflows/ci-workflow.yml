@@ -18,6 +18,8 @@ jobs:
       TLRENDER_PNG: ON
       TLRENDER_EXR: ON
       TLRENDER_FFMPEG: ON
+      TLRENDER_USD: OFF
+      TLRENDER_NFD: OFF
       TLRENDER_QT5: ON
       TLRENDER_PROGRAMS: ON
       TLRENDER_EXAMPLES: ON
@@ -29,30 +31,6 @@ jobs:
       with:
         submodules: recursive
 
-    - name: Update
-      run: sudo apt-get update
-
-    - name: Install lcov
-      if: env.TLRENDER_GCOV == 'ON'
-      run: sudo apt-get install lcov
-
-    - name: Install OpenGL dev
-      run: sudo apt-get install xorg-dev libglu1-mesa-dev mesa-common-dev
-
-    - name: Install ALSA dev
-      run: sudo apt-get install libasound2-dev
-
-    - name: Install PulseAudio dev
-      run: sudo apt-get install libpulse-dev
-
-    - name: Install Python dev
-      if: env.TLRENDER_PYTHON == 'ON'
-      run: sudo apt-get install python3.8-dev
-
-    - name: Install Qt dev
-      if: env.TLRENDER_QT5 == 'ON'
-      run: sudo apt-get install qtdeclarative5-dev libqt5quick5 qtbase5-dev libqt5svg5-dev qtchooser qt5-qmake qtbase5-dev-tools
-
     - name: Setup environment
       run: |
         echo "$PWD/build/install/bin" >> $GITHUB_PATH
@@ -61,29 +39,7 @@ jobs:
 
     - name: Build tlRender
       run: |
-        mkdir build
-        cd build
-        cmake ../etc/SuperBuild \
-          -DCMAKE_BUILD_TYPE=Debug \
-          -DCMAKE_INSTALL_PREFIX=$PWD/install \
-          -DCMAKE_PREFIX_PATH=$PWD/install \
-          -DTLRENDER_MMAP=$TLRENDER_MMAP \
-          -DTLRENDER_PYTHON=$TLRENDER_PYTHON \
-          -DTLRENDER_GLFW=$TLRENDER_GLFW \
-          -DTLRENDER_OCIO=$TLRENDER_OCIO \
-          -DTLRENDER_AUDIO=$TLRENDER_AUDIO \
-          -DTLRENDER_JPEG=$TLRENDER_JPEG \
-          -DTLRENDER_TIFF=$TLRENDER_TIFF \
-          -DTLRENDER_STB=$TLRENDER_STB \
-          -DTLRENDER_PNG=$TLRENDER_PNG \
-          -DTLRENDER_EXR=$TLRENDER_EXR \
-          -DTLRENDER_FFMPEG=$TLRENDER_FFMPEG \
-          -DTLRENDER_QT5=$TLRENDER_QT5 \
-          -DTLRENDER_PROGRAMS=$TLRENDER_PROGRAMS \
-          -DTLRENDER_EXAMPLES=$TLRENDER_EXAMPLES \
-          -DTLRENDER_TESTS=$TLRENDER_TESTS \
-          -DTLRENDER_GCOV=$TLRENDER_GCOV
-        cmake --build . -j 4 --config Debug
+        bash etc/Linux/linux-build-gha.sh Debug
 
     - name: Run tests
       run: |
@@ -94,9 +50,8 @@ jobs:
     - name: Code coverage
       if: env.TLRENDER_GCOV == 'ON'
       run: |
-        cd build
-        cd tlRender/src/tlRender-build
-        sh ../../../../etc/Linux/lcov.sh
+        cd build/tlRender/src/tlRender-build
+        bash ../../../../etc/Linux/lcov.sh
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
@@ -119,23 +74,15 @@ jobs:
       TLRENDER_PNG: OFF
       TLRENDER_EXR: OFF
       TLRENDER_FFMPEG: OFF
+      TLRENDER_USD: OFF
       TLRENDER_NFD: OFF
       TLRENDER_QT5: OFF
-      TLRENDER_PROGRAMS: ON
-      TLRENDER_EXAMPLES: ON
       TLRENDER_TESTS: ON
-      TLRENDER_GCOV: OFF
 
     steps:
     - uses: actions/checkout@v3
       with:
         submodules: recursive
-
-    - name: Update
-      run: sudo apt-get update
-
-    - name: Install OpenGL dev
-      run: sudo apt-get install xorg-dev libglu1-mesa-dev mesa-common-dev
       
     - name: Setup environment
       run: |
@@ -145,30 +92,7 @@ jobs:
 
     - name: Build tlRender
       run: |
-        mkdir build
-        cd build
-        cmake ../etc/SuperBuild \
-          -DCMAKE_BUILD_TYPE=Debug \
-          -DCMAKE_INSTALL_PREFIX=$PWD/install \
-          -DCMAKE_PREFIX_PATH=$PWD/install \
-          -DTLRENDER_MMAP=$TLRENDER_MMAP \
-          -DTLRENDER_PYTHON=$TLRENDER_PYTHON \
-          -DTLRENDER_GLFW=$TLRENDER_GLFW \
-          -DTLRENDER_OCIO=$TLRENDER_OCIO \
-          -DTLRENDER_AUDIO=$TLRENDER_AUDIO \
-          -DTLRENDER_JPEG=$TLRENDER_JPEG \
-          -DTLRENDER_TIFF=$TLRENDER_TIFF \
-          -DTLRENDER_STB=$TLRENDER_STB \
-          -DTLRENDER_PNG=$TLRENDER_PNG \
-          -DTLRENDER_EXR=$TLRENDER_EXR \
-          -DTLRENDER_FFMPEG=$TLRENDER_FFMPEG \
-          -DTLRENDER_NFD=$TLRENDER_NFD \
-          -DTLRENDER_QT5=$TLRENDER_QT5 \
-          -DTLRENDER_PROGRAMS=$TLRENDER_PROGRAMS \
-          -DTLRENDER_EXAMPLES=$TLRENDER_EXAMPLES \
-          -DTLRENDER_TESTS=$TLRENDER_TESTS \
-          -DTLRENDER_GCOV=$TLRENDER_GCOV
-        cmake --build . -j 4 --config Debug
+        bash etc/Linux/linux-build-gha.sh Debug
 
     - name: Run tests
       run: |
@@ -176,6 +100,57 @@ jobs:
         cd tlRender/src/tlRender-build
         ctest --rerun-failed --output-on-failure
 
+<<<<<<< HEAD
+=======
+  linux-package:
+    runs-on: ubuntu-latest
+
+    env:
+      TLRENDER_MMAP: ON
+      TLRENDER_PYTHON: OFF
+      TLRENDER_GLFW: ON
+      TLRENDER_OCIO: ON
+      TLRENDER_AUDIO: ON
+      TLRENDER_JPEG: ON
+      TLRENDER_TIFF: ON
+      TLRENDER_STB: ON
+      TLRENDER_PNG: ON
+      TLRENDER_EXR: ON
+      TLRENDER_FFMPEG: ON
+      TLRENDER_USD: ON
+      TLRENDER_NFD: OFF
+      TLRENDER_QT5: ON
+      TLRENDER_PROGRAMS: ON
+      TLRENDER_EXAMPLES: OFF
+      TLRENDER_TESTS: OFF
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+
+    - name: Setup environment
+      run: |
+        echo "$PWD/build/install/bin" >> $GITHUB_PATH
+        echo "LD_LIBRARY_PATH=$PWD/build/install/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+        echo "PYTHONPATH=$PWD/build/install/lib:$PYTHONPATH" >> $GITHUB_ENV
+
+    - name: Build tlRender
+      run: |
+        bash etc/Linux/linux-build-gha.sh Release
+
+    - name: Package
+      run: |
+        cd build
+        cd tlRender/src/tlRender-build
+        cmake --build . -j 4 --config Release --target package
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: tlRender-Linux-Packages
+        path: build/tlRender/src/tlRender-build/tlRender-*.tar.gz
+
+>>>>>>> darby_edit_original
   macos-build:
     runs-on: macos-latest
 
@@ -191,6 +166,7 @@ jobs:
       TLRENDER_PNG: ON
       TLRENDER_EXR: ON
       TLRENDER_FFMPEG: ON
+      TLRENDER_USD: OFF
       TLRENDER_NFD: OFF
       TLRENDER_QT5: OFF
       TLRENDER_PROGRAMS: ON
@@ -214,31 +190,7 @@ jobs:
     - name: Build tlRender
       run: |
         export DYLD_LIBRARY_PATH=$PWD/build/install/lib:$DYLD_LIBRARY_PATH
-        mkdir build
-        cd build
-        cmake ../etc/SuperBuild \
-          -DCMAKE_BUILD_TYPE=Debug \
-          -DCMAKE_INSTALL_PREFIX=$PWD/install \
-          -DCMAKE_PREFIX_PATH=$PWD/install \
-          -DTLRENDER_MMAP=$TLRENDER_MMAP \
-          -DTLRENDER_PYTHON=$TLRENDER_PYTHON \
-          -DTLRENDER_GLFW=$TLRENDER_GLFW \
-          -DTLRENDER_OCIO=$TLRENDER_OCIO \
-          -DTLRENDER_AUDIO=$TLRENDER_AUDIO \
-          -DTLRENDER_JPEG=$TLRENDER_JPEG \
-          -DTLRENDER_TIFF=$TLRENDER_TIFF \
-          -DTLRENDER_STB=$TLRENDER_STB \
-          -DTLRENDER_PNG=$TLRENDER_PNG \
-          -DTLRENDER_EXR=$TLRENDER_EXR \
-          -DTLRENDER_FFMPEG=$TLRENDER_FFMPEG \
-          -DTLRENDER_NFD=$TLRENDER_NFD \
-          -DTLRENDER_QT5=$TLRENDER_QT5 \
-          -DTLRENDER_PROGRAMS=$TLRENDER_PROGRAMS \
-          -DTLRENDER_EXAMPLES=$TLRENDER_EXAMPLES \
-          -DTLRENDER_TESTS=$TLRENDER_TESTS \
-          -DTLRENDER_GCOV=$TLRENDER_GCOV \
-          -DCMAKE_OSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}
-        cmake --build . -j 4 --config Debug
+        bash etc/macOS/macos-build-gha.sh Debug
 
     - name: Run tests
       run: |
@@ -247,6 +199,60 @@ jobs:
         cd tlRender/src/tlRender-build
         tests/tltest/tltest
 
+<<<<<<< HEAD
+=======
+  macos-package:
+    runs-on: macos-latest
+
+    env:
+      TLRENDER_MMAP: ON
+      TLRENDER_PYTHON: OFF
+      TLRENDER_GLFW: ON
+      TLRENDER_OCIO: ON
+      TLRENDER_AUDIO: ON
+      TLRENDER_JPEG: ON
+      TLRENDER_TIFF: ON
+      TLRENDER_STB: ON
+      TLRENDER_PNG: ON
+      TLRENDER_EXR: ON
+      TLRENDER_FFMPEG: ON
+      TLRENDER_USD: ON
+      TLRENDER_NFD: OFF
+      TLRENDER_QT5: OFF
+      TLRENDER_PROGRAMS: ON
+      TLRENDER_EXAMPLES: OFF
+      TLRENDER_TESTS: OFF
+      CMAKE_OSX_DEPLOYMENT_TARGET: 10.15
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+
+    # \bug DYLD_LIBRARY_PATH is not being set here?
+    - name: Setup environment
+      run: |
+        echo "$PWD/build/install/bin" >> $GITHUB_PATH
+        echo "DYLD_LIBRARY_PATH=$PWD/build/install/lib:$DYLD_LIBRARY_PATH" >> $GITHUB_ENV
+        echo "PYTHONPATH=$PWD/build/install/lib:$PYTHONPATH" >> $GITHUB_ENV
+
+    - name: Build tlRender
+      run: |
+        export DYLD_LIBRARY_PATH=$PWD/build/install/lib:$DYLD_LIBRARY_PATH
+        bash etc/macOS/macos-build-gha.sh Release
+
+    - name: Package
+      run: |
+        cd build
+        cd tlRender/src/tlRender-build
+        cmake --build . -j 4 --config Release --target package
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: tlRender-macOS-Packages
+        path: build/tlRender/src/tlRender-build/tlRender-*.dmg
+
+>>>>>>> darby_edit_original
   windows-build:
     runs-on: windows-latest
 
@@ -262,12 +268,12 @@ jobs:
       TLRENDER_PNG: ON
       TLRENDER_EXR: ON
       TLRENDER_FFMPEG: OFF
+      TLRENDER_USD: OFF
       TLRENDER_NFD: OFF
       TLRENDER_QT5: OFF
       TLRENDER_PROGRAMS: ON
       TLRENDER_EXAMPLES: ON
       TLRENDER_TESTS: ON
-      TLRENDER_GCOV: OFF
 
     steps:
     - uses: actions/checkout@v3
@@ -275,40 +281,74 @@ jobs:
         submodules: recursive
 
     - name: Setup environment
+      shell: cmd
       run: |
-        echo "$pwd\build\install\bin;$pwd\build\install\lib;$env:path" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8
+        echo "%CD%\build\install\bin;%CD%\build\install\lib" >> $GITHUB_PATH
         
     - name: Build tlRender
+      shell: cmd
       run: |
-        mkdir build
-        cd build
-        cmake ..\etc\SuperBuild `
-          -DCMAKE_BUILD_TYPE=Debug `
-          -DCMAKE_INSTALL_PREFIX=install `
-          -DCMAKE_PREFIX_PATH=install `
-          -DTLRENDER_MMAP=${{ env.TLRENDER_MMAP }} `
-          -DTLRENDER_PYTHON=${{ env.TLRENDER_PYTHON }} `
-          -DTLRENDER_GLFW=${{ env.TLRENDER_GLFW }} `
-          -DTLRENDER_OCIO=${{ env.TLRENDER_OCIO }} `
-          -DTLRENDER_AUDIO=${{ env.TLRENDER_AUDIO }} `
-          -DTLRENDER_JPEG=${{ env.TLRENDER_JPEG }} `
-          -DTLRENDER_TIFF=${{ env.TLRENDER_TIFF }} `
-          -DTLRENDER_STB=${{ env.TLRENDER_STB }} `
-          -DTLRENDER_PNG=${{ env.TLRENDER_PNG }} `
-          -DTLRENDER_EXR=${{ env.TLRENDER_EXR }} `
-          -DTLRENDER_FFMPEG=${{ env.TLRENDER_FFMPEG }} `
-          -DTLRENDER_NFD=${{ env.TLRENDER_NFD }} `
-          -DTLRENDER_QT5=${{ env.TLRENDER_QT5 }} `
-          -DTLRENDER_PROGRAMS=${{ env.TLRENDER_PROGRAMS }} `
-          -DTLRENDER_EXAMPLES=${{ env.TLRENDER_EXAMPLES }} `
-          -DTLRENDER_TESTS=${{ env.TLRENDER_TESTS }} `
-          -DTLRENDER_GCOV=${{ env.TLRENDER_GCOV }}
-        cmake --build . -j 4 --config Debug
+        etc\Windows\windows-build-gha.bat Debug
 
     - name: Run tests
+      shell: cmd
       run: |
         cd build
         cd tlRender\src\tlRender-build
         tests\tltest\Debug\tltest
-        #ctest --rerun-failed --output-on-failure
 
+<<<<<<< HEAD
+=======
+  windows-package:
+    runs-on: windows-latest
+    #runs-on: windows-2019
+
+    # \todo How can we build FFmpeg on Windows?
+    # \todo USD has errors in the boost build with windows-latest
+    # \todo USD has errors in the MaterialX build with windows-2019
+    env:
+      TLRENDER_MMAP: ON
+      TLRENDER_PYTHON: OFF
+      TLRENDER_GLFW: ON
+      TLRENDER_OCIO: ON
+      TLRENDER_AUDIO: ON
+      TLRENDER_JPEG: ON
+      TLRENDER_TIFF: ON
+      TLRENDER_STB: ON
+      TLRENDER_PNG: ON
+      TLRENDER_EXR: ON
+      TLRENDER_FFMPEG: OFF
+      TLRENDER_USD: OFF
+      TLRENDER_NFD: OFF
+      TLRENDER_QT5: OFF
+      TLRENDER_PROGRAMS: ON
+      TLRENDER_EXAMPLES: OFF
+      TLRENDER_TESTS: OFF
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+
+    - name: Setup environment
+      shell: cmd
+      run: |
+        echo "%CD%\build\install\bin;%CD%\build\install\lib" >> $GITHUB_PATH
+
+    - name: Build tlRender
+      shell: cmd
+      run: |
+        etc\Windows\windows-build-gha.bat Release
+
+    - name: Package
+      shell: cmd
+      run: |
+        cd build
+        cd tlRender\src\tlRender-build
+        cmake --build . -j 4 --config Release --target package
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: tlRender-Windows-Packages
+        path: build\tlRender\src\tlRender-build\tlRender-*.zip
+>>>>>>> darby_edit_original

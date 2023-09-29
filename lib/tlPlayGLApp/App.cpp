@@ -106,10 +106,10 @@ namespace tl
         {
             TLRENDER_P();
             const std::string appName = "tlplay-gl";
-            const std::string appDirPath = play::appDirPath();
-            std::string logFileName = play::logFileName(appName, appDirPath);
+            const std::string appDocsPath = play::appDocsPath();
+            std::string logFileName = play::logFileName(appName, appDocsPath);
             const std::string settingsFileName =
-                play::settingsName(appName, appDirPath);
+                play::settingsName(appName, appDocsPath);
             IApp::_init(
                 argv,
                 context,
@@ -129,11 +129,11 @@ namespace tl
                     "Audio file name."),
                 app::CmdLineValueOption<std::string>::create(
                     p.options.compareFileName,
-                    { "-compare", "-b" },
+                    { "-b" },
                     "A/B comparison \"B\" file name."),
                 app::CmdLineValueOption<timeline::CompareMode>::create(
                     p.options.compareOptions.mode,
-                    { "-compareMode", "-c" },
+                    { "-compare", "-c" },
                     "A/B comparison mode.",
                     string::Format("{0}").arg(p.options.compareOptions.mode),
                     string::join(timeline::getCompareModeLabels(), ", ")),
@@ -319,7 +319,7 @@ namespace tl
             p.settings->setDefaultValue("Files/RecentMax", 10);
             p.settings->setDefaultValue("Window/Size", _options.windowSize);
             p.settings->setDefaultValue("Viewport/Background",
-                timelineui::ViewportBackgroundOptions());
+                timeline::BackgroundOptions());
             p.settings->setDefaultValue("Audio/Volume", 1.F);
             p.settings->setDefaultValue("Audio/Mute", false);
             p.settings->setDefaultValue("Cache/Size", p.cacheSize);
@@ -350,7 +350,7 @@ namespace tl
             // Initialize the models.
             p.filesModel = play::FilesModel::create(context);
             p.viewportModel = play::ViewportModel::create(context);
-            timelineui::ViewportBackgroundOptions viewportBackgroundOptions;
+            timeline::BackgroundOptions viewportBackgroundOptions;
             p.settings->getValue("Viewport/Background", viewportBackgroundOptions);
             p.viewportModel->setBackgroundOptions(viewportBackgroundOptions);
             p.colorModel = play::ColorModel::create(context);

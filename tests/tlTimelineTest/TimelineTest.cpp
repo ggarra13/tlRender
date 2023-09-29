@@ -5,6 +5,7 @@
 #include <tlTimelineTest/TimelineTest.h>
 
 #include <tlTimeline/Timeline.h>
+#include <tlTimeline/Util.h>
 
 #include <tlIO/System.h>
 
@@ -33,6 +34,7 @@ namespace tl
         void TimelineTest::run()
         {
             _enums();
+            _util();
             _transitions();
             _videoData();
             _create();
@@ -43,6 +45,20 @@ namespace tl
         void TimelineTest::_enums()
         {
             _enum<Transition>("Transition", getTransitionEnums);
+        }
+
+        void TimelineTest::_util()
+        {
+            for (const auto& i : getExtensions(
+                static_cast<int>(io::FileType::Movie) |
+                static_cast<int>(io::FileType::Sequence) |
+                static_cast<int>(io::FileType::Audio),
+                _context))
+            {
+                std::stringstream ss;
+                ss << "Timeline extension: " << i;
+                _print(ss.str());
+            }
         }
 
         void TimelineTest::_transitions()
@@ -90,7 +106,7 @@ namespace tl
                     write->writeVideo(otime::RationalTime(i, 24.0), image);
                 }
                 auto timeline = Timeline::create(
-                    file::Path("Timeline Create.0.ppm"),
+                    "Timeline Create.0.ppm",
                     _context);
                 const auto& timelineIOInfo = timeline->getIOInfo();
                 TLRENDER_ASSERT(!timelineIOInfo.video.empty());
@@ -108,7 +124,7 @@ namespace tl
                     write->writeVideo(otime::RationalTime(i, 24.0), image);
                 }
                 auto timeline = Timeline::create(
-                    file::Path("Timeline Create/Timeline Create.0.ppm"),
+                    "Timeline Create/Timeline Create.0.ppm",
                     _context);
                 const auto& timelineIOInfo = timeline->getIOInfo();
                 TLRENDER_ASSERT(!timelineIOInfo.video.empty());
@@ -118,17 +134,6 @@ namespace tl
 
         void TimelineTest::_timeline()
         {
-            for (const auto& i : getExtensions(
-                static_cast<int>(io::FileType::Movie) |
-                static_cast<int>(io::FileType::Sequence) |
-                static_cast<int>(io::FileType::Audio),
-                _context))
-            {
-                std::stringstream ss;
-                ss << "Timeline extension: " << i;
-                _print(ss.str());
-            }
-
             // Write an OTIO timeline.
             auto otioClip = new otio::Clip;
             otioClip->set_media_reference(new otio::ImageSequenceReference(
@@ -183,7 +188,7 @@ namespace tl
             }
 
             // Create a timeline from the OTIO timeline.
-            auto timeline = Timeline::create(file::Path(fileName), _context);
+            auto timeline = Timeline::create(fileName, _context);
             TLRENDER_ASSERT(timeline->getTimeline());
             TLRENDER_ASSERT(fileName == timeline->getPath().get());
             TLRENDER_ASSERT(Options() == timeline->getOptions());
@@ -239,7 +244,7 @@ namespace tl
         void TimelineTest::_imageSequence()
         {
             //! \bug This uses the image sequence created by _timeline().
-            auto timeline = Timeline::create(file::Path("Timeline Test.0.ppm"), _context);
+            auto timeline = Timeline::create("Timeline Test.0.ppm", _context);
             {
                 std::stringstream ss;
                 ss << timeline->getTimeRange().duration();

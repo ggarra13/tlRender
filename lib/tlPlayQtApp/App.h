@@ -22,6 +22,7 @@ namespace tl
         class AudioModel;
         class ColorModel;
         class FilesModel;
+        class ViewportModel;
     }
 
     namespace qt
@@ -29,7 +30,6 @@ namespace tl
         class OutputDevice;
         class TimeObject;
         class TimelinePlayer;
-        class TimelineThumbnailObject;
     }
 
     namespace ui
@@ -67,14 +67,14 @@ namespace tl
             //! Get the settings object.
             SettingsObject* settingsObject() const;
 
-            //! Get the thumbnail object.
-            qt::TimelineThumbnailObject* thumbnailObject() const;
-
             //! Get the files model.
             const std::shared_ptr<play::FilesModel>& filesModel() const;
 
             //! Get the recent files model.
             const std::shared_ptr<ui::RecentFilesModel>& recentFilesModel() const;
+
+            //! Get the viewport model.
+            const std::shared_ptr<play::ViewportModel>& viewportModel() const;
 
             //! Get the color model.
             const std::shared_ptr<play::ColorModel>& colorModel() const;
@@ -97,6 +97,10 @@ namespace tl
 
             //! Open a file with separate audio dialog.
             void openSeparateAudioDialog();
+
+        Q_SIGNALS:
+            //! This signal is emitted when the active players are changed.
+            void activePlayersChanged(const QVector<QSharedPointer<qt::TimelinePlayer> >&);
 
         private Q_SLOTS:
             void _filesCallback(const std::vector<std::shared_ptr<tl::play::FilesModelItem> >&);

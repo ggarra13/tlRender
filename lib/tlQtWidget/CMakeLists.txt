@@ -1,8 +1,10 @@
 set(HEADERS
     BellowsWidget.h
+    ColorDialog.h
+    ColorSwatch.h
+    ColorWidget.h
     FileBrowserSystem.h
     FileWidget.h
-    FilmstripWidget.h
     FloatEditSlider.h
     Init.h
     IntEditSlider.h
@@ -13,7 +15,6 @@ set(HEADERS
     Style.h
     TimeLabel.h
     TimeSpinBox.h
-    TimelineSlider.h
     TimelineViewport.h
     TimelineWidget.h
     Util.h)
@@ -23,9 +24,11 @@ set(PRIVATE_HEADERS
 set(SOURCE
     BellowsPrivate.cpp
     BellowsWidget.cpp
+    ColorDialog.cpp
+    ColorSwatch.cpp
+    ColorWidget.cpp
     FileBrowserSystem.cpp
     FileWidget.cpp
-    FilmstripWidget.cpp
     FloatEditSlider.cpp
     Init.cpp
     IntEditSlider.cpp
@@ -36,7 +39,6 @@ set(SOURCE
     Style.cpp
     TimeLabel.cpp
     TimeSpinBox.cpp
-    TimelineSlider.cpp
     TimelineViewport.cpp
     TimelineWidget.cpp
     Util.cpp)
