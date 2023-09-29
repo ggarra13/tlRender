@@ -100,8 +100,6 @@ jobs:
         cd tlRender/src/tlRender-build
         ctest --rerun-failed --output-on-failure
 
-<<<<<<< HEAD
-=======
   linux-package:
     runs-on: ubuntu-latest
 
@@ -199,8 +197,6 @@ jobs:
         cd tlRender/src/tlRender-build
         tests/tltest/tltest
 
-<<<<<<< HEAD
-=======
   macos-package:
     runs-on: macos-latest
 
@@ -297,8 +293,6 @@ jobs:
         cd tlRender\src\tlRender-build
         tests\tltest\Debug\tltest
 
-<<<<<<< HEAD
-=======
   windows-package:
     runs-on: windows-latest
     #runs-on: windows-2019
