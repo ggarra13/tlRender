@@ -120,6 +120,9 @@ mark_as_advanced(
     tlRender_glad_LIBRARY)
 
 set(tlRender_tlIO_LIBRARIES libjpeg-turbo::turbojpeg-static )
+if (PNG_FOUND)
+   list(APPEND tlRender_tlIO_LIBRARIES PNG)
+endif()
 if (TIFF_FOUND)
    list(APPEND tlRender_tlIO_LIBRARIES TIFF)
 endif()
