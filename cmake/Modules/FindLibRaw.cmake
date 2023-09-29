@@ -2,6 +2,7 @@
 #
 # This module defines the following variables:
 #
+# * LibRaw_FOUND
 # * LibRaw_INCLUDE_DIRS
 # * LibRaw_LIBRARIES
 #
@@ -43,14 +44,16 @@ find_package_handle_standard_args(
     REQUIRED_VARS LibRaw_INCLUDE_DIR LibRaw_LIBRARY)
 mark_as_advanced(LibRaw_INCLUDE_DIR LibRaw_LIBRARY)
 
-set(LibRaw_LINK_LIBRARIES ZLIB)
-if(LCMS2_FOUND)
-    list(APPEND LibRaw_LINK_LIBRARIES LCMS2)
+if(LibRaw_FOUND)
+    set(LibRaw_LINK_LIBRARIES ZLIB)
+    if(LCMS2_FOUND)
+        list(APPEND LibRaw_LINK_LIBRARIES LCMS2)
+    endif()
+    if(OpenMP_FOUND)
+        list(APPEND LibRaw_LINK_LIBRARIES OpenMP::OpenMP_CXX)
+    endif()
 endif()
-if(OpenMP_FOUND)
-    list(APPEND LibRaw_LINK_LIBRARIES OpenMP::OpenMP_CXX)
-endif()
-
+    
 if(LibRaw_FOUND AND NOT TARGET LibRaw::libraw)
     add_library(LibRaw::libraw UNKNOWN IMPORTED)
     set_target_properties(LibRaw::libraw PROPERTIES
