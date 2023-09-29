@@ -247,7 +247,6 @@ jobs:
         name: tlRender-macOS-Packages
         path: build/tlRender/src/tlRender-build/tlRender-*.dmg
 
->>>>>>> darby_edit_original
   windows-build:
     runs-on: windows-latest
 
@@ -344,4 +343,3 @@ jobs:
       with:
         name: tlRender-Windows-Packages
         path: build\tlRender\src\tlRender-build\tlRender-*.zip
->>>>>>> darby_edit_original
