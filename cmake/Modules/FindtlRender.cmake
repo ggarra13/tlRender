@@ -45,12 +45,23 @@ set(tlRender_INCLUDE_DIRS
     ${OTIO_INCLUDE_DIRS}
     ${RtAudio_INCLUDE_DIRS}
     ${libjpeg-turbo_INCLUDE_DIRS}
-    ${TIFF_INCLUDE_DIRS}
-    ${PNG_INCLUDE_DIRS}
-    ${OpenEXR_INCLUDE_DIRS}
-    ${FFmpeg_INCLUDE_DIRS}
-    ${LibRaw_INCLUDE_DIRS}
     ${glfw3_INCLUDE_DIRS})
+
+if(TIFF_FOUND)
+    list(APPEND tlRender_INCLUDE_DIRS ${TIFF_INCLUDE_DIRS})
+endif()
+if(PNG_FOUND)
+    list(APPEND tlRender_INCLUDE_DIRS ${PNG_INCLUDE_DIRS})
+endif()
+if(OpenEXR_FOUND)
+    list(APPEND tlRender_INCLUDE_DIRS ${OpenEXR_INCLUDE_DIRS})
+endif()
+if(FFmpeg_FOUND)
+    list(APPEND tlRender_INCLUDE_DIRS ${FFmpeg_INCLUDE_DIRS})
+endif()
+if(LibRaw_FOUND)
+    list(APPEND tlRender_INCLUDE_DIRS ${LibRaw_INCLUDE_DIRS})
+endif()
 
 if(CMAKE_BUILD_TYPE MATCHES "^Debug$")
     find_library(tlRender_tlCore_LIBRARY NAMES tlCore)
