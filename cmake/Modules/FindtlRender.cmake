@@ -25,16 +25,26 @@ set(tlRender_VERSION 0.0.1)
 find_package(Imath REQUIRED)
 find_package(nlohmann_json REQUIRED)
 find_package(Freetype REQUIRED)
-find_package(OpenColorIO REQUIRED)
 find_package(OTIO REQUIRED)
-find_package(RtAudio)
+find_package(PNG REQUIRED)
 find_package(glfw3 REQUIRED)
+find_package(RtAudio)
 find_package(libjpeg-turbo)
-find_package(TIFF)
-find_package(PNG)
-find_package(OpenEXR)
-find_package(FFmpeg)
 find_package(LibRaw)
+find_package(TIFF)
+
+#
+# These may be installed in cmake or not installed if the setting is off
+#
+if(TLRENDER_OCIO)
+    find_package(OpenColorIO REQUIRED)
+endif()
+if(TLRENDER_EXR)
+    find_package(OpenEXR)
+endif()
+if(TLRENDER_FFMPEG)
+    find_package(FFmpeg)
+endif()
 
 find_path(tlRender_INCLUDE_DIR NAMES tlCore/Util.h PATH_SUFFIXES tlRender)
 set(tlRender_INCLUDE_DIRS
