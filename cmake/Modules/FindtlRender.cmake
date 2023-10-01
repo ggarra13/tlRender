@@ -27,7 +27,7 @@ find_package(nlohmann_json REQUIRED)
 find_package(Freetype REQUIRED)
 find_package(OpenColorIO REQUIRED)
 find_package(OTIO REQUIRED)
-find_package(RtAudio REQUIRED)
+find_package(RtAudio)
 find_package(glfw3 REQUIRED)
 find_package(libjpeg-turbo)
 find_package(TIFF)
@@ -43,10 +43,12 @@ set(tlRender_INCLUDE_DIRS
     ${nlohmann_json_INCLUDE_DIRS}
     ${FREETYPE_INCLUDE_DIRS}
     ${OTIO_INCLUDE_DIRS}
-    ${RtAudio_INCLUDE_DIRS}
     ${libjpeg-turbo_INCLUDE_DIRS}
     ${glfw3_INCLUDE_DIRS})
 
+if(RtAudio_FOUND)
+    list(APPEND tlRender_INCLUDE_DIRS ${RtAudio_INCLUDE_DIRS})
+endif()
 if(TIFF_FOUND)
     list(APPEND tlRender_INCLUDE_DIRS ${TIFF_INCLUDE_DIRS})
 endif()
@@ -119,6 +121,13 @@ mark_as_advanced(
     tlRender_tlGL_LIBRARY
     tlRender_glad_LIBRARY)
 
+set(tlRender_tlCore_LIBRARIES "OTIO;Imath::Imath;Freetype::Freetype;nlohmann_json::nlohmann_json" )
+if (OpenColorIO_FOUND)
+   list(APPEND tlRender_tlCore_LIBRARIES OpenColorIO::OpenColorIO)
+endif()
+if (RtAudio_FOUND)
+   list(APPEND tlRender_tlCore_LIBRARIES RtAudio)
+endif()
 set(tlRender_tlIO_LIBRARIES libjpeg-turbo::turbojpeg-static )
 if (PNG_FOUND)
    list(APPEND tlRender_tlIO_LIBRARIES PNG)
@@ -145,7 +154,7 @@ if(tlRender_FOUND AND NOT TARGET tlRender::tlCore)
         IMPORTED_LOCATION "${tlRender_tlCore_LIBRARY}"
         INTERFACE_COMPILE_DEFINITIONS "${tlRender_COMPILE_DEFINITIONS}"
         INTERFACE_INCLUDE_DIRECTORIES "${tlRender_INCLUDE_DIR}"
-        INTERFACE_LINK_LIBRARIES "OTIO;OpenColorIO::OpenColorIO;Imath::Imath;RtAudio;Freetype::Freetype;nlohmann_json::nlohmann_json")
+        INTERFACE_LINK_LIBRARIES "${tlRender_tlCore_LIBRARIES}")
 endif()
 if(tlRender_FOUND AND NOT TARGET tlRender::tlIO)
     add_library(tlRender::tlIO UNKNOWN IMPORTED)
