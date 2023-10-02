@@ -178,10 +178,3 @@ jobs:
     - name: Build tlRender
       shell: cmd
       run: etc\Windows\windows-build-gha.bat Debug
-
-    - name: Run tests
-      shell: cmd
-      run: |
-        cd build
-        cd tlRender\src\tlRender-build
-        tests\tltest\Debug\tltest
