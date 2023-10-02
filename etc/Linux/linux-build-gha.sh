@@ -13,23 +13,24 @@ then
     sudo apt-get install lcov
 fi
 
-# Install OpenGL dev
-sudo apt-get install xorg-dev libglu1-mesa-dev mesa-common-dev
+# Install OpenGL support
+sudo apt-get install xorg-dev libglu1-mesa-dev mesa-common-dev mesa-utils xvfb
+xvfb-run glxinfo
 
-# Install ALSA and PulseAudio dev
+# Install ALSA and PulseAudio support
 if [[ $TLRENDER_AUDIO = "ON" ]]
 then
     sudo apt-get install libasound2-dev
     sudo apt-get install libpulse-dev
 fi
 
-# Install Python dev
+# Install Python support
 if [[ $TLRENDER_PYTHON = "ON" ]]
 then
     sudo apt-get install python3.8-dev
 fi
 
-# Install Qt dev
+# Install Qt support
 if [[ $TLRENDER_QT5 = "ON" ]]
 then
     sudo apt-get install qtdeclarative5-dev libqt5quick5 qtbase5-dev libqt5svg5-dev qtchooser qt5-qmake qtbase5-dev-tools
@@ -42,7 +43,6 @@ cmake ../etc/SuperBuild \
     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
     -DCMAKE_INSTALL_PREFIX=$PWD/install \
     -DCMAKE_PREFIX_PATH=$PWD/install \
-    -DTLRENDER_MMAP=$TLRENDER_MMAP \
     -DTLRENDER_PYTHON=$TLRENDER_PYTHON \
     -DTLRENDER_GLFW=$TLRENDER_GLFW \
     -DTLRENDER_OCIO=$TLRENDER_OCIO \

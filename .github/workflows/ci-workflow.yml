@@ -7,7 +7,6 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      TLRENDER_MMAP: ON
       TLRENDER_PYTHON: OFF
       TLRENDER_GLFW: ON
       TLRENDER_OCIO: ON
@@ -38,14 +37,13 @@ jobs:
         echo "PYTHONPATH=$PWD/build/install/lib:$PYTHONPATH" >> $GITHUB_ENV
 
     - name: Build tlRender
-      run: |
-        bash etc/Linux/linux-build-gha.sh Debug
+      run: bash etc/Linux/linux-build-gha.sh Debug
 
     - name: Run tests
       run: |
         cd build
         cd tlRender/src/tlRender-build
-        ctest --rerun-failed --output-on-failure
+        xvfb-run tests/tltest/tltest
     
     - name: Code coverage
       if: env.TLRENDER_GCOV == 'ON'
@@ -63,9 +61,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      TLRENDER_MMAP: OFF
       TLRENDER_PYTHON: OFF
-      TLRENDER_GLFW: OFF
+      TLRENDER_GLFW: ON
       TLRENDER_OCIO: OFF
       TLRENDER_AUDIO: OFF
       TLRENDER_JPEG: OFF
@@ -91,21 +88,18 @@ jobs:
         echo "PYTHONPATH=$PWD/build/install/lib:$PYTHONPATH" >> $GITHUB_ENV
 
     - name: Build tlRender
-      run: |
-        bash etc/Linux/linux-build-gha.sh Debug
+      run: bash etc/Linux/linux-build-gha.sh Debug
 
     - name: Run tests
       run: |
         cd build
         cd tlRender/src/tlRender-build
-        ctest --rerun-failed --output-on-failure
-
+        xvfb-run tests/tltest/tltest
 
   macos-build:
     runs-on: macos-latest
 
     env:
-      TLRENDER_MMAP: ON
       TLRENDER_PYTHON: OFF
       TLRENDER_GLFW: ON
       TLRENDER_OCIO: ON
@@ -149,11 +143,11 @@ jobs:
         cd tlRender/src/tlRender-build
         tests/tltest/tltest
 
+
   windows-build:
     runs-on: windows-latest
 
     env:
-      TLRENDER_MMAP: ON
       TLRENDER_PYTHON: OFF
       TLRENDER_GLFW: ON
       TLRENDER_OCIO: ON
@@ -183,5 +177,11 @@ jobs:
         
     - name: Build tlRender
       shell: cmd
+      run: etc\Windows\windows-build-gha.bat Debug
+
+    - name: Run tests
+      shell: cmd
       run: |
-        etc\Windows\windows-build-gha.bat Debug
+        cd build
+        cd tlRender\src\tlRender-build
+        tests\tltest\Debug\tltest

@@ -8,22 +8,21 @@
 
 namespace tl
 {
-    namespace core_tests
+    namespace gl_tests
     {
-        class PathTest : public tests::ITest
+        class OffscreenBufferTest : public tests::ITest
         {
         protected:
-            PathTest(const std::shared_ptr<system::Context>&);
+            OffscreenBufferTest(const std::shared_ptr<system::Context>&);
 
         public:
-            static std::shared_ptr<PathTest> create(const std::shared_ptr<system::Context>&);
+            static std::shared_ptr<OffscreenBufferTest> create(const std::shared_ptr<system::Context>&);
 
             void run() override;
 
         private:
             void _enums();
-            void _path();
-            void _util();
+            void _buffer();
         };
     }
 }
