@@ -40,8 +40,12 @@ if(WIN32)
     # in "bin" instead.
     cmake_path(CONVERT ${CMAKE_INSTALL_PREFIX} TO_NATIVE_PATH_LIST cmake_install)
     set(USD_INSTALL_COMMAND
-        ${CMAKE_COMMAND} -E copy_directory ${CMAKE_INSTALL_PREFIX}/lib/usd  ${CMAKE_INSTALL_PREFIX}/bin/usd
-        COMMAND copy "${cmake_install}\\lib\\*.dll" "${cmake_install}\\bin")
+        ${CMAKE_COMMAND} -E copy_directory ${CMAKE_INSTALL_PREFIX}/lib/usd  ${CMAKE_INSTALL_PREFIX}/bin/usd)
+    COMMAND copy "${cmake_install}\\lib\\*.dll" "${cmake_install}\\bin")
+    if(MRV2_DIST_RELEASE)
+        list(APPEND USD_INSTALL_COMMAND
+	    COMMAND del "${cmake_install}\\lib\\*.dll")
+    endif()
 endif()
 
 ExternalProject_Add(
