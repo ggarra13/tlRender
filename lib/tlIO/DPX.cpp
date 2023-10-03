@@ -41,6 +41,7 @@ namespace tl
             "TopBottomRightLeft",
             "BottomTopLeftRight",
             "BottomTopRightLeft");
+        TLRENDER_ENUM_SERIALIZE_IMPL(Orient);
 
         TLRENDER_ENUM_IMPL(
             Transfer,
@@ -57,12 +58,14 @@ namespace tl
             "PAL",
             "Z",
             "ZHomogeneous");
+        TLRENDER_ENUM_SERIALIZE_IMPL(Transfer);
 
         TLRENDER_ENUM_IMPL(
             Components,
             "Pack",
             "TypeA",
             "TypeB");
+        TLRENDER_ENUM_SERIALIZE_IMPL(Components);
 
         namespace
         {
@@ -158,11 +161,6 @@ namespace tl
                 memory::endian(&header.tv.integrationTimes, 1, 4);
             }
 
-            //! These hard-coded values are meant to catch uninitialized values.
-            const int32_t _intMax = 1000000;
-            const float   _floatMax = 1000000.F;
-            const float   _minSpeed = .000001F;
-
             bool isValid(const uint8_t* in)
             {
                 return *in != 0xff;
@@ -175,15 +173,12 @@ namespace tl
 
             bool isValid(const uint32_t* in)
             {
-                return *in != 0xffffffff && *in < static_cast<uint32_t>(_intMax);
+                return *in != 0xffffffff;
             }
 
             bool isValid(const float* in)
             {
-                return
-                    *(reinterpret_cast<const uint32_t*>(in)) != 0xffffffff &&
-                    *in > -_floatMax &&
-                    *in < _floatMax;
+                return *(reinterpret_cast<const uint32_t*>(in)) != 0xffffffff;
             }
         }
 
@@ -214,7 +209,7 @@ namespace tl
                     arg("Bad magic number"));
             }
 
-            // Read the reset of the header.
+            // Read the rest of the header.
             io->read(&out.image, sizeof(Header::Image));
             io->read(&out.source, sizeof(Header::Source));
             io->read(&out.film, sizeof(Header::Film));
@@ -441,7 +436,7 @@ namespace tl
                 ss << out.film.hold;
                 info.tags["Film Hold"] = ss.str();
             }
-            if (isValid(&out.film.frameRate) && out.film.frameRate > _minSpeed)
+            if (isValid(&out.film.frameRate))
             {
                 std::stringstream ss;
                 ss << out.film.frameRate;
@@ -464,9 +459,7 @@ namespace tl
 
             if (isValid(&out.tv.timecode))
             {
-                std::stringstream ss;
-                ss << out.tv.timecode;
-                info.tags["Timecode"] = ss.str();
+                info.tags["Timecode"] = time::timecodeToString(out.tv.timecode);
             }
             if (isValid(&out.tv.interlace))
             {
@@ -492,7 +485,7 @@ namespace tl
                 ss << out.tv.sampleRate[0] << " " << out.tv.sampleRate[1];
                 info.tags["TV Sample Rate"] = ss.str();
             }
-            if (isValid(&out.tv.frameRate) && out.tv.frameRate > _minSpeed)
+            if (isValid(&out.tv.frameRate))
             {
                 std::stringstream ss;
                 ss << out.tv.frameRate;

@@ -253,7 +253,7 @@ namespace tl
                     static_cast<int>(gl::GLFWWindowOptions::MakeCurrent));
 
                 // Read the timeline.
-                _timeline = timeline::Timeline::create(file::Path(_input), _context);
+                _timeline = timeline::Timeline::create(_input, _context);
                 _timeRange = _timeline->getTimeRange();
                 _print(string::Format("Timeline range: {0}-{1}").
                     arg(_timeRange.start_time().value()).
@@ -285,7 +285,7 @@ namespace tl
                 // Create the renderer.
                 _render = timeline::GLRender::create(_context);
                 gl::OffscreenBufferOptions offscreenBufferOptions;
-                offscreenBufferOptions.colorType = gl::OffscreenColorDefault;
+                offscreenBufferOptions.colorType = gl::offscreenColorDefault;
                 _buffer = gl::OffscreenBuffer::create(_renderSize, offscreenBufferOptions);
 
                 // Create the writer.

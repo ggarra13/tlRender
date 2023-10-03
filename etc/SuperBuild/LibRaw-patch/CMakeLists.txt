@@ -625,6 +625,9 @@ if (LIBRAW_INSTALL)
     if(NOT BUILD_SHARED_LIBS AND "${CMAKE_CXX_SIMULATE_ID}" STREQUAL "MSVC")
         message("ClangCl does not support pdb generation with static libraries")
     elseif(MSVC)
+	#
+	# @bug: this would fail compilation on Windows.
+	#
         # install(FILES ${PROJECT_BINARY_DIR}/raw.pdb ${PROJECT_BINARY_DIR}/raw_r.pdb
         #         DESTINATION ${CMAKE_INSTALL_LIBDIR}
         #         CONFIGURATIONS Debug RelWithDebInfo

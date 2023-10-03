@@ -28,6 +28,8 @@ namespace tl
             std::shared_ptr<ui::ScrollWidget> scrollWidget;
             std::shared_ptr<TimelineItem> timelineItem;
 
+            std::function<void(const std::vector<timeline::InsertData>&)> insertCallback;
+            
             enum class MouseMode
             {
                 None,
@@ -337,6 +339,16 @@ namespace tl
             return p.timelineItem->isDragging();
         }
         
+        //! Sets a callback for inserting items
+        void TimelineWidget::setInsertCallback(const std::function<void(const std::vector<timeline::InsertData>&)>& value)
+        {
+            TLRENDER_P();
+            p.insertCallback = value;
+            
+            if (p.timelineItem)
+                p.timelineItem->setInsertCallback(value);
+        }
+        
         void TimelineWidget::mousePressEvent(ui::MouseClickEvent& event)
         {
             IWidget::mousePressEvent(event);
@@ -554,6 +566,7 @@ namespace tl
                         context);
                     p.timelineItem->setEditable(p.editable->get());
                     p.timelineItem->setStopOnScrub(p.stopOnScrub->get());
+                    p.timelineItem->setInsertCallback(p.insertCallback);
                     p.scrollWidget->setScrollPos(scrollPos);
                     p.scrollWidget->setWidget(p.timelineItem);
                 }

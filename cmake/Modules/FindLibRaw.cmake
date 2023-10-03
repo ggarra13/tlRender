@@ -2,6 +2,7 @@
 #
 # This module defines the following variables:
 #
+# * LibRaw_FOUND
 # * LibRaw_INCLUDE_DIRS
 # * LibRaw_LIBRARIES
 #

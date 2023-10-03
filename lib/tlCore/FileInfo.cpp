@@ -33,11 +33,13 @@ namespace tl
 
         void FileInfo::sequence(const FileInfo& value)
         {
+            const bool hasNumber = !_path.getNumber().empty();
             math::IntRange sequence = _path.getSequence();
             const math::IntRange& otherSequence = value.getPath().getSequence();
             sequence.expand(otherSequence.getMin());
             sequence.expand(otherSequence.getMax());
-            _path.setSequence(sequence);
+            if (hasNumber)
+                _path.setSequence(sequence);
             _size += value._size;
             _permissions = std::min(_permissions, value._permissions);
             _time = std::max(_time, value._time);
@@ -100,7 +102,12 @@ namespace tl
             std::vector<FileInfo>& out,
             const ListOptions& options)
         {
-            const Path p(path, fileName);
+            PathOptions pathOptions;
+            pathOptions.maxNumberDigits =
+                options.sequence ?
+                options.maxNumberDigits :
+                0;
+            const Path p(path, fileName, pathOptions);
             const FileInfo f(p);
             bool sequence = false;
             if (options.sequence &&

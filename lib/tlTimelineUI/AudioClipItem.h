@@ -49,13 +49,8 @@ namespace tl
                 bool,
                 const ui::TickEvent&) override;
             void sizeHintEvent(const ui::SizeHintEvent&) override;
-            void clipEvent(
-                const math::Box2i&,
-                bool,
-                const ui::ClipEvent&) override;
-            void drawEvent(
-                const math::Box2i&,
-                const ui::DrawEvent&) override;
+            void clipEvent(const math::Box2i&, bool) override;
+            void drawEvent(const math::Box2i&, const ui::DrawEvent&) override;
 
         private:
             std::string _getWaveformKey(const otime::TimeRange&) const;

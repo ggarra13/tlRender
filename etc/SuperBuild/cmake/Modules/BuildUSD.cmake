@@ -34,15 +34,6 @@ list(APPEND USD_ARGS --verbose)
 
 
 set(USD_INSTALL_COMMAND )
-if(WIN32)
-    # \todo On Windows the USD cmake build system installs the "*.dll" files
-    # and "usd" directory into "lib", however it seems like they need to be
-    # in "bin" instead.
-    cmake_path(CONVERT ${CMAKE_INSTALL_PREFIX} TO_NATIVE_PATH_LIST cmake_install)
-    set(USD_INSTALL_COMMAND
-        ${CMAKE_COMMAND} -E copy_directory ${CMAKE_INSTALL_PREFIX}/lib/usd  ${CMAKE_INSTALL_PREFIX}/bin/usd
-        COMMAND copy "${cmake_install}\\lib\\*.dll" "${cmake_install}\\bin")
-endif()
 
 ExternalProject_Add(
     USD

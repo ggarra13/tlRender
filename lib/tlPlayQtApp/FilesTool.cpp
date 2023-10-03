@@ -6,16 +6,17 @@
 
 #include <tlPlayQtApp/App.h>
 #include <tlPlayQtApp/DockTitleBar.h>
-#include <tlPlayQtApp/FilesAModel.h>
-#include <tlPlayQtApp/FilesView.h>
-#include <tlPlayQtApp/SettingsObject.h>
 
+#include <tlQtWidget/FloatEditSlider.h>
+
+#include <QAction>
 #include <QBoxLayout>
-#include <QHeaderView>
+#include <QComboBox>
+#include <QFormLayout>
+#include <QGridLayout>
 #include <QLabel>
 #include <QSignalBlocker>
-#include <QToolBar>
-#include <QTreeView>
+#include <QToolButton>
 
 namespace tl
 {
@@ -24,12 +25,26 @@ namespace tl
         struct FilesTool::Private
         {
             App* app = nullptr;
-            FilesAModel* filesAModel = nullptr;
-            QTreeView* treeView = nullptr;
+            std::vector<std::shared_ptr<play::FilesModelItem> > items;
+
+            std::vector<QLabel*> labels;
+            std::vector<QToolButton*> aButtons;
+            std::vector<QToolButton*> bButtons;
+            std::vector<QComboBox*> layerComboBoxes;
+            QGridLayout* itemsLayout = nullptr;
+            qtwidget::FloatEditSlider* wipeXSlider = nullptr;
+            qtwidget::FloatEditSlider* wipeYSlider = nullptr;
+            qtwidget::FloatEditSlider* wipeRotationSlider = nullptr;
+            qtwidget::FloatEditSlider* overlaySlider = nullptr;
+
+            std::shared_ptr<observer::ListObserver<std::shared_ptr<play::FilesModelItem> > > filesObserver;
+            std::shared_ptr<observer::ValueObserver<std::shared_ptr<play::FilesModelItem> > > aObserver;
+            std::shared_ptr<observer::ListObserver<std::shared_ptr<play::FilesModelItem> > > bObserver;
+            std::shared_ptr<observer::ListObserver<int> > layersObserver;
+            std::shared_ptr<observer::ValueObserver<timeline::CompareOptions> > compareObserver;
         };
 
         FilesTool::FilesTool(
-            const QMap<QString, QAction*>& actions,
             App* app,
             QWidget* parent) :
             IToolWidget(app, parent),
@@ -38,70 +53,267 @@ namespace tl
             TLRENDER_P();
 
             p.app = app;
-            p.filesAModel = new FilesAModel(
-                app->filesModel(),
-                app->thumbnailObject(),
-                app->getContext(),
-                this);
 
-            p.treeView = new QTreeView;
-            p.treeView->setAllColumnsShowFocus(true);
-            p.treeView->setAlternatingRowColors(true);
-            p.treeView->setSelectionMode(QAbstractItemView::NoSelection);
-            p.treeView->setItemDelegateForColumn(1, new FilesLayersItemDelegate);
-            p.treeView->setEditTriggers(QAbstractItemView::CurrentChanged);
-            p.treeView->setIndentation(0);
-            p.treeView->setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
-            p.treeView->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
-            p.treeView->setModel(p.filesAModel);
+            p.wipeXSlider = new qtwidget::FloatEditSlider;
 
-            auto toolBar = new QToolBar;
-            toolBar->setToolButtonStyle(Qt::ToolButtonIconOnly);
-            toolBar->setIconSize(QSize(20, 20));
-            toolBar->addAction(actions["Open"]);
-            toolBar->addAction(actions["OpenSeparateAudio"]);
-            toolBar->addAction(actions["Close"]);
-            toolBar->addAction(actions["CloseAll"]);
-            toolBar->addSeparator();
-            toolBar->addAction(actions["Prev"]);
-            toolBar->addAction(actions["Next"]);
+            p.wipeYSlider = new qtwidget::FloatEditSlider;
+
+            p.wipeRotationSlider = new qtwidget::FloatEditSlider;
+            p.wipeRotationSlider->setRange(math::FloatRange(0.F, 360.F));
+
+            p.overlaySlider = new qtwidget::FloatEditSlider;
+
+            auto widget = new QWidget;
+            p.itemsLayout = new QGridLayout;
+            p.itemsLayout->setColumnStretch(0, 1);
+            p.itemsLayout->setSpacing(0);
+            widget->setLayout(p.itemsLayout);
+            addWidget(widget);
+
+            auto formLayout = new QFormLayout;
+            formLayout->addRow(tr("X:"), p.wipeXSlider);
+            formLayout->addRow(tr("Y:"), p.wipeYSlider);
+            formLayout->addRow(tr("Rotation:"), p.wipeRotationSlider);
+            widget = new QWidget;
+            widget->setLayout(formLayout);
+            addBellows(tr("Wipe"), widget);
 
             auto layout = new QVBoxLayout;
-            layout->setContentsMargins(0, 0, 0, 0);
-            layout->setSpacing(0);
-            layout->addWidget(p.treeView);
-            layout->addWidget(toolBar);
-            auto widget = new QWidget;
+            layout->addWidget(p.overlaySlider);
+            widget = new QWidget;
             widget->setLayout(layout);
-            addWidget(widget, 1);
+            addBellows(tr("Overlay"), widget);
 
-            auto settingsObject = app->settingsObject();
-            settingsObject->setDefaultValue("FilesTool/Header", QByteArray());
-            auto ba = settingsObject->value("FilesTool/Header").toByteArray();
-            if (!ba.isEmpty())
-            {
-                p.treeView->header()->restoreState(ba);
-            }
+            addStretch();
 
             connect(
-                p.treeView,
-                SIGNAL(activated(const QModelIndex&)),
-                SLOT(_activatedCallback(const QModelIndex&)));
+                p.wipeXSlider,
+                &qtwidget::FloatEditSlider::valueChanged,
+                [this, app](double value)
+                {
+                    auto options = app->filesModel()->getCompareOptions();
+                    options.wipeCenter.x = value;
+                    app->filesModel()->setCompareOptions(options);
+                });
+
+            connect(
+                p.wipeYSlider,
+                &qtwidget::FloatEditSlider::valueChanged,
+                [this, app](double value)
+                {
+                    auto options = app->filesModel()->getCompareOptions();
+                    options.wipeCenter.y = value;
+                    app->filesModel()->setCompareOptions(options);
+                });
+
+            connect(
+                p.wipeRotationSlider,
+                &qtwidget::FloatEditSlider::valueChanged,
+                [this, app](double value)
+                {
+                    auto options = app->filesModel()->getCompareOptions();
+                    options.wipeRotation = value;
+                    app->filesModel()->setCompareOptions(options);
+                });
+
+            connect(
+                p.overlaySlider,
+                &qtwidget::FloatEditSlider::valueChanged,
+                [this, app](double value)
+                {
+                    auto options = app->filesModel()->getCompareOptions();
+                    options.overlay = value;
+                    app->filesModel()->setCompareOptions(options);
+                });
+
+            p.filesObserver = observer::ListObserver<std::shared_ptr<play::FilesModelItem> >::create(
+                app->filesModel()->observeFiles(),
+                [this](const std::vector<std::shared_ptr<play::FilesModelItem> >& value)
+                {
+                    _filesUpdate(value);
+                });
+
+            p.aObserver = observer::ValueObserver<std::shared_ptr<play::FilesModelItem> >::create(
+                app->filesModel()->observeA(),
+                [this](const std::shared_ptr<play::FilesModelItem>& value)
+                {
+                    _aUpdate(value);
+                });
+
+            p.bObserver = observer::ListObserver<std::shared_ptr<play::FilesModelItem> >::create(
+                app->filesModel()->observeB(),
+                [this](const std::vector<std::shared_ptr<play::FilesModelItem> >& value)
+                {
+                    _bUpdate(value);
+                });
+
+            p.layersObserver = observer::ListObserver<int>::create(
+                app->filesModel()->observeLayers(),
+                [this](const std::vector<int>& value)
+                {
+                    _layersUpdate(value);
+                });
+
+            p.compareObserver = observer::ValueObserver<timeline::CompareOptions>::create(
+                app->filesModel()->observeCompareOptions(),
+                [this](const timeline::CompareOptions& value)
+                {
+                    _compareUpdate(value);
+                });
+        }
+
+        void FilesTool::_filesUpdate(const std::vector<std::shared_ptr<play::FilesModelItem> >& items)
+        {
+            TLRENDER_P();
+
+            for (auto i : p.labels)
+            {
+                delete i;
+            }
+            p.labels.clear();
+            for (auto i : p.aButtons)
+            {
+                delete i;
+            }
+            p.aButtons.clear();
+            for (auto i : p.bButtons)
+            {
+                delete i;
+            }
+            p.bButtons.clear();
+            for (auto i : p.layerComboBoxes)
+            {
+                delete i;
+            }
+            p.layerComboBoxes.clear();
+
+            p.items = items;
+
+            const auto& a = p.app->filesModel()->getA();
+            const auto& b = p.app->filesModel()->getB();
+            for (size_t i = 0; i < p.items.size(); ++i)
+            {
+                auto item = p.items[i];
+
+                auto label = new QLabel;
+                std::string s = string::elide(item->path.get(-1, false));
+                label->setText(QString::fromUtf8(s.c_str()));
+                label->setToolTip(QString::fromUtf8(item->path.get().c_str()));
+                label->setContentsMargins(0, 0, 5, 0);
+                p.labels.push_back(label);
+
+                auto aButton = new QToolButton;
+                aButton->setText("A");
+                aButton->setCheckable(true);
+                aButton->setChecked(item == a);
+                aButton->setAutoRaise(true);
+                aButton->setToolTip("Set the A file");
+                p.aButtons.push_back(aButton);
+
+                auto bButton = new QToolButton;
+                bButton->setText("B");
+                bButton->setCheckable(true);
+                const auto j = std::find(b.begin(), b.end(), item);
+                bButton->setChecked(j != b.end());
+                bButton->setAutoRaise(true);
+                bButton->setToolTip("Set the B file(s)");
+                p.bButtons.push_back(bButton);
+
+                auto layerComboBox = new QComboBox;
+                for (const auto& layer : item->videoLayers)
+                {
+                    layerComboBox->addItem(QString::fromUtf8(layer.c_str()));
+                }
+                layerComboBox->setCurrentIndex(item->videoLayer);
+                layerComboBox->setToolTip("Set the current layer");
+                p.layerComboBoxes.push_back(layerComboBox);
+
+                p.itemsLayout->addWidget(label, i, 0);
+                p.itemsLayout->addWidget(aButton, i, 1);
+                p.itemsLayout->addWidget(bButton, i, 2);
+                p.itemsLayout->addWidget(layerComboBox, i, 3);
+
+                connect(
+                    aButton,
+                    &QToolButton::toggled,
+                    [this, i](bool value)
+                    {
+                        _p->app->filesModel()->setA(i);
+                    });
+
+                connect(
+                    bButton,
+                    &QToolButton::toggled,
+                    [this, i](bool value)
+                    {
+                        _p->app->filesModel()->setB(i, value);
+                    });
+
+                connect(
+                    layerComboBox,
+                    QOverload<int>::of(&QComboBox::currentIndexChanged),
+                    [this, item](int value)
+                    {
+                        _p->app->filesModel()->setLayer(item, value);
+                    });
+            }
+        }
+
+        void FilesTool::_aUpdate(const std::shared_ptr<play::FilesModelItem>& item)
+        {
+            TLRENDER_P();
+            for (size_t i = 0; i < p.items.size() && i < p.aButtons.size(); ++i)
+            {
+                QSignalBlocker signalBlocker(p.aButtons[i]);
+                p.aButtons[i]->setChecked(item == p.items[i]);
+            }
+        }
+
+        void FilesTool::_bUpdate(const std::vector<std::shared_ptr<play::FilesModelItem> >& items)
+        {
+            TLRENDER_P();
+            for (size_t i = 0; i < p.items.size() && i < p.bButtons.size(); ++i)
+            {
+                QSignalBlocker signalBlocker(p.bButtons[i]);
+                const auto j = std::find(items.begin(), items.end(), p.items[i]);
+                const bool checked = j != items.end();
+                p.bButtons[i]->setChecked(checked);
+            }
+        }
+
+        void FilesTool::_layersUpdate(const std::vector<int>& values)
+        {
+            TLRENDER_P();
+            for (size_t i = 0; i < p.items.size() && i < values.size(); ++i)
+            {
+                QSignalBlocker signalBlocker(p.layerComboBoxes[i]);
+                p.layerComboBoxes[i]->setCurrentIndex(values[i]);
+            }
+        }
+
+        void FilesTool::_compareUpdate(const timeline::CompareOptions& options)
+        {
+            TLRENDER_P();
+            {
+                QSignalBlocker signalBlocker(p.wipeXSlider);
+                p.wipeXSlider->setValue(options.wipeCenter.x);
+            }
+            {
+                QSignalBlocker signalBlocker(p.wipeYSlider);
+                p.wipeYSlider->setValue(options.wipeCenter.y);
+            }
+            {
+                QSignalBlocker signalBlocker(p.wipeYSlider);
+                p.wipeRotationSlider->setValue(options.wipeRotation);
+            }
+            {
+                QSignalBlocker signalBlocker(p.overlaySlider);
+                p.overlaySlider->setValue(options.overlay);
+            }
         }
 
         FilesTool::~FilesTool()
-        {
-            TLRENDER_P();
-            p.app->settingsObject()->setValue(
-                "FilesTool/Header",
-                p.treeView->header()->saveState());
-        }
-
-        void FilesTool::_activatedCallback(const QModelIndex& index)
-        {
-            TLRENDER_P();
-            p.app->filesModel()->setA(index.row());
-        }
+        {}
 
         FilesDockWidget::FilesDockWidget(
             FilesTool* filesTool,

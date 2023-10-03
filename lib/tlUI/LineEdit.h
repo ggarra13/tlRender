@@ -63,14 +63,9 @@ namespace tl
                 bool,
                 bool,
                 const TickEvent&) override;
-            void clipEvent(
-                const math::Box2i&,
-                bool,
-                const ClipEvent&) override;
+            void clipEvent(const math::Box2i&, bool) override;
             void sizeHintEvent(const SizeHintEvent&) override;
-            void drawEvent(
-                const math::Box2i&,
-                const DrawEvent&) override;
+            void drawEvent(const math::Box2i&, const DrawEvent&) override;
             void mouseMoveEvent(MouseMoveEvent&) override;
             void mousePressEvent(MouseClickEvent&) override;
             void keyFocusEvent(bool) override;

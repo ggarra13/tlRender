@@ -204,6 +204,18 @@ namespace tl
             return data[static_cast<std::size_t>(value)];
         }
 
+        bool TextureOptions::operator == (const TextureOptions& other) const
+        {
+            return
+                filters == other.filters &&
+                pbo == other.pbo;
+        }
+
+        bool TextureOptions::operator != (const TextureOptions& other) const
+        {
+            return !(*this == other);
+        }
+
         unsigned int getTextureFilter(timeline::ImageFilter value)
         {
             const std::array<GLenum, static_cast<std::size_t>(timeline::ImageFilter::Count)> data =
@@ -225,40 +237,41 @@ namespace tl
         {
             TLRENDER_P();
             p.info = info;
-            if (p.info.isValid())
+            if (!p.info.isValid())
             {
-#if defined(TLRENDER_API_GL_4_1)
-                if (options.pbo &&
-                    1 == p.info.layout.alignment &&
-                    memory::getEndian() == p.info.layout.endian)
-                {
-                    glGenBuffers(1, &p.pbo);
-                    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, p.pbo);
-                    glBufferData(
-                        GL_PIXEL_UNPACK_BUFFER,
-                        image::getDataByteCount(p.info),
-                        NULL,
-                        GL_STREAM_DRAW);
-                    glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-                }
-#endif // TLRENDER_API_GL_4_1
-                glGenTextures(1, &p.id);
-                glBindTexture(GL_TEXTURE_2D, p.id);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, getTextureFilter(options.filters.minify));
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, getTextureFilter(options.filters.magnify));
-                glTexImage2D(
-                    GL_TEXTURE_2D,
-                    0,
-                    getTextureInternalFormat(p.info.pixelType),
-                    p.info.size.w,
-                    p.info.size.h,
-                    0,
-                    getTextureFormat(p.info.pixelType),
-                    getTextureType(p.info.pixelType),
-                    NULL);
+                throw std::runtime_error("Invalid texture");
             }
+#if defined(TLRENDER_API_GL_4_1)
+            if (options.pbo &&
+                1 == p.info.layout.alignment &&
+                memory::getEndian() == p.info.layout.endian)
+            {
+                glGenBuffers(1, &p.pbo);
+                glBindBuffer(GL_PIXEL_UNPACK_BUFFER, p.pbo);
+                glBufferData(
+                    GL_PIXEL_UNPACK_BUFFER,
+                    image::getDataByteCount(p.info),
+                    NULL,
+                    GL_STREAM_DRAW);
+                glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+            }
+#endif // TLRENDER_API_GL_4_1
+            glGenTextures(1, &p.id);
+            glBindTexture(GL_TEXTURE_2D, p.id);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, getTextureFilter(options.filters.minify));
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, getTextureFilter(options.filters.magnify));
+            glTexImage2D(
+                GL_TEXTURE_2D,
+                0,
+                getTextureInternalFormat(p.info.pixelType),
+                p.info.size.w,
+                p.info.size.h,
+                0,
+                getTextureFormat(p.info.pixelType),
+                getTextureType(p.info.pixelType),
+                NULL);
         }
 
         Texture::Texture() :
@@ -297,6 +310,16 @@ namespace tl
             return _p->info.size;
         }
 
+        int Texture::getWidth() const
+        {
+            return _p->info.size.w;
+        }
+
+        int Texture::getHeight() const
+        {
+            return _p->info.size.h;
+        }
+
         image::PixelType Texture::getPixelType() const
         {
             return _p->info.pixelType;
@@ -307,7 +330,7 @@ namespace tl
             return _p->id;
         }
 
-        void Texture::copy(const image::Image& data)
+        void Texture::copy(const std::shared_ptr<image::Image>& data)
         {
             TLRENDER_P();
 #if defined(TLRENDER_API_GL_4_1)
@@ -318,10 +341,10 @@ namespace tl
                 {
                     memcpy(
                         buffer,
-                        data.getData(),
-                        data.getDataByteCount());
+                        data->getData(),
+                        data->getDataByteCount());
                     glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
-                    const auto& info = data.getInfo();
+                    const auto& info = data->getInfo();
                     glBindTexture(GL_TEXTURE_2D, p.id);
                     glPixelStorei(GL_UNPACK_ALIGNMENT, info.layout.alignment);
                     glPixelStorei(GL_UNPACK_SWAP_BYTES, info.layout.endian != memory::getEndian());
@@ -341,7 +364,7 @@ namespace tl
             else
 #endif // TLRENDER_API_GL_4_1
             {
-                const auto& info = data.getInfo();
+                const auto& info = data->getInfo();
                 glBindTexture(GL_TEXTURE_2D, p.id);
                 glPixelStorei(GL_UNPACK_ALIGNMENT, info.layout.alignment);
 #if defined(TLRENDER_API_GL_4_1)
@@ -356,7 +379,60 @@ namespace tl
                     info.size.h,
                     getTextureFormat(info.pixelType),
                     getTextureType(info.pixelType),
-                    data.getData());
+                    data->getData());
+            }
+        }
+
+        void Texture::copy(const std::shared_ptr<image::Image>& data, int x, int y)
+        {
+            TLRENDER_P();
+#if defined(TLRENDER_API_GL_4_1)
+            if (p.pbo)
+            {
+                glBindBuffer(GL_PIXEL_UNPACK_BUFFER, p.pbo);
+                if (void* buffer = glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY))
+                {
+                    memcpy(
+                        buffer,
+                        data->getData(),
+                        data->getDataByteCount());
+                    glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
+                    const auto& info = data->getInfo();
+                    glBindTexture(GL_TEXTURE_2D, p.id);
+                    glPixelStorei(GL_UNPACK_ALIGNMENT, info.layout.alignment);
+                    glPixelStorei(GL_UNPACK_SWAP_BYTES, info.layout.endian != memory::getEndian());
+                    glTexSubImage2D(
+                        GL_TEXTURE_2D,
+                        0,
+                        x,
+                        y,
+                        info.size.w,
+                        info.size.h,
+                        getTextureFormat(info.pixelType),
+                        getTextureType(info.pixelType),
+                        NULL);
+                }
+                glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
+            }
+            else
+#endif // TLRENDER_API_GL_4_1
+            {
+                const auto& info = data->getInfo();
+                glBindTexture(GL_TEXTURE_2D, p.id);
+                glPixelStorei(GL_UNPACK_ALIGNMENT, info.layout.alignment);
+#if defined(TLRENDER_API_GL_4_1)
+                glPixelStorei(GL_UNPACK_SWAP_BYTES, info.layout.endian != memory::getEndian());
+#endif // TLRENDER_API_GL_4_1
+                glTexSubImage2D(
+                    GL_TEXTURE_2D,
+                    0,
+                    x,
+                    y,
+                    info.size.w,
+                    info.size.h,
+                    getTextureFormat(info.pixelType),
+                    getTextureType(info.pixelType),
+                    data->getData());
             }
         }
 
@@ -408,59 +484,6 @@ namespace tl
                     getTextureFormat(info.pixelType),
                     getTextureType(info.pixelType),
                     data);
-            }
-        }
-
-        void Texture::copy(const image::Image& data, uint16_t x, uint16_t y)
-        {
-            TLRENDER_P();
-#if defined(TLRENDER_API_GL_4_1)
-            if (p.pbo)
-            {
-                glBindBuffer(GL_PIXEL_UNPACK_BUFFER, p.pbo);
-                if (void* buffer = glMapBuffer(GL_PIXEL_UNPACK_BUFFER, GL_WRITE_ONLY))
-                {
-                    memcpy(
-                        buffer,
-                        data.getData(),
-                        data.getDataByteCount());
-                    glUnmapBuffer(GL_PIXEL_UNPACK_BUFFER);
-                    const auto& info = data.getInfo();
-                    glBindTexture(GL_TEXTURE_2D, p.id);
-                    glPixelStorei(GL_UNPACK_ALIGNMENT, info.layout.alignment);
-                    glPixelStorei(GL_UNPACK_SWAP_BYTES, info.layout.endian != memory::getEndian());
-                    glTexSubImage2D(
-                        GL_TEXTURE_2D,
-                        0,
-                        x,
-                        y,
-                        info.size.w,
-                        info.size.h,
-                        getTextureFormat(info.pixelType),
-                        getTextureType(info.pixelType),
-                        NULL);
-                }
-                glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-            }
-            else
-#endif // TLRENDER_API_GL_4_1
-            {
-                const auto& info = data.getInfo();
-                glBindTexture(GL_TEXTURE_2D, p.id);
-                glPixelStorei(GL_UNPACK_ALIGNMENT, info.layout.alignment);
-#if defined(TLRENDER_API_GL_4_1)
-                glPixelStorei(GL_UNPACK_SWAP_BYTES, info.layout.endian != memory::getEndian());
-#endif // TLRENDER_API_GL_4_1
-                glTexSubImage2D(
-                    GL_TEXTURE_2D,
-                    0,
-                    x,
-                    y,
-                    info.size.w,
-                    info.size.h,
-                    getTextureFormat(info.pixelType),
-                    getTextureType(info.pixelType),
-                    data.getData());
             }
         }
 

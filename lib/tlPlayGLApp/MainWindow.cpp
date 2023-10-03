@@ -36,6 +36,7 @@
 #include <tlPlayGLApp/WindowToolBar.h>
 
 #include <tlPlay/ColorModel.h>
+#include <tlPlay/Info.h>
 #include <tlPlay/ViewportModel.h>
 
 #include <tlTimelineUI/TimelineViewport.h>
@@ -57,7 +58,6 @@
 
 #include <tlTimeline/TimeUnits.h>
 
-#include <tlCore/StringFormat.h>
 #include <tlCore/Timer.h>
 
 namespace tl
@@ -149,7 +149,7 @@ namespace tl
             std::shared_ptr<observer::ValueObserver<timeline::Playback> > playbackObserver;
             std::shared_ptr<observer::ValueObserver<otime::RationalTime> > currentTimeObserver;
             std::shared_ptr<observer::ValueObserver<timeline::CompareOptions> > compareOptionsObserver;
-            std::shared_ptr<observer::ValueObserver<timelineui::ViewportBackgroundOptions> > viewportBackgroundOptionsObserver;
+            std::shared_ptr<observer::ValueObserver<timeline::BackgroundOptions> > backgroundOptionsObserver;
             std::shared_ptr<observer::ValueObserver<timeline::ColorConfigOptions> > colorConfigOptionsObserver;
             std::shared_ptr<observer::ValueObserver<timeline::LUTOptions> > lutOptionsObserver;
             std::shared_ptr<observer::ValueObserver<timeline::ImageOptions> > imageOptionsObserver;
@@ -544,9 +544,9 @@ namespace tl
                     _viewportUpdate();
                 });
 
-            p.viewportBackgroundOptionsObserver = observer::ValueObserver<timelineui::ViewportBackgroundOptions>::create(
+            p.backgroundOptionsObserver = observer::ValueObserver<timeline::BackgroundOptions>::create(
                 app->getViewportModel()->observeBackgroundOptions(),
-                [this](const timelineui::ViewportBackgroundOptions&)
+                [this](const timeline::BackgroundOptions&)
                 {
                     _viewportUpdate();
                 });
@@ -899,37 +899,8 @@ namespace tl
             {
                 const file::Path& path = p.players[0]->getPath();
                 const io::Info& info = p.players[0]->getIOInfo();
-                std::vector<std::string> s;
-                std::vector<std::string> t;
-                s.push_back(path.get(-1, false));
-                t.push_back(path.get(-1, false));
-                if (!info.video.empty())
-                {
-                    s.push_back(std::string(
-                        string::Format("V: {0}, {1}").
-                        arg(info.video[0].size).
-                        arg(info.video[0].pixelType)));
-                    t.push_back(std::string(
-                        string::Format("Video: {0}, {1}").
-                        arg(info.video[0].size).
-                        arg(info.video[0].pixelType)));
-                }
-                if (info.audio.isValid())
-                {
-                    s.push_back(std::string(
-                        string::Format("A: {0}, {1}, {2}").
-                        arg(info.audio.channelCount).
-                        arg(info.audio.dataType).
-                        arg(info.audio.sampleRate / 1000)));
-                    t.push_back(std::string(
-                        string::Format("Audio: {0} {1}, {2}, {3}kHz").
-                        arg(info.audio.channelCount).
-                        arg(1 == info.audio.channelCount ? "channel" : "channels").
-                        arg(info.audio.dataType).
-                        arg(info.audio.sampleRate / 1000)));
-                }
-                text = string::join(s, ", ");
-                toolTip = string::join(t, "\n");
+                text = play::infoLabel(path, info);
+                toolTip = play::infoToolTip(path, info);
             }
             p.infoLabel->setText(text);
             p.infoLabel->setToolTip(toolTip);
