@@ -22,19 +22,6 @@ namespace tl
         TLRENDER_ENUM(TimerMode);
         TLRENDER_ENUM_SERIALIZE(TimerMode);
 
-        //! Timeline player cache options.
-        struct PlayerCacheOptions
-        {
-            //! Cache read ahead.
-            otime::RationalTime readAhead = otime::RationalTime(2.0, 1.0);
-
-            //! Cache read behind.
-            otime::RationalTime readBehind = otime::RationalTime(0.5, 1.0);
-
-            bool operator == (const PlayerCacheOptions&) const;
-            bool operator != (const PlayerCacheOptions&) const;
-        };
-
         //! External time mode.
         enum class ExternalTimeMode
         {
@@ -47,12 +34,18 @@ namespace tl
         TLRENDER_ENUM(ExternalTimeMode);
         TLRENDER_ENUM_SERIALIZE(ExternalTimeMode);
 
-        //! Get an external time from a source time.
-        otime::RationalTime getExternalTime(
-            const otime::RationalTime& sourceTime,
-            const otime::TimeRange& sourceTimeRange,
-            const otime::TimeRange& externalTimeRange,
-            ExternalTimeMode);
+        //! Timeline player cache options.
+        struct PlayerCacheOptions
+        {
+            //! Cache read ahead.
+            otime::RationalTime readAhead = otime::RationalTime(2.0, 1.0);
+
+            //! Cache read behind.
+            otime::RationalTime readBehind = otime::RationalTime(0.5, 1.0);
+
+            bool operator == (const PlayerCacheOptions&) const;
+            bool operator != (const PlayerCacheOptions&) const;
+        };
 
         //! Timeline player options.
         struct PlayerOptions
@@ -81,6 +74,13 @@ namespace tl
             bool operator == (const PlayerOptions&) const;
             bool operator != (const PlayerOptions&) const;
         };
+
+        //! Get an external time from a source time.
+        otime::RationalTime getExternalTime(
+            const otime::RationalTime& sourceTime,
+            const otime::TimeRange& sourceTimeRange,
+            const otime::TimeRange& externalTimeRange,
+            ExternalTimeMode);
     }
 }
 
