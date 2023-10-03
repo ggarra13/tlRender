@@ -258,7 +258,7 @@ if(TLRENDER_USD AND WIN32 AND MRV2_DIST_RELEASE)
     foreach(dll ${USD_DLLS})
 	message(STATUS "Moving ${dll} to bin/ directory...")
 	file(RENAME ${dll} ${CMAKE_INSTALL_PREFIX}/bin/)
-    endif()
+    endforeach()
 endif()
 
 #-------------------------------------------------------------------------------
