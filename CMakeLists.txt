@@ -250,17 +250,6 @@ if(TLRENDER_EXAMPLES)
 endif()
 add_subdirectory(etc)
 
-#
-# Deal with moving USD DLL's on Windows
-#
-if(TLRENDER_USD AND WIN32 AND MRV2_DIST_RELEASE)
-    file(GLOB USD_DLLS ${CMAKE_INSTALL_PREFIX}/lib/*.dll)
-    foreach(dll ${USD_DLLS})
-	message(STATUS "Moving ${dll} to bin/ directory...")
-	file(RENAME ${dll} ${CMAKE_INSTALL_PREFIX}/bin/)
-    endforeach()
-endif()
-
 #-------------------------------------------------------------------------------
 # Packaging (not used by mrv2)
 
