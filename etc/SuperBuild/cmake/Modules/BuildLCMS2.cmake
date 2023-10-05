@@ -3,8 +3,12 @@ if(WIN32)
 else()
 
     if(APPLE)
-        set(LCMS2_CXX_FLAGS "-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET} ${CMAKE_CXX_FLAGS}")
-        set(LCMS2_C_FLAGS "-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET} ${CMAKE_C_FLAGS}")
+        set(LCMS2_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+        set(LCMS2_C_FLAGS "${CMAKE_C_FLAGS}")
+	if (CMAKE_OSX_DEPLOYMENT_TARGET)
+            list(APPEND LCMS2_CXX_FLAGS "-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+            list(APPEND LCMS2_C_FLAGS "-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+	endif()
     endif()
 
     set(LCMS2_BUILD_ARGS

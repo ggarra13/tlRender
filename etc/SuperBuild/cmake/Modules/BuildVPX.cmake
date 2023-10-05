@@ -16,8 +16,12 @@ else()
     set(VPX_LDFLAGS)
 
     if(APPLE)
-        set(VPX_CXX_FLAGS "-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET} ${CMAKE_CXX_FLAGS}")
-        set(VPX_C_FLAGS "-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET} ${CMAKE_C_FLAGS}")
+        set(VPX_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+        set(VPX_C_FLAGS "${CMAKE_C_FLAGS}")
+	if (CMAKE_OSX_DEPLOYMENT_TARGET)
+            list(APPEND VPX_CXX_FLAGS "-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+            list(APPEND VPX_C_FLAGS "-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+	endif()
     endif()
 
     set(VPX_CONFIGURE_ARGS
