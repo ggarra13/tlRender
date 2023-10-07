@@ -6,6 +6,8 @@
 
 #include <tlTestLib/ITest.h>
 
+#include <tlTimeline/Timeline.h>
+
 namespace tl
 {
     namespace timeline_tests
@@ -25,9 +27,9 @@ namespace tl
             void _util();
             void _transitions();
             void _videoData();
-            void _create();
             void _timeline();
-            void _imageSequence();
+            void _timeline(const std::shared_ptr<timeline::Timeline>&);
+            void _separateAudio();
         };
     }
 }

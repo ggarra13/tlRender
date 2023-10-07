@@ -11,10 +11,12 @@
 
 #include <tlCore/Assert.h>
 #include <tlCore/File.h>
+#include <tlCore/StringFormat.h>
 
 #include <opentimelineio/clip.h>
-#include <opentimelineio/timeline.h>
+#include <opentimelineio/externalReference.h>
 #include <opentimelineio/imageSequenceReference.h>
+#include <opentimelineio/timeline.h>
 
 using namespace tl::timeline;
 
@@ -37,9 +39,8 @@ namespace tl
             _util();
             _transitions();
             _videoData();
-            _create();
             _timeline();
-            _imageSequence();
+            _separateAudio();
         }
 
         void TimelineTest::_enums()
@@ -58,6 +59,13 @@ namespace tl
                 std::stringstream ss;
                 ss << "Timeline extension: " << i;
                 _print(ss.str());
+            }
+            for (const auto& path : getPaths(
+                file::Path(TLRENDER_SAMPLE_DATA),
+                file::PathOptions(),
+                _context))
+            {
+                _print(string::Format("Path: {0}").arg(path.get()));
             }
         }
 
@@ -85,139 +93,72 @@ namespace tl
             }
         }
 
-        void TimelineTest::_create()
+        void TimelineTest::_timeline()
         {
-            image::Info imageInfo(16, 16, image::PixelType::RGB_U8);
-            imageInfo.layout.endian = memory::Endian::MSB;
-            const auto image = image::Image::create(imageInfo);
-            io::Info ioInfo;
-            ioInfo.video.push_back(imageInfo);
-            ioInfo.videoTime = otime::TimeRange(
-                otime::RationalTime(0.0, 24.0),
-                otime::RationalTime(24.0, 24.0));
+            // Test timelines.
+            const std::vector<file::Path> paths =
             {
-                auto write = _context->getSystem<io::System>()->write(
-                    file::Path("Timeline Create.0.ppm"),
-                    ioInfo);
-                for (size_t i = 0;
-                    i < static_cast<size_t>(ioInfo.videoTime.duration().value());
-                    ++i)
+                file::Path(TLRENDER_SAMPLE_DATA, "BART_2021-02-07.m4v"),
+                file::Path(TLRENDER_SAMPLE_DATA, "Seq/BART_2021-02-07.0001.jpg"),
+                file::Path(TLRENDER_SAMPLE_DATA, "MovieAndSeq.otio"),
+                file::Path(TLRENDER_SAMPLE_DATA, "TransitionGap.otio"),
+                file::Path(TLRENDER_SAMPLE_DATA, "SingleClip.otioz"),
+                file::Path(TLRENDER_SAMPLE_DATA, "SingleClipSeq.otioz")
+            };
+            for (const auto& path : paths)
+            {
+                try
                 {
-                    write->writeVideo(otime::RationalTime(i, 24.0), image);
+                    _print(string::Format("Timeline: {0}").arg(path.get()));
+                    auto timeline = Timeline::create(path, _context);
+                    _timeline(timeline);
                 }
-                auto timeline = Timeline::create(
-                    "Timeline Create.0.ppm",
-                    _context);
-                const auto& timelineIOInfo = timeline->getIOInfo();
-                TLRENDER_ASSERT(!timelineIOInfo.video.empty());
-                TLRENDER_ASSERT(timelineIOInfo.video[0] == imageInfo);
+                catch (const std::exception& e)
+                {
+                    _printError(e.what());
+                }
             }
+            for (const auto& path : paths)
             {
-                file::mkdir("Timeline Create");
-                auto write = _context->getSystem<io::System>()->write(
-                    file::Path("Timeline Create/Timeline Create.0.ppm"),
-                    ioInfo);
-                for (size_t i = 0;
-                    i < static_cast<size_t>(ioInfo.videoTime.duration().value());
-                    ++i)
+                try
                 {
-                    write->writeVideo(otime::RationalTime(i, 24.0), image);
+                    _print(string::Format("Memory timeline: {0}").arg(path.get()));
+                    auto otioTimeline = timeline::create(path, _context);
+                    toMemoryReferences(otioTimeline, path.getDirectory());
+                    auto timeline = timeline::Timeline::create(otioTimeline, _context);
+                    _timeline(timeline);
                 }
-                auto timeline = Timeline::create(
-                    "Timeline Create/Timeline Create.0.ppm",
-                    _context);
-                const auto& timelineIOInfo = timeline->getIOInfo();
-                TLRENDER_ASSERT(!timelineIOInfo.video.empty());
-                TLRENDER_ASSERT(timelineIOInfo.video[0] == imageInfo);
+                catch (const std::exception& e)
+                {
+                    _printError(e.what());
+                }
             }
         }
 
-        void TimelineTest::_timeline()
+        void TimelineTest::_timeline(const std::shared_ptr<timeline::Timeline>& timeline)
         {
-            // Write an OTIO timeline.
-            auto otioClip = new otio::Clip;
-            otioClip->set_media_reference(new otio::ImageSequenceReference(
-                "file://", "Timeline Test.", ".ppm", 0, 1, 1, 0));
-            const otime::TimeRange clipTimeRange(
-                otime::RationalTime(0.0, 24.0),
-                otime::RationalTime(24.0, 24.0));
-            otioClip->set_source_range(clipTimeRange);
-            otio::ErrorStatus errorStatus;
-            auto otioTrack = new otio::Track();
-            otioTrack->append_child(otioClip, &errorStatus);
-            if (otio::is_error(errorStatus))
-            {
-                throw std::runtime_error("Cannot append child");
-            }
-            otioClip = new otio::Clip;
-            otioClip->set_media_reference(new otio::ImageSequenceReference(
-                "", "Timeline Test.", ".ppm", 0, 1, 1, 0));
-            otioClip->set_source_range(clipTimeRange);
-            otioTrack->append_child(otioClip, &errorStatus);
-            if (otio::is_error(errorStatus))
-            {
-                throw std::runtime_error("Cannot append child");
-            }
-            auto otioStack = new otio::Stack;
-            otioStack->append_child(otioTrack, &errorStatus);
-            if (otio::is_error(errorStatus))
-            {
-                throw std::runtime_error("Cannot append child");
-            }
-            otio::SerializableObject::Retainer<otio::Timeline> otioTimeline(
-                new otio::Timeline);
-            otioTimeline->set_tracks(otioStack);
-            const std::string fileName("Timeline Test.otio");
-            otioTimeline->to_json_file(fileName, &errorStatus);
-            if (otio::is_error(errorStatus))
-            {
-                throw std::runtime_error("Cannot write file: " + fileName);
-            }
-
-            // Write the image sequence files.
-            image::Info imageInfo(16, 16, image::PixelType::RGB_U8);
-            imageInfo.layout.endian = memory::Endian::MSB;
-            const auto image = image::Image::create(imageInfo);
-            io::Info ioInfo;
-            ioInfo.video.push_back(imageInfo);
-            ioInfo.videoTime = clipTimeRange;
-            auto write = _context->getSystem<io::System>()->write(file::Path("Timeline Test.0.ppm"), ioInfo);
-            for (size_t i = 0; i < static_cast<size_t>(clipTimeRange.duration().value()); ++i)
-            {
-                write->writeVideo(otime::RationalTime(i, 24.0), image);
-            }
-
-            // Create a timeline from the OTIO timeline.
-            auto timeline = Timeline::create(fileName, _context);
-            TLRENDER_ASSERT(timeline->getTimeline());
-            TLRENDER_ASSERT(fileName == timeline->getPath().get());
-            TLRENDER_ASSERT(Options() == timeline->getOptions());
-            const otime::TimeRange timeRange(otime::RationalTime(0.0, 24.0), otime::RationalTime(48.0, 24.0));
-            TLRENDER_ASSERT(time::compareExact(timeRange, timeline->getTimeRange()));
-            TLRENDER_ASSERT(imageInfo.size == timeline->getIOInfo().video[0].size);
-            TLRENDER_ASSERT(imageInfo.pixelType == timeline->getIOInfo().video[0].pixelType);
-
             // Get video from the timeline.
+            const otime::TimeRange& timeRange = timeline->getTimeRange();
             std::vector<timeline::VideoData> videoData;
-            std::vector<std::future<timeline::VideoData> > futures;
+            std::vector<std::future<timeline::VideoData> > videoFutures;
             for (size_t i = 0; i < static_cast<size_t>(timeRange.duration().value()); ++i)
             {
-                futures.push_back(timeline->getVideo(otime::RationalTime(i, 24.0)));
+                videoFutures.push_back(timeline->getVideo(otime::RationalTime(i, 24.0)));
             }
             for (size_t i = 0; i < static_cast<size_t>(timeRange.duration().value()); ++i)
             {
-                futures.push_back(timeline->getVideo(otime::RationalTime(i, 24.0), 1));
+                videoFutures.push_back(timeline->getVideo(otime::RationalTime(i, 24.0), 1));
             }
             while (videoData.size() < static_cast<size_t>(timeRange.duration().value()) * 2)
             {
-                auto i = futures.begin();
-                while (i != futures.end())
+                auto i = videoFutures.begin();
+                while (i != videoFutures.end())
                 {
                     if (i->valid() &&
                         i->wait_for(std::chrono::seconds(0)) == std::future_status::ready)
                     {
                         videoData.push_back(i->get());
-                        i = futures.erase(i);
+                        i = videoFutures.erase(i);
                     }
                     else
                     {
@@ -225,34 +166,124 @@ namespace tl
                     }
                 }
             }
-            TLRENDER_ASSERT(futures.empty());
+            TLRENDER_ASSERT(videoFutures.empty());
+
+            // Get audio from the timeline.
+            std::vector<timeline::AudioData> audioData;
+            std::vector<std::future<timeline::AudioData> > audioFutures;
+            for (size_t i = 0; i < static_cast<size_t>(timeRange.duration().rescaled_to(1.0).value()); ++i)
+            {
+                audioFutures.push_back(timeline->getAudio(i));
+            }
+            while (audioData.size() < static_cast<size_t>(timeRange.duration().rescaled_to(1.0).value()))
+            {
+                auto i = audioFutures.begin();
+                while (i != audioFutures.end())
+                {
+                    if (i->valid() &&
+                        i->wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+                    {
+                        audioData.push_back(i->get());
+                        i = audioFutures.erase(i);
+                    }
+                    else
+                    {
+                        ++i;
+                    }
+                }
+            }
+            TLRENDER_ASSERT(audioFutures.empty());
 
             // Cancel requests.
             videoData.clear();
-            futures.clear();
+            videoFutures.clear();
+            audioData.clear();
+            audioFutures.clear();
             for (size_t i = 0; i < static_cast<size_t>(timeRange.duration().value()); ++i)
             {
-                futures.push_back(timeline->getVideo(otime::RationalTime(i, 24.0)));
+                videoFutures.push_back(timeline->getVideo(otime::RationalTime(i, 24.0)));
             }
             for (size_t i = 0; i < static_cast<size_t>(timeRange.duration().value()); ++i)
             {
-                futures.push_back(timeline->getVideo(otime::RationalTime(i, 24.0), 1));
+                videoFutures.push_back(timeline->getVideo(otime::RationalTime(i, 24.0), 1));
+            }
+            for (size_t i = 0; i < static_cast<size_t>(timeRange.duration().rescaled_to(1.0).value()); ++i)
+            {
+                audioFutures.push_back(timeline->getAudio(i));
             }
             timeline->cancelRequests();
         }
 
-        void TimelineTest::_imageSequence()
+        void TimelineTest::_separateAudio()
         {
-            //! \bug This uses the image sequence created by _timeline().
-            auto timeline = Timeline::create("Timeline Test.0.ppm", _context);
+#if defined(TLRENDER_FFMPEG)
+            try
             {
-                std::stringstream ss;
-                ss << timeline->getTimeRange().duration();
-                _print(ss.str());
+                const file::Path path(TLRENDER_SAMPLE_DATA, "Seq/BART_2021-02-07.0001.jpg");
+                _print(string::Format("Path: {0}").arg(path.get()));
+                Options options;
+                options.fileSequenceAudio = FileSequenceAudio::None;
+                auto timeline = Timeline::create(path, _context, options);
+                const file::Path& audioPath = timeline->getAudioPath();
+                TLRENDER_ASSERT(audioPath.isEmpty());
+                _print(string::Format("Audio path: {0}").arg(audioPath.get()));
             }
-            TLRENDER_ASSERT(
-                otime::TimeRange(otime::RationalTime(0.0, 24.0), otime::RationalTime(24.0, 24.0)) ==
-                timeline->getTimeRange());
+            catch (const std::exception& e)
+            {
+                _printError(e.what());
+            }
+            try
+            {
+                const file::Path path(TLRENDER_SAMPLE_DATA, "Seq/BART_2021-02-07.0001.jpg");
+                _print(string::Format("Path: {0}").arg(path.get()));
+                Options options;
+                options.fileSequenceAudio = FileSequenceAudio::BaseName;
+                auto timeline = Timeline::create(path, _context, options);
+                const file::Path& audioPath = timeline->getAudioPath();
+                TLRENDER_ASSERT(!audioPath.isEmpty());
+                _print(string::Format("Audio path: {0}").arg(audioPath.get()));
+            }
+            catch (const std::exception& e)
+            {
+                _printError(e.what());
+            }
+            try
+            {
+                const file::Path path(TLRENDER_SAMPLE_DATA, "Seq/BART_2021-02-07.0001.jpg");
+                _print(string::Format("Path: {0}").arg(path.get()));
+                Options options;
+                options.fileSequenceAudio = FileSequenceAudio::FileName;
+                options.fileSequenceAudioFileName = file::Path(
+                    TLRENDER_SAMPLE_DATA, "AudioToneStereo.wav").get();
+                auto timeline = Timeline::create(
+                    path,
+                    _context,
+                    options);
+                const file::Path& audioPath = timeline->getAudioPath();
+                TLRENDER_ASSERT(!audioPath.isEmpty());
+                _print(string::Format("Audio path: {0}").arg(audioPath.get()));
+            }
+            catch (const std::exception& e)
+            {
+                _printError(e.what());
+            }
+            try
+            {
+                const file::Path path(TLRENDER_SAMPLE_DATA, "Seq/BART_2021-02-07.0001.jpg");
+                _print(string::Format("Path: {0}").arg(path.get()));
+                Options options;
+                options.fileSequenceAudio = FileSequenceAudio::Directory;
+                options.fileSequenceAudioDirectory = "";
+                auto timeline = Timeline::create(path, _context, options);
+                const file::Path& audioPath = timeline->getAudioPath();
+                TLRENDER_ASSERT(!audioPath.isEmpty());
+                _print(string::Format("Audio path: {0}").arg(audioPath.get()));
+            }
+            catch (const std::exception& e)
+            {
+                _printError(e.what());
+            }
+#endif // TLRENDER_FFMPEG
         }
     }
 }

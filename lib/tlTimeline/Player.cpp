@@ -137,12 +137,8 @@ namespace tl
                     context->log("tl::timeline::Player", ss.str(), log::Type::Error);
                 }
             }
-            if (!p.thread.rtAudio)
-            {
-                p.thread.running = false;
-                return;
-            }
 #endif
+            p.log(context);
             p.thread.running = true;
             p.thread.thread = std::thread(
                 [this]
@@ -154,7 +150,7 @@ namespace tl
 #if defined(TLRENDER_AUDIO)
                         // Initialize audio.
                         auto audioSystem = context->getSystem<audio::System>();
-                        if (!audioSystem->getDevices().empty())
+                        if (p.thread.rtAudio && !audioSystem->getDevices().empty())
                         {
                             p.audioThread.info = audioSystem->getDefaultOutputInfo();
                             if (p.audioThread.info.channelCount > 0 &&
@@ -193,7 +189,6 @@ namespace tl
 
                     p.thread.cacheTimer = std::chrono::steady_clock::now();
                     p.thread.logTimer = std::chrono::steady_clock::now();
-
                     while (p.thread.running)
                     {
                         // Get mutex protected values.
@@ -338,6 +333,11 @@ namespace tl
         Player::~Player()
         {
             TLRENDER_P();
+            p.thread.running = false;
+            if (p.thread.thread.joinable())
+            {
+                p.thread.thread.join();
+            }
 #if defined(TLRENDER_AUDIO)
             if (p.thread.rtAudio && p.thread.rtAudio->isStreamOpen())
             {
@@ -352,11 +352,6 @@ namespace tl
                 }
             }
 #endif // TLRENDER_AUDIO
-            p.thread.running = false;
-            if (p.thread.thread.joinable())
-            {
-                p.thread.thread.join();
-            }
         }
 
         std::shared_ptr<Player> Player::create(
