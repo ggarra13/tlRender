@@ -57,18 +57,24 @@ namespace tl
                 const std::shared_ptr<io::IPlugin>& plugin,
                 const std::shared_ptr<image::Image>& image,
                 const file::Path& path,
-                bool memoryIO)
+                bool memoryIO,
+                const Options& options)
             {
                 std::vector<uint8_t> memoryData;
                 std::vector<file::MemoryRead> memory;
+                std::shared_ptr<io::IRead> read;
                 if (memoryIO)
                 {
                     auto fileIO = file::FileIO::create(path.get(), file::Mode::Read);
                     memoryData.resize(fileIO->getSize());
                     fileIO->read(memoryData.data(), memoryData.size());
                     memory.push_back(file::MemoryRead(memoryData.data(), memoryData.size()));
+                    read = plugin->read(path, memory, options);
                 }
-                auto read = plugin->read(path, memory);
+                else
+                {
+                    read = plugin->read(path, options);
+                }
                 const auto ioInfo = read->getInfo().get();
                 TLRENDER_ASSERT(!ioInfo.video.empty());
                 const auto videoData = read->readVideo(otime::RationalTime(0.0, 24.0)).get();
@@ -85,7 +91,8 @@ namespace tl
                 const std::shared_ptr<io::IPlugin>& plugin,
                 const std::shared_ptr<image::Image>& image,
                 const file::Path& path,
-                bool memoryIO)
+                bool memoryIO,
+                const Options& options)
             {
                 {
                     auto fileIO = file::FileIO::create(path.get(), file::Mode::Read);
@@ -102,14 +109,15 @@ namespace tl
                     fileIO->read(memoryData.data(), memoryData.size());
                     memory.push_back(file::MemoryRead(memoryData.data(), memoryData.size()));
                 }
-                auto read = plugin->read(path, memory);
+                auto read = plugin->read(path, memory, options);
                 const auto videoData = read->readVideo(otime::RationalTime(0.0, 24.0)).get();
             }
         }
 
         void PPMTest::_io()
         {
-            auto plugin = _context->getSystem<System>()->getPlugin<ppm::Plugin>();
+            auto system = _context->getSystem<System>();
+            auto plugin = system->getPlugin<ppm::Plugin>();
 
             const std::vector<std::string> fileNames =
             {
@@ -129,8 +137,8 @@ namespace tl
             };
             const std::vector<std::pair<std::string, std::string> > options =
             {
-                { "ppm/Data", "Binary" },
-                { "ppm/Data", "ASCII" }
+                { "PPM/Data", "Binary" },
+                { "PPM/Data", "ASCII" }
             };
 
             for (const auto& fileName : fileNames)
@@ -160,8 +168,10 @@ namespace tl
                                     try
                                     {
                                         write(plugin, image, path, imageInfo, options);
-                                        read(plugin, image, path, memoryIO);
-                                        readError(plugin, image, path, memoryIO);
+                                        read(plugin, image, path, memoryIO, options);
+                                        system->getCache()->clear();
+                                        readError(plugin, image, path, memoryIO, options);
+                                        system->getCache()->clear();
                                     }
                                     catch (const std::exception& e)
                                     {

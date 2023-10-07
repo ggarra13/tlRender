@@ -38,6 +38,10 @@ else()
         --disable-bzlib
         --disable-coreimage
         --disable-iconv
+        --disable-libxcb
+        --disable-libxcb-shm
+        --disable-libxcb-xfixes
+        --disable-libxcb-shape
         --disable-lzma
         --disable-metal
         --disable-sndio
@@ -45,6 +49,7 @@ else()
         --disable-sdl2
         --disable-securetransport
         --disable-vulkan
+        --disable-xlib
         --disable-zlib
         --disable-amf
         --disable-audiotoolbox
@@ -92,6 +97,8 @@ else()
 	list(APPEND FFmpeg_LDFLAGS
 	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libx264.a")
 	list(APPEND FFmpeg_DEPS X264)
+    if(TLRENDER_NET)
+        list(APPEND FFmpeg_CONFIGURE_ARGS --enable-mbedtls)
     endif()
     if(FFmpeg_SHARED_LIBS)
 	list(APPEND FFmpeg_CONFIGURE_ARGS

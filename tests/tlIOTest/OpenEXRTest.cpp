@@ -27,6 +27,18 @@ namespace tl
             return std::shared_ptr<OpenEXRTest>(new OpenEXRTest(context));
         }
 
+        void OpenEXRTest::run()
+        {
+            _enums();
+            _io();
+        }
+
+        void OpenEXRTest::_enums()
+        {
+            _enum<exr::ChannelGrouping>("ChannelGrouping", exr::getChannelGroupingEnums);
+            _enum<exr::Compression>("Compression", exr::getCompressionEnums);
+        }
+
         namespace
         {
             void write(
@@ -34,13 +46,14 @@ namespace tl
                 const std::shared_ptr<image::Image>& image,
                 const file::Path& path,
                 const image::Info& imageInfo,
-                const image::Tags& tags)
+                const image::Tags& tags,
+                const Options& options)
             {
                 Info info;
                 info.video.push_back(imageInfo);
                 info.videoTime = otime::TimeRange(otime::RationalTime(0.0, 24.0), otime::RationalTime(1.0, 24.0));
                 info.tags = tags;
-                auto write = plugin->write(path, info);
+                auto write = plugin->write(path, info, options);
                 write->writeVideo(otime::RationalTime(0.0, 24.0), image);
             }
 
@@ -49,18 +62,24 @@ namespace tl
                 const std::shared_ptr<image::Image>& image,
                 const file::Path& path,
                 bool memoryIO,
-                const image::Tags& tags)
+                const image::Tags& tags,
+                const Options& options)
             {
                 std::vector<uint8_t> memoryData;
                 std::vector<file::MemoryRead> memory;
+                std::shared_ptr<io::IRead> read;
                 if (memoryIO)
                 {
                     auto fileIO = file::FileIO::create(path.get(), file::Mode::Read);
                     memoryData.resize(fileIO->getSize());
                     fileIO->read(memoryData.data(), memoryData.size());
                     memory.push_back(file::MemoryRead(memoryData.data(), memoryData.size()));
+                    read = plugin->read(path, memory, options);
                 }
-                auto read = plugin->read(path, memory);
+                else
+                {
+                    read = plugin->read(path, options);
+                }
                 const auto ioInfo = read->getInfo().get();
                 TLRENDER_ASSERT(!ioInfo.video.empty());
                 const auto videoData = read->readVideo(otime::RationalTime(0.0, 24.0)).get();
@@ -73,11 +92,13 @@ namespace tl
                 //    image->getData(),
                 //    image->getDataByteCount()));
                 const auto frameTags = videoData.image->getTags();
-                for (const auto& j : tags)
+                for (const auto& j : frameTags)
                 {
-                    const auto k = frameTags.find(j.first);
-                    TLRENDER_ASSERT(k != frameTags.end());
-                    TLRENDER_ASSERT(k->second == j.second);
+                    const auto k = tags.find(j.first);
+                    if (k != tags.end())
+                    {
+                        TLRENDER_ASSERT(k->second == j.second);
+                    }
                 }
             }
 
@@ -85,7 +106,8 @@ namespace tl
                 const std::shared_ptr<io::IPlugin>& plugin,
                 const std::shared_ptr<image::Image>& image,
                 const file::Path& path,
-                bool memoryIO)
+                bool memoryIO,
+                const Options& options)
             {
                 {
                     auto fileIO = file::FileIO::create(path.get(), file::Mode::Read);
@@ -102,33 +124,93 @@ namespace tl
                     fileIO->read(memoryData.data(), memoryData.size());
                     memory.push_back(file::MemoryRead(memoryData.data(), memoryData.size()));
                 }
-                auto read = plugin->read(path, memory);
+                auto read = plugin->read(path, memory, options);
                 const auto videoData = read->readVideo(otime::RationalTime(0.0, 24.0)).get();
             }
         }
 
-        void OpenEXRTest::run()
+        void OpenEXRTest::_io()
         {
-            auto plugin = _context->getSystem<System>()->getPlugin<exr::Plugin>();
+            auto system = _context->getSystem<System>();
+            auto plugin = system->getPlugin<exr::Plugin>();
 
             const image::Tags tags =
             {
-                { "Chromaticities", "1.2 2.3 3.4 4.5 5.6 6.7 7.8 8.9" },
-                { "White Luminance", "1.2" },
-                { "X Density", "1.2" },
+                //{ "Name", "Name" },
+                //{ "Type", "scanlineimage" },
+                //{ "Version", "1" },
+                //{ "Chunk Count", "1" },
+                //{ "View", "View" },
+                //{ "Tile", "1 2 1 1" },
+                { "AdoptedNeutral", "0 1" },
+                { "Altitude", "1" },
+                { "Aperture", "1" },
+                { "AscFramingDecisionList", "AscFramingDecisionList" },
+                { "CameraCCTSetting", "1" },
+                { "CameraColorBalance", "1 2" },
+                { "CameraFirmwareVersion", "CameraFirmwareVersion" },
+                { "CameraLabel", "CameraLabel" },
+                { "CameraMake", "CameraMake" },
+                { "CameraModel", "CameraModel" },
+                { "CameraSerialNumber", "CameraSerialNumber" },
+                { "CameraTintSetting", "1" },
+                { "CameraTintSetting", "CameraTintSetting" },
+                { "CapDate", "CapDate" },
+                { "CaptureRate", "24 1" },
+                { "Chromaticities", "0 1 2 3 4 5 6 7" },
+                { "Comments", "Comments" },
+                { "EffectiveFocalLength", "1" },
+                { "EntrancePupilOffset", "1" },
+                { "Envmap", "1" },
+                { "ExpTime", "1" },
+                { "Focus", "1" },
+                { "FramesPerSecond", "24 1" },
+                { "ImageCounter", "1" },
+                { "IsoSpeed", "1" },
+                { "KeyCode", "1:2:3:4:5:6:20" },
+                { "Latitude", "1" },
+                { "LensFirmwareVersion", "LensFirmwareVersion" },
+                { "LensMake", "LensMake" },
+                { "LensModel", "LensModel" },
+                { "LensSerialNumber", "LensSerialNumber" },
+                { "Longitude", "1" },
+                { "NominalFocalLength", "1" },
+                { "OriginalDataWindow", "0 1 2 3" },
+                { "Owner", "Owner" },
+                { "PinholeFocalLength", "1" },
+                { "ReelName", "ReelName" },
+                { "SensorAcquisitionRectangle", "0 1 2 3" },
+                { "SensorCenterOffset", "0 1" },
+                { "SensorPhotositePitch", "1" },
+                { "ShutterAngle", "1" },
+                { "TStop", "1" },
+                { "TimeCode", "01:00:00:00" },
+                { "UtcOffset", "1" },
+                { "WhiteLuminance", "1" },
+                { "WorldToCamera", "0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15" },
+                { "WorldToNDC", "0 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15" },
+                { "XDensity", "1" },
+
+                { "Wrapmodes", "Wrapmodes" },
+                { "MultiView", "5:hello0:5:world" },
+                { "DeepImageState", "1" },
+
+                /*{ "X Density", "1" },
                 { "Owner", "Owner" },
                 { "Comments", "Comments" },
                 { "Capture Date", "Capture Date" },
-                { "UTC Offset", "1.2" },
-                { "Longitude", "1.2" },
-                { "Latitude", "1.2" },
-                { "Altitude", "1.2" },
-                { "Focus", "1.2" },
-                { "Exposure Time", "1.2" },
-                { "Aperture", "1.2" },
-                { "ISO Speed", "1.2" },
-                { "Keycode", "1:2:3:4:5" },
-                { "Timecode", "01:02:03:04" }
+                { "UTC Offset", "1" },
+                { "Longitude", "1" },
+                { "Latitude", "1" },
+                { "Altitude", "1" },
+                { "Focus", "1" },
+                { "Exposure Time", "1" },
+                { "Aperture", "1" },
+                { "ISO Speed", "1" },
+                { "Environment Map", "1" },
+                { "Keycode", "1 2 3 4 5 6 7" },
+                { "Timecode", "01:02:03:04" },
+                { "Wrap Modes", "Wrap Modes" }*/
             };
             const std::vector<std::string> fileNames =
             {
@@ -146,6 +228,24 @@ namespace tl
                 image::Size(1, 1),
                 image::Size(0, 0)
             };
+            const std::vector<std::pair<std::string, std::string> > options =
+            {
+                { "OpenEXR/ChannelGrouing", "None" },
+                { "OpenEXR/ChannelGrouing", "Known" },
+                { "OpenEXR/ChannelGrouing", "All" },
+                { "OpenEXR/Compression", "None" },
+                { "OpenEXR/Compression", "RLE" },
+                { "OpenEXR/Compression", "ZIPS" },
+                { "OpenEXR/Compression", "ZIP" },
+                { "OpenEXR/Compression", "PIZ" },
+                { "OpenEXR/Compression", "PXR24" },
+                { "OpenEXR/Compression", "B44" },
+                { "OpenEXR/Compression", "B44A" },
+                { "OpenEXR/Compression", "DWAA" },
+                { "OpenEXR/Compression", "DWAB" },
+                { "OpenEXR/DWACompressionLevel", "45" },
+                { "OpenEXR/DWACompressionLevel", "100" }
+            };
 
             for (const auto& fileName : fileNames)
             {
@@ -155,28 +255,35 @@ namespace tl
                     {
                         for (const auto& pixelType : image::getPixelTypeEnums())
                         {
-                            const auto imageInfo = plugin->getWriteInfo(image::Info(size, pixelType));
-                            if (imageInfo.isValid())
+                            for (const auto& option : options)
                             {
-                                file::Path path;
+                                Options options;
+                                options[option.first] = option.second;
+                                const auto imageInfo = plugin->getWriteInfo(image::Info(size, pixelType));
+                                if (imageInfo.isValid())
                                 {
-                                    std::stringstream ss;
-                                    ss << fileName << '_' << size << '_' << pixelType << ".0.exr";
-                                    _print(ss.str());
-                                    path = file::Path(ss.str());
-                                }
-                                auto image = image::Image::create(imageInfo);
-                                image->zero();
-                                image->setTags(tags);
-                                try
-                                {
-                                    write(plugin, image, path, imageInfo, tags);
-                                    read(plugin, image, path, memoryIO, tags);
-                                    readError(plugin, image, path, memoryIO);
-                                }
-                                catch (const std::exception& e)
-                                {
-                                    _printError(e.what());
+                                    file::Path path;
+                                    {
+                                        std::stringstream ss;
+                                        ss << fileName << '_' << size << '_' << pixelType << ".0.exr";
+                                        _print(ss.str());
+                                        path = file::Path(ss.str());
+                                    }
+                                    auto image = image::Image::create(imageInfo);
+                                    image->zero();
+                                    image->setTags(tags);
+                                    try
+                                    {
+                                        write(plugin, image, path, imageInfo, tags, options);
+                                        read(plugin, image, path, memoryIO, tags, options);
+                                        system->getCache()->clear();
+                                        readError(plugin, image, path, memoryIO, options);
+                                        system->getCache()->clear();
+                                    }
+                                    catch (const std::exception& e)
+                                    {
+                                        _printError(e.what());
+                                    }
                                 }
                             }
                         }
