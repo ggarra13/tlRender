@@ -154,8 +154,8 @@ namespace tl
                         _storeTag("Exif:Acceleration", common.exifAcceleration);
                         _storeTag("Exif:CameraElevationAngle",
                                   common.exifCameraElevationAngle);
-                        _storeTag("raw:pre_mul", color.pre_mul[0], color.pre_mul[4]);
-                        _storeTag("raw:cam_mul", color.cam_mul[0], color.cam_mul[4]);
+                        _storeTag("raw:pre_mul", color.pre_mul[0], color.pre_mul[3]);
+                        _storeTag("raw:cam_mul", color.cam_mul[0], color.cam_mul[3]);
                         _storeTag("raw:rgb_cam", color.rgb_cam[0][0],
                             color.rgb_cam[2][4]);
                         _storeTag("raw:cam_xyz", color.cam_xyz[0][0],
