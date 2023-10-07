@@ -97,6 +97,7 @@ else()
 	list(APPEND FFmpeg_LDFLAGS
 	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libx264.a")
 	list(APPEND FFmpeg_DEPS X264)
+    endif()
     if(TLRENDER_NET)
         list(APPEND FFmpeg_CONFIGURE_ARGS --enable-mbedtls)
     endif()
