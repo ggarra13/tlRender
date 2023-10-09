@@ -462,6 +462,8 @@ namespace tl
                 externalTime = p->mutex.externalTime;
             }
             double speed = 0.0;
+            double defaultSpeed = 0.0;
+            double speedMultiplier = 1.0F;
             float volume = 1.F;
             bool mute = false;
             std::chrono::steady_clock::time_point muteTimeout;
@@ -469,6 +471,8 @@ namespace tl
             {
                 std::unique_lock<std::mutex> lock(p->audioMutex.mutex);
                 speed = p->audioMutex.speed;
+                defaultSpeed = p->audioMutex.defaultSpeed;
+                speedMultiplier = defaultSpeed / speed;
                 volume = p->audioMutex.volume;
                 mute = p->audioMutex.mute;
                 muteTimeout = p->audioMutex.muteTimeout;
@@ -503,26 +507,34 @@ namespace tl
 
                 // Create the audio resampler.
                 if (!p->audioThread.resample ||
-                    (p->audioThread.resample && p->audioThread.resample->getInputInfo() != p->ioInfo.audio))
+                    (p->audioThread.resample && p->audioThread.resample->getInputInfo() != p->ioInfo.audio) ||
+                    speed != defaultSpeed)
                 {
+                    auto audioInfo = p->audioThread.info;
+                    if (speedMultiplier != 1.F)
+                    {
+                        audioInfo.sampleRate = static_cast<size_t>(
+                            p->audioThread.info.sampleRate * speedMultiplier);
+                    }
                     p->audioThread.resample = audio::AudioResample::create(
                         p->ioInfo.audio,
-                        p->audioThread.info);
+                        audioInfo);
                 }
 
                 // Fill the audio buffer.
                 if (p->ioInfo.audio.sampleRate > 0 &&
                     playbackStartTime != time::invalidTime)
                 {
-                    
+                    size_t sampleRate = p->ioInfo.audio.sampleRate * speedMultiplier;
                     const bool backwards = playback == Playback::Reverse;
                     const int64_t playbackStartFrame =
-                        playbackStartTime.rescaled_to(p->ioInfo.audio.sampleRate).value() -
-                        p->timeline->getTimeRange().start_time().rescaled_to(p->ioInfo.audio.sampleRate).value() -
-                        otime::RationalTime(audioOffset, 1.0).rescaled_to(p->ioInfo.audio.sampleRate).value();                                int64_t frame = playbackStartFrame;
+                        playbackStartTime.rescaled_to(sampleRate).value() -
+                        p->timeline->getTimeRange().start_time().rescaled_to(sampleRate).value() -
+                        otime::RationalTime(audioOffset, 1.0).rescaled_to(sampleRate).value();
+                    int64_t frame = playbackStartFrame;
                     const int64_t frameOffset = otime::RationalTime(
                         p->audioThread.rtAudioCurrentFrame + audio::getSampleCount(p->audioThread.buffer),
-                        p->audioThread.info.sampleRate).rescaled_to(p->ioInfo.audio.sampleRate).value();
+                        sampleRate).rescaled_to(sampleRate).value();
 
                     if (backwards)
                     {
@@ -533,8 +545,8 @@ namespace tl
                         frame += frameOffset;
                     }
 
-                    int64_t seconds = p->ioInfo.audio.sampleRate > 0 ? (frame / p->ioInfo.audio.sampleRate) : 0;
-                    int64_t offset = frame - seconds * p->ioInfo.audio.sampleRate;
+                    int64_t seconds = sampleRate > 0 ? (frame / sampleRate) : 0;
+                    int64_t offset = frame - seconds * sampleRate;
                     //std::cout << "frame:   " << frame   << std::endl;
                     //std::cout << "seconds: " << seconds << std::endl;
                     //std::cout << "offset:  " << offset  << std::endl;
@@ -553,7 +565,7 @@ namespace tl
                         }
                         if (!p->audioThread.silence)
                         {
-                            p->audioThread.silence = audio::Audio::create(p->ioInfo.audio, p->ioInfo.audio.sampleRate);
+                            p->audioThread.silence = audio::Audio::create(p->ioInfo.audio, sampleRate);
                             p->audioThread.silence->zero();
                         }
                         
@@ -567,7 +579,7 @@ namespace tl
                                 if (backwards)
                                 {
                                     const size_t byteCount = audio->getByteCount();
-                                    auto tmp = audio::Audio::create(p->ioInfo.audio, p->ioInfo.audio.sampleRate);
+                                    auto tmp = audio::Audio::create(p->ioInfo.audio, sampleRate);
                                     tmp->zero();
                                     std::memcpy(tmp->getData(), audio->getData(), byteCount);
                                     audio = tmp;
@@ -587,7 +599,7 @@ namespace tl
 
                         size_t size = std::min(
                             p->playerOptions.audioBufferFrameCount,
-                            static_cast<size_t>(p->ioInfo.audio.sampleRate - offset));
+                            static_cast<size_t>(sampleRate - offset));
 
                         if (backwards)
                         {
@@ -623,7 +635,7 @@ namespace tl
                             offset -= size;
                             if (offset < 0)
                             {
-                                offset += p->ioInfo.audio.sampleRate;
+                                offset += sampleRate;
                                 seconds -= 1;
                             }
                             p->audioThread.backwardsSize = size;
@@ -631,9 +643,9 @@ namespace tl
                         else
                         {
                             offset += size;
-                            if (offset >= p->ioInfo.audio.sampleRate)
+                            if (offset >= sampleRate)
                             {
-                                offset -= p->ioInfo.audio.sampleRate;
+                                offset -= sampleRate;
                                 seconds += 1;
                             }
                         }
@@ -645,8 +657,7 @@ namespace tl
 
                 // Send audio data to RtAudio.
                 const auto now = std::chrono::steady_clock::now();
-                if (speed == p->timeline->getTimeRange().duration().rate() &&
-                    !externalTime &&
+                if (!externalTime &&
                     !mute &&
                     now >= muteTimeout &&
                     nFrames <= getSampleCount(p->audioThread.buffer))

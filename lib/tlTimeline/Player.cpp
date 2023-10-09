@@ -123,6 +123,7 @@ namespace tl
             p.mutex.cacheOptions = p.cacheOptions->get();
             p.mutex.cacheInfo = p.cacheInfo->get();
             p.audioMutex.speed = p.speed->get();
+            p.audioMutex.defaultSpeed = p.speed->get();
 #if defined(TLRENDER_AUDIO)
             try
             {
@@ -435,6 +436,7 @@ namespace tl
                 }
                 {
                     std::unique_lock<std::mutex> lock(p.audioMutex.mutex);
+                    std::cerr << "speed changed to " << value << std::endl;
                     p.audioMutex.speed = value;
                 }
             }
@@ -814,7 +816,7 @@ namespace tl
             if (p.mute->setIfChanged(value))
             {
                 std::unique_lock<std::mutex> lock(p.audioMutex.mutex);
-                p.audioMutex.mute = value;
+                //p.audioMutex.mute = value;
             }
         }
 
