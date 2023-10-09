@@ -436,7 +436,6 @@ namespace tl
                 }
                 {
                     std::unique_lock<std::mutex> lock(p.audioMutex.mutex);
-                    std::cerr << "speed changed to " << value << std::endl;
                     p.audioMutex.speed = value;
                 }
             }

@@ -505,17 +505,24 @@ namespace tl
                         std::numeric_limits<size_t>::max();
                 }
 
+                auto audioInfo = p->audioThread.info;
+                audioInfo.sampleRate = static_cast<size_t>(
+                    p->audioThread.info.sampleRate * speedMultiplier);
+                    
                 // Create the audio resampler.
                 if (!p->audioThread.resample ||
-                    (p->audioThread.resample && p->audioThread.resample->getInputInfo() != p->ioInfo.audio) ||
-                    speed != defaultSpeed)
+                    (p->audioThread.resample &&
+                     p->audioThread.resample->getInputInfo() !=
+                         p->ioInfo.audio) ||
+                    (p->audioThread.resample &&
+                     p->audioThread.resample->getOutputInfo() !=
+                         audioInfo))
                 {
-                    auto audioInfo = p->audioThread.info;
-                    if (speedMultiplier != 1.F)
-                    {
-                        audioInfo.sampleRate = static_cast<size_t>(
-                            p->audioThread.info.sampleRate * speedMultiplier);
-                    }
+                    // std::cerr << "speed multiplier=" << speedMultiplier << " ";
+                    // std::cerr << "ioInfo sampleRate="
+                    //           << p->ioInfo.audio.sampleRate
+                    //           << " thread sampleRate=" << audioInfo.sampleRate
+                    //           << std::endl;
                     p->audioThread.resample = audio::AudioResample::create(
                         p->ioInfo.audio,
                         audioInfo);
