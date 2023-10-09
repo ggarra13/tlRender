@@ -518,7 +518,7 @@ namespace tl
                      p->audioThread.resample->getOutputInfo() !=
                          audioInfo))
                 {
-                    // std::cerr << "speed multiplier=" << speedMultiplier << " ";
+                    std::cerr << "speed multiplier=" << speedMultiplier << " ";
                     // std::cerr << "ioInfo sampleRate="
                     //           << p->ioInfo.audio.sampleRate
                     //           << " thread sampleRate=" << audioInfo.sampleRate
@@ -533,6 +533,9 @@ namespace tl
                     playbackStartTime != time::invalidTime)
                 {
                     size_t sampleRate = p->ioInfo.audio.sampleRate * speedMultiplier;
+                    std::cerr << "sampleRate=" << sampleRate << std::endl;
+                    std::cerr << "ioInfo count=" << p->ioInfo.audio.getByteCount() << std::endl;
+                    std::cerr << "aInfo count=" << audioInfo.getByteCount() << std::endl;
                     const bool backwards = playback == Playback::Reverse;
                     const int64_t playbackStartFrame =
                         playbackStartTime.rescaled_to(sampleRate).value() -
