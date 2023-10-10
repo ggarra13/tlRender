@@ -157,9 +157,9 @@ namespace tl
                         _storeTag("raw:pre_mul", color.pre_mul[0], color.pre_mul[3]);
                         _storeTag("raw:cam_mul", color.cam_mul[0], color.cam_mul[3]);
                         _storeTag("raw:rgb_cam", color.rgb_cam[0][0],
-                            color.rgb_cam[2][4]);
+                            color.rgb_cam[2][3]);
                         _storeTag("raw:cam_xyz", color.cam_xyz[0][0],
-                            color.cam_xyz[3][3]);
+                            color.cam_xyz[3][2]);
                         
                         _processor->recycle();
                         

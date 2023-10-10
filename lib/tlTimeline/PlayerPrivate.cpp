@@ -533,6 +533,8 @@ namespace tl
                     playbackStartTime != time::invalidTime)
                 {
                     size_t sampleRate = p->ioInfo.audio.sampleRate * speedMultiplier;
+                    size_t threadSampleRate = p->audioThread.info.sampleRate *
+                                              speedMultiplier;
                     const bool backwards = playback == Playback::Reverse;
                     const bool resample = sampleRate > p->ioInfo.audio.sampleRate;
                     const int64_t playbackStartFrame =
@@ -542,7 +544,7 @@ namespace tl
                     int64_t frame = playbackStartFrame;
                     const int64_t frameOffset = otime::RationalTime(
                         p->audioThread.rtAudioCurrentFrame + audio::getSampleCount(p->audioThread.buffer),
-                        sampleRate).rescaled_to(sampleRate).value();
+                        threadSampleRate).rescaled_to(sampleRate).value();
 
                     if (backwards)
                     {
