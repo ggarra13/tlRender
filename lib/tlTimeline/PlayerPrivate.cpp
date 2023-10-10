@@ -609,27 +609,31 @@ namespace tl
                                 p->audioThread.silence->getData() +
                                 (offset * p->ioInfo.audio.getByteCount()));
                         }
-                        
-                        size_t size = std::min(
+
+                        const size_t size = std::min(
                             p->playerOptions.audioBufferFrameCount,
                             static_cast<size_t>(sampleRate - offset));
-                        
+                        size_t mixSize = size;
+
                         if (backwards)
                         {
-                            std::cerr << "size=" << size << std::endl;
                             if ( p->audioThread.backwardsSize < size )
                             {
-                                size = p->audioThread.backwardsSize;
-                                std::cerr << "\tsize=" << size << std::endl;
+                                mixSize = p->audioThread.backwardsSize;
                             }
                             
                             audio::reverse(
                                 const_cast<uint8_t**>(audioDataP.data()),
                                 audioDataP.size(),
-                                size,
+                                mixSize,
                                 p->ioInfo.audio.channelCount,
                                 p->ioInfo.audio.dataType);
                         }
+                        
+                        std::cerr << "\toffset=" << offset
+                                  << " size=" << size << " mixSize=" << mixSize
+                                  << " back="
+                                  << p->audioThread.backwardsSize<< std::endl;
                         
                         auto tmp = audio::Audio::create(audioInfo, size);
                         tmp->zero();
@@ -638,7 +642,7 @@ namespace tl
                             audioDataP.size(),
                             tmp->getData(),
                             volume,
-                            size,
+                            mixSize,
                             p->ioInfo.audio.channelCount,
                             p->ioInfo.audio.dataType);
 
@@ -664,14 +668,7 @@ namespace tl
                                 std::cerr << "-------------------------------"
                                           << std::endl;
                             }
-                            else
-                            {
-                                if (size < p->playerOptions.audioBufferFrameCount)
-                                    p->audioThread.backwardsSize = size;
-                                else
-                                    p->audioThread.backwardsSize =
-                                        p->playerOptions.audioBufferFrameCount;
-                            }
+                            p->audioThread.backwardsSize = size;
                         }
                         else
                         {
