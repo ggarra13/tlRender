@@ -584,12 +584,12 @@ namespace tl
                             if (layer.audio && layer.audio->getInfo() == p->ioInfo.audio)
                             {
                                 auto audio = layer.audio;
+                                size_t dataOffset = offset * p->ioInfo.audio.getByteCount();
                                 if (backwards || resample)
                                 {
-                                    const size_t byteCount = audio->getByteCount();
                                     auto tmp = audio::Audio::create(audioInfo, sampleRate);
                                     tmp->zero();
-                                    std::memcpy(tmp->getData(), audio->getData(), byteCount);
+                                    std::memcpy(tmp->getData(), audio->getData(), tmp->getByteCount());
                                     if (resample)
                                     {
                                         audio = p->audioThread.resample->process(tmp);
@@ -600,9 +600,7 @@ namespace tl
                                     }
                                     audios.push_back(audio);
                                 }
-                                audioDataP.push_back(
-                                    audio->getData() +
-                                    (offset * p->ioInfo.audio.getByteCount()));
+                                audioDataP.push_back(audio->getData() + dataOffset);
                             }
                         }
                         if (audioDataP.empty())
@@ -611,15 +609,19 @@ namespace tl
                                 p->audioThread.silence->getData() +
                                 (offset * p->ioInfo.audio.getByteCount()));
                         }
-
+                        
                         size_t size = std::min(
                             p->playerOptions.audioBufferFrameCount,
                             static_cast<size_t>(sampleRate - offset));
-
+                        
                         if (backwards)
                         {
+                            std::cerr << "size=" << size << std::endl;
                             if ( p->audioThread.backwardsSize < size )
+                            {
                                 size = p->audioThread.backwardsSize;
+                                std::cerr << "\tsize=" << size << std::endl;
+                            }
                             
                             audio::reverse(
                                 const_cast<uint8_t**>(audioDataP.data()),
@@ -652,24 +654,31 @@ namespace tl
                             }
                         }
 
-                        //const int64_t length = p->ioInfo.audio.sampleRate;
-                        const int64_t length = sampleRate;
                         if (backwards)
                         {
                             offset -= size;
                             if (offset < 0)
                             {
-                                offset += length;
+                                offset += sampleRate;
                                 seconds -= 1;
+                                std::cerr << "-------------------------------"
+                                          << std::endl;
                             }
-                            p->audioThread.backwardsSize = size;
+                            else
+                            {
+                                if (size < p->playerOptions.audioBufferFrameCount)
+                                    p->audioThread.backwardsSize = size;
+                                else
+                                    p->audioThread.backwardsSize =
+                                        p->playerOptions.audioBufferFrameCount;
+                            }
                         }
                         else
                         {
                             offset += size;
-                            if (offset >= length)
+                            if (offset >= sampleRate)
                             {
-                                offset -= length;
+                                offset -= sampleRate;
                                 seconds += 1;
                             }
                         }
