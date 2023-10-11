@@ -28,8 +28,8 @@ namespace tl
                 {
                     T* out0 = data + i * channelCount;
                     T* out1 = data + (sampleCount - i - 1) * channelCount;
-
-                    for (size_t j = 0; j < channelCount; ++j)
+                    
+                    for (uint8_t j = 0; j < channelCount; ++j)
                     {
                         T tmp = out0[j];
                         out0[j] = out1[j];
