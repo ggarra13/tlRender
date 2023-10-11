@@ -536,7 +536,13 @@ namespace tl
                     size_t threadSampleRate = p->audioThread.info.sampleRate *
                                               speedMultiplier;
                     const bool backwards = playback == Playback::Reverse;
-                    const bool resample = sampleRate > p->ioInfo.audio.sampleRate;
+                    const bool resampleFirst = sampleRate > p->ioInfo.audio.sampleRate;
+                    if (!p->audioThread.silence)
+                    {
+                        p->audioThread.silence = audio::Audio::create(audioInfo, sampleRate);
+                        p->audioThread.silence->zero();
+                    }
+                    
                     const int64_t playbackStartFrame =
                         playbackStartTime.rescaled_to(sampleRate).value() -
                         p->timeline->getTimeRange().start_time().rescaled_to(sampleRate).value() -
@@ -557,13 +563,13 @@ namespace tl
 
                     int64_t seconds = sampleRate > 0 ? (frame / sampleRate) : 0;
                     int64_t offset = frame - seconds * sampleRate;
-                    //std::cout << "frame:   " << frame   << std::endl;
-                    //std::cout << "seconds: " << seconds << std::endl;
-                    //std::cout << "offset:  " << offset  << std::endl;
+                    // std::cout << "frame:   " << frame   << std::endl;
+                    // std::cout << "seconds: " << seconds << std::endl;
+                    // std::cout << "offset:  " << offset  << std::endl;
                     while (audio::getSampleCount(p->audioThread.buffer) < nFrames)
                     {
-                        // std::cout << "\tseconds: " << seconds;
-                        // std::cout << "\toffset: " << offset;
+                        // std::cerr << "\tseconds: " << seconds << std::endl;
+                        // std::cerr << "\toffset: " << offset << std::endl;
                         AudioData audioData;
                         {
                             std::unique_lock<std::mutex> lock(p->audioMutex.mutex);
@@ -573,26 +579,30 @@ namespace tl
                                 audioData = j->second;
                             }
                         }
-                        if (!p->audioThread.silence)
-                        {
-                            p->audioThread.silence = audio::Audio::create(p->ioInfo.audio, sampleRate);
-                            p->audioThread.silence->zero();
-                        }
                         
                         std::vector<std::shared_ptr<audio::Audio> > audios;
                         std::vector<const uint8_t*> audioDataP;
+                        const size_t dataOffset = offset * p->ioInfo.audio.getByteCount();
                         for (const auto& layer : audioData.layers)
                         {
                             if (layer.audio && layer.audio->getInfo() == p->ioInfo.audio)
                             {
                                 auto audio = layer.audio;
-                                if (backwards || resample)
+                                if (backwards || resampleFirst)
                                 {
-                                    const size_t byteCount = audio->getByteCount();
                                     auto tmp = audio::Audio::create(audioInfo, sampleRate);
                                     tmp->zero();
+
+                                    // Check which audio is smaller and just copy that portion.
+                                    size_t byteCount = tmp->getByteCount();
+                                    if (audio->getByteCount() < byteCount)
+                                    {
+                                        byteCount = audio->getByteCount();
+                                    }
+
+                                    // Copy that portion.
                                     std::memcpy(tmp->getData(), audio->getData(), byteCount);
-                                    if (resample)
+                                    if (resampleFirst)
                                     {
                                         audio = p->audioThread.resample->process(tmp);
                                     }
@@ -602,49 +612,49 @@ namespace tl
                                     }
                                     audios.push_back(audio);
                                 }
-                                audioDataP.push_back(
-                                    audio->getData() +
-                                    (offset * p->ioInfo.audio.getByteCount()));
+                                audioDataP.push_back(audio->getData() + dataOffset);
                             }
                         }
                         if (audioDataP.empty())
                         {
                             audioDataP.push_back(
-                                p->audioThread.silence->getData() +
-                                (offset * p->ioInfo.audio.getByteCount()));
+                                p->audioThread.silence->getData() + dataOffset);
                         }
 
                         size_t size = std::min(
                             p->playerOptions.audioBufferFrameCount,
                             static_cast<size_t>(sampleRate - offset));
+                        size_t mixSize = size;
 
                         if (backwards)
                         {
                             if ( p->audioThread.backwardsSize < size )
-                                size = p->audioThread.backwardsSize;
+                            {
+                                mixSize = p->audioThread.backwardsSize;
+                            }
                             
                             audio::reverse(
                                 const_cast<uint8_t**>(audioDataP.data()),
                                 audioDataP.size(),
-                                size,
+                                mixSize,
                                 p->ioInfo.audio.channelCount,
                                 p->ioInfo.audio.dataType);
                         }
                         
-                        auto tmp = audio::Audio::create(audioInfo, size);
+                        auto tmp = audio::Audio::create(audioInfo, mixSize);
                         tmp->zero();
                         audio::mix(
                             audioDataP.data(),
                             audioDataP.size(),
                             tmp->getData(),
                             volume,
-                            size,
+                            mixSize,
                             p->ioInfo.audio.channelCount,
                             p->ioInfo.audio.dataType);
 
                         if (p->audioThread.resample)
                         {
-                            if (resample)
+                            if (resampleFirst)
                             {
                                 p->audioThread.buffer.push_back(tmp);
                             }
@@ -654,14 +664,12 @@ namespace tl
                             }
                         }
 
-                        //const int64_t length = p->ioInfo.audio.sampleRate;
-                        const int64_t length = sampleRate;
                         if (backwards)
                         {
                             offset -= size;
                             if (offset < 0)
                             {
-                                offset += length;
+                                offset += sampleRate;
                                 seconds -= 1;
                             }
                             p->audioThread.backwardsSize = size;
@@ -669,14 +677,13 @@ namespace tl
                         else
                         {
                             offset += size;
-                            if (offset >= length)
+                            if (offset >= sampleRate)
                             {
-                                offset -= length;
+                                offset -= sampleRate;
                                 seconds += 1;
                             }
                         }
 
-                        //std::cout << std::endl;
                     }
                     
                 }
