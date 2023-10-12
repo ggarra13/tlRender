@@ -85,7 +85,7 @@ namespace tl
                 const std::string& fileName,
                 const file::MemoryRead*,
                 const otime::RationalTime&,
-                uint16_t layer) override;
+                const io::Options&) override;
 
         private:
             ChannelGrouping _channelGrouping = ChannelGrouping::Known;
@@ -117,7 +117,8 @@ namespace tl
             void _writeVideo(
                 const std::string& fileName,
                 const otime::RationalTime&,
-                const std::shared_ptr<image::Image>&) override;
+                const std::shared_ptr<image::Image>&,
+                const io::Options&) override;
 
             void _writeLayer(
                 const std::shared_ptr<image::Image>& image,
