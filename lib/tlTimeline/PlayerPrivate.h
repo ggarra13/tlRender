@@ -135,7 +135,6 @@ namespace tl
                 std::list<std::shared_ptr<audio::Audio> > buffer;
                 std::shared_ptr<audio::Audio> silence;
                 size_t rtAudioCurrentFrame = 0;
-                size_t bufferSent = 0;
                 size_t backwardsSize = std::numeric_limits<size_t>::max();
             };
             AudioThread audioThread;

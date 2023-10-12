@@ -500,16 +500,14 @@ namespace tl
                         p->audioThread.resample->flush();
                     }
                     p->audioThread.buffer.clear();
-                    p->audioThread.bufferSent = 0;
                     p->audioThread.rtAudioCurrentFrame = 0;
                     p->audioThread.backwardsSize =
                         std::numeric_limits<size_t>::max();
                 }
 
-                const size_t infoSampleRate = p->ioInfo.audio.sampleRate * speedMultiplier;
+                const size_t infoSampleRate = p->ioInfo.audio.sampleRate;
                 const size_t threadSampleRate = p->audioThread.info.sampleRate *
                                                 speedMultiplier;
-                const bool resampleFirst = infoSampleRate > p->ioInfo.audio.sampleRate;
                     
                 
                 auto audioInfo = p->audioThread.info;
@@ -532,10 +530,6 @@ namespace tl
                 if (p->ioInfo.audio.sampleRate > 0 &&
                     playbackStartTime != time::invalidTime)
                 {
-<<<<<<< Updated upstream
-                    size_t sampleRate = p->ioInfo.audio.sampleRate * speedMultiplier;
-=======
->>>>>>> Stashed changes
                     const bool backwards = playback == Playback::Reverse;
                     if (!p->audioThread.silence)
                     {
@@ -548,28 +542,13 @@ namespace tl
                         p->timeline->getTimeRange().start_time().rescaled_to(infoSampleRate).value() -
                         otime::RationalTime(audioOffset, 1.0).rescaled_to(infoSampleRate).value();
                     int64_t frame = playbackStartFrame;
-<<<<<<< Updated upstream
-                    const int64_t frameOffset = otime::RationalTime(
-                        p->audioThread.rtAudioCurrentFrame + audio::getSampleCount(p->audioThread.buffer),
-                        sampleRate).rescaled_to(sampleRate).value();
-=======
                     auto timeOffset = otime::RationalTime(
                         p->audioThread.rtAudioCurrentFrame +
                         audio::getSampleCount(p->audioThread.buffer),
                         threadSampleRate).rescaled_to(infoSampleRate);
 
-                    int64_t maxOffset;
-                    if (resampleFirst)
-                    {
-                        maxOffset = infoSampleRate;
-                    }
-                    else
-                    {
-                        maxOffset = infoSampleRate; //p->ioInfo.audio.sampleRate;  // this is correct
-                    }
-                    
+                    const int64_t maxOffset = infoSampleRate;
                     const int64_t frameOffset = timeOffset.value();
->>>>>>> Stashed changes
 
                     if (backwards)
                     {
@@ -581,14 +560,19 @@ namespace tl
                     }
 
                     
+                    
                     int64_t seconds = infoSampleRate > 0 ? (frame / infoSampleRate) : 0;
                     int64_t offset = frame - seconds * infoSampleRate;
-                    std::cout << "frame:     " << frame   << std::endl;
-                    std::cout << "seconds:   " << seconds << std::endl;
-                    std::cout << "offset:    " << offset  << std::endl;
-                    std::cout << "  sent:    " << p->audioThread.bufferSent << std::endl;
+
+                    
+
+                    // std::cout << "frame:       " << frame   << std::endl;
+                    // std::cout << "seconds:     " << seconds << std::endl;
+                    // std::cout << "offset:      " << offset  << std::endl;
                     while (audio::getSampleCount(p->audioThread.buffer) < nFrames)
                     {
+                        // std::cout << "\tseconds: " << seconds << std::endl;
+                        // std::cout << "\toffset:  " << offset << std::endl;
                         AudioData audioData;
                         {
                             std::unique_lock<std::mutex> lock(p->audioMutex.mutex);
@@ -599,59 +583,21 @@ namespace tl
                             }
                         }
                         
-                        std::cerr << "\tseconds: " << seconds << std::endl;
-                        std::cerr << "\toffset:  " << offset << std::endl;
-                        std::cerr << "\tbuffer:  " << audio::getSampleCount(p->audioThread.buffer) << std::endl;
                         std::vector<std::shared_ptr<audio::Audio> > audios;
                         std::vector<const uint8_t*> audioDataP;
-                        size_t size = std::min(
-                            p->playerOptions.audioBufferFrameCount,
-                            static_cast<size_t>(maxOffset - offset));
-                        size_t mixSize = size;
-                        
-                        if (backwards)
-                        {
-                            if ( p->audioThread.backwardsSize < size )
-                            {
-                                mixSize = p->audioThread.backwardsSize;
-                            }
-                        }
-                        
                         const size_t dataOffset = offset * p->ioInfo.audio.getByteCount();
                         for (const auto& layer : audioData.layers)
                         {
                             if (layer.audio && layer.audio->getInfo() == p->ioInfo.audio)
                             {
                                 auto audio = layer.audio;
-                                size_t byteCount = audio->getByteCount();
-                                if (backwards || resampleFirst)
+                                if (backwards)
                                 {
-                                    std::shared_ptr<audio::Audio > tmp;
-                                    if (resampleFirst)
-                                        tmp = audio::Audio::create(audioInfo, infoSampleRate);
-                                    else
-                                        tmp = audio::Audio::create(p->ioInfo.audio, p->ioInfo.audio.sampleRate);
+                                    auto tmp = audio::Audio::create(p->ioInfo.audio, infoSampleRate);
                                     tmp->zero();
 
-                                    // Check which audio is smaller.
-                                    if (byteCount > tmp->getByteCount())
-                                    {
-                                        byteCount = tmp->getByteCount();
-                                    }
-
-                                    // Assert if byteCount is smaller than minSize.
-                                    assert(byteCount >= mixSize);
-
-                                    // Copy or resample that portion.
-                                    std::memcpy(tmp->getData(), audio->getData(), byteCount);
-                                    if (resampleFirst)
-                                    {
-                                        audio = p->audioThread.resample->process(tmp);
-                                    }
-                                    else
-                                    {
-                                        audio = tmp;
-                                    }
+                                    std::memcpy(tmp->getData(), audio->getData(), audio->getByteCount());
+                                    audio = tmp;
                                     audios.push_back(audio);
                                 }
                                 audioDataP.push_back(audio->getData() + dataOffset);
@@ -659,44 +605,43 @@ namespace tl
                         }
                         if (audioDataP.empty())
                         {
-                            audioDataP.push_back(p->audioThread.silence->getData());
+                            audioDataP.push_back(
+                                p->audioThread.silence->getData() + dataOffset);
                         }
 
+                        size_t size = std::min(
+                            p->playerOptions.audioBufferFrameCount,
+                            static_cast<size_t>(maxOffset - offset));
+                        
                         if (backwards)
                         {
+                            if ( p->audioThread.backwardsSize < size )
+                            {
+                                size = p->audioThread.backwardsSize;
+                            }
+                            
                             audio::reverse(
                                 const_cast<uint8_t**>(audioDataP.data()),
                                 audioDataP.size(),
-                                mixSize,
+                                size,
                                 p->ioInfo.audio.channelCount,
                                 p->ioInfo.audio.dataType);
                         }
 
-                        std::shared_ptr<audio::Audio > tmp;
-                        if (resampleFirst)
-                            tmp = audio::Audio::create(audioInfo, mixSize);
-                        else
-                            tmp = audio::Audio::create(p->ioInfo.audio, mixSize);
+                        auto tmp = audio::Audio::create(p->ioInfo.audio, size);
                         tmp->zero();
                         audio::mix(
                             audioDataP.data(),
                             audioDataP.size(),
                             tmp->getData(),
                             volume,
-                            mixSize,
+                            size,
                             p->ioInfo.audio.channelCount,
                             p->ioInfo.audio.dataType);
-                        
+
                         if (p->audioThread.resample)
                         {
-                            if (resampleFirst)
-                            {
-                                p->audioThread.buffer.push_back(tmp);
-                            }
-                            else
-                            {
-                                p->audioThread.buffer.push_back(p->audioThread.resample->process(tmp));
-                            }
+                            p->audioThread.buffer.push_back(p->audioThread.resample->process(tmp));
                         }
 
                         if (backwards)
@@ -705,9 +650,16 @@ namespace tl
                             if (offset < 0)
                             {
                                 seconds -= 1;
-                                offset += ( maxOffset * speedMultiplier );
+                                if (speedMultiplier < 1.0)
+                                    offset += ( maxOffset * speedMultiplier );
+                                else
+                                    offset += maxOffset;
+                                p->audioThread.backwardsSize = static_cast<size_t>(maxOffset - offset);
                             }
-                            p->audioThread.backwardsSize = size;
+                            else
+                            {
+                                p->audioThread.backwardsSize = size;
+                            }
                         }
                         else
                         {
@@ -722,9 +674,6 @@ namespace tl
                     }
                 }
 
-                std::cerr << "SEND buffer = " << getSampleCount(p->audioThread.buffer)
-                          << std::endl;
-                
                 // Send audio data to RtAudio.
                 const auto now = std::chrono::steady_clock::now();
                 if (!externalTime &&
@@ -732,16 +681,12 @@ namespace tl
                     now >= muteTimeout &&
                     nFrames <= getSampleCount(p->audioThread.buffer))
                 {
-                    size_t toSend = getSampleCount(p->audioThread.buffer);
                     audio::move(
                         p->audioThread.buffer,
                         reinterpret_cast<uint8_t*>(outputBuffer),
                         nFrames);
-                    p->audioThread.bufferSent += (toSend - getSampleCount(p->audioThread.buffer));
                 }
 
-                std::cerr << "END  buffer = " << getSampleCount(p->audioThread.buffer)
-                          << std::endl;
                 // Update the audio frame.
                 p->audioThread.rtAudioCurrentFrame += nFrames;
 
