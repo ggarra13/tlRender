@@ -55,7 +55,7 @@ namespace tl
                 const std::string& fileName,
                 const file::MemoryRead*,
                 const otime::RationalTime&,
-                uint16_t layer) override;
+                const io::Options&) override;
         };
 
         //! RAW plugin.

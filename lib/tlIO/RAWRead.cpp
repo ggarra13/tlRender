@@ -436,7 +436,7 @@ namespace tl
             const std::string& fileName,
             const file::MemoryRead* memory,
             const otime::RationalTime& time,
-            uint16_t layer)
+            const io::Options& options)
         {
             return File(fileName, memory).read(fileName, time);
         }
