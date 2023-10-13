@@ -15,11 +15,12 @@ namespace tl
         //! Background type.
         enum class Background
         {
+            Transparent,
             Solid,
             Checkers,
 
             Count,
-            First = Solid
+            First = Transparent
         };
         TLRENDER_ENUM(Background);
         TLRENDER_ENUM_SERIALIZE(Background);
@@ -27,7 +28,7 @@ namespace tl
         //! Background options.
         struct BackgroundOptions
         {
-            Background     type           = Background::Solid;
+            Background     type           = Background::Transparent;
             image::Color4f solidColor     = image::Color4f(0.F, 0.F, 0.F);
             image::Color4f checkersColor0 = image::Color4f(1.F, 1.F, 1.F);
             image::Color4f checkersColor1 = image::Color4f(0.F, 0.F, 0.F);

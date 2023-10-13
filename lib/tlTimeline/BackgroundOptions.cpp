@@ -13,6 +13,7 @@ namespace tl
     {
         TLRENDER_ENUM_IMPL(
             Background,
+            "Transparent",
             "Solid",
             "Checkers");
         TLRENDER_ENUM_SERIALIZE_IMPL(Background);
