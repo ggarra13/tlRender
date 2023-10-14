@@ -22,6 +22,7 @@ namespace tl
         class AudioModel;
         class ColorModel;
         class FilesModel;
+        class Settings;
         class ViewportModel;
     }
 
@@ -29,7 +30,6 @@ namespace tl
     namespace play_gl
     {
         class MainWindow;
-        class Settings;
         class ToolsModel;
 
         //! Application.
@@ -64,7 +64,7 @@ namespace tl
             void openSeparateAudioDialog();
 
             //! Get the settings.
-            const std::shared_ptr<Settings>& getSettings() const;
+            const std::shared_ptr<play::Settings>& getSettings() const;
 
             //! Get the files model.
             const std::shared_ptr<play::FilesModel>& getFilesModel() const;
@@ -92,13 +92,22 @@ namespace tl
             void _tick() override;
 
         private:
-            void _filesCallback(const std::vector<std::shared_ptr<play::FilesModelItem> >&);
-            void _activeCallback(const std::vector<std::shared_ptr<play::FilesModelItem> >&);
+            void _fileLogInit(const std::string&);
+            void _settingsInit(const std::string&);
+            void _modelsInit();
+            void _observersInit();
+            void _inputFilesInit();
+            void _mainWindowInit();
 
+            io::Options _getIOOptions() const;
             std::vector<std::shared_ptr<timeline::Player> > _getActivePlayers() const;
             otime::RationalTime _getCacheReadAhead() const;
             otime::RationalTime _getCacheReadBehind() const;
 
+            void _filesCallback(const std::vector<std::shared_ptr<play::FilesModelItem> >&);
+            void _activeCallback(const std::vector<std::shared_ptr<play::FilesModelItem> >&);
+
+            void _settingsUpdate(const std::string&);
             void _cacheUpdate();
             void _audioUpdate();
 

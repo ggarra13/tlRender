@@ -60,46 +60,7 @@ namespace tl
             const io::Options& options)
         {
             TLRENDER_P();
-            
-            RenderOptions renderOptions;
-            auto i = options.find("USD/renderWidth");
-            if (i != options.end())
-            {
-                std::stringstream ss(i->second);
-                ss >> renderOptions.renderWidth;
-            }
-            i = options.find("USD/complexity");
-            if (i != options.end())
-            {
-                std::stringstream ss(i->second);
-                ss >> renderOptions.complexity;
-            }
-            i = options.find("USD/drawMode");
-            if (i != options.end())
-            {
-                std::stringstream ss(i->second);
-                ss >> renderOptions.drawMode;
-            }
-            i = options.find("USD/enableLighting");
-            if (i != options.end())
-            {
-                std::stringstream ss(i->second);
-                ss >> renderOptions.enableLighting;
-            }
-            i = options.find("USD/stageCacheCount");
-            if (i != options.end())
-            {
-                std::stringstream ss(i->second);
-                ss >> renderOptions.stageCacheCount;
-            }
-            i = options.find("USD/diskCacheByteCount");
-            if (i != options.end())
-            {
-                std::stringstream ss(i->second);
-                ss >> renderOptions.diskCacheByteCount;
-            }
-            p.render->setRenderOptions(renderOptions);
-            return p.render->render(p.id, _path, time, options);
+            return p.render->render(p.id, _path, time, io::merge(options, _options));
         }
         
         void Read::cancelRequests()

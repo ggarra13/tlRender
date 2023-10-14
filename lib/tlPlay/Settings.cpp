@@ -2,7 +2,7 @@
 // Copyright (c) 2021-2023 Darby Johnston
 // All rights reserved.
 
-#include <tlPlayGLApp/Settings.h>
+#include <tlPlay/Settings.h>
 
 #include <tlCore/Context.h>
 #include <tlCore/File.h>
@@ -14,26 +14,37 @@
 
 namespace tl
 {
-    namespace play_gl
+    namespace play
     {
         void Settings::_init(
+            const std::string fileName,
+            bool reset,
             const std::shared_ptr<system::Context>& context)
         {
             _context = context;
+            _fileName = fileName;
             _observer = observer::Value<std::string>::create();
+            if (!reset)
+            {
+                _read();
+            }
         }
 
         Settings::Settings() 
         {}
 
         Settings::~Settings()
-        {}
+        {
+            _write();
+        }
 
         std::shared_ptr<Settings> Settings::create(
+            const std::string fileName,
+            bool reset,
             const std::shared_ptr<system::Context>& context)
         {
             auto out = std::shared_ptr<Settings>(new Settings);
-            out->_init(context);
+            out->_init(fileName, reset, context);
             return out;
         }
 
@@ -42,13 +53,22 @@ namespace tl
             return _observer;
         }
 
-        void Settings::read(const std::string& fileName)
+        void Settings::reset()
         {
-            if (file::exists(fileName))
+            for (auto i = _defaultValues.begin(); i != _defaultValues.end(); ++i)
+            {
+                _values[i.key()] = i.value();
+                _observer->setAlways(i.key());
+            }
+        }
+
+        void Settings::_read()
+        {
+            if (file::exists(_fileName))
             {
                 try
                 {
-                    auto io = file::FileIO::create(fileName, file::Mode::Read);
+                    auto io = file::FileIO::create(_fileName, file::Mode::Read);
                     const std::string contents = file::readContents(io);
                     const auto values = nlohmann::json::parse(contents);
                     for (auto i = values.begin(); i != values.end(); ++i)
@@ -61,9 +81,9 @@ namespace tl
                     if (auto context = _context.lock())
                     {
                         context->log(
-                            "tl::play_gl::Settings",
+                            "tl::play::Settings",
                             string::Format("Cannot read settings file: {0}: {1}").
-                            arg(fileName).
+                            arg(_fileName).
                             arg(e.what()),
                             log::Type::Error);
                     }
@@ -71,11 +91,11 @@ namespace tl
             }
         }
 
-        void Settings::write(const std::string& fileName)
+        void Settings::_write()
         {
             try
             {
-                auto io = file::FileIO::create(fileName, file::Mode::Write);
+                auto io = file::FileIO::create(_fileName, file::Mode::Write);
                 const std::string contents = _values.dump(4);
                 io->write(contents.c_str(), contents.size());
             }
@@ -84,21 +104,12 @@ namespace tl
                 if (auto context = _context.lock())
                 {
                     context->log(
-                        "tl::play_gl::Settings",
+                        "tl::play::Settings",
                         string::Format("Cannot write settings file: {0}: {1}").
-                            arg(fileName).
-                            arg(e.what()),
+                        arg(_fileName).
+                        arg(e.what()),
                         log::Type::Error);
                 }
-            }
-        }
-
-        void Settings::reset()
-        {
-            for (auto i = _defaultValues.begin(); i != _defaultValues.end(); ++i)
-            {
-                _values[i.key()] = i.value();
-                _observer->setAlways(i.key());
             }
         }
     }

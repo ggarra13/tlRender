@@ -47,6 +47,7 @@ namespace tl
         struct System::Private
         {
             std::shared_ptr<Cache> cache;
+            std::vector<std::string> names;
         };
 
         void System::_init(const std::shared_ptr<system::Context>& context)
@@ -88,6 +89,11 @@ namespace tl
                 _plugins.push_back(raw::Plugin::create(p.cache, logSystem));
 #endif // TLRENDER_RAW
             }
+
+            for (const auto& plugin : _plugins)
+            {
+                p.names.push_back(plugin->getName());
+            }
         }
 
         System::System() :
@@ -106,14 +112,6 @@ namespace tl
                 out->_init(context);
             }
             return out;
-        }
-
-        void System::setOptions(const Options& options)
-        {
-            for (const auto& i : _plugins)
-            {
-                i->setOptions(options);
-            }
         }
 
         std::shared_ptr<IPlugin> System::getPlugin(const file::Path& path) const
@@ -142,6 +140,11 @@ namespace tl
             {
                 _plugins.erase(i);
             }
+        }
+
+        const std::vector<std::string>& System::getNames() const
+        {
+            return _p->names;
         }
 
         std::set<std::string> System::getExtensions(int types) const
