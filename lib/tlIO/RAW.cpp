@@ -80,11 +80,7 @@ namespace tl
             const file::Path& path,
             const io::Options& options)
         {
-            return Read::create(
-                path,
-                io::merge(options, _options),
-                _cache,
-                _logSystem);
+            return Read::create(path, options, _cache, _logSystem);
         }
 
         std::shared_ptr<io::IRead> Plugin::read(
@@ -92,12 +88,7 @@ namespace tl
             const std::vector<file::MemoryRead>& memory,
             const io::Options& options)
         {
-            return Read::create(
-                path,
-                memory,
-                io::merge(options, _options),
-                _cache,
-                _logSystem);
+            return Read::create(path, memory, options, _cache, _logSystem);
         }
     }
 }
