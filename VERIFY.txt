@@ -8,3 +8,4 @@ checked:
 - RAW Reader.
 - Reload Cache works.
 - USD Settings work.
+- Playlist editing for images and movies.
