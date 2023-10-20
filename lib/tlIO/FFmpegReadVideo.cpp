@@ -95,6 +95,14 @@ namespace tl
                 auto avVideoStream = _avFormatContext->streams[_avStream];
                 auto avVideoCodecParameters = avVideoStream->codecpar;
                 auto avVideoCodec = avcodec_find_decoder(avVideoCodecParameters->codec_id);
+                if (avVideoCodecParameters->codec_id == AV_CODEC_ID_VP9)
+                {
+                    // If we are reading VPX, use libvpx-vp9 external lib if available so
+                    // we can read an alpha channel.
+                    auto avLibVpxCodec = avcodec_find_decoder_by_name("libvpx-vp9");
+                    if (avLibVpxCodec)
+                        avVideoCodec = avLibVpxCodec;
+                }
                 if (!avVideoCodec)
                 {
                     throw std::runtime_error(string::Format("{0}: No video codec found").arg(fileName));
