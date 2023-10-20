@@ -95,14 +95,19 @@ namespace tl
                 auto avVideoStream = _avFormatContext->streams[_avStream];
                 auto avVideoCodecParameters = avVideoStream->codecpar;
                 auto avVideoCodec = avcodec_find_decoder(avVideoCodecParameters->codec_id);
+                
+                // If we are reading VPX, use libvpx-vp9 external lib if available so
+                // we can read an alpha channel.
                 if (avVideoCodecParameters->codec_id == AV_CODEC_ID_VP9)
                 {
-                    // If we are reading VPX, use libvpx-vp9 external lib if available so
-                    // we can read an alpha channel.
                     auto avLibVpxCodec = avcodec_find_decoder_by_name("libvpx-vp9");
                     if (avLibVpxCodec)
+                    {
                         avVideoCodec = avLibVpxCodec;
+                        avVideoCodecParameters->codec_id = avVideoCodec->id;
+                    }
                 }
+                
                 if (!avVideoCodec)
                 {
                     throw std::runtime_error(string::Format("{0}: No video codec found").arg(fileName));
@@ -145,6 +150,25 @@ namespace tl
                 _info.layout.mirror.y = true;
 
                 _avInputPixelFormat = static_cast<AVPixelFormat>(_avCodecParameters[_avStream]->format);
+
+                // LibVPX return AV_PIX_FMT_YUV420P with metadata "alpha_mode" set to 1.
+                AVDictionaryEntry* tag = nullptr;
+                while ((tag = av_dict_get(avVideoStream->metadata, "", tag, AV_DICT_IGNORE_SUFFIX)))
+                {
+                    const std::string key(tag->key);
+                    const std::string value(tag->value);
+                    if (string::compare(
+                        key,
+                        "alpha_mode",
+                        string::Compare::CaseSensitive))
+                    {
+                        if (value == "1" && _avInputPixelFormat == AV_PIX_FMT_YUV420P)
+                        {
+                            _avInputPixelFormat = AV_PIX_FMT_YUVA420P;
+                        }
+                    }
+                }
+
                 switch (_avInputPixelFormat)
                 {
                 case AV_PIX_FMT_RGB24:
@@ -343,7 +367,6 @@ namespace tl
                 }
         
                 image::Tags tags;
-                AVDictionaryEntry* tag = nullptr;
                 while ((tag = av_dict_get(_avFormatContext->metadata, "", tag, AV_DICT_IGNORE_SUFFIX)))
                 {
                     const std::string key(tag->key);
