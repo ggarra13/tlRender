@@ -32,8 +32,8 @@ else()
         --disable-tools
         --disable-docs
         --disable-unit-tests
-        "CFLAGS=${VPX_C_FLAGS}"
-        "CXXFLAGS=${VPX_CXX_FLAGS}"
+        --extra-cflags=${VPX_C_FLAGS}
+        --extra-cxxflags=${VPX_CXX_FLAGS}
     )
 
     set( YASM_BIN_PATH $ENV{PATH} )
