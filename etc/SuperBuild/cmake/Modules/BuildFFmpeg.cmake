@@ -12,6 +12,11 @@ else()
     set(FFmpeg_CXXFLAGS)
     set(FFmpeg_OBJCFLAGS)
     set(FFmpeg_LDFLAGS)
+    
+    list(APPEND FFmpeg_LDFLAGS
+	--extra-cflags="-I ${CMAKE_INSTALL_PREFIX}/include")
+    list(APPEND FFmpeg_LDFLAGS
+	--extra-cxxflags="-I ${CMAKE_INSTALL_PREFIX}/include")
 
     if(APPLE AND CMAKE_OSX_DEPLOYMENT_TARGET)
 	list(APPEND FFmpeg_CFLAGS "--extra-cflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
