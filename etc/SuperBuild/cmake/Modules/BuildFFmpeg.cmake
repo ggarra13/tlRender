@@ -25,6 +25,19 @@ else()
 	list(APPEND FFmpeg_OBJCFLAGS "--extra-objcflags=-g")
 	list(APPEND FFmpeg_LDFLAGS "--extra-ldflags=-g")
     endif()
+    if(TLRENDER_VPX)
+	list(APPEND FFmpeg_LDFLAGS
+	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libvpx.a")
+	list(APPEND FFmpeg_DEPS VPX)
+    endif()
+    if(TLRENDER_X264)
+	#
+	# Make sure we pick the static libx264 we compiled, not the system one
+	#
+	list(APPEND FFmpeg_LDFLAGS
+	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libx264.a")
+	list(APPEND FFmpeg_DEPS X264)
+    endif()
     set(FFmpeg_CONFIGURE_ARGS
         --prefix=${CMAKE_INSTALL_PREFIX}
         --disable-programs
@@ -81,22 +94,10 @@ else()
     if(TLRENDER_VPX)
 	list(APPEND FFmpeg_CONFIGURE_ARGS
 	    --enable-libvpx)
-	#
-	# Make sure we pick the static libvpx we compiled, not the system one
-	#
-	list(APPEND FFmpeg_LDFLAGS
-	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libvpx.a")
-	list(APPEND FFmpeg_DEPS VPX)
     endif()
     if(TLRENDER_X264)
 	list(APPEND FFmpeg_CONFIGURE_ARGS
 	    --enable-libx264 --enable-gpl)
-	#
-	# Make sure we pick the static libx264 we compiled, not the system one
-	#
-	list(APPEND FFmpeg_LDFLAGS
-	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libx264.a")
-	list(APPEND FFmpeg_DEPS X264)
     endif()
     if(TLRENDER_NET)
         list(APPEND FFmpeg_CONFIGURE_ARGS --enable-mbedtls)
