@@ -14,9 +14,9 @@ else()
     set(FFmpeg_LDFLAGS)
     
     list(APPEND FFmpeg_CFLAGS
-	--extra-cflags="-I ${CMAKE_INSTALL_PREFIX}/include")
+	"--extra-cflags=-I${CMAKE_INSTALL_PREFIX}/include")
     list(APPEND FFmpeg_CXXFLAGS
-	--extra-cxxflags="-I ${CMAKE_INSTALL_PREFIX}/include")
+	"--extra-cxxflags=-I${CMAKE_INSTALL_PREFIX}/include")
 
     if(APPLE AND CMAKE_OSX_DEPLOYMENT_TARGET)
 	list(APPEND FFmpeg_CFLAGS "--extra-cflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
@@ -32,6 +32,7 @@ else()
     endif()
     if(TLRENDER_VPX)
 	list(APPEND FFmpeg_LDFLAGS
+	    --extra-ldflags="-L${CMAKE_INSTALL_PREFIX}/lib/"
 	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libvpx.a")
 	list(APPEND FFmpeg_DEPS VPX)
     endif()
@@ -40,6 +41,7 @@ else()
 	# Make sure we pick the static libx264 we compiled, not the system one
 	#
 	list(APPEND FFmpeg_LDFLAGS
+	    --extra-ldflags="-L${CMAKE_INSTALL_PREFIX}/lib/"
 	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libx264.a")
 	list(APPEND FFmpeg_DEPS X264)
     endif()
