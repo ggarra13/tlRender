@@ -27,7 +27,6 @@ else()
     set(VPX_CONFIGURE_ARGS
         --prefix=${CMAKE_INSTALL_PREFIX}
         --enable-pic
-	--as=yasm
         --disable-examples
         --disable-tools
         --disable-docs
@@ -35,6 +34,12 @@ else()
         --extra-cflags=${VPX_C_FLAGS}
         --extra-cxxflags=${VPX_CXX_FLAGS}
     )
+
+    if(TLRENDER_YASM)
+	list(APPEND VPX_CONFIGURE_ARGS --as=yasm)
+    else()
+	list(APPEND VPX_CONFIGURE_ARGS --as=nasm)
+    endif()
 
     set( YASM_BIN_PATH $ENV{PATH} )
     
