@@ -31,6 +31,7 @@ else()
         --disable-tools
         --disable-docs
         --disable-unit-tests
+        --enable-vp9-highbitdepth
         --extra-cflags=${VPX_C_FLAGS}
         --extra-cxxflags=${VPX_CXX_FLAGS}
     )
