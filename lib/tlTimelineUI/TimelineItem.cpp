@@ -29,7 +29,8 @@ namespace tl
             timeline::PlayerCacheInfo cacheInfo;
             bool editable = false;
             bool stopOnScrub = true;
-            std::function<void(const std::vector<timeline::InsertData>&)> insertCallback;
+            std::function<void(const std::vector<timeline::MoveData>&)> moveCallback;
+            std::shared_ptr<ui::ThumbnailGenerator> thumbnailGenerator;
 
             struct Track
             {
@@ -121,10 +122,14 @@ namespace tl
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
         {
+            const otime::TimeRange timeRange = player->getTimeRange();
+            const otime::TimeRange trimmedRange(
+                otime::RationalTime(0.0, timeRange.duration().rate()),
+                timeRange.duration());
             IItem::_init(
                 "tl::timelineui::TimelineItem",
-                stack.value,
-                player->getTimeRange(),
+                timeRange,
+                trimmedRange,
                 scale,
                 options,
                 itemData,
@@ -136,6 +141,8 @@ namespace tl
             _setMousePress(true, 0, 0);
 
             p.player = player;
+            
+            p.thumbnailGenerator = ui::ThumbnailGenerator::create(context);
 
             const auto otioTimeline = p.player->getTimeline()->getTimeline();
             int trackIndex = 0;
@@ -184,6 +191,7 @@ namespace tl
                                     scale,
                                     options,
                                     itemData,
+                                    p.thumbnailGenerator,
                                     context,
                                     shared_from_this()));
                                 break;
@@ -193,6 +201,7 @@ namespace tl
                                     scale,
                                     options,
                                     itemData,
+                                    p.thumbnailGenerator,
                                     context,
                                     shared_from_this()));
                                 break;
@@ -533,18 +542,18 @@ namespace tl
             if (!p.mouse.items.empty() && p.mouse.currentDropTarget != -1)
             {
                 const auto& dropTarget = p.mouse.dropTargets[p.mouse.currentDropTarget];
-                std::vector<timeline::InsertData> insertData;
+                std::vector<timeline::MoveData> moveData;
                 for (const auto& item : p.mouse.items)
                 {
                     const int track = dropTarget.track + (item->track - p.mouse.items[0]->track);
-                    insertData.push_back({ item->p->getComposable(), track, dropTarget.index });
+                    moveData.push_back({ item->track, item->index, track, dropTarget.index });
                     item->p->setVisible(false);
                 }
-                if (p.insertCallback)
-                    p.insertCallback(insertData);
-                auto otioTimeline = insert(
+                if (p.moveCallback)
+                    p.moveCallback(moveData);
+                auto otioTimeline = timeline::move(
                     p.player->getTimeline()->getTimeline().value,
-                    insertData);
+                    moveData);
                 p.player->getTimeline()->setTimeline(otioTimeline);
             }
             p.mouse.items.clear();
@@ -563,9 +572,9 @@ namespace tl
             return p.mouse.mode == Private::MouseMode::Item;
         }
 
-    void TimelineItem::setInsertCallback(const std::function<void(const std::vector<timeline::InsertData>&)>& value)
+    void TimelineItem::setMoveCallback(const std::function<void(const std::vector<timeline::MoveData>&)>& value)
     {
-        _p->insertCallback = value;
+        _p->moveCallback = value;
     }
     
         /*void TimelineItem::keyPressEvent(ui::KeyEvent& event)
