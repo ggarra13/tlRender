@@ -7,6 +7,8 @@
 #include <tlUI/ButtonGroup.h>
 #include <tlUI/RowLayout.h>
 
+#include <tlIO/System.h>
+
 #include <tlCore/String.h>
 
 namespace tl
@@ -18,6 +20,7 @@ namespace tl
             std::string path;
             FileBrowserOptions options;
             std::vector<file::FileInfo> fileInfos;
+            std::shared_ptr<ThumbnailGenerator> thumbnailGenerator;
             std::vector<std::shared_ptr<Button> > buttons;
             std::map<std::shared_ptr<Button>, size_t> buttonToIndex;
             std::shared_ptr<ButtonGroup> buttonGroup;
@@ -39,6 +42,8 @@ namespace tl
             TLRENDER_P();
 
             setBackgroundRole(ColorRole::Base);
+            
+            p.thumbnailGenerator = ThumbnailGenerator::create(context);
 
             p.buttonGroup = ButtonGroup::create(ButtonGroupType::Click, context);
 
@@ -205,9 +210,16 @@ namespace tl
             p.buttons.clear();
             p.buttonToIndex.clear();
             p.buttonGroup->clearButtons();
-            file::list(p.path, p.fileInfos, p.options.list);
             if (auto context = _context.lock())
             {
+                file::ListOptions listOptions;
+                listOptions.sort = p.options.sort;
+                listOptions.reverseSort = p.options.reverseSort;
+                listOptions.sequence = p.options.sequence;
+                auto ioSystem = context->getSystem<io::System>();
+                listOptions.sequenceExtensions = ioSystem->getExtensions(
+                    static_cast<int>(io::FileType::Sequence));
+                file::list(p.path, p.fileInfos, listOptions);
                 for (size_t i = 0; i < p.fileInfos.size(); ++i)
                 {
                     const file::FileInfo& fileInfo = p.fileInfos[i];
@@ -230,7 +242,11 @@ namespace tl
                     }
                     if (keep)
                     {
-                        auto button = Button::create(fileInfo, p.options, context);
+                        auto button = Button::create(
+                            fileInfo,
+                            p.options,
+                            p.thumbnailGenerator,
+                            context);
                         button->setParent(p.layout);
                         p.buttons.push_back(button);
                         p.buttonToIndex[button] = i;

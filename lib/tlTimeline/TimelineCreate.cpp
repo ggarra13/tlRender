@@ -17,7 +17,7 @@
 #include <opentimelineio/imageSequenceReference.h>
 
 #include <mz.h>
-#include "mz_strm.h"
+#include <mz_strm.h>
 #include <mz_zip.h>
 #include <mz_zip_rw.h>
 
@@ -383,6 +383,7 @@ namespace tl
                         // Check for other files in the sequence.
                         std::vector<file::FileInfo> list;
                         file::ListOptions listOptions;
+                        listOptions.sequenceExtensions = { path.getExtension() };
                         listOptions.maxNumberDigits = options.pathOptions.maxNumberDigits;
                         file::list(path.getDirectory(), list, listOptions);
                         const auto i = std::find_if(
@@ -575,7 +576,7 @@ namespace tl
             otio::AnyDictionary dict;
             dict["path"] = path.get();
             dict["audioPath"] = audioPath.get();
-            out->metadata()["tl::timeline"] = dict;
+            out->metadata()["tlRender"] = dict;
 
             return out;
         }
