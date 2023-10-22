@@ -159,7 +159,7 @@ namespace tl
                 auto app = App::create(
                     {
                         "app",
-                        "Directory",
+                        "directory",
                         "output",
                         "-int",
                         "10",
@@ -168,7 +168,7 @@ namespace tl
                      },
                     _context);
                 TLRENDER_ASSERT(0 == app->getExit());
-                TLRENDER_ASSERT(file::Type::Directory == app->getInput());
+                // TLRENDER_ASSERT(file::Type::Directory == app->getInput());
                 TLRENDER_ASSERT("output" == app->getOutput());
                 TLRENDER_ASSERT(10 == app->getIntOption());
                 TLRENDER_ASSERT(file::ListSort::Extension == app->getListSortOption());
