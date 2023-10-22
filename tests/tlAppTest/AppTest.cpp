@@ -159,7 +159,7 @@ namespace tl
                 auto app = App::create(
                     {
                         "app",
-                        "directory",
+                        "Directory",
                         "output",
                         "-int",
                         "10",
