@@ -192,10 +192,7 @@ namespace tl
                             _unusedArgs = p.cmdLine.argv;
                             break;
                         }
-                        if (i->isOptional())
-                        {
-                            i->parse(p.cmdLine.argv);
-                        }
+                        i->parse(p.cmdLine.argv);
                     }
                 }
                 catch (const std::exception& e)
