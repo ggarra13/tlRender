@@ -16,20 +16,11 @@ namespace tl
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
         {
-            otime::TimeRange timeRange = time::invalidTimeRange;
-            otime::TimeRange trimmedRange = time::invalidTimeRange;
             const auto timeRangeOpt = transition->trimmed_range_in_parent();
-            if (timeRangeOpt.has_value())
-            {
-                timeRange = timeRangeOpt.value();
-                trimmedRange = otime::TimeRange(
-                    otime::RationalTime(0.0, timeRange.duration().rate()),
-                    timeRange.duration());
-            }
             IItem::_init(
                 "tl::timelineui::TransitionItem",
-                timeRange,
-                trimmedRange,
+                transition.value,
+                timeRangeOpt.has_value() ? timeRangeOpt.value() : time::invalidTimeRange,
                 scale,
                 options,
                 itemData,

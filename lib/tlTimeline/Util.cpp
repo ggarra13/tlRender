@@ -9,22 +9,12 @@
 #include <tlIO/System.h>
 
 #include <tlCore/Assert.h>
-#include <tlCore/Error.h>
 #include <tlCore/FileInfo.h>
-#include <tlCore/String.h>
 #include <tlCore/StringFormat.h>
 
 #include <opentimelineio/clip.h>
 #include <opentimelineio/externalReference.h>
 #include <opentimelineio/imageSequenceReference.h>
-
-#include <ctime>
-
-#include <mz.h>
-#include <mz_os.h>
-#include <mz_strm.h>
-#include <mz_zip.h>
-#include <mz_zip_rw.h>
 
 namespace tl
 {
@@ -108,12 +98,6 @@ namespace tl
             }
             return out;
         }
-
-        TLRENDER_ENUM_IMPL(
-            CacheDirection,
-            "Forward",
-            "Reverse");
-        TLRENDER_ENUM_SERIALIZE_IMPL(CacheDirection);
 
         std::vector<otime::TimeRange> loopCache(
             const otime::TimeRange& value,
@@ -436,411 +420,105 @@ namespace tl
             return out;
         }
 
-        TLRENDER_ENUM_IMPL(
-            ToMemoryReference,
-            "Shared",
-            "Raw");
-        TLRENDER_ENUM_SERIALIZE_IMPL(ToMemoryReference);
-
         void toMemoryReferences(
             otio::Timeline* otioTimeline,
             const std::string& directory,
-            ToMemoryReference toMemoryReference,
             const file::PathOptions& pathOptions)
         {
             // Recursively iterate over all clips in the timeline.
             for (auto clip : otioTimeline->find_children<otio::Clip>())
             {
-                if (auto ref = dynamic_cast<otio::ExternalReference*>(clip->media_reference()))
+                if (auto externalReference =
+                    dynamic_cast<otio::ExternalReference*>(clip->media_reference()))
                 {
                     // Get the external reference path.
-                    const auto path = getPath(ref->target_url(), directory, pathOptions);
+                    const auto path = timeline::getPath(externalReference->target_url(), directory, pathOptions);
 
-                    // Read the external reference into memory.
+                    // Read the external reference media into memory.
                     auto fileIO = file::FileIO::create(path.get(), file::Mode::Read);
                     const size_t size = fileIO->getSize();
+                    auto memory = std::make_shared<timeline::MemoryReferenceData>();
+                    memory->resize(size);
+                    fileIO->read(memory->data(), size);
 
                     // Replace the external reference with a memory reference.
-                    switch (toMemoryReference)
-                    {
-                    case ToMemoryReference::Shared:
-                    {
-                        auto memory = std::make_shared<MemoryReferenceData>();
-                        memory->resize(size);
-                        fileIO->read(memory->data(), size);
-                        clip->set_media_reference(new SharedMemoryReference(
-                            ref->target_url(),
-                            memory,
-                            clip->available_range(),
-                            ref->metadata()));
-                        break;
-                    }
-                    case ToMemoryReference::Raw:
-                        uint8_t* memory = new uint8_t [size];
-                        fileIO->read(memory, size);
-                        clip->set_media_reference(new RawMemoryReference(
-                            ref->target_url(),
-                            memory,
-                            size,
-                            clip->available_range(),
-                            ref->metadata()));
-                        break;
-                    }
+                    auto memoryReference = new timeline::SharedMemoryReference(
+                        externalReference->target_url(),
+                        memory,
+                        clip->available_range(),
+                        externalReference->metadata());
+                    clip->set_media_reference(memoryReference);
                 }
-                else if (auto ref = dynamic_cast<otio::ImageSequenceReference*>(
-                    clip->media_reference()))
+                else if (auto imageSequenceRefence =
+                    dynamic_cast<otio::ImageSequenceReference*>(clip->media_reference()))
                 {
                     // Get the image sequence reference path.
-                    const int padding = ref->frame_zero_padding();
+                    int padding = imageSequenceRefence->frame_zero_padding();
+                    std::string number;
                     std::stringstream ss;
-                    ss << ref->target_url_base() <<
-                        ref->name_prefix() <<
-                        std::setfill('0') << std::setw(padding) << ref->start_frame() <<
-                        ref->name_suffix();
-                    const auto path = getPath(ss.str(), directory, pathOptions);
+                    ss << imageSequenceRefence->target_url_base() <<
+                        imageSequenceRefence->name_prefix() <<
+                        std::setfill('0') << std::setw(padding) << imageSequenceRefence->start_frame() <<
+                        imageSequenceRefence->name_suffix();
+                    const auto path = timeline::getPath(ss.str(), directory, pathOptions);
 
-                    // Read the image sequence reference into memory.
-                    std::vector<std::shared_ptr<MemoryReferenceData> > sharedMemoryList;
-                    std::vector<const uint8_t*> rawMemoryList;
-                    std::vector<size_t> rawMemorySizeList;
+                    // Read the image sequence reference media into memory.
+                    std::vector<std::shared_ptr<timeline::MemoryReferenceData> > memoryList;
                     const auto range = clip->trimmed_range();
                     for (
-                        int64_t frame = ref->start_frame();
-                        frame < ref->start_frame() + range.duration().value();
+                        int64_t frame = imageSequenceRefence->start_frame();
+                        frame < imageSequenceRefence->start_frame() + range.duration().value();
                         ++frame)
                     {
-                        const auto fileName = path.get(frame);
+                        const auto& fileName = path.get(frame);
                         auto fileIO = file::FileIO::create(fileName, file::Mode::Read);
                         const size_t size = fileIO->getSize();
-                        switch (toMemoryReference)
-                        {
-                        case ToMemoryReference::Shared:
-                        {
-                            auto memory = std::make_shared<MemoryReferenceData>();
-                            memory->resize(size);
-                            fileIO->read(memory->data(), size);
-                            sharedMemoryList.push_back(memory);
-                            break;
-                        }
-                        case ToMemoryReference::Raw:
-                        {
-                            auto memory = new uint8_t [size];
-                            fileIO->read(memory, size);
-                            rawMemoryList.push_back(memory);
-                            rawMemorySizeList.push_back(size);
-                            break;
-                        }
-                        default: break;
-                        }
+                        auto memory = std::make_shared<timeline::MemoryReferenceData>();
+                        memory->resize(size);
+                        fileIO->read(memory->data(), size);
+                        memoryList.push_back(memory);
                     }
 
                     // Replace the image sequence reference with a memory
                     // sequence reference.
-                    switch (toMemoryReference)
-                    {
-                    case ToMemoryReference::Shared:
-                        clip->set_media_reference(new SharedMemorySequenceReference(
-                            path.get(),
-                            sharedMemoryList,
-                            clip->available_range(),
-                            ref->metadata()));
-                        break;
-                    case ToMemoryReference::Raw:
-                        clip->set_media_reference(new RawMemorySequenceReference(
-                            path.get(),
-                            rawMemoryList,
-                            rawMemorySizeList,
-                            clip->available_range(),
-                            ref->metadata()));
-                        break;
-                    default: break;
-                    }
+                    auto memorySequenceReference = new timeline::SharedMemorySequenceReference(
+                        path.get(),
+                        memoryList,
+                        clip->available_range(),
+                        imageSequenceRefence->metadata());
+                    clip->set_media_reference(memorySequenceReference);
                 }
             }
         }
 
         otime::RationalTime toVideoMediaTime(
             const otime::RationalTime& time,
-            const otime::TimeRange& trimmedRangeInParent,
-            const otime::TimeRange& trimmedRange,
+            const otio::Clip* clip,
             double rate)
         {
-            otime::RationalTime out =
-                time - trimmedRangeInParent.start_time() + trimmedRange.start_time();
-            out = time::round(out.rescaled_to(rate));
-            return out;
+            otime::RationalTime clipTime;
+            if (auto parent = clip->parent())
+            {
+                clipTime = parent->transformed_time(time, clip);
+            }
+            const auto mediaTime = time::round(clipTime.rescaled_to(rate));
+            return mediaTime;
         }
 
         otime::TimeRange toAudioMediaTime(
             const otime::TimeRange& timeRange,
-            const otime::TimeRange& trimmedRangeInParent,
-            const otime::TimeRange& trimmedRange,
+            const otio::Clip* clip,
             double sampleRate)
         {
-            otime::TimeRange out = otime::TimeRange(
-                timeRange.start_time() - trimmedRangeInParent.start_time() + trimmedRange.start_time(),
-                timeRange.duration());
-            out = otime::TimeRange(
-                time::round(out.start_time().rescaled_to(sampleRate)),
-                time::round(out.duration().rescaled_to(sampleRate)));
-            return out;
-        }
-
-        namespace
-        {
-            class OTIOZWriter
+            otime::TimeRange clipRange;
+            if (auto parent = clip->parent())
             {
-            public:
-                OTIOZWriter(
-                    const std::string& fileName,
-                    const otio::SerializableObject::Retainer<otio::Timeline>&,
-                    const std::string& directory = std::string());
-
-                ~OTIOZWriter();
-
-            private:
-                void _addCompressed(
-                    const std::string& content,
-                    const std::string& fileNameInZip);
-                void _addUncompressed(
-                    const std::string& fileName,
-                    const std::string& fileNameInZip);
-
-                static std::string _getMediaFileName(
-                    const std::string& url,
-                    const std::string& directory);
-                static std::string _getFileNameInZip(const std::string& url);
-                static std::string _normzalizePathSeparators(const std::string&);
-                static bool _isFileNameAbsolute(const std::string&);
-
-                void* _writer = nullptr;
-            };
-
-            OTIOZWriter::OTIOZWriter(
-                const std::string& fileName,
-                const otio::SerializableObject::Retainer<otio::Timeline>& timeline,
-                const std::string& directory)
-            {
-                // Copy the timeline.
-                otio::SerializableObject::Retainer<otio::Timeline> timelineCopy(
-                    dynamic_cast<otio::Timeline*>(
-                        otio::Timeline::from_json_string(timeline->to_json_string())));
-
-                // Find the media references.
-                std::map<std::string, std::string> mediaFilesNames;
-                std::string directoryTmp = _normzalizePathSeparators(directory);
-                if (!directoryTmp.empty() && directoryTmp.back() != '/')
-                {
-                    directoryTmp += '/';
-                }
-                for (const auto& clip : timelineCopy->find_clips())
-                {
-                    if (auto ref = dynamic_cast<otio::ExternalReference*>(clip->media_reference()))
-                    {
-                        const std::string& url = ref->target_url();
-                        const std::string mediaFileName = _getMediaFileName(url, directoryTmp);
-                        const std::string fileNameInZip = _getFileNameInZip(url);
-                        mediaFilesNames[mediaFileName] = fileNameInZip;
-                        ref->set_target_url(fileNameInZip);
-                    }
-                    else if (auto ref = dynamic_cast<otio::ImageSequenceReference*>(clip->media_reference()))
-                    {
-                        const int padding = ref->frame_zero_padding();
-                        std::stringstream ss;
-                        ss << ref->target_url_base() <<
-                            ref->name_prefix() <<
-                            std::setfill('0') << std::setw(padding) << ref->start_frame() <<
-                            ref->name_suffix();
-                        const file::Path path(_getMediaFileName(ss.str(), directoryTmp));
-                        const auto range = clip->trimmed_range();
-                        for (
-                            int64_t frame = ref->start_frame();
-                            frame < ref->start_frame() + range.duration().value();
-                            ++frame)
-                        {
-                            const std::string mediaFileName = path.get(frame);
-                            const std::string fileNameInZip = _getFileNameInZip(mediaFileName);
-                            mediaFilesNames[mediaFileName] = fileNameInZip;
-                        }
-                        ref->set_target_url_base(_getFileNameInZip(ref->target_url_base()));
-                    }
-                }
-
-                // Open the output file.
-                mz_zip_writer_create(&_writer);
-                if (!_writer)
-                {
-                    throw std::runtime_error("Cannot create writer");
-                }
-                int32_t err = mz_zip_writer_open_file(_writer, fileName.c_str(), 0, 0);
-                if (err != MZ_OK)
-                {
-                    throw std::runtime_error("Cannot open output file");
-                }
-
-                // Add the content and version files.
-                _addCompressed("1.0.0", "version.txt");
-                _addCompressed(timelineCopy->to_json_string(), "content.otio");
-
-                // Add the media files.
-                for (const auto& i : mediaFilesNames)
-                {
-                    _addUncompressed(i.first, i.second);
-                }
-
-                // Close the file.
-                err = mz_zip_writer_close(_writer);
-                if (err != MZ_OK)
-                {
-                    throw std::runtime_error("Cannot close output file");
-                }
+                clipRange = parent->transformed_time_range(timeRange, clip);
             }
-
-            OTIOZWriter::~OTIOZWriter()
-            {
-                if (_writer)
-                {
-                    mz_zip_writer_delete(&_writer);
-                }
-            }
-
-            void OTIOZWriter::_addCompressed(
-                const std::string& content,
-                const std::string& fileNameInZip)
-            {
-                mz_zip_file fileInfo;
-                memset(&fileInfo, 0, sizeof(mz_zip_file));
-                mz_zip_writer_set_compress_level(_writer, MZ_COMPRESS_LEVEL_NORMAL);
-                fileInfo.version_madeby = MZ_VERSION_MADEBY;
-                fileInfo.flag = MZ_ZIP_FLAG_UTF8;
-                fileInfo.modified_date = std::time(nullptr);
-                fileInfo.compression_method = MZ_COMPRESS_METHOD_DEFLATE;
-                fileInfo.filename = fileNameInZip.c_str();
-                int32_t err = mz_zip_writer_add_buffer(
-                    _writer,
-                    (void*)content.c_str(),
-                    content.size(),
-                    &fileInfo);
-                if (err != MZ_OK)
-                {
-                    throw std::runtime_error("Cannot add file");
-                }
-            }
-
-            void OTIOZWriter::_addUncompressed(
-                const std::string& fileName,
-                const std::string& fileNameInZip)
-            {
-                /*auto fileIO = file::FileIO::create(fileName, file::Mode::Read);
-                std::vector<uint8_t> buf(fileIO->getSize());
-                fileIO->read(buf.data(), buf.size());
-                mz_zip_file fileInfo;
-                memset(&fileInfo, 0, sizeof(mz_zip_file));
-                fileInfo.version_madeby = MZ_VERSION_MADEBY;
-                fileInfo.modified_date = std::time(nullptr);
-                fileInfo.compression_method = MZ_COMPRESS_METHOD_STORE;
-                fileInfo.filename = fileNameInZip.c_str();
-                int32_t err = mz_zip_writer_add_buffer(
-                    _writer,
-                    (void*)buf.data(),
-                    buf.size(),
-                    &fileInfo);
-                if (err != MZ_OK)
-                {
-                    throw std::runtime_error("Cannot add file");
-                }*/
-                mz_zip_writer_set_compress_method(
-                    _writer,
-                    MZ_COMPRESS_METHOD_STORE);
-                int32_t err = mz_zip_writer_add_file(
-                    _writer,
-                    fileName.c_str(),
-                    fileNameInZip.c_str());
-                if (err != MZ_OK)
-                {
-                    throw std::runtime_error("Cannot add file: " + fileName);
-                }
-            }
-
-            std::string OTIOZWriter::_getFileNameInZip(const std::string& url)
-            {                
-                std::string::size_type r = url.rfind('/');
-                if (std::string::npos == r)
-                {
-                    r = url.rfind('\\');
-                }
-                const std::string fileName =
-                    std::string::npos == r ?
-                    url :
-                    url.substr(r + 1);
-                return "media/" + fileName;
-            }
-
-            std::string OTIOZWriter::_getMediaFileName(
-                const std::string& url,
-                const std::string& directory)
-            {
-                std::string fileName = url;
-                if ("file://" == fileName.substr(7))
-                {
-                    fileName.erase(0, 7);
-                }
-                if (!_isFileNameAbsolute(fileName))
-                {
-                    fileName = directory + fileName;
-                }
-                return fileName;
-            }
-
-            std::string OTIOZWriter::_normzalizePathSeparators(const std::string& fileName)
-            {
-                std::string out = fileName;
-                for (size_t i = 0; i < out.size(); ++i)
-                {
-                    if ('\\' == out[i])
-                    {
-                        out[i] = '/';
-                    }
-                }
-                return out;
-            }
-
-            bool OTIOZWriter::_isFileNameAbsolute(const std::string& fileName)
-            {
-                bool out = false;
-                if (!fileName.empty() && '/' == fileName[0])
-                {
-                    out = true;
-                }
-                else if (!fileName.empty() && '\\' == fileName[0])
-                {
-                    out = true;
-                }
-                else if (fileName.size() >= 2 &&
-                    (fileName[0] >= 'A' && fileName[0] <= 'Z' ||
-                        fileName[0] >= 'a' && fileName[0] <= 'z') &&
-                    ':' == fileName[1])
-                {
-                    out = true;
-                }
-                return out;
-            }
-        }
-
-        bool writeOTIOZ(
-            const std::string& fileName,
-            const otio::SerializableObject::Retainer<otio::Timeline>& timeline,
-            const std::string& directory)
-        {
-            bool out = false;
-            try
-            {
-                OTIOZWriter(fileName, timeline, directory);
-                out = true;
-            }
-            catch (const std::exception&)
-            {}
-            return out;
+            const otime::TimeRange mediaRange(
+                time::round(clipRange.start_time().rescaled_to(sampleRate)),
+                time::round(clipRange.duration().rescaled_to(sampleRate)));
+            return mediaRange;
         }
     }
 }

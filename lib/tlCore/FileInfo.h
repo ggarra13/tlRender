@@ -6,8 +6,9 @@
 
 #include <tlCore/Path.h>
 
+#include <nlohmann/json.hpp>
+
 #include <iostream>
-#include <set>
 
 namespace tl
 {
@@ -86,15 +87,14 @@ namespace tl
         //! Directory list options.
         struct ListOptions
         {
-            ListSort              sort                 = ListSort::Name;
-            bool                  reverseSort          = false;
-            bool                  sortDirectoriesFirst = true;
-            bool                  dotAndDotDotDirs     = false;
-            bool                  dotFiles             = false;
-            bool                  sequence             = true;
-            std::set<std::string> sequenceExtensions;
-            bool                  negativeNumbers      = false;
-            size_t                maxNumberDigits      = 9;
+            ListSort sort                 = ListSort::Name;
+            bool     reverseSort          = false;
+            bool     sortDirectoriesFirst = true;
+            bool     dotAndDotDotDirs     = false;
+            bool     dotFiles             = false;
+            bool     sequence             = true;
+            bool     negativeNumbers      = false;
+            size_t   maxNumberDigits      = 9;
 
             bool operator == (const ListOptions&) const;
             bool operator != (const ListOptions&) const;
@@ -105,6 +105,15 @@ namespace tl
             const std::string&,
             std::vector<FileInfo>&,
             const ListOptions& = ListOptions());
+
+        //! \name Serialize
+        ///@{
+
+        void to_json(nlohmann::json&, const ListOptions&);
+
+        void from_json(const nlohmann::json&, ListOptions&);
+
+        ///@}
     }
 }
 

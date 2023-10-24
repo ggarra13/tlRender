@@ -13,22 +13,17 @@ namespace tl
 {
     namespace timeline
     {
-        //! Copy the given timeline.
-        otio::SerializableObject::Retainer<otio::Timeline> copy(
-            const otio::SerializableObject::Retainer<otio::Timeline>&);
-
-        //! Move items data.
-        struct MoveData
+        //! Insert data.
+        struct InsertData
         {
-            int fromTrack = 0;
-            int fromIndex = 0;
-            int toTrack   = 0;
-            int toIndex   = 0;
+            otio::SerializableObject::Retainer<otio::Composable> composable;
+            int trackIndex = 0;
+            int insertIndex = 0;
         };
 
-        //! Move items in the timeline.
-        otio::SerializableObject::Retainer<otio::Timeline> move(
+        //! Insert the given composables.
+        otio::SerializableObject::Retainer<otio::Timeline> insert(
             const otio::SerializableObject::Retainer<otio::Timeline>&,
-            const std::vector<MoveData>&);
+            const std::vector<InsertData>&);
     }
 }

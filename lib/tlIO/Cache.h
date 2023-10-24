@@ -38,35 +38,45 @@ namespace tl
             //! Get the current cache size as a percentage.
             float getPercentage() const;
 
-            //! Get a video cache key.
-            static std::string getVideoKey(
+            //! Add video to the cache.
+            void addVideo(
                 const std::string& fileName,
                 const otime::RationalTime&,
-                const Options&);
-
-            //! Add video to the cache.
-            void addVideo(const std::string& key, const VideoData&);
+                const Options&,
+                const VideoData&);
 
             //! Get whether the cache contains video.
-            bool containsVideo(const std::string& key) const;
-
-            //! Get video from the cache.
-            bool getVideo(const std::string& key, VideoData&) const;
-
-            //! Get an audio cache key.
-            static std::string getAudioKey(
+            bool containsVideo(
                 const std::string& fileName,
-                const otime::TimeRange&,
-                const Options&);
+                const otime::RationalTime&,
+                const Options&) const;
+
+            //! Get video.
+            bool getVideo(
+                const std::string& fileName,
+                const otime::RationalTime&,
+                const Options&,
+                VideoData&) const;
 
             //! Add audio to the cache.
-            void addAudio(const std::string& key, const AudioData&);
+            void addAudio(
+                const std::string& fileName,
+                const otime::TimeRange&,
+                const Options&,
+                const AudioData&);
 
             //! Get whether the cache contains audio.
-            bool containsAudio(const std::string& key) const;
+            bool containsAudio(
+                const std::string& fileName,
+                const otime::TimeRange&,
+                const Options&) const;
 
             //! Get audio from the cache.
-            bool getAudio(const std::string& key, AudioData&) const;
+            bool getAudio(
+                const std::string& fileName,
+                const otime::TimeRange&,
+                const Options&,
+                AudioData&) const;
 
             //! Clear the cache.
             void clear();
@@ -76,5 +86,17 @@ namespace tl
 
             TLRENDER_PRIVATE();
         };
+
+        //! Get a cache key.
+        std::string getCacheKey(
+            const std::string& fileName,
+            const otime::RationalTime&,
+            const Options&);
+
+        //! Get a cache key.
+        std::string getCacheKey(
+            const std::string& fileName,
+            const otime::TimeRange&,
+            const Options&);
     }
 }

@@ -19,10 +19,6 @@ namespace tl
             static std::shared_ptr<AppTest> create(const std::shared_ptr<system::Context>&);
 
             void run() override;
-
-        private:
-            void _convert();
-            void _app();
         };
     }
 }

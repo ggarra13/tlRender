@@ -124,7 +124,7 @@ namespace tl
                 {
                     _print(string::Format("Memory timeline: {0}").arg(path.get()));
                     auto otioTimeline = timeline::create(path, _context);
-                    toMemoryReferences(otioTimeline, path.getDirectory(), ToMemoryReference::Shared);
+                    toMemoryReferences(otioTimeline, path.getDirectory());
                     auto timeline = timeline::Timeline::create(otioTimeline, _context);
                     _timeline(timeline);
                 }

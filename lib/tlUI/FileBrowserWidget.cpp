@@ -32,7 +32,6 @@ namespace tl
         struct FileBrowserWidget::Private
         {
             std::string path;
-            FileBrowserOptions options;
             std::vector<std::string> extensions;
             std::shared_ptr<RecentFilesModel> recentFilesModel;
 
@@ -56,7 +55,6 @@ namespace tl
 
             std::function<void(const file::FileInfo&)> callback;
             std::function<void(void)> cancelCallback;
-            std::function<void(const FileBrowserOptions&)> optionsCallback;
         };
 
         void FileBrowserWidget::_init(
@@ -175,7 +173,6 @@ namespace tl
             p.cancelButton->setParent(hLayout);
 
             _pathUpdate();
-            _optionsUpdate();
 
             p.upButton->setClickedCallback(
                 [this]
@@ -207,21 +204,20 @@ namespace tl
             p.directoryWidget->setCallback(
                 [this](const file::FileInfo& value)
                 {
-                    TLRENDER_P();
                     switch (value.getType())
                     {
                     case file::Type::File:
-                        if (p.recentFilesModel)
+                        if (_p->recentFilesModel)
                         {
-                            p.recentFilesModel->addRecent(value.getPath());
+                            _p->recentFilesModel->addRecent(value.getPath());
                         }
-                        if (p.callback)
+                        if (_p->callback)
                         {
-                            p.callback(value);
+                            _p->callback(value);
                         }
                         break;
                     case file::Type::Directory:
-                        p.path = value.getPath().get();
+                        _p->path = value.getPath().get();
                         _pathUpdate();
                         break;
                     default: break;
@@ -231,64 +227,44 @@ namespace tl
             p.searchBox->setCallback(
                 [this](const std::string& value)
                 {
-                    TLRENDER_P();
-                    p.options.search = value;
-                    p.directoryWidget->setOptions(p.options);
-                    if (p.optionsCallback)
-                    {
-                        p.optionsCallback(p.options);
-                    }
+                    FileBrowserOptions options = _p->directoryWidget->getOptions();
+                    options.search = value;
+                    _p->directoryWidget->setOptions(options);
                 });
 
             p.extensionsComboBox->setIndexCallback(
                 [this](int value)
                 {
-                    TLRENDER_P();
-                    if (value >= 0 && value < p.extensions.size())
+                    if (value >= 0 && value < _p->extensions.size())
                     {
-                        p.options.extension = p.extensions[value];
-                        p.directoryWidget->setOptions(p.options);
-                        if (p.optionsCallback)
-                        {
-                            p.optionsCallback(p.options);
-                        }
+                        FileBrowserOptions options = _p->directoryWidget->getOptions();
+                        options.extension = _p->extensions[value];
+                        _p->directoryWidget->setOptions(options);
                     }
                 });
 
             p.sortComboBox->setIndexCallback(
                 [this](int value)
                 {
-                    TLRENDER_P();
-                    p.options.sort = static_cast<file::ListSort>(value);
-                    p.directoryWidget->setOptions(p.options);
-                    if (p.optionsCallback)
-                    {
-                        p.optionsCallback(p.options);
-                    }
+                    FileBrowserOptions options = _p->directoryWidget->getOptions();
+                    options.list.sort = static_cast<file::ListSort>(value);
+                    _p->directoryWidget->setOptions(options);
                 });
 
             p.reverseSortCheckBox->setCheckedCallback(
                 [this](bool value)
                 {
-                    TLRENDER_P();
-                    p.options.reverseSort = value;
-                    p.directoryWidget->setOptions(p.options);
-                    if (p.optionsCallback)
-                    {
-                        p.optionsCallback(p.options);
-                    }
+                    FileBrowserOptions options = _p->directoryWidget->getOptions();
+                    options.list.reverseSort = value;
+                    _p->directoryWidget->setOptions(options);
                 });
 
             p.sequenceCheckBox->setCheckedCallback(
                 [this](bool value)
                 {
-                    TLRENDER_P();
-                    p.options.sequence = value;
-                    p.directoryWidget->setOptions(p.options);
-                    if (p.optionsCallback)
-                    {
-                        p.optionsCallback(p.options);
-                    }
+                    FileBrowserOptions options = _p->directoryWidget->getOptions();
+                    options.list.sequence = value;
+                    _p->directoryWidget->setOptions(options);
                 });
 
             p.okButton->setClickedCallback(
@@ -357,15 +333,16 @@ namespace tl
         void FileBrowserWidget::setOptions(const FileBrowserOptions& value)
         {
             TLRENDER_P();
-            if (value == p.options)
-                return;
-            p.options = value;
-            _optionsUpdate();
-        }
-        
-        void FileBrowserWidget::setOptionsCallback(const std::function<void(const FileBrowserOptions&)>& value)
-        {
-            _p->optionsCallback = value;
+            p.directoryWidget->setOptions(value);
+            p.searchBox->setText(value.search);
+            const auto i = std::find(p.extensions.begin(), p.extensions.end(), value.extension);
+            if (i != p.extensions.end())
+            {
+                p.extensionsComboBox->setCurrentIndex(i - p.extensions.begin());
+            }
+            p.sortComboBox->setCurrentIndex(static_cast<int>(value.list.sort));
+            p.reverseSortCheckBox->setChecked(value.list.reverseSort);
+            p.sequenceCheckBox->setChecked(value.list.sequence);
         }
 
         void FileBrowserWidget::setRecentFilesModel(const std::shared_ptr<RecentFilesModel>& value)
@@ -393,24 +370,6 @@ namespace tl
             p.pathEdit->setText(p.path);
             p.directoryWidget->setPath(p.path);
             p.directoryScrollWidget->setScrollPos(math::Vector2i(0, 0));
-        }
-        
-        void FileBrowserWidget::_optionsUpdate()
-        {
-            TLRENDER_P();
-            p.directoryWidget->setOptions(p.options);
-            p.searchBox->setText(p.options.search);
-            const auto i = std::find(
-                p.extensions.begin(),
-                p.extensions.end(),
-                p.options.extension);
-            if (i != p.extensions.end())
-            {
-                p.extensionsComboBox->setCurrentIndex(i - p.extensions.begin());
-            }
-            p.sortComboBox->setCurrentIndex(static_cast<int>(p.options.sort));
-            p.reverseSortCheckBox->setChecked(p.options.reverseSort);
-            p.sequenceCheckBox->setChecked(p.options.sequence);
         }
     }
 }

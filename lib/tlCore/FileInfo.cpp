@@ -66,7 +66,6 @@ namespace tl
                 dotAndDotDotDirs == other.dotAndDotDotDirs &&
                 dotFiles == other.dotFiles &&
                 sequence == other.sequence &&
-                sequenceExtensions == other.sequenceExtensions &&
                 negativeNumbers == other.negativeNumbers &&
                 maxNumberDigits == other.maxNumberDigits;
         }
@@ -119,25 +118,13 @@ namespace tl
                 !p.getNumber().empty() &&
                 f.getType() != Type::Directory)
             {
-                bool sequenceExtension = true;
-                if (!options.sequenceExtensions.empty())
+                for (auto& i : out)
                 {
-                    sequenceExtension = std::find(
-                        options.sequenceExtensions.begin(),
-                        options.sequenceExtensions.end(),
-                        string::toLower(p.getExtension())) !=
-                        options.sequenceExtensions.end();
-                }
-                if (sequenceExtension)
-                {
-                    for (auto& i : out)
+                    if (i.getPath().sequence(p))
                     {
-                        if (i.getPath().sequence(p))
-                        {
-                            sequence = true;
-                            i.sequence(f);
-                            break;
-                        }
+                        sequence = true;
+                        i.sequence(f);
+                        break;
                     }
                 }
             }
@@ -208,6 +195,33 @@ namespace tl
                     static_cast<size_t>(b.getType());
                     });
             }
+        }
+
+        void to_json(nlohmann::json& json, const ListOptions& value)
+        {
+            json = nlohmann::json
+            {
+                { "sort", value.sort },
+                { "reverseSort", value.reverseSort },
+                { "sortDirectoriesFirst", value.sortDirectoriesFirst },
+                { "dotAndDotDotDirs", value.dotAndDotDotDirs },
+                { "dotFiles", value.dotFiles },
+                { "sequence", value.sequence },
+                { "negativeNumbers", value.negativeNumbers },
+                { "maxNumberDigits", value.maxNumberDigits }
+            };
+        }
+
+        void from_json(const nlohmann::json& json, ListOptions& value)
+        {
+            json.at("sort").get_to(value.sort);
+            json.at("reverseSort").get_to(value.reverseSort);
+            json.at("sortDirectoriesFirst").get_to(value.sortDirectoriesFirst);
+            json.at("dotAndDotDotDirs").get_to(value.dotAndDotDotDirs);
+            json.at("dotFiles").get_to(value.dotFiles);
+            json.at("sequence").get_to(value.sequence);
+            json.at("negativeNumbers").get_to(value.negativeNumbers);
+            json.at("maxNumberDigits").get_to(value.maxNumberDigits);
         }
     }
 }

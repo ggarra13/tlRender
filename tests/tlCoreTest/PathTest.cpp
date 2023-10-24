@@ -46,13 +46,13 @@ namespace tl
         {
             {
                 PathOptions a;
-                const PathOptions b;
+                PathOptions b;
                 TLRENDER_ASSERT(a == b);
                 a.maxNumberDigits = 0;
                 TLRENDER_ASSERT(a != b);
             }
             {
-                const Path path;
+                Path path;
                 TLRENDER_ASSERT(path.isEmpty());
                 TLRENDER_ASSERT(path.getDirectory().empty());
                 TLRENDER_ASSERT(path.getBaseName().empty());
@@ -114,7 +114,7 @@ namespace tl
                 };
                 for (const auto& i : data)
                 {
-                    const Path path(i.fileName);
+                    Path path(i.fileName);
                     TLRENDER_ASSERT(i.fileName == path.get());
                     TLRENDER_ASSERT(i.directory == path.getDirectory());
                     TLRENDER_ASSERT(i.baseName == path.getBaseName());
@@ -148,24 +148,11 @@ namespace tl
                 TLRENDER_ASSERT(!Path("..\\..").isAbsolute());
             }
             {
-                const Path a("/");
+                Path a("/");
                 Path b("/");
                 TLRENDER_ASSERT(a == b);
                 b = Path("/tmp");
                 TLRENDER_ASSERT(a != b);
-            }
-            {
-                Path a("/tmp/render.1.exr");
-                a.setDirectory("/usr/tmp/");
-                TLRENDER_ASSERT(a.get() == "/usr/tmp/render.1.exr");
-                a.setBaseName("comp.");
-                TLRENDER_ASSERT(a.get() == "/usr/tmp/comp.1.exr");
-                a.setNumber("0010");
-                TLRENDER_ASSERT(a.get() == "/usr/tmp/comp.0010.exr");
-                TLRENDER_ASSERT(a.getPadding() == 4);
-                TLRENDER_ASSERT(a.getSequence() == math::IntRange(10, 10));
-                a.setExtension(".tif");
-                TLRENDER_ASSERT(a.get() == "/usr/tmp/comp.0010.tif");
             }
         }
 

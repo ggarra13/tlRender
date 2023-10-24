@@ -28,7 +28,7 @@ namespace tl
             std::shared_ptr<ui::ScrollWidget> scrollWidget;
             std::shared_ptr<TimelineItem> timelineItem;
 
-            std::function<void(const std::vector<timeline::MoveData>&)> moveCallback;
+            std::function<void(const std::vector<timeline::InsertData>&)> insertCallback;
             
             enum class MouseMode
             {
@@ -174,14 +174,10 @@ namespace tl
         {
             TLRENDER_P();
             p.scrollWidget->setScrollPos(math::Vector2i());
-            const float scale = _getTimelineScale();
-            if (scale != p.scale)
-            {
-                p.scale = scale;
-                _setItemScale();
-                _updates |= ui::Update::Size;
-                _updates |= ui::Update::Draw;
-            }
+            p.scale = _getTimelineScale();
+            _setItemScale();
+            _updates |= ui::Update::Size;
+            _updates |= ui::Update::Draw;
         }
 
         bool TimelineWidget::hasFrameView() const
@@ -344,13 +340,13 @@ namespace tl
         }
         
         //! Sets a callback for inserting items
-        void TimelineWidget::setMoveCallback(const std::function<void(const std::vector<timeline::MoveData>&)>& value)
+        void TimelineWidget::setInsertCallback(const std::function<void(const std::vector<timeline::InsertData>&)>& value)
         {
             TLRENDER_P();
-            p.moveCallback = value;
+            p.insertCallback = value;
             
             if (p.timelineItem)
-                p.timelineItem->setMoveCallback(value);
+                p.timelineItem->setInsertCallback(value);
         }
         
         void TimelineWidget::mousePressEvent(ui::MouseClickEvent& event)
@@ -416,6 +412,37 @@ namespace tl
                     event.accept = true;
                     setFrameView(true);
                     break;
+                /*case ui::Key::E:
+                {
+                    event.accept = true;
+                    if (p.player)
+                    {
+                        otio::ErrorStatus error;
+                        auto json = p.player->getTimeline()->getTimeline()->to_json_string(&error);
+                        otio::SerializableObject::Retainer<otio::Timeline> otioTimeline(
+                            dynamic_cast<otio::Timeline*>(otio::Timeline::from_json_string(json)));
+                        auto videoTracks = otioTimeline->video_tracks();
+                        if (!videoTracks.empty())
+                        {
+                            const auto children = videoTracks[0]->children();
+                            std::vector<otio::Composable*> childrenTmp;
+                            for (const auto& child : children)
+                            {
+                                childrenTmp.push_back(child.value);
+                            }
+                            videoTracks[0]->clear_children();
+                            if (children.size() > 1)
+                            {
+                                auto child = childrenTmp[1];
+                                childrenTmp[1] = childrenTmp[0];
+                                childrenTmp[0] = child;
+                                videoTracks[0]->set_children(childrenTmp, &error);
+                            }
+                        }
+                        p.player->getTimeline()->setTimeline(otioTimeline);
+                    }
+                    break;
+                }*/
                 default: break;
                 }
             }
@@ -539,7 +566,7 @@ namespace tl
                         context);
                     p.timelineItem->setEditable(p.editable->get());
                     p.timelineItem->setStopOnScrub(p.stopOnScrub->get());
-                    p.timelineItem->setMoveCallback(p.moveCallback);
+                    p.timelineItem->setInsertCallback(p.insertCallback);
                     p.scrollWidget->setScrollPos(scrollPos);
                     p.scrollWidget->setWidget(p.timelineItem);
                 }

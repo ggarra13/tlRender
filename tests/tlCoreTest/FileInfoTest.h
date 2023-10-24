@@ -25,6 +25,7 @@ namespace tl
             void _ctors();
             void _sequence();
             void _list();
+            void _serialize();
         };
     }
 }

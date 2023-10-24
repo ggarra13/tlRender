@@ -550,17 +550,12 @@ namespace tl
 
                 // Check the I/O cache.
                 io::VideoData videoData;
-                if (request && p.cache)
+                if (request &&
+                    p.cache &&
+                    p.cache->getVideo(request->path.get(), request->time, ioOptions, videoData))
                 {
-                    const std::string cacheKey = io::Cache::getVideoKey(
-                        request->path.get(),
-                        request->time,
-                        ioOptions);
-                    if (p.cache->getVideo(cacheKey, videoData))
-                    {
-                        request->promise.set_value(videoData);
-                        request.reset();
-                    }
+                    request->promise.set_value(videoData);
+                    request.reset();
                 }
 
                 // Check the disk cache.
@@ -569,7 +564,7 @@ namespace tl
                     const std::string fileName = request->path.get();
                     std::shared_ptr<Private::DiskCacheItem> diskCacheItem;
                     if (diskCacheByteCount > 0 &&
-                        p.thread.diskCache.get(io::Cache::getVideoKey(fileName, request->time, ioOptions), diskCacheItem))
+                        p.thread.diskCache.get(io::getCacheKey(fileName, request->time, ioOptions), diskCacheItem))
                     {
                         std::shared_ptr<image::Image> image;
                         try
@@ -603,11 +598,7 @@ namespace tl
 
                         if (p.cache)
                         {
-                            const std::string cacheKey = io::Cache::getVideoKey(
-                                fileName,
-                                request->time,
-                                ioOptions);
-                            p.cache->addVideo(cacheKey, videoData);
+                            p.cache->addVideo(fileName, request->time, request->options, videoData);
                         }
 
                         request.reset();
@@ -801,7 +792,7 @@ namespace tl
                                 const size_t byteCount = image->getDataByteCount();
                                 tempFile->write(image->getData(), byteCount);
                                 p.thread.diskCache.add(
-                                    io::Cache::getVideoKey(fileName, request->time, ioOptions),
+                                    io::getCacheKey(fileName, request->time, ioOptions),
                                     diskCacheItem,
                                     byteCount);
                             }
@@ -825,11 +816,7 @@ namespace tl
 
                     if (p.cache)
                     {
-                        const std::string cacheKey = io::Cache::getVideoKey(
-                            fileName,
-                            request->time,
-                            ioOptions);
-                        p.cache->addVideo(cacheKey, videoData);
+                        p.cache->addVideo(fileName, request->time, request->options, videoData);
                     }
                 }
 

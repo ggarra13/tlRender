@@ -4,349 +4,109 @@
 
 #include <tlTimeline/Edit.h>
 
-#include <tlTimeline/MemoryReference.h>
-
-#include <tlCore/StringFormat.h>
-
 namespace tl
 {
     namespace timeline
     {
         namespace
         {
-            class IMemoryData
+            int getIndex(const otio::SerializableObject::Retainer<otio::Composable>& composable)
             {
-            protected:
-                IMemoryData();
-
-            public:
-                virtual ~IMemoryData() = 0;
-
-                virtual void copy(otio::MediaReference*) = 0;
-            };
-
-            IMemoryData::IMemoryData()
-            {}
-
-            IMemoryData::~IMemoryData()
-            {}
-
-            class RawMemoryData : public IMemoryData
-            {
-            protected:
-                void _init(const RawMemoryReference* value)
+                int out = -1;
+                if (composable && composable->parent())
                 {
-                    _target_url = value->target_url();
-                    _memory = value->memory();
-                    _memory_size = value->memory_size();
-                }
-
-                RawMemoryData()
-                {}
-
-            public:
-                static std::shared_ptr<RawMemoryData> create(
-                    const RawMemoryReference* value)
-                {
-                    std::shared_ptr<RawMemoryData> out(new RawMemoryData);
-                    out->_init(value);
-                    return out;
-                }
-
-                void copy(otio::MediaReference* value) override
-                {
-                    if (auto ref = dynamic_cast<RawMemoryReference*>(value))
+                    const auto& children = composable->parent()->children();
+                    for (int i = 0; i < children.size(); ++i)
                     {
-                        ref->set_target_url(_target_url);
-                        ref->set_memory(_memory, _memory_size);
+                        if (composable == children[i].value)
+                        {
+                            out = i;
+                            break;
+                        }
                     }
                 }
-
-            private:
-                std::string _target_url;
-                const uint8_t* _memory = nullptr;
-                size_t _memory_size = 0;
-            };
-
-            class SharedMemoryData : public IMemoryData
-            {
-            protected:
-                void _init(const SharedMemoryReference* value)
-                {
-                    _target_url = value->target_url();
-                    _memory = value->memory();
-                }
-
-                SharedMemoryData()
-                {}
-
-            public:
-                static std::shared_ptr<SharedMemoryData> create(const SharedMemoryReference* value)
-                {
-                    std::shared_ptr<SharedMemoryData> out(new SharedMemoryData);
-                    out->_init(value);
-                    return out;
-                }
-
-                void copy(otio::MediaReference* value) override
-                {
-                    if (auto ref = dynamic_cast<SharedMemoryReference*>(value))
-                    {
-                        ref->set_target_url(_target_url);
-                        ref->set_memory(_memory);
-                    }
-                }
-            private:
-                std::string _target_url;
-                std::shared_ptr<MemoryReferenceData> _memory;
-            };
-
-            class RawMemorySequenceData : public IMemoryData
-            {
-            protected:
-                void _init(const RawMemorySequenceReference* value)
-                {
-                    _target_url = value->target_url();
-                    _memory = value->memory();
-                    _memory_sizes = value->memory_sizes();
-                }
-
-                RawMemorySequenceData()
-                {}
-
-            public:
-                static std::shared_ptr<RawMemorySequenceData> create(
-                    const RawMemorySequenceReference* value)
-                {
-                    std::shared_ptr<RawMemorySequenceData> out(
-                        new RawMemorySequenceData);
-                    out->_init(value);
-                    return out;
-                }
-
-                void copy(otio::MediaReference* value) override
-                {
-                    if (auto ref = dynamic_cast<RawMemorySequenceReference*>(value))
-                    {
-                        ref->set_target_url(_target_url);
-                        ref->set_memory(_memory, _memory_sizes);
-                    }
-                }
-
-            private:
-                std::string _target_url;
-                std::vector<const uint8_t*> _memory;
-                std::vector<size_t> _memory_sizes;
-            };
-
-            class SharedMemorySequenceData : public IMemoryData
-            {
-            protected:
-                void _init(const SharedMemorySequenceReference* value)
-                {
-                    _target_url = value->target_url();
-                    _memory = value->memory();
-                }
-
-                SharedMemorySequenceData()
-                {}
-
-            public:
-                static std::shared_ptr<SharedMemorySequenceData> create(
-                    const SharedMemorySequenceReference* value)
-                {
-                    std::shared_ptr<SharedMemorySequenceData> out(
-                        new SharedMemorySequenceData);
-                    out->_init(value);
-                    return out;
-                }
-
-                void copy(otio::MediaReference* value) override
-                {
-                    if (auto ref = dynamic_cast<SharedMemorySequenceReference*>(value))
-                    {
-                        ref->set_target_url(_target_url);
-                    }
-                }
-
-            private:
-                std::string _target_url;
-                std::vector<std::shared_ptr<MemoryReferenceData> > _memory;
-            };
-
-            class ZipMemoryData : public RawMemoryData
-            {
-            protected:
-                void _init(const ZipMemoryReference* value)
-                {
-                    RawMemoryData::_init(value);
-                    _file_io = value->file_io();
-                }
-
-                ZipMemoryData()
-                {}
-
-            public:
-                static std::shared_ptr<ZipMemoryData> create(
-                    const ZipMemoryReference* value)
-                {
-                    std::shared_ptr<ZipMemoryData> out(new ZipMemoryData);
-                    out->_init(value);
-                    return out;
-                }
-
-                void copy(otio::MediaReference* value) override
-                {
-                    RawMemoryData::copy(value);
-                    if (auto ref = dynamic_cast<ZipMemoryReference*>(value))
-                    {
-                        ref->set_file_io(_file_io);
-                    }
-                }
-
-            private:
-                std::shared_ptr<file::FileIO> _file_io;
-            };
-
-            class ZipMemorySequenceData : public RawMemorySequenceData
-            {
-            protected:
-                void _init(const ZipMemorySequenceReference* value)
-                {
-                    RawMemorySequenceData::_init(value);
-                    _file_io = value->file_io();
-                }
-
-                ZipMemorySequenceData()
-                {}
-
-            public:
-                static std::shared_ptr<ZipMemorySequenceData> create(
-                    const ZipMemorySequenceReference* value)
-                {
-                    std::shared_ptr<ZipMemorySequenceData> out(
-                        new ZipMemorySequenceData);
-                    out->_init(value);
-                    return out;
-                }
-
-                void copy(otio::MediaReference* value) override
-                {
-                    RawMemorySequenceData::copy(value);
-                    if (auto ref = dynamic_cast<ZipMemoryReference*>(value))
-                    {
-                        ref->set_file_io(_file_io);
-                    }
-                }
-
-            private:
-                std::shared_ptr<file::FileIO> _file_io;
-            };
-        }
-
-        otio::SerializableObject::Retainer<otio::Timeline> copy(
-            const otio::SerializableObject::Retainer<otio::Timeline>& timeline)
-        {
-            //! \todo Since we are copying the timeline by serializing it to
-            //! JSON, we need to keep track of in-memory media references and
-            //! copy them to the new timeline. Would it be better to make a
-            //! deep copy of the timeline to avoid this?
-            std::vector<std::shared_ptr<IMemoryData> > memoryData;
-            for (const auto& clip : timeline->find_clips())
-            {
-                if (auto ref = dynamic_cast<ZipMemoryReference*>(clip->media_reference()))
-                {
-                    ref->metadata()["tlRender"] = static_cast<int64_t>(memoryData.size());
-                    memoryData.push_back(ZipMemoryData::create(ref));
-                }
-                else if (auto ref = dynamic_cast<RawMemoryReference*>(clip->media_reference()))
-                {
-                    ref->metadata()["tlRender"] = static_cast<int64_t>(memoryData.size());
-                    memoryData.push_back(RawMemoryData::create(ref));
-                }
-                else if (auto ref = dynamic_cast<SharedMemoryReference*>(clip->media_reference()))
-                {
-                    ref->metadata()["tlRender"] = static_cast<int64_t>(memoryData.size());
-                    memoryData.push_back(SharedMemoryData::create(ref));
-                }
-                else if (auto ref = dynamic_cast<ZipMemorySequenceReference*>(clip->media_reference()))
-                {
-                    ref->metadata()["tlRender"] = static_cast<int64_t>(memoryData.size());
-                    memoryData.push_back(ZipMemorySequenceData::create(ref));
-                }
-                else if (auto ref = dynamic_cast<RawMemorySequenceReference*>(clip->media_reference()))
-                {
-                    ref->metadata()["tlRender"] = static_cast<int64_t>(memoryData.size());
-                    memoryData.push_back(RawMemorySequenceData::create(ref));
-                }
-                else if (auto ref = dynamic_cast<SharedMemorySequenceReference*>(clip->media_reference()))
-                {
-                    ref->metadata()["tlRender"] = static_cast<int64_t>(memoryData.size());
-                    memoryData.push_back(SharedMemorySequenceData::create(ref));
-                }
+                return out;
             }
 
+            otio::SerializableObject::Retainer<otio::Composable> getPrevSibling(
+                const otio::SerializableObject::Retainer<otio::Composable>& value)
+            {
+                otio::SerializableObject::Retainer<otio::Composable> out;
+                if (auto parent = value->parent())
+                {
+                    const auto& children = parent->children();
+                    for (size_t i = 1; i < children.size(); ++i)
+                    {
+                        if (children[i].value == value.value)
+                        {
+                            out = children[i - 1];
+                            break;
+                        }
+                    }
+                }
+                return out;
+            }
+
+            otio::SerializableObject::Retainer<otio::Composable> getNextSibling(
+                const otio::SerializableObject::Retainer<otio::Composable>& value)
+            {
+                otio::SerializableObject::Retainer<otio::Composable> out;
+                if (auto parent = value->parent())
+                {
+                    const auto& children = parent->children();
+                    if (!children.empty())
+                    {
+                        for (size_t i = 0; i < children.size() - 1; ++i)
+                        {
+                            if (children[i].value == value.value)
+                            {
+                                out = children[i + 1];
+                                break;
+                            }
+                        }
+                    }
+                }
+                return out;
+            }
+        }
+
+        otio::SerializableObject::Retainer<otio::Timeline> insert(
+            const otio::SerializableObject::Retainer<otio::Timeline>& timeline,
+            const std::vector<InsertData>& inserts)
+        {
             const std::string s = timeline->to_json_string();
             otio::SerializableObject::Retainer<otio::Timeline> out(
                 dynamic_cast<otio::Timeline*>(otio::Timeline::from_json_string(s)));
 
-            for (const auto& clip : out->find_clips())
+            for (const auto& insert : inserts)
             {
-                if (dynamic_cast<RawMemoryReference*>(clip->media_reference()) ||
-                    dynamic_cast<SharedMemoryReference*>(clip->media_reference()) ||
-                    dynamic_cast<RawMemorySequenceReference*>(clip->media_reference()) ||
-                    dynamic_cast<SharedMemorySequenceReference*>(clip->media_reference()) ||
-                    dynamic_cast<ZipMemoryReference*>(clip->media_reference()) ||
-                    dynamic_cast<ZipMemorySequenceReference*>(clip->media_reference()))
+                const int oldIndex = getIndex(insert.composable);
+                const int oldTrackIndex = getIndex(insert.composable->parent());
+                if (oldIndex != -1 &&
+                    oldTrackIndex != -1 &&
+                    insert.trackIndex >= 0 &&
+                    insert.trackIndex < out->tracks()->children().size())
                 {
-                    auto ref = clip->media_reference();
-                    const auto i = ref->metadata().find("tlRender");
-                    if (i != ref->metadata().end())
+                    int insertIndex = insert.insertIndex;
+                    if (oldTrackIndex == insert.trackIndex && oldIndex < insertIndex)
                     {
-                        const int64_t index = otio::any_cast<int64_t>(i->second);
-                        if (index >= 0 && index < memoryData.size())
-                        {
-                            memoryData[index]->copy(ref);
-                        }
-                        ref->metadata().erase(i);
-                    }
-                }
-            }
-
-            return out;
-        }
-
-        otio::SerializableObject::Retainer<otio::Timeline> move(
-            const otio::SerializableObject::Retainer<otio::Timeline>& timeline,
-            const std::vector<MoveData>& moves)
-        {
-            auto out = copy(timeline);
-            for (const auto& move : moves)
-            {
-                if (move.fromTrack >= 0 &&
-                    move.fromTrack < out->tracks()->children().size() &&
-                    move.toTrack >= 0 &&
-                    move.toTrack < out->tracks()->children().size())
-                {
-                    int toIndex = move.toIndex;
-                    if (move.fromTrack == move.toTrack && move.fromIndex < toIndex)
-                    {
-                        --toIndex;
+                        --insertIndex;
                     }
                     if (auto track = otio::dynamic_retainer_cast<otio::Track>(
-                        out->tracks()->children()[move.fromTrack]))
+                        out->tracks()->children()[oldTrackIndex]))
                     {
-                        auto child = track->children()[move.fromIndex];
-                        track->remove_child(move.fromIndex);
+                        auto child = track->children()[oldIndex];
+                        track->remove_child(oldIndex);
 
                         if (auto track = otio::dynamic_retainer_cast<otio::Track>(
-                            out->tracks()->children()[move.toTrack]))
+                            out->tracks()->children()[insert.trackIndex]))
                         {
-                            track->insert_child(toIndex, child);
+                            track->insert_child(insertIndex, child);
                         }
                     }
                 }
             }
+
             return out;
         }
     }

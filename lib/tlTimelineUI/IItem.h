@@ -5,7 +5,6 @@
 #pragma once
 
 #include <tlUI/IWidget.h>
-#include <tlUI/ThumbnailSystem.h>
 
 #include <tlTimeline/TimeUnits.h>
 #include <tlTimeline/Timeline.h>
@@ -108,8 +107,8 @@ namespace tl
         protected:
             void _init(
                 const std::string& objectName,
-                const otime::TimeRange& timeRange,
-                const otime::TimeRange& trimmedRange,
+                const otio::SerializableObject::Retainer<otio::Composable>&,
+                const otime::TimeRange&,
                 double scale,
                 const ItemOptions&,
                 const std::shared_ptr<ItemData>&,
@@ -120,6 +119,9 @@ namespace tl
 
         public:
             virtual ~IItem();
+
+            //! Get the OTIO object.
+            const otio::SerializableObject::Retainer<otio::Composable>& getComposable() const;
             
             //! Get the item time range.
             const otime::TimeRange& getTimeRange() const;
@@ -149,9 +151,9 @@ namespace tl
             virtual void _timeUnitsUpdate();
 
             otime::TimeRange _timeRange = time::invalidTimeRange;
-            otime::TimeRange _trimmedRange = time::invalidTimeRange;
             double _scale = 500.0;
             ItemOptions _options;
+            otio::SerializableObject::Retainer<otio::Composable> _composable;
             std::shared_ptr<ItemData> _data;
 
         private:

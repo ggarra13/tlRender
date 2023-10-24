@@ -5,11 +5,11 @@
 #include <tlTimelineUI/AudioClipItem.h>
 
 #include <tlUI/DrawUtil.h>
+#include <tlUI/ThumbnailSystem.h>
 
 #include <tlTimeline/RenderUtil.h>
 #include <tlTimeline/Util.h>
 
-#include <tlCore/Assert.h>
 #include <tlCore/StringFormat.h>
 
 namespace tl
@@ -18,9 +18,10 @@ namespace tl
     {
         struct AudioClipItem::Private
         {
+            otio::SerializableObject::Retainer<otio::Clip> clip;
             file::Path path;
             std::vector<file::MemoryRead> memoryRead;
-            std::shared_ptr<ui::ThumbnailGenerator> thumbnailGenerator;
+            std::weak_ptr<ui::ThumbnailSystem> thumbnailSystem;
 
             struct SizeData
             {
@@ -39,7 +40,6 @@ namespace tl
             double scale,
             const ItemOptions& options,
             const std::shared_ptr<ItemData>& itemData,
-            const std::shared_ptr<ui::ThumbnailGenerator> thumbnailGenerator,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
         {
@@ -59,9 +59,10 @@ namespace tl
                 parent);
             TLRENDER_P();
 
+            p.clip = clip;
             p.path = path;
             p.memoryRead = timeline::getMemoryRead(clip->media_reference());
-            p.thumbnailGenerator = thumbnailGenerator;
+            p.thumbnailSystem = context->getSystem<ui::ThumbnailSystem>();
 
             const auto i = itemData->info.find(path.get());
             if (i != itemData->info.end())
@@ -76,7 +77,6 @@ namespace tl
 
         AudioClipItem::~AudioClipItem()
         {
-            TLRENDER_P();
             _cancelRequests();
         }
 
@@ -85,13 +85,17 @@ namespace tl
             double scale,
             const ItemOptions& options,
             const std::shared_ptr<ItemData>& itemData,
-            const std::shared_ptr<ui::ThumbnailGenerator> thumbnailGenerator,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
         {
             auto out = std::shared_ptr<AudioClipItem>(new AudioClipItem);
-            out->_init(clip, scale, options, itemData, thumbnailGenerator, context, parent);
+            out->_init(clip, scale, options, itemData, context, parent);
             return out;
+        }
+
+        const otio::SerializableObject::Retainer<otio::Clip>& AudioClipItem::getClip() const
+        {
+            return _p->clip;
         }
 
         void AudioClipItem::setScale(double value)
@@ -229,17 +233,18 @@ namespace tl
             const math::Box2i clipRect = _getClipRect(
                 drawRect,
                 _options.clipRectScale);
+            auto thumbnailSystem = p.thumbnailSystem.lock();
             if (g.intersects(clipRect))
             {
-                if (!p.ioInfo && !p.infoRequest.future.valid())
+                if (!p.ioInfo && !p.infoRequest.future.valid() && thumbnailSystem)
                 {
-                    p.infoRequest = p.thumbnailGenerator->getInfo(
+                    p.infoRequest = thumbnailSystem->getInfo(
                         p.path,
                         p.memoryRead);
                 }
             }
 
-            if (_options.waveformWidth > 0 && p.ioInfo)
+            if (_options.waveformWidth > 0 && p.ioInfo && thumbnailSystem)
             {
                 const int w = _sizeHint.w;
                 for (int x = 0; x < w; x += _options.waveformWidth)
@@ -265,8 +270,7 @@ namespace tl
                             _timeRange.duration().rate()));
                         const otime::TimeRange mediaRange = timeline::toAudioMediaTime(
                             otime::TimeRange::range_from_start_end_time(time, time2),
-                            _timeRange,
-                            _trimmedRange,
+                            p.clip,
                             p.ioInfo->audio.sampleRate);
 
                         const auto i = _data->waveforms.find(_getWaveformKey(mediaRange));
@@ -285,7 +289,7 @@ namespace tl
                             const auto j = p.waveformRequests.find(mediaRange.start_time());
                             if (j == p.waveformRequests.end())
                             {
-                                p.waveformRequests[mediaRange.start_time()] = p.thumbnailGenerator->getWaveform(
+                                p.waveformRequests[mediaRange.start_time()] = thumbnailSystem->getWaveform(
                                     p.path,
                                     p.memoryRead,
                                     box.getSize(),
@@ -300,18 +304,21 @@ namespace tl
         void AudioClipItem::_cancelRequests()
         {
             TLRENDER_P();
-            std::vector<uint64_t> ids;
-            if (p.infoRequest.future.valid())
+            if (auto thumbnailSystem = p.thumbnailSystem.lock())
             {
-                ids.push_back(p.infoRequest.id);
-                p.infoRequest = ui::InfoRequest();
+                std::vector<uint64_t> ids;
+                if (p.infoRequest.future.valid())
+                {
+                    ids.push_back(p.infoRequest.id);
+                    p.infoRequest = ui::InfoRequest();
+                }
+                for (const auto& i : p.waveformRequests)
+                {
+                    ids.push_back(i.second.id);
+                }
+                p.waveformRequests.clear();
+                thumbnailSystem->cancelRequests(ids);
             }
-            for (const auto& i : p.waveformRequests)
-            {
-                ids.push_back(i.second.id);
-            }
-            p.waveformRequests.clear();
-            p.thumbnailGenerator->cancelRequests(ids);
         }
     }
 }

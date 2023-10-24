@@ -5,7 +5,6 @@
 #pragma once
 
 #include <tlCore/ListObserver.h>
-#include <tlCore/ValueObserver.h>
 
 #include <tlCore/Path.h>
 
@@ -37,9 +36,6 @@ namespace tl
 
             //! Get the maximum number of recent files.
             size_t getRecentMax() const;
-
-            //! Observe the maximum number of recent files.
-            std::shared_ptr<observer::IValue<size_t> > observeRecentMax() const;
 
             //! Set the maximum number of recent files.
             void setRecentMax(size_t);

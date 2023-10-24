@@ -113,8 +113,8 @@ namespace tl
             //! Return whether a clip is getting dragged.
             bool isDragging() const;
             
-            //! Sets a callback for moving items.
-            void setMoveCallback(const std::function<void(const std::vector<timeline::MoveData>&)>&);
+            //! Sets a callback for inserting items
+            void setInsertCallback(const std::function<void(const std::vector<timeline::InsertData>&)>&);
             
             void setGeometry(const math::Box2i&) override;
             void tickEvent(

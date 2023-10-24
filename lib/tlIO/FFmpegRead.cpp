@@ -380,17 +380,12 @@ namespace tl
 
                 // Check the cache.
                 io::VideoData videoData;
-                if (videoRequest && _cache)
+                if (videoRequest &&
+                    _cache &&
+                    _cache->getVideo(_path.get(), videoRequest->time, videoRequest->options, videoData))
                 {
-                    const std::string cacheKey = io::Cache::getVideoKey(
-                        _path.get(),
-                        videoRequest->time,
-                        videoRequest->options);
-                    if (_cache->getVideo(cacheKey, videoData))
-                    {
-                        videoRequest->promise.set_value(videoData);
-                        videoRequest.reset();
-                    }
+                    videoRequest->promise.set_value(videoData);
+                    videoRequest.reset();
                 }
 
                 // Seek.
@@ -422,11 +417,7 @@ namespace tl
                     
                     if (_cache)
                     {
-                        const std::string cacheKey = io::Cache::getVideoKey(
-                            _path.get(),
-                            videoRequest->time,
-                            videoRequest->options);
-                        _cache->addVideo(cacheKey, data);
+                        _cache->addVideo(_path.get(), videoRequest->time, videoRequest->options, data);
                     }
 
                     p.videoThread.currentTime += otime::RationalTime(1.0, p.info.videoTime.duration().rate());
@@ -499,17 +490,12 @@ namespace tl
 
                 // Check the cache.
                 io::AudioData audioData;
-                if (request && _cache)
+                if (request &&
+                    _cache &&
+                    _cache->getAudio(_path.get(), request->timeRange, request->options, audioData))
                 {
-                    const std::string cacheKey = io::Cache::getAudioKey(
-                        _path.get(),
-                        request->timeRange,
-                        request->options);
-                    if (_cache->getAudio(cacheKey, audioData))
-                    {
-                        request->promise.set_value(audioData);
-                        request.reset();
-                    }
+                    request->promise.set_value(audioData);
+                    request.reset();
                 }
 
                 // Seek.
@@ -558,11 +544,7 @@ namespace tl
 
                     if (_cache)
                     {
-                        const std::string cacheKey = io::Cache::getAudioKey(
-                            _path.get(),
-                            request->timeRange,
-                            request->options);
-                        _cache->addAudio(cacheKey, audioData);
+                        _cache->addAudio(_path.get(), request->timeRange, request->options, audioData);
                     }
 
                     p.audioThread.currentTime += request->timeRange.duration();

@@ -16,7 +16,7 @@ namespace tl
     {
         struct Cache::Private
         {
-            size_t max = memory::gigabyte;
+            size_t max = 4 * memory::gigabyte;
             memory::LRUCache<std::string, VideoData> video;
             memory::LRUCache<std::string, AudioData> audio;
             std::mutex mutex;
@@ -71,24 +71,14 @@ namespace tl
                 static_cast<float>(p.video.getMax() + p.audio.getMax()) * 100.F;
         }
 
-        std::string Cache::getVideoKey(
+        void Cache::addVideo(
             const std::string& fileName,
             const otime::RationalTime& time,
-            const Options& options)
-        {
-            std::vector<std::string> s;
-            s.push_back(fileName);
-            s.push_back(string::Format("{0}").arg(time));
-            for (const auto& i : options)
-            {
-                s.push_back(string::Format("{0}:{1}").arg(i.first).arg(i.second));
-            }
-            return string::join(s, ';');
-        }
-
-        void Cache::addVideo(const std::string& key, const VideoData& videoData)
+            const Options& options,
+            const VideoData& videoData)
         {
             TLRENDER_P();
+            const std::string key = getCacheKey(fileName, time, options);
             std::unique_lock<std::mutex> lock(p.mutex);
             p.video.add(
                 key,
@@ -96,57 +86,61 @@ namespace tl
                 videoData.image ? videoData.image->getDataByteCount() : 1);
         }
 
-        bool Cache::containsVideo(const std::string& key) const
+        bool Cache::containsVideo(
+            const std::string& fileName,
+            const otime::RationalTime& time,
+            const Options& options) const
         {
             TLRENDER_P();
             std::unique_lock<std::mutex> lock(p.mutex);
-            return p.video.contains(key);
+            return p.video.contains(getCacheKey(fileName, time, options));
         }
 
-        bool Cache::getVideo(const std::string& key, VideoData& videoData) const
+        bool Cache::getVideo(
+            const std::string& fileName,
+            const otime::RationalTime& time,
+            const Options& options,
+            VideoData& videoData) const
         {
             TLRENDER_P();
+            const std::string key = getCacheKey(fileName, time, options);
             std::unique_lock<std::mutex> lock(p.mutex);
             return p.video.get(key, videoData);
         }
 
-        std::string Cache::getAudioKey(
+        void Cache::addAudio(
             const std::string& fileName,
             const otime::TimeRange& timeRange,
-            const Options& options)
-        {
-            std::vector<std::string> s;
-            s.push_back(fileName);
-            s.push_back(string::Format("{0}").arg(timeRange));
-            for (const auto& i : options)
-            {
-                s.push_back(string::Format("{0}:{1}").arg(i.first).arg(i.second));
-            }
-            return string::join(s, ';');
-        }
-
-        void Cache::addAudio(const std::string& key, const AudioData& audioData)
+            const Options& options,
+            const AudioData& audioData)
         {
             TLRENDER_P();
             std::unique_lock<std::mutex> lock(p.mutex);
             p.audio.add(
-                key,
+                getCacheKey(fileName, timeRange, options),
                 audioData,
                 audioData.audio ? audioData.audio->getByteCount() : 1);
         }
 
-        bool Cache::containsAudio(const std::string& key) const
+        bool Cache::containsAudio(
+            const std::string& fileName,
+            const otime::TimeRange& timeRange,
+            const Options& options) const
         {
             TLRENDER_P();
             std::unique_lock<std::mutex> lock(p.mutex);
-            return p.audio.contains(key);
+            return p.audio.contains(getCacheKey(fileName, timeRange, options));
         }
 
-        bool Cache::getAudio(const std::string& key, AudioData& audioData) const
+        bool Cache::getAudio(
+            const std::string& fileName,
+            const otime::TimeRange& timeRange,
+            const Options& options,
+            AudioData& audioData) const
         {
             TLRENDER_P();
             std::unique_lock<std::mutex> lock(p.mutex);
-            return p.audio.get(key, audioData);
+            return p.audio.get(getCacheKey(fileName, timeRange, options), audioData);
         }
 
         void Cache::clear()
@@ -163,6 +157,36 @@ namespace tl
             std::unique_lock<std::mutex> lock(p.mutex);
             p.video.setMax(p.max * .9F);
             p.audio.setMax(p.max * .1F);
+        }
+
+        std::string getCacheKey(
+            const std::string& fileName,
+            const otime::RationalTime& time,
+            const Options& options)
+        {
+            std::vector<std::string> s;
+            s.push_back(fileName);
+            s.push_back(string::Format("{0}").arg(time));
+            for (const auto& i : options)
+            {
+                s.push_back(string::Format("{0}:{1}").arg(i.first).arg(i.second));
+            }
+            return string::join(s, ';');
+        }
+
+        std::string getCacheKey(
+            const std::string& fileName,
+            const otime::TimeRange& timeRange,
+            const Options& options)
+        {
+            std::vector<std::string> s;
+            s.push_back(fileName);
+            s.push_back(string::Format("{0}").arg(timeRange));
+            for (const auto& i : options)
+            {
+                s.push_back(string::Format("{0}:{1}").arg(i.first).arg(i.second));
+            }
+            return string::join(s, ';');
         }
     }
 }

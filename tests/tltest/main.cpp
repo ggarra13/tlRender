@@ -174,7 +174,6 @@ void timelineTests(
     tests.push_back(timeline_tests::ColorConfigOptionsTest::create(context));
     tests.push_back(timeline_tests::CompareOptionsTest::create(context));
     tests.push_back(timeline_tests::DisplayOptionsTest::create(context));
-    tests.push_back(timeline_tests::EditTest::create(context));
     tests.push_back(timeline_tests::IRenderTest::create(context));
     tests.push_back(timeline_tests::ImageOptionsTest::create(context));
     tests.push_back(timeline_tests::LUTOptionsTest::create(context));
@@ -230,7 +229,7 @@ int main(int argc, char* argv[])
     context->tick();
 
     std::vector<std::shared_ptr<tests::ITest> > tests;
-    //tests.push_back(timeline_tests::EditTest::create(context));
+    //tests.push_back(core_tests::FileInfoTest::create(context));
     coreTests(tests, context);
     glTests(tests, context);
     ioTests(tests, context);

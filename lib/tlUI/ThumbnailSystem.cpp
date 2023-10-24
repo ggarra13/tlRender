@@ -29,196 +29,8 @@ namespace tl
             const size_t waveformRequestsMax = 3;
         }
 
-        struct ThumbnailCache::Private
+        struct ThumbnailSystem::Private
         {
-            size_t max = 1000;
-            memory::LRUCache<std::string, io::Info> info;
-            memory::LRUCache<std::string, std::shared_ptr<image::Image> > thumbnails;
-            memory::LRUCache<std::string, std::shared_ptr<geom::TriangleMesh2> > waveforms;
-            std::mutex mutex;
-        };
-
-        void ThumbnailCache::_init(const std::shared_ptr<system::Context>& context)
-        {
-            _maxUpdate();
-        }
-
-        ThumbnailCache::ThumbnailCache() :
-            _p(new Private)
-        {}
-
-        ThumbnailCache::~ThumbnailCache()
-        {}
-
-        std::shared_ptr<ThumbnailCache> ThumbnailCache::create(
-            const std::shared_ptr<system::Context>& context)
-        {
-            auto out = std::shared_ptr<ThumbnailCache>(new ThumbnailCache);
-            out->_init(context);
-            return out;
-        }
-
-        size_t ThumbnailCache::getMax() const
-        {
-            return _p->max;
-        }
-
-        void ThumbnailCache::setMax(size_t value)
-        {
-            TLRENDER_P();
-            if (value == p.max)
-                return;
-            p.max = value;
-            _maxUpdate();
-        }
-
-        size_t ThumbnailCache::getSize() const
-        {
-            TLRENDER_P();
-            std::unique_lock<std::mutex> lock(p.mutex);
-            return p.info.getSize() + p.thumbnails.getSize() + p.waveforms.getSize();
-        }
-
-        float ThumbnailCache::getPercentage() const
-        {
-            TLRENDER_P();
-            std::unique_lock<std::mutex> lock(p.mutex);
-            return
-                (p.info.getSize() + p.thumbnails.getSize() + p.waveforms.getSize()) /
-                static_cast<float>(p.info.getMax() + p.thumbnails.getMax() + p.waveforms.getMax()) * 100.F;
-        }
-
-        std::string ThumbnailCache::getInfoKey(
-            const file::Path& path,
-            const io::Options& options)
-        {
-            std::vector<std::string> s;
-            s.push_back(path.get());
-            for (const auto& i : options)
-            {
-                s.push_back(string::Format("{0}:{1}").arg(i.first).arg(i.second));
-            }
-            return string::join(s, ';');
-        }
-
-        void ThumbnailCache::addInfo(const std::string& key, const io::Info& info)
-        {
-            TLRENDER_P();
-            std::unique_lock<std::mutex> lock(p.mutex);
-            p.info.add(key, info);
-        }
-
-        bool ThumbnailCache::containsInfo(const std::string& key)
-        {
-            TLRENDER_P();
-            std::unique_lock<std::mutex> lock(p.mutex);
-            return p.info.contains(key);
-        }
-
-        bool ThumbnailCache::getInfo(const std::string& key, io::Info& info) const
-        {
-            TLRENDER_P();
-            std::unique_lock<std::mutex> lock(p.mutex);
-            return p.info.get(key, info);
-        }
-
-        std::string ThumbnailCache::getThumbnailKey(
-            int height,
-            const file::Path& path,
-            const otime::RationalTime& time,
-            const io::Options& options)
-        {
-            std::vector<std::string> s;
-            s.push_back(string::Format("{0}").arg(height));
-            s.push_back(path.get());
-            s.push_back(string::Format("{0}").arg(time));
-            for (const auto& i : options)
-            {
-                s.push_back(string::Format("{0}:{1}").arg(i.first).arg(i.second));
-            }
-            return string::join(s, ';');
-        }
-
-        void ThumbnailCache::addThumbnail(
-            const std::string& key,
-            const std::shared_ptr<image::Image>& thumbnail)
-        {
-            TLRENDER_P();
-            std::unique_lock<std::mutex> lock(p.mutex);
-            p.thumbnails.add(key, thumbnail);
-        }
-
-        bool ThumbnailCache::containsThumbnail(const std::string& key)
-        {
-            TLRENDER_P();
-            std::unique_lock<std::mutex> lock(p.mutex);
-            return p.thumbnails.contains(key);
-        }
-
-        bool ThumbnailCache::getThumbnail(
-            const std::string& key,
-            std::shared_ptr<image::Image>& thumbnail) const
-        {
-            TLRENDER_P();
-            std::unique_lock<std::mutex> lock(p.mutex);
-            return p.thumbnails.get(key, thumbnail);
-        }
-
-        std::string ThumbnailCache::getWaveformKey(
-            const math::Size2i& size,
-            const file::Path& path,
-            const otime::TimeRange& timeRange,
-            const io::Options& options)
-        {
-            std::vector<std::string> s;
-            s.push_back(string::Format("{0}").arg(size));
-            s.push_back(path.get());
-            s.push_back(string::Format("{0}").arg(timeRange));
-            for (const auto& i : options)
-            {
-                s.push_back(string::Format("{0}:{1}").arg(i.first).arg(i.second));
-            }
-            return string::join(s, ';');
-        }
-
-        void ThumbnailCache::addWaveform(
-            const std::string& key,
-            const std::shared_ptr<geom::TriangleMesh2>& waveform)
-        {
-            TLRENDER_P();
-            std::unique_lock<std::mutex> lock(p.mutex);
-            p.waveforms.add(key, waveform);
-        }
-
-        bool ThumbnailCache::containsWaveform(const std::string& key)
-        {
-            TLRENDER_P();
-            std::unique_lock<std::mutex> lock(p.mutex);
-            return p.waveforms.contains(key);
-        }
-
-        bool ThumbnailCache::getWaveform(
-            const std::string& key,
-            std::shared_ptr<geom::TriangleMesh2>& waveform) const
-        {
-            TLRENDER_P();
-            std::unique_lock<std::mutex> lock(p.mutex);
-            return p.waveforms.get(key, waveform);
-        }
-
-        void ThumbnailCache::_maxUpdate()
-        {
-            TLRENDER_P();
-            std::unique_lock<std::mutex> lock(p.mutex);
-            p.info.setMax(p.max);
-            p.thumbnails.setMax(p.max);
-            p.waveforms.setMax(p.max);
-        }
-
-        struct ThumbnailGenerator::Private
-        {
-            std::weak_ptr<system::Context> context;
-            std::shared_ptr<ThumbnailCache> cache;
             std::shared_ptr<gl::GLFWWindow> window;
             uint64_t requestId = 0;
 
@@ -227,7 +39,6 @@ namespace tl
                 uint64_t id = 0;
                 file::Path path;
                 std::vector<file::MemoryRead> memoryRead;
-                io::Options options;
                 std::promise<io::Info> promise;
             };
 
@@ -238,7 +49,7 @@ namespace tl
                 std::vector<file::MemoryRead> memoryRead;
                 int height = 0;
                 otime::RationalTime time = time::invalidTime;
-                io::Options options;
+                uint16_t layer = 0;
                 std::promise<std::shared_ptr<image::Image> > promise;
             };
 
@@ -249,7 +60,6 @@ namespace tl
                 std::vector<file::MemoryRead> memoryRead;
                 math::Size2i size;
                 otime::TimeRange timeRange = time::invalidTimeRange;
-                io::Options options;
                 std::promise<std::shared_ptr<geom::TriangleMesh2> > promise;
             };
             
@@ -265,6 +75,9 @@ namespace tl
             
             struct Thread
             {
+                memory::LRUCache<std::string, io::Info> infoCache;
+                memory::LRUCache<std::string, std::shared_ptr<image::Image> > thumbnailCache;
+                memory::LRUCache<std::string, std::shared_ptr<geom::TriangleMesh2> > waveformCache;
                 memory::LRUCache<std::string, std::shared_ptr<io::IRead> > ioCache;
                 std::chrono::steady_clock::time_point logTimer;
                 std::condition_variable cv;
@@ -274,21 +87,20 @@ namespace tl
             Thread thread;
         };
 
-        void ThumbnailGenerator::_init(
-            const std::shared_ptr<system::Context>& context)
+        void ThumbnailSystem::_init(const std::shared_ptr<system::Context>& context)
         {
+            ISystem::_init("tl::ui::ThumbnailSystem", context);
             TLRENDER_P();
-            
-            p.context = context;
-
-            p.cache = context->getSystem<ThumbnailSystem>()->getCache();
 
             p.window = gl::GLFWWindow::create(
-                "tl::ui::ThumbnailGenerator",
+                "tl::timelineui::ThumbnailSystem",
                 math::Size2i(1, 1),
                 context,
                 static_cast<int>(gl::GLFWWindowOptions::None));
 
+            p.thread.infoCache.setMax(1000);
+            p.thread.thumbnailCache.setMax(1000);
+            p.thread.waveformCache.setMax(1000);
             p.thread.ioCache.setMax(1000);
             p.thread.running = true;
             p.thread.thread = std::thread(
@@ -301,13 +113,12 @@ namespace tl
                     }
                     catch (const std::exception& e)
                     {
-                        if (auto context = p.context.lock())
+                        if (auto context = _context.lock())
                         {
                             context->log(
-                                "tl::ui::ThumbnailGenerator",
+                                "tl::timelineui::ThumbnailSystem",
                                 string::Format("Cannot make the OpenGL context current: {0}").
-                                    arg(e.what()),
-                                log::Type::Error);
+                                    arg(e.what()));
                         }
                     }
                     _run();
@@ -320,11 +131,11 @@ namespace tl
                 });
         }
 
-        ThumbnailGenerator::ThumbnailGenerator() :
+        ThumbnailSystem::ThumbnailSystem() :
             _p(new Private)
         {}
 
-        ThumbnailGenerator::~ThumbnailGenerator()
+        ThumbnailSystem::~ThumbnailSystem()
         {
             TLRENDER_P();
             p.thread.running = false;
@@ -334,25 +145,22 @@ namespace tl
             }
         }
 
-        std::shared_ptr<ThumbnailGenerator> ThumbnailGenerator::create(
+        std::shared_ptr<ThumbnailSystem> ThumbnailSystem::create(
             const std::shared_ptr<system::Context>& context)
         {
-            auto out = std::shared_ptr<ThumbnailGenerator>(new ThumbnailGenerator);
+            auto out = std::shared_ptr<ThumbnailSystem>(new ThumbnailSystem);
             out->_init(context);
             return out;
         }
 
-        InfoRequest ThumbnailGenerator::getInfo(
-            const file::Path& path,
-            const io::Options& options)
+        InfoRequest ThumbnailSystem::getInfo(const file::Path& path)
         {
-            return getInfo(path, {}, options);
+            return getInfo(path, {});
         }
 
-        InfoRequest ThumbnailGenerator::getInfo(
+        InfoRequest ThumbnailSystem::getInfo(
             const file::Path& path,
-            const std::vector<file::MemoryRead>& memoryRead,
-            const io::Options& options)
+            const std::vector<file::MemoryRead>& memoryRead)
         {
             TLRENDER_P();
             (p.requestId)++;
@@ -360,7 +168,6 @@ namespace tl
             request->id = p.requestId;
             request->path = path;
             request->memoryRead = memoryRead;
-            request->options = options;
             InfoRequest out;
             out.id = p.requestId;
             out.future = request->promise.get_future();
@@ -384,21 +191,21 @@ namespace tl
             return out;
         }
 
-        ThumbnailRequest ThumbnailGenerator::getThumbnail(
+        ThumbnailRequest ThumbnailSystem::getThumbnail(
             const file::Path& path,
             int height,
             const otime::RationalTime& time,
-            const io::Options& options)
+            uint16_t layer)
         {
-            return getThumbnail(path, {}, height, time, options);
+            return getThumbnail(path, {}, height, time, layer);
         }
 
-        ThumbnailRequest ThumbnailGenerator::getThumbnail(
+        ThumbnailRequest ThumbnailSystem::getThumbnail(
             const file::Path& path,
             const std::vector<file::MemoryRead>& memoryRead,
             int height,
             const otime::RationalTime& time,
-            const io::Options& options)
+            uint16_t layer)
         {
             TLRENDER_P();
             (p.requestId)++;
@@ -408,7 +215,7 @@ namespace tl
             request->memoryRead = memoryRead;
             request->height = height;
             request->time = time;
-            request->options = options;
+            request->layer = layer;
             ThumbnailRequest out;
             out.id = p.requestId;
             out.height = height;
@@ -434,21 +241,19 @@ namespace tl
             return out;
         }
 
-        WaveformRequest ThumbnailGenerator::getWaveform(
+        WaveformRequest ThumbnailSystem::getWaveform(
             const file::Path& path,
             const math::Size2i& size,
-            const otime::TimeRange& range,
-            const io::Options& options)
+            const otime::TimeRange& range)
         {
-            return getWaveform(path, {}, size, range, options);
+            return getWaveform(path, {}, size, range);
         }
 
-        WaveformRequest ThumbnailGenerator::getWaveform(
+        WaveformRequest ThumbnailSystem::getWaveform(
             const file::Path& path,
             const std::vector<file::MemoryRead>& memoryRead,
             const math::Size2i& size,
-            const otime::TimeRange& timeRange,
-            const io::Options& options)
+            const otime::TimeRange& timeRange)
         {
             TLRENDER_P();
             (p.requestId)++;
@@ -458,7 +263,6 @@ namespace tl
             request->memoryRead = memoryRead;
             request->size = size;
             request->timeRange = timeRange;
-            request->options = options;
             WaveformRequest out;
             out.id = p.requestId;
             out.size = size;
@@ -484,7 +288,7 @@ namespace tl
             return out;
         }
 
-        void ThumbnailGenerator::cancelRequests(std::vector<uint64_t> ids)
+        void ThumbnailSystem::cancelRequests(std::vector<uint64_t> ids)
         {
             TLRENDER_P();
             std::unique_lock<std::mutex> lock(p.mutex.mutex);
@@ -650,13 +454,43 @@ namespace tl
                 }
                 return out;
             }
+
+            std::string getInfoKey(const file::Path& path)
+            {
+                return string::Format("{0}_{1}").
+                    arg(path.get());
+            }
+
+            std::string getThumbnailKey(
+                int height,
+                const file::Path& path,
+                const otime::RationalTime& time,
+                uint16_t layer)
+            {
+                return string::Format("{0}_{1}_{2}_{3}_{4}").
+                    arg(height).
+                    arg(path.get()).
+                    arg(time).
+                    arg(layer);
+            }
+
+            std::string getWaveformKey(
+                const math::Size2i& size,
+                const file::Path& path,
+                const otime::TimeRange& timeRange)
+            {
+                return string::Format("{0}_{1}_{2}_{3}").
+                    arg(size).
+                    arg(path.get()).
+                    arg(timeRange);
+            }
         }
         
-        void ThumbnailGenerator::_run()
+        void ThumbnailSystem::_run()
         {
             TLRENDER_P();
             std::shared_ptr<timeline::GLRender> render;
-            if (auto context = p.context.lock())
+            if (auto context = _context.lock())
             {
                 render = timeline::GLRender::create(context);
             }
@@ -719,25 +553,22 @@ namespace tl
                 for (const auto& infoRequest : infoRequests)
                 {
                     io::Info info;
-                    const std::string key = ThumbnailCache::getInfoKey(
-                        infoRequest->path,
-                        infoRequest->options);
-                    if (!p.cache->getInfo(key, info))
+                    const std::string key = getInfoKey(infoRequest->path);
+                    if (!p.thread.infoCache.get(key, info))
                     {
                         const std::string& fileName = infoRequest->path.get();
                         //std::cout << "info request: " << infoRequest->path.get() << std::endl;
                         std::shared_ptr<io::IRead> read;
                         if (!p.thread.ioCache.get(fileName, read))
                         {
-                            if (auto context = p.context.lock())
+                            if (auto context = _context.lock())
                             {
                                 auto ioSystem = context->getSystem<io::System>();
                                 try
                                 {
                                     read = ioSystem->read(
                                         infoRequest->path,
-                                        infoRequest->memoryRead,
-                                        infoRequest->options);
+                                        infoRequest->memoryRead);
                                     p.thread.ioCache.add(fileName, read);
                                 }
                                 catch (const std::exception&)
@@ -748,7 +579,7 @@ namespace tl
                         {
                             info = read->getInfo().get();
                         }
-                        p.cache->addInfo(key, info);
+                        p.thread.infoCache.add(key, info);
                     }
                     infoRequest->promise.set_value(info);
                 }
@@ -757,12 +588,12 @@ namespace tl
                 for (const auto& request : thumbnailRequests)
                 {
                     std::shared_ptr<image::Image> image;
-                    const std::string key = ThumbnailCache::getThumbnailKey(
+                    const std::string key = getThumbnailKey(
                         request->height,
                         request->path,
                         request->time,
-                        request->options);
-                    if (!p.cache->getThumbnail(key, image))
+                        request->layer);
+                    if (!p.thread.thumbnailCache.get(key, image))
                     {
                         try
                         {
@@ -772,15 +603,14 @@ namespace tl
                             std::shared_ptr<io::IRead> read;
                             if (!p.thread.ioCache.get(fileName, read))
                             {
-                                if (auto context = p.context.lock())
+                                if (auto context = _context.lock())
                                 {
                                     auto ioSystem = context->getSystem<io::System>();
                                     try
                                     {
                                         read = ioSystem->read(
                                             request->path,
-                                            request->memoryRead,
-                                            request->options);
+                                            request->memoryRead);
                                         p.thread.ioCache.add(fileName, read);
                                     }
                                     catch (const std::exception&)
@@ -794,7 +624,7 @@ namespace tl
                                     request->time != time::invalidTime ?
                                     request->time :
                                     info.videoTime.start_time();
-                                auto videoData = read->readVideo(time, request->options).get();
+                                auto videoData = read->readVideo(time).get();
                                 math::Size2i size;
                                 if (!info.video.empty())
                                 {
@@ -838,7 +668,7 @@ namespace tl
                         }
                         catch (const std::exception&)
                         {}
-                        p.cache->addThumbnail(key, image);
+                        p.thread.thumbnailCache.add(key, image);
                     }
                     request->promise.set_value(image);
                 }
@@ -847,12 +677,11 @@ namespace tl
                 for (const auto& request : waveformRequests)
                 {
                     std::shared_ptr<geom::TriangleMesh2> mesh;
-                    const std::string key = ThumbnailCache::getWaveformKey(
+                    const std::string key = getWaveformKey(
                         request->size,
                         request->path,
-                        request->timeRange,
-                        request->options);
-                    if (!p.cache->getWaveform(key, mesh))
+                        request->timeRange);
+                    if (!p.thread.waveformCache.get(key, mesh))
                     {
                         try
                         {
@@ -860,15 +689,14 @@ namespace tl
                             std::shared_ptr<io::IRead> read;
                             if (!p.thread.ioCache.get(fileName, read))
                             {
-                                if (auto context = p.context.lock())
+                                if (auto context = _context.lock())
                                 {
                                     auto ioSystem = context->getSystem<io::System>();
                                     try
                                     {
                                         read = ioSystem->read(
                                             request->path,
-                                            request->memoryRead,
-                                            request->options);
+                                            request->memoryRead);
                                         p.thread.ioCache.add(fileName, read);
                                     }
                                     catch (const std::exception&)
@@ -884,7 +712,7 @@ namespace tl
                                     otime::TimeRange(
                                         otime::RationalTime(0.0, 1.0),
                                         otime::RationalTime(1.0, 1.0));
-                                auto audioData = read->readAudio(timeRange, request->options).get();
+                                auto audioData = read->readAudio(timeRange).get();
                                 if (audioData.audio)
                                 {
                                     auto resample = audio::AudioResample::create(
@@ -897,7 +725,7 @@ namespace tl
                         }
                         catch (const std::exception&)
                         {}
-                        p.cache->addWaveform(key, mesh);
+                        p.thread.waveformCache.add(key, mesh);
                     }
                     request->promise.set_value(mesh);
                 }
@@ -918,31 +746,32 @@ namespace tl
                             thumbnailRequests = p.mutex.thumbnailRequests.size();
                             waveformRequests = p.mutex.waveformRequests.size();
                         }
-                        if (auto context = p.context.lock())
-                        {
-                            context->log(
-                                "tl::ui::ThumbnailGenerator",
-                                string::Format(
-                                    "\n"
-                                    "    Info requests: {0}\n"
-                                    "    Thumbnail requests: {1}\n"
-                                    "    Waveform requests: {2}\n"
-                                    "    Cache: {3}, {4}%\n"
-                                    "    I/O cache: {5}, {6}%").
-                                    arg(infoRequests).
-                                    arg(thumbnailRequests).
-                                    arg(waveformRequests).
-                                    arg(p.cache->getSize()).
-                                    arg(p.cache->getPercentage()).
-                                    arg(p.thread.ioCache.getSize()).
-                                    arg(p.thread.ioCache.getPercentage()));
-                        }
+                        _log(string::Format(
+                            "\n"
+                            "    Info requests: {0}\n"
+                            "    Thumbnail requests: {1}\n"
+                            "    Waveform requests: {2}\n"
+                            "    Info cache: {3}, {4}%\n"
+                            "    Thumbnail cache: {5}, {6}%\n"
+                            "    Waveform cache: {7}, {8}%\n"
+                            "    I/O cache: {9}, {10}%").
+                            arg(infoRequests).
+                            arg(thumbnailRequests).
+                            arg(waveformRequests).
+                            arg(p.thread.infoCache.getSize()).
+                            arg(p.thread.infoCache.getPercentage()).
+                            arg(p.thread.thumbnailCache.getSize()).
+                            arg(p.thread.thumbnailCache.getPercentage()).
+                            arg(p.thread.infoCache.getSize()).
+                            arg(p.thread.infoCache.getPercentage()).
+                            arg(p.thread.ioCache.getSize()).
+                            arg(p.thread.ioCache.getPercentage()));
                     }
                 }
             }
         }
         
-        void ThumbnailGenerator::_cancelRequests()
+        void ThumbnailSystem::_cancelRequests()
         {
             TLRENDER_P();
             std::list<std::shared_ptr<Private::InfoRequest> > infoRequests;
@@ -966,38 +795,6 @@ namespace tl
             {
                 request->promise.set_value(nullptr);
             }
-        }
-
-        struct ThumbnailSystem::Private
-        {
-            std::shared_ptr<ThumbnailCache> cache;
-        };
-
-        void ThumbnailSystem::_init(const std::shared_ptr<system::Context>& context)
-        {
-            ISystem::_init("tl::ui::ThumbnailSystem", context);
-            TLRENDER_P();
-            p.cache = ThumbnailCache::create(context);
-        }
-
-        ThumbnailSystem::ThumbnailSystem() :
-            _p(new Private)
-        {}
-
-        ThumbnailSystem::~ThumbnailSystem()
-        {}
-
-        std::shared_ptr<ThumbnailSystem> ThumbnailSystem::create(
-            const std::shared_ptr<system::Context>& context)
-        {
-            auto out = std::shared_ptr<ThumbnailSystem>(new ThumbnailSystem);
-            out->_init(context);
-            return out;
-        }
-        
-        const std::shared_ptr<ThumbnailCache>& ThumbnailSystem::getCache() const
-        {
-            return _p->cache;
         }
     }
 }

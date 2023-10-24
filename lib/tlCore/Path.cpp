@@ -52,7 +52,13 @@ namespace tl
                     (j - i) <= options.maxNumberDigits)
                 {
                     _number = value.substr(i, j - i);
-                    _numberUpdate();
+                    _numberValue = std::atoi(_number.c_str());
+                    _numberDigits = math::digits(_numberValue);
+                    _sequence = math::IntRange(_numberValue, _numberValue);
+                    if (_number.size() > 1 && '0' == _number[0])
+                    {
+                        _padding = _number.size();
+                    }
                 }
                 else
                 {
@@ -127,28 +133,21 @@ namespace tl
             ss << _extension;
             return ss.str();
         }
-        
-        void Path::setDirectory(const std::string& value)
-        {
-            _directory = value;
-        }
-        
-        void Path::setBaseName(const std::string& value)
-        {
-            _baseName = value;
-        }
-        
-        void Path::setNumber(const std::string& value)
-        {
-            if (value == _number)
-                return;
-            _number = value;
-            _numberUpdate();
-        }
-        
+
         void Path::setSequence(const math::IntRange& value)
         {
             _sequence = value;
+        }
+
+        bool Path::sequence(const Path& value) const
+        {
+            return
+                !_number.empty() &&
+                !value._number.empty() &&
+                _directory == value._directory &&
+                _baseName == value._baseName &&
+                (_padding == value._padding || _padding == value._numberDigits) &&
+                _extension == value._extension;
         }
 
         std::string Path::getSequenceString() const
@@ -163,9 +162,13 @@ namespace tl
             return out;
         }
 
-        void Path::setExtension(const std::string& value)
+        bool Path::isEmpty() const
         {
-            _extension = value;
+            return
+                _directory.empty() &&
+                _baseName.empty() &&
+                _number.empty() &&
+                _extension.empty();
         }
 
         bool Path::isAbsolute() const
@@ -182,16 +185,21 @@ namespace tl
             }
             return false;
         }
-        
-        void Path::_numberUpdate()
+
+        bool Path::operator == (const Path& other) const
         {
-            _numberValue = std::atoi(_number.c_str());
-            _numberDigits = math::digits(_numberValue);
-            _sequence = math::IntRange(_numberValue, _numberValue);
-            if (_number.size() > 1 && '0' == _number[0])
-            {
-                _padding = _number.size();
-            }
+            return
+                _directory == other._directory &&
+                _baseName == other._baseName &&
+                _number == other._number &&
+                _sequence == other._sequence &&
+                _padding == other._padding &&
+                _extension == other._extension;
+        }
+
+        bool Path::operator != (const Path& other) const
+        {
+            return !(*this == other);
         }
 
         std::string appendSeparator(const std::string& value)

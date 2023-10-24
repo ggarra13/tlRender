@@ -52,17 +52,11 @@ namespace tl
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
         {
-            otime::TimeRange timeRange = time::invalidTimeRange;
             const auto timeRangeOpt = item->trimmed_range_in_parent();
-            if (timeRangeOpt.has_value())
-            {
-                timeRange = timeRangeOpt.value();
-            }
-            const otime::TimeRange trimmedRange = item->trimmed_range();
             IItem::_init(
                 objectName,
-                timeRange,
-                trimmedRange,
+                item.value,
+                timeRangeOpt.has_value() ? timeRangeOpt.value() : time::invalidTimeRange,
                 scale,
                 options,
                 itemData,

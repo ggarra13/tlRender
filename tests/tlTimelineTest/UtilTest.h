@@ -24,7 +24,6 @@ namespace tl
             void _enums();
             void _ranges();
             void _util();
-            void _otioz();
         };
     }
 }

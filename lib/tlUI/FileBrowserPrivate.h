@@ -7,7 +7,6 @@
 #include <tlUI/FileBrowser.h>
 
 #include <tlUI/IButton.h>
-#include <tlUI/ThumbnailSystem.h>
 
 #include <tlCore/FileInfo.h>
 
@@ -59,7 +58,6 @@ namespace tl
             void _init(
                 const file::FileInfo&,
                 const FileBrowserOptions&,
-                const std::shared_ptr<ThumbnailGenerator>&,
                 const std::shared_ptr<system::Context>&,
                 const std::shared_ptr<IWidget>& parent);
 
@@ -71,7 +69,6 @@ namespace tl
             static std::shared_ptr<Button> create(
                 const file::FileInfo&,
                 const FileBrowserOptions&,
-                const std::shared_ptr<ThumbnailGenerator>&,
                 const std::shared_ptr<system::Context>&,
                 const std::shared_ptr<IWidget>& parent = nullptr);
 
@@ -156,8 +153,6 @@ namespace tl
             const FileBrowserOptions& getOptions() const;
 
             void setOptions(const FileBrowserOptions&);
-            
-            void setOptionsCallback(const std::function<void(const FileBrowserOptions&)>&);
 
             void setRecentFilesModel(const std::shared_ptr<RecentFilesModel>&);
 
@@ -166,7 +161,6 @@ namespace tl
 
         private:
             void _pathUpdate();
-            void _optionsUpdate();
 
             TLRENDER_PRIVATE();
         };

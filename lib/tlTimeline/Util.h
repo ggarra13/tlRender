@@ -7,7 +7,6 @@
 #include <tlTimeline/Player.h>
 
 #include <opentimelineio/mediaReference.h>
-#include <opentimelineio/timeline.h>
 
 namespace tl
 {
@@ -31,13 +30,8 @@ namespace tl
         enum class CacheDirection
         {
             Forward,
-            Reverse,
-
-            Count,
-            First = Forward
+            Reverse
         };
-        TLRENDER_ENUM(FileSequenceAudio);
-        TLRENDER_ENUM_SERIALIZE(FileSequenceAudio);
 
         //! Loop the cache time range.
         std::vector<otime::TimeRange> loopCache(
@@ -85,44 +79,23 @@ namespace tl
         std::vector<file::MemoryRead> getMemoryRead(
             const otio::MediaReference*);
 
-        //! Convert to memory references.
-        enum class ToMemoryReference
-        {
-            Shared,
-            Raw,
-
-            Count,
-            First = Shared
-        };
-        TLRENDER_ENUM(ToMemoryReference);
-        TLRENDER_ENUM_SERIALIZE(ToMemoryReference);
-
         //! Convert media references to memory references for testing.
         void toMemoryReferences(
             otio::Timeline*,
             const std::string& directory,
-            ToMemoryReference,
             const file::PathOptions& = file::PathOptions());
 
         //! Transform track time to video media time.
         otime::RationalTime toVideoMediaTime(
             const otime::RationalTime&,
-            const otime::TimeRange& trimmedRangeInParent,
-            const otime::TimeRange& trimmedRange,
+            const otio::Clip*,
             double rate);
 
         //! Transform track time to audio media time.
         otime::TimeRange toAudioMediaTime(
             const otime::TimeRange&,
-            const otime::TimeRange& trimmedRangeInParent,
-            const otime::TimeRange& trimmedRange,
+            const otio::Clip*,
             double sampleRate);
-
-        //! Write a timeline to an .otioz file.
-        bool writeOTIOZ(
-            const std::string& fileName,
-            const otio::SerializableObject::Retainer<otio::Timeline>&,
-            const std::string& directory = std::string());
     }
 }
 

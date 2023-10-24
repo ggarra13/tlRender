@@ -214,11 +214,12 @@ namespace tl
                     videoRequests.pop_front();
 
                     VideoData videoData;
-                    const std::string cacheKey = Cache::getVideoKey(
+                    if (_cache &&
+                        _cache->getVideo(
                         request->fileName,
                         request->time,
-                        request->options);
-                    if (_cache && _cache->getVideo(cacheKey, videoData))
+                        request->options,
+                        videoData))
                     {
                         //std::cout << "cache: " << request->fileName << " " <<
                         //    request->time << std::endl;
@@ -286,11 +287,11 @@ namespace tl
                         
                         if (_cache)
                         {
-                            const std::string cacheKey = Cache::getVideoKey(
+                            _cache->addVideo(
                                 _path.get(),
                                 (*requestIt)->time,
-                                (*requestIt)->options);
-                            _cache->addVideo(cacheKey, videoData);
+                                (*requestIt)->options,
+                                videoData);
                         }
 
                         requestIt = p.thread.videoRequestsInProgress.erase(requestIt);

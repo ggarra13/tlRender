@@ -54,17 +54,15 @@ namespace tl
             std::shared_ptr<MainWindow> mainWindow;
             std::shared_ptr<SeparateAudioDialog> separateAudioDialog;
 
-            std::shared_ptr<observer::ValueObserver<std::string> > settingsObserver;
             std::shared_ptr<observer::ListObserver<std::shared_ptr<play::FilesModelItem> > > filesObserver;
             std::shared_ptr<observer::ListObserver<std::shared_ptr<play::FilesModelItem> > > activeObserver;
             std::shared_ptr<observer::ListObserver<int> > layersObserver;
-            std::shared_ptr<observer::ValueObserver<size_t> > recentFilesMaxObserver;
-            std::shared_ptr<observer::ListObserver<file::Path> > recentFilesObserver;
             std::shared_ptr<observer::ValueObserver<timeline::ColorConfigOptions> > colorConfigOptionsObserver;
             std::shared_ptr<observer::ValueObserver<timeline::LUTOptions> > lutOptionsObserver;
             std::shared_ptr<observer::ValueObserver<float> > volumeObserver;
             std::shared_ptr<observer::ValueObserver<bool> > muteObserver;
             std::shared_ptr<observer::ValueObserver<double> > syncOffsetObserver;
+            std::shared_ptr<observer::ValueObserver<std::string> > settingsObserver;
         };
 
         void App::_init(
@@ -103,15 +101,7 @@ namespace tl
         {}
 
         App::~App()
-        {
-            TLRENDER_P();
-            if (p.settings)
-            {
-                auto fileBrowserSystem = _context->getSystem<ui::FileBrowserSystem>();
-                p.settings->setValue("FileBrowser/Path", fileBrowserSystem->getPath());
-                p.settings->setValue("FileBrowser/Options", fileBrowserSystem->getOptions());
-            }
-        }
+        {}
 
         std::shared_ptr<App> App::create(
             const std::vector<std::string>& argv,
@@ -258,7 +248,7 @@ namespace tl
                 _context);
             p.settings->setDefaultValue("Files/RecentMax", 10);
             p.settings->setDefaultValue("Window/Size", _options.windowSize);
-            p.settings->setDefaultValue("Cache/Size", 1);
+            p.settings->setDefaultValue("Cache/Size", 4);
             p.settings->setDefaultValue("Cache/ReadAhead", 2.0);
             p.settings->setDefaultValue("Cache/ReadBehind", 0.5);
             p.settings->setDefaultValue("FileSequence/Audio",
@@ -296,7 +286,6 @@ namespace tl
         void App::_modelsInit()
         {
             TLRENDER_P();
-            
             p.filesModel = play::FilesModel::create(_context);
 
             p.viewportModel = play::ViewportModel::create(p.settings, _context);
@@ -313,13 +302,6 @@ namespace tl
         void App::_observersInit()
         {
             TLRENDER_P();
-            p.settingsObserver = observer::ValueObserver<std::string>::create(
-                p.settings->observeValues(),
-                [this](const std::string& name)
-                {
-                    _settingsUpdate(name);
-                });
-
             p.activePlayers = observer::List<std::shared_ptr<timeline::Player> >::create();
 
             p.filesObserver = observer::ListObserver<std::shared_ptr<play::FilesModelItem> >::create(
@@ -347,26 +329,6 @@ namespace tl
                             player->setIOOptions(ioOptions);
                         }
                     }
-                });
-
-            auto fileBrowserSystem = _context->getSystem<ui::FileBrowserSystem>();
-            auto recentFilesModel = fileBrowserSystem->getRecentFilesModel();
-            p.recentFilesMaxObserver = observer::ValueObserver<size_t>::create(
-                recentFilesModel->observeRecentMax(),
-                [this](size_t value)
-                {
-                    _p->settings->setValue("Files/RecentMax", value);
-                });
-            p.recentFilesObserver = observer::ListObserver<file::Path>::create(
-                recentFilesModel->observeRecent(),
-                [this](const std::vector<file::Path>& value)
-                {
-                    std::vector<std::string> fileNames;
-                    for (const auto& i : value)
-                    {
-                        fileNames.push_back(i.get());
-                    }
-                    _p->settings->setValue("Files/Recent", fileNames);
                 });
 
             p.colorConfigOptionsObserver = observer::ValueObserver<timeline::ColorConfigOptions>::create(
@@ -399,6 +361,13 @@ namespace tl
                 [this](double)
                 {
                     _audioUpdate();
+                });
+
+            p.settingsObserver = observer::ValueObserver<std::string>::create(
+                p.settings->observeValues(),
+                [this](const std::string& name)
+                {
+                    _settingsUpdate(name);
                 });
         }
 
@@ -705,8 +674,8 @@ namespace tl
             if ("FileBrowser/Options" == name || name.empty())
             {
                 auto fileBrowserSystem = _context->getSystem<ui::FileBrowserSystem>();
-                auto options = p.settings->getValue<ui::FileBrowserOptions>("FileBrowser/Options");
-                fileBrowserSystem->setOptions(options);
+                fileBrowserSystem->setOptions(
+                    p.settings->getValue<ui::FileBrowserOptions>("FileBrowser/Options"));
             }
             if ("FileBrowser/NativeFileDialog" == name || name.empty())
             {
