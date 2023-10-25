@@ -283,21 +283,20 @@ namespace tl
 
             p.cache = context->getSystem<ThumbnailSystem>()->getCache();
 
+            p.window = gl::GLFWWindow::create(
+                "tl::ui::ThumbnailGenerator",
+                math::Size2i(1, 1),
+                context,
+                static_cast<int>(gl::GLFWWindowOptions::None));
+
             p.thread.ioCache.setMax(1000);
             p.thread.running = true;
             p.thread.thread = std::thread(
-                [this,context]
+                [this]
                 {
                     TLRENDER_P();
                     try
                     {
-
-                        p.window = gl::GLFWWindow::create(
-                            "tl::ui::ThumbnailGenerator",
-                            math::Size2i(1, 1),
-                            context,
-                            static_cast<int>(gl::GLFWWindowOptions::None));
-            
                         p.window->makeCurrent();
                     }
                     catch (const std::exception& e)
