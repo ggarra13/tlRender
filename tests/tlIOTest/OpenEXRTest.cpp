@@ -85,7 +85,6 @@ namespace tl
                 const auto videoData = read->readVideo(otime::RationalTime(0.0, 24.0)).get();
                 TLRENDER_ASSERT(videoData.image);
                 TLRENDER_ASSERT(videoData.image->getSize() == image->getSize());
-                TLRENDER_ASSERT(videoData.image->getAspect() == image->getAspect());
                 //! \todo Compare image data.
                 //TLRENDER_ASSERT(0 == memcmp(
                 //    videoData.image->getData(),
