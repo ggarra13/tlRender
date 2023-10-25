@@ -290,7 +290,7 @@ namespace tl
                     
                     if (ToMemoryReference::Raw == toMemoryReference)
                     {
-                        for (const auto clip : otioTimeline->clip_if())
+                        for (const auto clip : otioTimeline->find_clips())
                         {
                             if (const auto ref = dynamic_cast<RawMemoryReference*>(clip->media_reference()))
                             {
