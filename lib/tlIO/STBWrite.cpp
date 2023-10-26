@@ -54,6 +54,15 @@ namespace tl
                             fileName.c_str(), info.size.w, info.size.h, comp,
                             image->getData());
                     }
+                    else if (string::compare(
+                        ext,
+                        ".hdr",
+                        string::Compare::CaseInsensitive))
+                    {
+                        res = stbi_write_hdr(
+                            fileName.c_str(), info.size.w, info.size.h, comp,
+                            reinterpret_cast<float*>(image->getData()));
+                    }
                     else
                     {
                         throw std::runtime_error(string::Format("{0}: {1}").
