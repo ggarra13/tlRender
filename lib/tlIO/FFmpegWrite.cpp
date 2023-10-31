@@ -2,6 +2,8 @@
 // Copyright (c) 2021-2023 Darby Johnston
 // All rights reserved.
 
+#include <cassert>
+
 #include <tlIO/FFmpeg.h>
 
 #include <tlCore/StringFormat.h>
@@ -9,18 +11,141 @@
 extern "C"
 {
 #include <libavcodec/avcodec.h>
+#include <libavutil/audio_fifo.h>
 #include <libavutil/imgutils.h>
 #include <libavutil/opt.h>
+    
+#include <libavutil/timestamp.h>
 }
 
 namespace tl
 {
     namespace ffmpeg
     {
+        namespace
+        {
+
+            void log_packet(const AVFormatContext *fmt_ctx, const AVPacket *pkt,
+                bool audio = false)
+            {
+                std::cerr << "pkt->stream_index=" << pkt->stream_index;
+                if (audio)
+                    std::cerr << " audio" << std::endl;
+                else
+                    std::cerr << " video" << std::endl;
+                AVRational *time_base = &fmt_ctx->streams[pkt->stream_index]->time_base;
+
+                char buf[AV_TS_MAX_STRING_SIZE];
+                char buf2[AV_TS_MAX_STRING_SIZE];
+
+                fprintf( stderr, "pts:%s pts_time:%s ",
+                       av_ts_make_string(buf, pkt->pts),
+                       av_ts_make_time_string(buf2, pkt->pts, time_base) );
+
+                fprintf( stderr, "dts:%s dts_time:%s ",
+                        av_ts_make_string(buf, pkt->dts),
+                        av_ts_make_time_string(buf2, pkt->dts, time_base) );
+
+                fprintf( stderr, "duration:%s duration_time:%s stream_index:%d\n",
+                        av_ts_make_string(buf, pkt->duration),
+                        av_ts_make_time_string(buf2, pkt->duration, time_base),
+                        pkt->stream_index);
+            }
+
+            AVSampleFormat toPlanarFormat(const enum AVSampleFormat s)
+            {
+                switch(s)
+                {
+                case AV_SAMPLE_FMT_U8:
+                    return AV_SAMPLE_FMT_U8P;
+                case AV_SAMPLE_FMT_S16:
+                    return AV_SAMPLE_FMT_S16P;
+                case AV_SAMPLE_FMT_S32:
+                    return AV_SAMPLE_FMT_S32P;
+                case AV_SAMPLE_FMT_FLT:
+                    return AV_SAMPLE_FMT_FLTP;
+                case AV_SAMPLE_FMT_DBL:
+                    return AV_SAMPLE_FMT_DBLP;
+                default:
+                    return s;
+                }
+            }
+            
+            //! Check that a given sample format is supported by the encoder
+            bool check_sample_fmt(const AVCodec *codec, enum AVSampleFormat sample_fmt)
+            {
+                const enum AVSampleFormat *p = codec->sample_fmts;
+
+                while (*p != AV_SAMPLE_FMT_NONE) {
+                    if (*p == sample_fmt)
+                        return true;
+                    p++;
+                }
+                return false;
+            }
+
+            //! Select layout with the highest channel count
+            //! Borrowed from FFmpeg's examples
+            int select_channel_layout(const AVCodec *codec,
+                                      AVChannelLayout *dst)
+            {
+                const AVChannelLayout *p, *best_ch_layout;
+                int best_nb_channels   = 0;
+                
+                if (!codec->ch_layouts)
+                {
+                    AVChannelLayout stereoLayout = AV_CHANNEL_LAYOUT_STEREO;
+                    return av_channel_layout_copy(dst, &stereoLayout);
+                }
+
+                p = codec->ch_layouts;
+                while (p->nb_channels) {
+                    int nb_channels = p->nb_channels;
+                    
+                    if (nb_channels > best_nb_channels) {
+                        best_ch_layout   = p;
+                        best_nb_channels = nb_channels;
+                    }
+                    p++;
+                }
+                return av_channel_layout_copy(dst, best_ch_layout);
+            }
+            
+            //! Return an equal or higher supported samplerate
+            int select_sample_rate(const AVCodec* codec, const int sampleRate)
+            {
+                const int *p;
+                int best_samplerate = 0;
+
+                if (!codec->supported_samplerates)
+                    return 44100;
+
+                p = codec->supported_samplerates;
+                while (*p) {
+
+                    if (*p == sampleRate)
+                    {
+                        std::cerr << "Equal sample rate= " << sampleRate
+                                  << std::endl;
+                        return sampleRate;
+                    }
+                    
+                    if (!best_samplerate || abs(44100 - *p) < abs(44100 - best_samplerate))
+                        best_samplerate = *p;
+                    p++;
+                }
+                std::cerr << "different sample rate was " << sampleRate
+                          << " but found " << best_samplerate << std::endl;
+                return best_samplerate;
+            }
+        }
+        
         struct Write::Private
         {
             std::string fileName;
             AVFormatContext* avFormatContext = nullptr;
+
+            // Video
             AVCodecContext* avCodecContext = nullptr;
             AVStream* avVideoStream = nullptr;
             AVPacket* avPacket = nullptr;
@@ -28,6 +153,17 @@ namespace tl
             AVPixelFormat avPixelFormatIn = AV_PIX_FMT_NONE;
             AVFrame* avFrame2 = nullptr;
             SwsContext* swsContext = nullptr;
+
+            // Audio
+            AVCodecContext* avAudioCodecContext = nullptr;
+            AVStream* avAudioStream = nullptr;
+            AVAudioFifo* avAudioFifo = nullptr;
+            AVFrame* avAudioFrame = nullptr;
+            AVPacket* avAudioPacket = nullptr;
+            uint64_t totalSamples = 0;
+
+            otime::RationalTime lastTime = time::invalidTime;
+            
             bool opened = false;
         };
 
@@ -45,6 +181,163 @@ namespace tl
             if (info.video.empty())
             {
                 throw std::runtime_error(string::Format("{0}: No video").arg(p.fileName));
+            }
+            
+            int r = avformat_alloc_output_context2(&p.avFormatContext, NULL, NULL, p.fileName.c_str());
+            
+            // p.avFormatContext->flags |= AVFMT_FLAG_NOBUFFER|AVFMT_FLAG_FLUSH_PACKETS;
+            // p.avFormatContext->max_interleave_delta = 1;
+    
+            if (info.audio.isValid())
+            {
+                AVCodecID avCodecID = AV_CODEC_ID_AAC; // don't hard code this
+                const AVCodec* avCodec = avcodec_find_encoder(avCodecID);
+                if (!avCodec)
+                    throw std::runtime_error("Could not find audio encoder");
+                
+                p.avAudioStream = avformat_new_stream(p.avFormatContext,
+                                                      avCodec);
+                if (!p.avAudioStream)
+                {
+                    throw std::runtime_error(
+                        string::Format("{0}: Cannot allocate audio stream")
+                            .arg(p.fileName));
+                }
+
+                p.avAudioStream->id = p.avFormatContext->nb_streams - 1;
+                
+                p.avAudioCodecContext = avcodec_alloc_context3(avCodec);
+                if (!p.avAudioCodecContext)
+                {
+                    throw std::runtime_error(
+                        string::Format(
+                            "{0}: Cannot allocate audio codec context")
+                            .arg(p.fileName));
+                }
+                
+                // p.avAudioCodecContext->audio_service_type = AV_AUDIO_SERVICE_TYPE_MAIN;
+                p.avAudioCodecContext->sample_fmt =
+                    toPlanarFormat(fromAudioType(info.audio.dataType));
+                if (!check_sample_fmt(avCodec, p.avAudioCodecContext->sample_fmt))
+                {
+                    p.avAudioCodecContext->sample_fmt = AV_SAMPLE_FMT_S16;
+                    if (!check_sample_fmt(avCodec, p.avAudioCodecContext->sample_fmt))
+                    {
+                        throw std::runtime_error(
+                            string::Format("Sample format {0} not supported!")
+                                .arg(av_get_sample_fmt_name(
+                                    p.avAudioCodecContext->sample_fmt)));
+                    }
+                }
+                p.avAudioCodecContext->bit_rate = 69000; // @todo:
+                p.avAudioCodecContext->sample_rate = info.audio.sampleRate;
+
+                r = select_channel_layout(
+                    avCodec, &p.avAudioCodecContext->ch_layout);
+                if (r < 0)
+                    throw std::runtime_error(
+                        string::Format(
+                            "{0}: Could not select audio channel layout")
+                            .arg(p.fileName));
+
+                select_sample_rate(avCodec, info.audio.sampleRate);
+                
+                p.avAudioCodecContext->time_base.num = 1;
+                p.avAudioCodecContext->time_base.den = info.audio.sampleRate;
+
+                if (p.avAudioCodecContext->codec->capabilities &
+                    AV_CODEC_CAP_VARIABLE_FRAME_SIZE)
+                {
+                    p.avAudioCodecContext->frame_size = 10000;
+                }
+                else
+                {
+                    p.avAudioCodecContext->frame_size = info.audio.sampleRate;
+                }
+    
+                if ((p.avAudioCodecContext->block_align == 1 ||
+                     p.avAudioCodecContext->block_align == 1152 ||
+                     p.avAudioCodecContext->block_align == 576) &&
+                    p.avAudioCodecContext->codec_id == AV_CODEC_ID_MP3)
+                    p.avAudioCodecContext->block_align = 0;
+
+                if (avCodecID == AV_CODEC_ID_AC3)
+                    p.avAudioCodecContext->block_align = 0;
+
+                r = avcodec_open2(p.avAudioCodecContext, avCodec, NULL);
+                if (r < 0)
+                {
+                    throw std::runtime_error(
+                        string::Format("{0}: Could not open audio codec - {1}.")
+                            .arg(p.fileName)
+                            .arg(getErrorLabel(r)));
+                }
+
+                r = avcodec_parameters_from_context(
+                    p.avAudioStream->codecpar, p.avAudioCodecContext);
+                if (r < 0)
+                {
+                    throw std::runtime_error(
+                        string::Format(
+                            "{0}: Could not copy parameters from context - {1}.")
+                            .arg(p.fileName)
+                            .arg(getErrorLabel(r)));
+                }
+    
+                p.avAudioPacket = av_packet_alloc();
+                if (!p.avAudioPacket)
+                {
+                    throw std::runtime_error(
+                        string::Format("{0}: Cannot allocate audio packet")
+                            .arg(p.fileName));
+                }
+            
+                p.avAudioFifo = av_audio_fifo_alloc(
+                    p.avAudioCodecContext->sample_fmt, info.audio.channelCount,
+                    1);
+                if (!p.avAudioFifo)
+                {
+                    throw std::runtime_error(
+                        string::Format(
+                            "{0}: Cannot allocate audio FIFO buffer - {1}.")
+                        .arg(p.fileName)
+                        .arg(getErrorLabel(r)));
+                }
+                    
+                p.avAudioFrame = av_frame_alloc();
+                if (!p.avAudioFrame)
+                {
+                    throw std::runtime_error(
+                        string::Format("{0}: Cannot allocate audio frame - {1}.")
+                        .arg(p.fileName)
+                        .arg(getErrorLabel(r)));
+                }
+
+                p.avAudioFrame->nb_samples = p.avAudioCodecContext->frame_size;
+                p.avAudioFrame->format = p.avAudioCodecContext->sample_fmt;
+                p.avAudioFrame->sample_rate = info.audio.sampleRate;
+                r = av_channel_layout_copy(
+                    &p.avAudioFrame->ch_layout,
+                    &p.avAudioCodecContext->ch_layout);
+                if (r < 0)
+                {
+                    throw std::runtime_error(
+                        string::Format("{0}: Could not copy channel layout to "
+                                       "audio frame - {1}.")
+                        .arg(p.fileName)
+                        .arg(getErrorLabel(r)));
+                }
+                
+                /* allocate the data buffers */
+                r = av_frame_get_buffer(p.avAudioFrame, 0);
+                if (r < 0)
+                {
+                    throw std::runtime_error(
+                        string::Format("{0}: Could not allocate buffer for "
+                                       "audio frame - {1}.")
+                        .arg(p.fileName)
+                        .arg(getErrorLabel(r)));
+                }
             }
 
             AVCodecID avCodecID = AV_CODEC_ID_MPEG4;
@@ -89,7 +382,6 @@ namespace tl
             default: break;
             }
 
-            int r = avformat_alloc_output_context2(&p.avFormatContext, NULL, NULL, p.fileName.c_str());
             if (r < 0)
             {
                 throw std::runtime_error(string::Format("{0}: {1}").arg(p.fileName).arg(getErrorLabel(r)));
@@ -109,6 +401,7 @@ namespace tl
             {
                 throw std::runtime_error(string::Format("{0}: Cannot allocate stream").arg(p.fileName));
             }
+            p.avVideoStream->id = p.avFormatContext->nb_streams - 1;
             if (!avCodec->pix_fmts)
             {
                 throw std::runtime_error(string::Format("{0}: No pixel formats available").arg(p.fileName));
@@ -244,9 +537,12 @@ namespace tl
         Write::~Write()
         {
             TLRENDER_P();
-
+            
             if (p.opened)
             {
+                if (p.avAudioFifo)
+                    _flushAudio();
+                _encodeAudio(nullptr);
                 _encodeVideo(nullptr);
                 av_write_trailer(p.avFormatContext);
             }
@@ -263,9 +559,26 @@ namespace tl
             {
                 av_frame_free(&p.avFrame);
             }
+            if (p.avAudioFrame)
+            {
+                av_frame_free(&p.avAudioFrame);
+            }
             if (p.avPacket)
             {
                 av_packet_free(&p.avPacket);
+            }
+            if (p.avAudioPacket)
+            {
+                av_packet_free(&p.avAudioPacket);
+            }
+            if (p.avAudioFifo)
+            {
+                av_audio_fifo_free( p.avAudioFifo );
+                p.avAudioFifo = nullptr;
+            }
+            if (p.avAudioCodecContext)
+            {
+                avcodec_free_context(&p.avAudioCodecContext);
             }
             if (p.avCodecContext)
             {
@@ -363,7 +676,9 @@ namespace tl
             int r = avcodec_send_frame(p.avCodecContext, frame);
             if (r < 0)
             {
-                throw std::runtime_error(string::Format("{0}: Cannot write frame").arg(p.fileName));
+                throw std::runtime_error(
+                    string::Format("{0}: Cannot send video frame")
+                        .arg(p.fileName));
             }
 
             while (r >= 0)
@@ -375,15 +690,200 @@ namespace tl
                 }
                 else if (r < 0)
                 {
-                    throw std::runtime_error(string::Format("{0}: Cannot write frame").arg(p.fileName));
+                    throw std::runtime_error(
+                        string::Format("{0}: Cannot receive video packet")
+                            .arg(p.fileName));
                 }
+                
+                // Needed 
+                p.avPacket->stream_index = p.avVideoStream->index;
+                
+                // log_packet(p.avFormatContext, p.avPacket);
                 r = av_interleaved_write_frame(p.avFormatContext, p.avPacket);
                 if (r < 0)
                 {
-                    throw std::runtime_error(string::Format("{0}: Cannot write frame").arg(p.fileName));
+                    throw std::runtime_error(
+                        string::Format("{0}: Cannot write video frame")
+                            .arg(p.fileName));
                 }
                 av_packet_unref(p.avPacket);
             }
         }
+        void Write::writeAudio(
+            const otime::RationalTime& time,
+            const std::shared_ptr<audio::Audio>& audioIn,
+            const io::Options&)
+        {
+            TLRENDER_P();
+
+            int r = 0;
+            const auto& info = audioIn->getInfo();
+            if (!info.isValid())
+            {
+                throw std::runtime_error(
+                    "Write audio called without a valid audio timeline.");
+            }
+            if (!p.avAudioFifo)
+            {
+                throw std::runtime_error(
+                    "Audio FIFO buffer was not allocated.");
+            }
+
+            if (p.lastTime != time)
+            {
+                p.lastTime = time;
+
+                long unsigned* t = (long unsigned*) audioIn->getData();
+                std::cerr << time << " audioIn=" << (void*)audioIn->getData()
+                          << " first chars="
+                          << t[0]
+                          << std::endl;
+
+                const auto audio = planarDeinterleave(audioIn);
+                
+                uint8_t* data = audio->getData();
+                const size_t sampleCount = audio->getSampleCount();
+
+                uint8_t* flatData[8];
+                size_t channels = audio->getChannelCount();
+                for (size_t i = 0; i < channels; ++i)
+                {
+                    flatData[i] =
+                        data + i * sampleCount *
+                                   audio::getByteCount(audio->getDataType());
+                }
+                
+                r = av_audio_fifo_write(
+                    p.avAudioFifo, reinterpret_cast<void**>(flatData),
+                    sampleCount);
+                if (r < 0)
+                {
+                    throw std::runtime_error(
+                        string::Format(
+                            "Could not write to fifo buffer at time {0}.")
+                        .arg(time));
+                }
+                if (r != sampleCount)
+                {
+                    throw std::runtime_error(
+                        string::Format(
+                            "Could not write all samples fifo buffer at time {0}.")
+                        .arg(time));
+                }
+            }
+
+            const int frameSize = p.avAudioCodecContext->frame_size;
+            const AVRational ratio = { 1, p.avAudioCodecContext->sample_rate };
+            while (av_audio_fifo_size(p.avAudioFifo) >= info.sampleRate)
+            {
+                r = av_frame_make_writable(p.avAudioFrame);
+                if (r < 0)
+                {
+                    throw std::runtime_error(
+                        string::Format(
+                            "Could not make audio frame writable at time {0}.")
+                        .arg(time));
+                }
+
+                r = av_audio_fifo_read(
+                    p.avAudioFifo,
+                    reinterpret_cast<void**>(p.avAudioFrame->extended_data),
+                    frameSize);
+                if (r < 0)
+                {
+                    throw std::runtime_error(
+                        string::Format("Could not read from audio fifo buffer "
+                                       "at time {0}.")
+                            .arg(time));
+                }
+                
+                p.avAudioFrame->pts = av_rescale_q(
+                    p.totalSamples, ratio, p.avAudioCodecContext->time_base);
+                
+                _encodeAudio(p.avAudioFrame);
+                
+                p.totalSamples += frameSize;
+            }
+        }
+        
+        void Write::_flushAudio()
+        {
+            TLRENDER_P();
+
+            int frameSize = p.avAudioCodecContext->frame_size;
+            const AVRational ratio = { 1, p.avAudioCodecContext->sample_rate };
+            int fifoSize = av_audio_fifo_size(p.avAudioFifo);
+            while (fifoSize > 0)
+            {
+                frameSize = std::min(fifoSize, frameSize);
+                
+                int r = av_frame_make_writable(p.avAudioFrame);
+                if (r < 0)
+                    return;
+
+                r = av_audio_fifo_read(
+                    p.avAudioFifo,
+                    reinterpret_cast<void**>(p.avAudioFrame->extended_data),
+                    frameSize);
+                if (r < 0)
+                    return;
+                
+                p.avAudioFrame->pts = av_rescale_q(
+                    p.totalSamples, ratio, p.avAudioCodecContext->time_base);
+
+                _encodeAudio(p.avAudioFrame);
+
+                fifoSize -= frameSize;
+                p.totalSamples += frameSize;
+            }
+        }
+        
+        void Write::_encodeAudio(AVFrame* frame)
+        {
+            TLRENDER_P();
+                
+            int r = avcodec_send_frame(p.avAudioCodecContext, frame);
+            if (r < 0)
+            {
+                throw std::runtime_error(
+                    string::Format("{0}: Cannot send audio frame")
+                        .arg(p.fileName));
+            }
+
+            while (r >= 0)
+            {
+                r = avcodec_receive_packet(
+                    p.avAudioCodecContext, p.avAudioPacket);
+                if (r == AVERROR(EAGAIN) || r == AVERROR_EOF)
+                {
+                    return;
+                }
+                else if (r < 0) 
+                {
+                    throw std::runtime_error(
+                        string::Format("{0}: Cannot receive audio packet")
+                            .arg(p.fileName));
+                }
+
+                // Needed 
+                p.avAudioPacket->stream_index = p.avAudioStream->index;
+
+                // log_packet(p.avFormatContext, p.avAudioPacket, true);
+                // av_packet_rescale_ts(
+                //     p.avAudioPacket, p.avAudioCodecContext->time_base,
+                //     p.avAudioStream->time_base);
+                r = av_interleaved_write_frame(p.avFormatContext, p.avAudioPacket);
+                if (r < 0)
+                {
+                    throw std::runtime_error(
+                        string::Format("{0}: Cannot write audio frame")
+                        .arg(p.fileName));
+                }
+                av_packet_unref(p.avAudioPacket);
+            }
+        
+        }
+
+
     }
 }

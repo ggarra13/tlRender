@@ -144,9 +144,17 @@ namespace tl
                 const otime::RationalTime&,
                 const std::shared_ptr<image::Image>&,
                 const io::Options& = io::Options()) override;
+            
+            void writeAudio(
+                const otime::RationalTime&,
+                const std::shared_ptr<audio::Audio>&,
+                const io::Options& = io::Options()) override;
 
         private:
             void _encodeVideo(AVFrame*);
+            void _encodeAudio(AVFrame*);
+            void _audioLoop();
+            void _flushAudio();
 
             TLRENDER_PRIVATE();
         };
