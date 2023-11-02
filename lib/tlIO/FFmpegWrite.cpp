@@ -134,7 +134,6 @@ namespace tl
             uint64_t totalSamples = 0;
             int64_t audioStartSamples = 0;
             size_t  sampleRate = 0;
-            size_t  channelCount = 0;
             std::shared_ptr<audio::AudioResample> resample;
 
             bool opened = false;
