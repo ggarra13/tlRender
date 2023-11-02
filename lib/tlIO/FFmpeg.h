@@ -39,6 +39,20 @@ namespace tl
         TLRENDER_ENUM(Profile);
         TLRENDER_ENUM_SERIALIZE(Profile);
 
+        //! Audio Codecs.
+        enum class AudioCodec
+        {
+            None,
+            AAC,
+            AC3,
+            True_HD,
+
+            Count
+        };
+        TLRENDER_ENUM(AudioCodec);
+        TLRENDER_ENUM_SERIALIZE(AudioCodec);
+
+        
         //! Number of threads.
         const size_t threadCount = 0;
 

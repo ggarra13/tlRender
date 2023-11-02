@@ -36,6 +36,14 @@ namespace tl
             "ProRes_4444",
             "ProRes_XQ");
         TLRENDER_ENUM_SERIALIZE_IMPL(Profile);
+    
+        TLRENDER_ENUM_IMPL(
+            AudioCodec,
+            "None",
+            "AAC",
+            "AC3",
+            "True_HD");
+        TLRENDER_ENUM_SERIALIZE_IMPL(AudioCodec);
 
         AVRational swap(AVRational value)
         {
