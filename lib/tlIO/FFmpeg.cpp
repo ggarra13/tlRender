@@ -44,7 +44,6 @@ namespace tl
             "AC3",
             "True_HD",
             "MP2",
-            "MP3",
             "PCM_S16LE");
         TLRENDER_ENUM_SERIALIZE_IMPL(AudioCodec);
 
@@ -209,12 +208,10 @@ namespace tl
                     { ".wmv", io::FileType::Movie },
 
                     // Audio Formats
-                    { ".ogg", io::FileType::Audio },
                     { ".opus", io::FileType::Audio },
                     { ".vorbis", io::FileType::Audio },
                     { ".wav", io::FileType::Audio },
-                    { ".mp3", io::FileType::Audio },
-                    { ".aiff", io::FileType::Audio }
+                    { ".mp3", io::FileType::Audio }
                 },
                 cache,
                 logSystem);
