@@ -12,6 +12,9 @@ extern "C"
 {
 #include <libavformat/avformat.h>
 #include <libswscale/swscale.h>
+
+struct AVCodecContext;
+struct AVStream;
 }
 
 namespace tl
@@ -146,14 +149,13 @@ namespace tl
                 const io::Options& = io::Options()) override;
             
             void writeAudio(
-                const otime::RationalTime&,
+                const otime::TimeRange&,
                 const std::shared_ptr<audio::Audio>&,
                 const io::Options& = io::Options()) override;
 
         private:
-            void _encodeVideo(AVFrame*);
-            void _encodeAudio(AVFrame*);
-            void _audioLoop();
+            void _encode(AVCodecContext*, const AVStream*,
+                         const AVFrame*, AVPacket*);
             void _flushAudio();
 
             TLRENDER_PRIVATE();

@@ -113,7 +113,7 @@ namespace tl
             
             //! Write video data.
             virtual void writeAudio(
-                const otime::RationalTime&,
+                const otime::TimeRange&,
                 const std::shared_ptr<audio::Audio>&,
                 const Options& = Options()) {};
 

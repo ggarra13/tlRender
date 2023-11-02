@@ -2,20 +2,22 @@
 // Copyright (c) 2021-2023 Darby Johnston
 // All rights reserved.
 
-#include <cassert>
+#include <tlCore/StringFormat.h>
+#include <tlCore/AudioResample.h>
+#include <tlCore/LogSystem.h>
 
 #include <tlIO/FFmpeg.h>
 
-#include <tlCore/StringFormat.h>
-
 extern "C"
 {
-#include <libavcodec/avcodec.h>
+    
 #include <libavutil/audio_fifo.h>
 #include <libavutil/imgutils.h>
 #include <libavutil/opt.h>
-    
 #include <libavutil/timestamp.h>
+    
+#include <libavcodec/avcodec.h>
+    
 }
 
 namespace tl
@@ -24,33 +26,6 @@ namespace tl
     {
         namespace
         {
-
-            void log_packet(const AVFormatContext *fmt_ctx, const AVPacket *pkt,
-                bool audio = false)
-            {
-                std::cerr << "pkt->stream_index=" << pkt->stream_index;
-                if (audio)
-                    std::cerr << " audio" << std::endl;
-                else
-                    std::cerr << " video" << std::endl;
-                AVRational *time_base = &fmt_ctx->streams[pkt->stream_index]->time_base;
-
-                char buf[AV_TS_MAX_STRING_SIZE];
-                char buf2[AV_TS_MAX_STRING_SIZE];
-
-                fprintf( stderr, "pts:%s pts_time:%s ",
-                       av_ts_make_string(buf, pkt->pts),
-                       av_ts_make_time_string(buf2, pkt->pts, time_base) );
-
-                fprintf( stderr, "dts:%s dts_time:%s ",
-                        av_ts_make_string(buf, pkt->dts),
-                        av_ts_make_time_string(buf2, pkt->dts, time_base) );
-
-                fprintf( stderr, "duration:%s duration_time:%s stream_index:%d\n",
-                        av_ts_make_string(buf, pkt->duration),
-                        av_ts_make_time_string(buf2, pkt->duration, time_base),
-                        pkt->stream_index);
-            }
 
             AVSampleFormat toPlanarFormat(const enum AVSampleFormat s)
             {
@@ -72,7 +47,8 @@ namespace tl
             }
             
             //! Check that a given sample format is supported by the encoder
-            bool check_sample_fmt(const AVCodec *codec, enum AVSampleFormat sample_fmt)
+            bool checkSampleFormat(
+                const AVCodec* codec, enum AVSampleFormat sample_fmt)
             {
                 const enum AVSampleFormat *p = codec->sample_fmts;
 
@@ -84,18 +60,17 @@ namespace tl
                 return false;
             }
 
-            //! Select layout with the highest channel count
-            //! Borrowed from FFmpeg's examples
-            int select_channel_layout(const AVCodec *codec,
-                                      AVChannelLayout *dst)
+            //! Select layout with equal or the highest channel count
+            int selectChannelLayout(
+                const AVCodec* codec, AVChannelLayout* dst, int channelCount)
             {
                 const AVChannelLayout *p, *best_ch_layout;
                 int best_nb_channels   = 0;
                 
                 if (!codec->ch_layouts)
                 {
-                    AVChannelLayout stereoLayout = AV_CHANNEL_LAYOUT_STEREO;
-                    return av_channel_layout_copy(dst, &stereoLayout);
+                    av_channel_layout_default(dst, channelCount);
+                    return 0;
                 }
 
                 p = codec->ch_layouts;
@@ -112,7 +87,7 @@ namespace tl
             }
             
             //! Return an equal or higher supported samplerate
-            int select_sample_rate(const AVCodec* codec, const int sampleRate)
+            int selectSampleRate(const AVCodec* codec, const int sampleRate)
             {
                 const int *p;
                 int best_samplerate = 0;
@@ -124,18 +99,12 @@ namespace tl
                 while (*p) {
 
                     if (*p == sampleRate)
-                    {
-                        std::cerr << "Equal sample rate= " << sampleRate
-                                  << std::endl;
                         return sampleRate;
-                    }
                     
                     if (!best_samplerate || abs(44100 - *p) < abs(44100 - best_samplerate))
                         best_samplerate = *p;
                     p++;
                 }
-                std::cerr << "different sample rate was " << sampleRate
-                          << " but found " << best_samplerate << std::endl;
                 return best_samplerate;
             }
         }
@@ -153,6 +122,7 @@ namespace tl
             AVPixelFormat avPixelFormatIn = AV_PIX_FMT_NONE;
             AVFrame* avFrame2 = nullptr;
             SwsContext* swsContext = nullptr;
+            otime::RationalTime videoStartTime = time::invalidTime;
 
             // Audio
             AVCodecContext* avAudioCodecContext = nullptr;
@@ -160,10 +130,13 @@ namespace tl
             AVAudioFifo* avAudioFifo = nullptr;
             AVFrame* avAudioFrame = nullptr;
             AVPacket* avAudioPacket = nullptr;
+            bool avAudioPlanar = false;
             uint64_t totalSamples = 0;
+            int64_t audioStartSamples = 0;
+            size_t  sampleRate = 0;
+            size_t  channelCount = 0;
+            std::shared_ptr<audio::AudioResample> resample;
 
-            otime::RationalTime lastTime = time::invalidTime;
-            
             bool opened = false;
         };
 
@@ -178,20 +151,37 @@ namespace tl
             TLRENDER_P();
 
             p.fileName = path.get();
-            if (info.video.empty())
+            if (info.video.empty() && !info.audio.isValid())
             {
-                throw std::runtime_error(string::Format("{0}: No video").arg(p.fileName));
+                throw std::runtime_error(string::Format("{0}: No video or audio").arg(p.fileName));
             }
             
             int r = avformat_alloc_output_context2(&p.avFormatContext, NULL, NULL, p.fileName.c_str());
             
-            // p.avFormatContext->flags |= AVFMT_FLAG_NOBUFFER|AVFMT_FLAG_FLUSH_PACKETS;
-            // p.avFormatContext->max_interleave_delta = 1;
-    
             if (info.audio.isValid())
             {
-                AVCodecID avCodecID = AV_CODEC_ID_AAC; // don't hard code this
-                const AVCodec* avCodec = avcodec_find_encoder(avCodecID);
+                AVCodecID avCodecID = AV_CODEC_ID_AAC;
+                AVCodec* avCodec = nullptr;
+                
+                auto option = options.find("FFmpeg/AudioCodec");
+                if (option != options.end())
+                {
+                    std::stringstream ss(option->second);
+                    const char* name = ss.str().c_str();
+                    avCodec = const_cast<AVCodec*>(avcodec_find_encoder_by_name(name));
+                    if (!avCodec)
+                    {
+                        const AVCodecDescriptor* desc =
+                            avcodec_descriptor_get_by_name(name);
+                        if (desc)
+                        {
+                            avCodecID = desc->id;
+                        }
+                    }
+                }
+
+                if (!avCodec)
+                    avCodec = const_cast<AVCodec*>(avcodec_find_encoder(avCodecID));
                 if (!avCodec)
                     throw std::runtime_error("Could not find audio encoder");
                 
@@ -214,47 +204,117 @@ namespace tl
                             "{0}: Cannot allocate audio codec context")
                             .arg(p.fileName));
                 }
-                
-                // p.avAudioCodecContext->audio_service_type = AV_AUDIO_SERVICE_TYPE_MAIN;
+
+                bool resample = false;
                 p.avAudioCodecContext->sample_fmt =
-                    toPlanarFormat(fromAudioType(info.audio.dataType));
-                if (!check_sample_fmt(avCodec, p.avAudioCodecContext->sample_fmt))
+                    fromAudioType(info.audio.dataType);
+                if (!checkSampleFormat(
+                        avCodec, p.avAudioCodecContext->sample_fmt))
                 {
-                    p.avAudioCodecContext->sample_fmt = AV_SAMPLE_FMT_S16;
-                    if (!check_sample_fmt(avCodec, p.avAudioCodecContext->sample_fmt))
+                    // Try it as a planar format then.
+                    AVSampleFormat planarFormat = 
+                        toPlanarFormat(p.avAudioCodecContext->sample_fmt);
+
+                    if (!checkSampleFormat(avCodec, planarFormat))
                     {
-                        throw std::runtime_error(
-                            string::Format("Sample format {0} not supported!")
-                                .arg(av_get_sample_fmt_name(
-                                    p.avAudioCodecContext->sample_fmt)));
+                        // If that also failed, initialize a resampler
+                        resample = true;
+
+                        if (checkSampleFormat(avCodec, AV_SAMPLE_FMT_FLT))
+                        {
+                            p.avAudioPlanar = false;
+                            p.avAudioCodecContext->sample_fmt =
+                                AV_SAMPLE_FMT_FLT;
+                        }
+                        else if(checkSampleFormat(avCodec, AV_SAMPLE_FMT_FLTP))
+                        {
+                            p.avAudioPlanar = true;
+                            p.avAudioCodecContext->sample_fmt =
+                                AV_SAMPLE_FMT_FLTP;
+                        }
+                        else
+                        {
+                            throw std::runtime_error(
+                                string::Format(
+                                    "Sample format {0} not supported!")
+                                    .arg(av_get_sample_fmt_name(
+                                        p.avAudioCodecContext->sample_fmt)));
+                        }
+                    }
+                    else
+                    {
+                        p.avAudioCodecContext->sample_fmt = planarFormat;
+                        p.avAudioPlanar = true;
                     }
                 }
-                p.avAudioCodecContext->bit_rate = 69000; // @todo:
-                p.avAudioCodecContext->sample_rate = info.audio.sampleRate;
 
-                r = select_channel_layout(
-                    avCodec, &p.avAudioCodecContext->ch_layout);
+                r = selectChannelLayout(
+                    avCodec, &p.avAudioCodecContext->ch_layout,
+                    info.audio.channelCount);
                 if (r < 0)
                     throw std::runtime_error(
                         string::Format(
                             "{0}: Could not select audio channel layout")
                             .arg(p.fileName));
 
-                select_sample_rate(avCodec, info.audio.sampleRate);
-                
-                p.avAudioCodecContext->time_base.num = 1;
-                p.avAudioCodecContext->time_base.den = info.audio.sampleRate;
-
-                if (p.avAudioCodecContext->codec->capabilities &
-                    AV_CODEC_CAP_VARIABLE_FRAME_SIZE)
+                p.sampleRate =
+                    selectSampleRate(avCodec, info.audio.sampleRate);
+                    
+                char buf[256];
+                av_channel_layout_describe(
+                    &p.avAudioCodecContext->ch_layout, buf, 256);
+                    
+                if (p.sampleRate != info.audio.sampleRate || resample)
                 {
-                    p.avAudioCodecContext->frame_size = 10000;
+                    const audio::Info& input = info.audio;
+                    audio::Info output(info.audio.channelCount,
+                                       audio::DataType::F32,
+                                       p.sampleRate);
+                    p.resample = audio::AudioResample::create(input, output);
+                    
+                    if (auto logSystem = _logSystem.lock())
+                    {
+                        logSystem->print(
+                            "tl::io::ffmpeg::Plugin::Write",
+                            string::Format(
+                                "Resample from layout {0}, {1} channels, type "
+                                "{2}, sample rate {3} to layout {4}, {5} "
+                                "channels, type {6}, sample rate {7}.")
+                            .arg(buf)
+                            .arg(input.channelCount)
+                            .arg(input.dataType)
+                            .arg(input.sampleRate)
+                            .arg(buf)
+                            .arg(output.channelCount)
+                            .arg(output.dataType)
+                            .arg(output.sampleRate));
+                    }
                 }
                 else
                 {
-                    p.avAudioCodecContext->frame_size = info.audio.sampleRate;
+                    const audio::Info& input = info.audio;
+                    if (auto logSystem = _logSystem.lock())
+                    {
+                        logSystem->print(
+                            "tl::io::ffmpeg::Plugin::Write",
+                            string::Format(
+                                "Save from layout {0}, {1} channels, type "
+                                "{2}, sample rate {3}.")
+                            .arg(buf)
+                            .arg(input.channelCount)
+                            .arg(input.dataType)
+                            .arg(input.sampleRate));
+                    }
                 }
-    
+
+                p.avAudioCodecContext->bit_rate = 69000;
+                p.avAudioCodecContext->sample_rate = p.sampleRate;
+                p.avAudioCodecContext->time_base.num = 1;
+                p.avAudioCodecContext->time_base.den = p.sampleRate;
+
+                // This value may be changed once we open the codec
+                p.avAudioCodecContext->frame_size = p.sampleRate;
+
                 if ((p.avAudioCodecContext->block_align == 1 ||
                      p.avAudioCodecContext->block_align == 1152 ||
                      p.avAudioCodecContext->block_align == 576) &&
@@ -291,10 +351,10 @@ namespace tl
                         string::Format("{0}: Cannot allocate audio packet")
                             .arg(p.fileName));
                 }
-            
+
                 p.avAudioFifo = av_audio_fifo_alloc(
                     p.avAudioCodecContext->sample_fmt, info.audio.channelCount,
-                    1);
+                    1); // cannot be 0, must be 1 at least
                 if (!p.avAudioFifo)
                 {
                     throw std::runtime_error(
@@ -315,7 +375,7 @@ namespace tl
 
                 p.avAudioFrame->nb_samples = p.avAudioCodecContext->frame_size;
                 p.avAudioFrame->format = p.avAudioCodecContext->sample_fmt;
-                p.avAudioFrame->sample_rate = info.audio.sampleRate;
+                p.avAudioFrame->sample_rate = p.sampleRate;
                 r = av_channel_layout_copy(
                     &p.avAudioFrame->ch_layout,
                     &p.avAudioCodecContext->ch_layout);
@@ -340,191 +400,218 @@ namespace tl
                 }
             }
 
-            AVCodecID avCodecID = AV_CODEC_ID_MPEG4;
-            Profile profile = Profile::None;
-            int avProfile = FF_PROFILE_UNKNOWN;
-            auto option = options.find("FFmpeg/WriteProfile");
-            if (option != options.end())
+            if (!info.video.empty())
             {
-                std::stringstream ss(option->second);
-                ss >> profile;
-            }
-            switch (profile)
-            {
-            case Profile::H264:
-                avCodecID = AV_CODEC_ID_H264;
-                avProfile = FF_PROFILE_H264_HIGH;
-                break;
-            case Profile::ProRes:
-                avCodecID = AV_CODEC_ID_PRORES;
-                avProfile = FF_PROFILE_PRORES_STANDARD;
-                break;
-            case Profile::ProRes_Proxy:
-                avCodecID = AV_CODEC_ID_PRORES;
-                avProfile = FF_PROFILE_PRORES_PROXY;
-                break;
-            case Profile::ProRes_LT:
-                avCodecID = AV_CODEC_ID_PRORES;
-                avProfile = FF_PROFILE_PRORES_LT;
-                break;
-            case Profile::ProRes_HQ:
-                avCodecID = AV_CODEC_ID_PRORES;
-                avProfile = FF_PROFILE_PRORES_HQ;
-                break;
-            case Profile::ProRes_4444:
-                avCodecID = AV_CODEC_ID_PRORES;
-                avProfile = FF_PROFILE_PRORES_4444;
-                break;
-            case Profile::ProRes_XQ:
-                avCodecID = AV_CODEC_ID_PRORES;
-                avProfile = FF_PROFILE_PRORES_XQ;
-                break;
-            default: break;
-            }
+                AVCodecID avCodecID = AV_CODEC_ID_MPEG4;
+                Profile profile = Profile::None;
+                int avProfile = FF_PROFILE_UNKNOWN;
+                auto option = options.find("FFmpeg/WriteProfile");
+                if (option != options.end())
+                {
+                    std::stringstream ss(option->second);
+                    ss >> profile;
+                }
+                switch (profile)
+                {
+                case Profile::H264:
+                    avCodecID = AV_CODEC_ID_H264;
+                    avProfile = FF_PROFILE_H264_HIGH;
+                    break;
+                case Profile::ProRes:
+                    avCodecID = AV_CODEC_ID_PRORES;
+                    avProfile = FF_PROFILE_PRORES_STANDARD;
+                    break;
+                case Profile::ProRes_Proxy:
+                    avCodecID = AV_CODEC_ID_PRORES;
+                    avProfile = FF_PROFILE_PRORES_PROXY;
+                    break;
+                case Profile::ProRes_LT:
+                    avCodecID = AV_CODEC_ID_PRORES;
+                    avProfile = FF_PROFILE_PRORES_LT;
+                    break;
+                case Profile::ProRes_HQ:
+                    avCodecID = AV_CODEC_ID_PRORES;
+                    avProfile = FF_PROFILE_PRORES_HQ;
+                    break;
+                case Profile::ProRes_4444:
+                    avCodecID = AV_CODEC_ID_PRORES;
+                    avProfile = FF_PROFILE_PRORES_4444;
+                    break;
+                case Profile::ProRes_XQ:
+                    avCodecID = AV_CODEC_ID_PRORES;
+                    avProfile = FF_PROFILE_PRORES_XQ;
+                    break;
+                default: break;
+                }
 
-            if (r < 0)
-            {
-                throw std::runtime_error(string::Format("{0}: {1}").arg(p.fileName).arg(getErrorLabel(r)));
-            }
-            const AVCodec* avCodec = avcodec_find_encoder(avCodecID);
-            if (!avCodec)
-            {
-                throw std::runtime_error(string::Format("{0}: Cannot find encoder").arg(p.fileName));
-            }
-            p.avCodecContext = avcodec_alloc_context3(avCodec);
-            if (!p.avCodecContext)
-            {
-                throw std::runtime_error(string::Format("{0}: Cannot allocate context").arg(p.fileName));
-            }
-            p.avVideoStream = avformat_new_stream(p.avFormatContext, avCodec);
-            if (!p.avVideoStream)
-            {
-                throw std::runtime_error(string::Format("{0}: Cannot allocate stream").arg(p.fileName));
-            }
-            p.avVideoStream->id = p.avFormatContext->nb_streams - 1;
-            if (!avCodec->pix_fmts)
-            {
-                throw std::runtime_error(string::Format("{0}: No pixel formats available").arg(p.fileName));
-            }
+                if (r < 0)
+                {
+                    throw std::runtime_error(string::Format("{0}: {1}").arg(p.fileName).arg(getErrorLabel(r)));
+                }
+                const AVCodec* avCodec = avcodec_find_encoder(avCodecID);
+                if (!avCodec)
+                {
+                    throw std::runtime_error(string::Format("{0}: Cannot find encoder").arg(p.fileName));
+                }
+                p.avCodecContext = avcodec_alloc_context3(avCodec);
+                if (!p.avCodecContext)
+                {
+                    throw std::runtime_error(string::Format("{0}: Cannot allocate context").arg(p.fileName));
+                }
+                p.avVideoStream = avformat_new_stream(p.avFormatContext, avCodec);
+                if (!p.avVideoStream)
+                {
+                    throw std::runtime_error(string::Format("{0}: Cannot allocate stream").arg(p.fileName));
+                }
+                p.avVideoStream->id = p.avFormatContext->nb_streams - 1;
+                if (!avCodec->pix_fmts)
+                {
+                    throw std::runtime_error(string::Format("{0}: No pixel formats available").arg(p.fileName));
+                }
 
-            p.avCodecContext->codec_id = avCodec->id;
-            p.avCodecContext->codec_type = AVMEDIA_TYPE_VIDEO;
-            const auto& videoInfo = info.video[0];
-            p.avCodecContext->width = videoInfo.size.w;
-            p.avCodecContext->height = videoInfo.size.h;
-            p.avCodecContext->sample_aspect_ratio = AVRational({ 1, 1 });
-            p.avCodecContext->pix_fmt = avCodec->pix_fmts[0];
-            const auto rational = time::toRational(info.videoTime.duration().rate());
-            p.avCodecContext->time_base = { rational.second, rational.first };
-            p.avCodecContext->framerate = { rational.first, rational.second };
-            p.avCodecContext->profile = avProfile;
-            if (p.avFormatContext->oformat->flags & AVFMT_GLOBALHEADER)
-            {
-                p.avCodecContext->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
-            }
-            p.avCodecContext->thread_count = 0;
-            p.avCodecContext->thread_type = FF_THREAD_FRAME;
+                p.avCodecContext->codec_id = avCodec->id;
+                p.avCodecContext->codec_type = AVMEDIA_TYPE_VIDEO;
+                const auto& videoInfo = info.video[0];
+                p.avCodecContext->width = videoInfo.size.w;
+                p.avCodecContext->height = videoInfo.size.h;
+                p.avCodecContext->sample_aspect_ratio = AVRational({ 1, 1 });
+                p.avCodecContext->pix_fmt = avCodec->pix_fmts[0];
+                const auto rational = time::toRational(info.videoTime.duration().rate());
+                p.avCodecContext->time_base = { rational.second, rational.first };
+                p.avCodecContext->framerate = { rational.first, rational.second };
+                p.avCodecContext->profile = avProfile;
+                if (p.avFormatContext->oformat->flags & AVFMT_GLOBALHEADER)
+                {
+                    p.avCodecContext->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
+                }
+                p.avCodecContext->thread_count = 0;
+                p.avCodecContext->thread_type = FF_THREAD_FRAME;
 
-            r = avcodec_open2(p.avCodecContext, avCodec, NULL);
-            if (r < 0)
-            {
-                throw std::runtime_error(string::Format("{0}: {1}").arg(p.fileName).arg(getErrorLabel(r)));
-            }
+                r = avcodec_open2(p.avCodecContext, avCodec, NULL);
+                if (r < 0)
+                {
+                    throw std::runtime_error(string::Format("{0}: {1}").arg(p.fileName).arg(getErrorLabel(r)));
+                }
 
-            r = avcodec_parameters_from_context(p.avVideoStream->codecpar, p.avCodecContext);
-            if (r < 0)
-            {
-                throw std::runtime_error(string::Format("{0}: {1}").arg(p.fileName).arg(getErrorLabel(r)));
-            }
+                r = avcodec_parameters_from_context(p.avVideoStream->codecpar, p.avCodecContext);
+                if (r < 0)
+                {
+                    throw std::runtime_error(string::Format("{0}: {1}").arg(p.fileName).arg(getErrorLabel(r)));
+                }
 
-            p.avVideoStream->time_base = { rational.second, rational.first };
-            p.avVideoStream->avg_frame_rate = { rational.first, rational.second };
+                p.avVideoStream->time_base = { rational.second, rational.first };
+                p.avVideoStream->avg_frame_rate = { rational.first, rational.second };
 
-            for (const auto& i : info.tags)
-            {
-                av_dict_set(&p.avFormatContext->metadata, i.first.c_str(), i.second.c_str(), 0);
-            }
+                for (const auto& i : info.tags)
+                {
+                    av_dict_set(&p.avFormatContext->metadata, i.first.c_str(), i.second.c_str(), 0);
+                }
 
-            //av_dump_format(p.avFormatContext, 0, p.fileName.c_str(), 1);
+                // Set timecode
+                option = options.find("timecode");
+                if (option != options.end())
+                {
+                    std::stringstream ss(option->second);
+                    std::string timecode;
+                    ss >> timecode;
+                    r = av_dict_set(
+                        &p.avFormatContext->metadata, "timecode", timecode.c_str(), 0);
+                    if (r < 0)
+                        throw std::runtime_error(string::Format("Could not set timecode to {1}")
+                                                 .arg(timecode));
+                
+                    otime::ErrorStatus errorStatus;
+                    const otime::RationalTime time = otime::RationalTime::from_timecode(
+                        timecode,
+                        info.videoTime.duration().rate(),
+                        &errorStatus);
+                    if (!otime::is_error(errorStatus))
+                    {
+                        p.videoStartTime = time::floor(time);
+                    }
+                }
+            
+                //av_dump_format(p.avFormatContext, 0, p.fileName.c_str(), 1);
 
-            r = avio_open(&p.avFormatContext->pb, p.fileName.c_str(), AVIO_FLAG_WRITE);
-            if (r < 0)
-            {
-                throw std::runtime_error(string::Format("{0}: {1}").arg(p.fileName).arg(getErrorLabel(r)));
-            }
+                r = avio_open(&p.avFormatContext->pb, p.fileName.c_str(), AVIO_FLAG_WRITE);
+                if (r < 0)
+                {
+                    throw std::runtime_error(string::Format("{0}: {1}").arg(p.fileName).arg(getErrorLabel(r)));
+                }
 
-            r = avformat_write_header(p.avFormatContext, NULL);
-            if (r < 0)
-            {
-                throw std::runtime_error(string::Format("{0}: {1}").arg(p.fileName).arg(getErrorLabel(r)));
-            }
+                r = avformat_write_header(p.avFormatContext, NULL);
+                if (r < 0)
+                {
+                    throw std::runtime_error(string::Format("{0}: {1}").arg(p.fileName).arg(getErrorLabel(r)));
+                }
 
-            p.avPacket = av_packet_alloc();
-            if (!p.avPacket)
-            {
-                throw std::runtime_error(string::Format("{0}: Cannot allocate packet").arg(p.fileName));
-            }
+                p.avPacket = av_packet_alloc();
+                if (!p.avPacket)
+                {
+                    throw std::runtime_error(string::Format("{0}: Cannot allocate packet").arg(p.fileName));
+                }
 
-            p.avFrame = av_frame_alloc();
-            if (!p.avFrame)
-            {
-                throw std::runtime_error(string::Format("{0}: Cannot allocate frame").arg(p.fileName));
-            }
-            p.avFrame->format = p.avVideoStream->codecpar->format;
-            p.avFrame->width = p.avVideoStream->codecpar->width;
-            p.avFrame->height = p.avVideoStream->codecpar->height;
-            r = av_frame_get_buffer(p.avFrame, 0);
-            if (r < 0)
-            {
-                throw std::runtime_error(string::Format("{0}: {1}").arg(p.fileName).arg(getErrorLabel(r)));
-            }
+                p.avFrame = av_frame_alloc();
+                if (!p.avFrame)
+                {
+                    throw std::runtime_error(string::Format("{0}: Cannot allocate frame").arg(p.fileName));
+                }
+                p.avFrame->format = p.avVideoStream->codecpar->format;
+                p.avFrame->width = p.avVideoStream->codecpar->width;
+                p.avFrame->height = p.avVideoStream->codecpar->height;
+                r = av_frame_get_buffer(p.avFrame, 0);
+                if (r < 0)
+                {
+                    throw std::runtime_error(string::Format("{0}: {1}").arg(p.fileName).arg(getErrorLabel(r)));
+                }
 
-            p.avFrame2 = av_frame_alloc();
-            if (!p.avFrame2)
-            {
-                throw std::runtime_error(string::Format("{0}: Cannot allocate frame").arg(p.fileName));
-            }
-            switch (videoInfo.pixelType)
-            {
-            case image::PixelType::L_U8:     p.avPixelFormatIn = AV_PIX_FMT_GRAY8;  break;
-            case image::PixelType::RGB_U8:   p.avPixelFormatIn = AV_PIX_FMT_RGB24;  break;
-            case image::PixelType::RGBA_U8:  p.avPixelFormatIn = AV_PIX_FMT_RGBA;   break;
-            case image::PixelType::L_U16:    p.avPixelFormatIn = AV_PIX_FMT_GRAY16; break;
-            case image::PixelType::RGB_U16:  p.avPixelFormatIn = AV_PIX_FMT_RGB48;  break;
-            case image::PixelType::RGBA_U16: p.avPixelFormatIn = AV_PIX_FMT_RGBA64; break;
-            default:
-                throw std::runtime_error(string::Format("{0}: Incompatible pixel type").arg(p.fileName));
-                break;
-            }
-            /*p.swsContext = sws_getContext(
-                videoInfo.size.w,
-                videoInfo.size.h,
-                p.avPixelFormatIn,
-                videoInfo.size.w,
-                videoInfo.size.h,
-                p.avCodecContext->pix_fmt,
-                swsScaleFlags,
-                0,
-                0,
-                0);*/
-            p.swsContext = sws_alloc_context();
-            if (!p.swsContext)
-            {
-                throw std::runtime_error(string::Format("{0}: Cannot allocate context").arg(p.fileName));
-            }
-            av_opt_set_defaults(p.swsContext);
-            r = av_opt_set_int(p.swsContext, "srcw", videoInfo.size.w, AV_OPT_SEARCH_CHILDREN);
-            r = av_opt_set_int(p.swsContext, "srch", videoInfo.size.h, AV_OPT_SEARCH_CHILDREN);
-            r = av_opt_set_int(p.swsContext, "src_format", p.avPixelFormatIn, AV_OPT_SEARCH_CHILDREN);
-            r = av_opt_set_int(p.swsContext, "dstw", videoInfo.size.w, AV_OPT_SEARCH_CHILDREN);
-            r = av_opt_set_int(p.swsContext, "dsth", videoInfo.size.h, AV_OPT_SEARCH_CHILDREN);
-            r = av_opt_set_int(p.swsContext, "dst_format", p.avCodecContext->pix_fmt, AV_OPT_SEARCH_CHILDREN);
-            r = av_opt_set_int(p.swsContext, "sws_flags", swsScaleFlags, AV_OPT_SEARCH_CHILDREN);
-            r = av_opt_set_int(p.swsContext, "threads", 0, AV_OPT_SEARCH_CHILDREN);
-            r = sws_init_context(p.swsContext, nullptr, nullptr);
-            if (r < 0)
-            {
-                throw std::runtime_error(string::Format("{0}: Cannot initialize sws context").arg(p.fileName));
+                p.avFrame2 = av_frame_alloc();
+                if (!p.avFrame2)
+                {
+                    throw std::runtime_error(string::Format("{0}: Cannot allocate frame").arg(p.fileName));
+                }
+                switch (videoInfo.pixelType)
+                {
+                case image::PixelType::L_U8:     p.avPixelFormatIn = AV_PIX_FMT_GRAY8;  break;
+                case image::PixelType::RGB_U8:   p.avPixelFormatIn = AV_PIX_FMT_RGB24;  break;
+                case image::PixelType::RGBA_U8:  p.avPixelFormatIn = AV_PIX_FMT_RGBA;   break;
+                case image::PixelType::L_U16:    p.avPixelFormatIn = AV_PIX_FMT_GRAY16; break;
+                case image::PixelType::RGB_U16:  p.avPixelFormatIn = AV_PIX_FMT_RGB48;  break;
+                case image::PixelType::RGBA_U16: p.avPixelFormatIn = AV_PIX_FMT_RGBA64; break;
+                default:
+                    throw std::runtime_error(string::Format("{0}: Incompatible pixel type").arg(p.fileName));
+                    break;
+                }
+                /*p.swsContext = sws_getContext(
+                  videoInfo.size.w,
+                  videoInfo.size.h,
+                  p.avPixelFormatIn,
+                  videoInfo.size.w,
+                  videoInfo.size.h,
+                  p.avCodecContext->pix_fmt,
+                  swsScaleFlags,
+                  0,
+                  0,
+                  0);*/
+                p.swsContext = sws_alloc_context();
+                if (!p.swsContext)
+                {
+                    throw std::runtime_error(string::Format("{0}: Cannot allocate context").arg(p.fileName));
+                }
+                av_opt_set_defaults(p.swsContext);
+                r = av_opt_set_int(p.swsContext, "srcw", videoInfo.size.w, AV_OPT_SEARCH_CHILDREN);
+                r = av_opt_set_int(p.swsContext, "srch", videoInfo.size.h, AV_OPT_SEARCH_CHILDREN);
+                r = av_opt_set_int(p.swsContext, "src_format", p.avPixelFormatIn, AV_OPT_SEARCH_CHILDREN);
+                r = av_opt_set_int(p.swsContext, "dstw", videoInfo.size.w, AV_OPT_SEARCH_CHILDREN);
+                r = av_opt_set_int(p.swsContext, "dsth", videoInfo.size.h, AV_OPT_SEARCH_CHILDREN);
+                r = av_opt_set_int(p.swsContext, "dst_format", p.avCodecContext->pix_fmt, AV_OPT_SEARCH_CHILDREN);
+                r = av_opt_set_int(p.swsContext, "sws_flags", swsScaleFlags, AV_OPT_SEARCH_CHILDREN);
+                r = av_opt_set_int(p.swsContext, "threads", 0, AV_OPT_SEARCH_CHILDREN);
+                r = sws_init_context(p.swsContext, nullptr, nullptr);
+                if (r < 0)
+                {
+                    throw std::runtime_error(string::Format("{0}: Cannot initialize sws context").arg(p.fileName));
+                }
             }
 
             p.opened = true;
@@ -540,10 +627,28 @@ namespace tl
             
             if (p.opened)
             {
-                if (p.avAudioFifo)
-                    _flushAudio();
-                _encodeAudio(nullptr);
-                _encodeVideo(nullptr);
+                // We need to enclose this in a try block as _encode can throw
+                try
+                {
+                    if (p.avAudioCodecContext)
+                    {
+                        _flushAudio();
+                    
+                        _encode(
+                            p.avAudioCodecContext, p.avAudioStream, nullptr,
+                            p.avAudioPacket);
+                    }
+
+                    if (p.avCodecContext)
+                    {
+                        _encode(
+                            p.avCodecContext, p.avVideoStream, nullptr,
+                            p.avPacket);
+                    }
+                }
+                catch(const std::exception&)
+                {
+                }
                 av_write_trailer(p.avFormatContext);
             }
 
@@ -663,96 +768,73 @@ namespace tl
 
             const auto timeRational = time::toRational(time.rate());
             p.avFrame->pts = av_rescale_q(
-                time.value(),
+                time.value() - p.videoStartTime.value(),
                 { timeRational.second, timeRational.first },
                 p.avVideoStream->time_base);
-            _encodeVideo(p.avFrame);
+
+            _encode(
+                    p.avCodecContext, p.avVideoStream, p.avFrame,
+                    p.avPacket);
         }
 
-        void Write::_encodeVideo(AVFrame* frame)
-        {
-            TLRENDER_P();
-
-            int r = avcodec_send_frame(p.avCodecContext, frame);
-            if (r < 0)
-            {
-                throw std::runtime_error(
-                    string::Format("{0}: Cannot send video frame")
-                        .arg(p.fileName));
-            }
-
-            while (r >= 0)
-            {
-                r = avcodec_receive_packet(p.avCodecContext, p.avPacket);
-                if (r == AVERROR(EAGAIN) || r == AVERROR_EOF)
-                {
-                    return;
-                }
-                else if (r < 0)
-                {
-                    throw std::runtime_error(
-                        string::Format("{0}: Cannot receive video packet")
-                            .arg(p.fileName));
-                }
-                
-                // Needed 
-                p.avPacket->stream_index = p.avVideoStream->index;
-                
-                // log_packet(p.avFormatContext, p.avPacket);
-                r = av_interleaved_write_frame(p.avFormatContext, p.avPacket);
-                if (r < 0)
-                {
-                    throw std::runtime_error(
-                        string::Format("{0}: Cannot write video frame")
-                            .arg(p.fileName));
-                }
-                av_packet_unref(p.avPacket);
-            }
-        }
         void Write::writeAudio(
-            const otime::RationalTime& time,
+            const otime::TimeRange& inTimeRange,
             const std::shared_ptr<audio::Audio>& audioIn,
             const io::Options&)
         {
             TLRENDER_P();
-
-            int r = 0;
+            
+            if (!audioIn || audioIn->getSampleCount() == 0)
+                return;
+            
             const auto& info = audioIn->getInfo();
             if (!info.isValid())
-            {
-                throw std::runtime_error(
-                    "Write audio called without a valid audio timeline.");
-            }
-            if (!p.avAudioFifo)
-            {
-                throw std::runtime_error(
-                    "Audio FIFO buffer was not allocated.");
-            }
+                return;
+            
+            int r = 0;
+            const auto timeRange = otime::TimeRange(
+                inTimeRange.start_time().rescaled_to(p.sampleRate),
+                inTimeRange.duration().rescaled_to(p.sampleRate));
 
-            if (p.lastTime != time)
-            {
-                p.lastTime = time;
-
-                long unsigned* t = (long unsigned*) audioIn->getData();
-                std::cerr << time << " audioIn=" << (void*)audioIn->getData()
-                          << " first chars="
-                          << t[0]
-                          << std::endl;
-
-                const auto audio = planarDeinterleave(audioIn);
+            int fifoSize = av_audio_fifo_size(p.avAudioFifo);
                 
-                uint8_t* data = audio->getData();
-                const size_t sampleCount = audio->getSampleCount();
+            if (timeRange.start_time().value() >=
+                p.totalSamples + p.audioStartSamples + fifoSize)
+            {
 
-                uint8_t* flatData[8];
-                size_t channels = audio->getChannelCount();
-                for (size_t i = 0; i < channels; ++i)
+                // If this is the start of the saving, store the start time.
+                if (p.totalSamples == 0)
                 {
-                    flatData[i] =
-                        data + i * sampleCount *
-                                   audio::getByteCount(audio->getDataType());
+                    p.audioStartSamples = timeRange.start_time().value();
+                }
+
+                auto audioResampled = audioIn;
+                // Resample audio
+                if (p.resample)
+                {
+                    audioResampled = p.resample->process(audioIn);
                 }
                 
+                // Most codecs need non-interleaved audio.
+                std::shared_ptr<audio::Audio> audio;
+                if (p.avAudioPlanar)
+                    audio = planarDeinterleave(audioResampled);
+                else
+                    audio = audioResampled;
+                
+                uint8_t* data = audio->getData();
+
+                
+                // Allocate flatData pointers
+                const size_t channels = audio->getChannelCount();
+                const size_t stride = audio->getByteCount() / channels;
+                uint8_t** flatData = new uint8_t*[channels];
+                for (size_t i = 0; i < channels; ++i)
+                {
+                    flatData[i] = data + i * stride;
+                }
+                
+                const size_t sampleCount = audio->getSampleCount();
                 r = av_audio_fifo_write(
                     p.avAudioFifo, reinterpret_cast<void**>(flatData),
                     sampleCount);
@@ -760,21 +842,22 @@ namespace tl
                 {
                     throw std::runtime_error(
                         string::Format(
-                            "Could not write to fifo buffer at time {0}.")
-                        .arg(time));
+                            "Could not write to fifo buffer at {0}.")
+                        .arg(timeRange));
                 }
                 if (r != sampleCount)
                 {
                     throw std::runtime_error(
                         string::Format(
-                            "Could not write all samples fifo buffer at time {0}.")
-                        .arg(time));
+                            "Could not write all samples fifo buffer at {0}.")
+                        .arg(timeRange));
                 }
             }
 
-            const int frameSize = p.avAudioCodecContext->frame_size;
             const AVRational ratio = { 1, p.avAudioCodecContext->sample_rate };
-            while (av_audio_fifo_size(p.avAudioFifo) >= info.sampleRate)
+
+            const int frameSize = p.avAudioCodecContext->frame_size;
+            while (av_audio_fifo_size(p.avAudioFifo) >= frameSize)
             {
                 r = av_frame_make_writable(p.avAudioFrame);
                 if (r < 0)
@@ -782,9 +865,9 @@ namespace tl
                     throw std::runtime_error(
                         string::Format(
                             "Could not make audio frame writable at time {0}.")
-                        .arg(time));
+                        .arg(timeRange));
                 }
-
+                
                 r = av_audio_fifo_read(
                     p.avAudioFifo,
                     reinterpret_cast<void**>(p.avAudioFrame->extended_data),
@@ -793,14 +876,17 @@ namespace tl
                 {
                     throw std::runtime_error(
                         string::Format("Could not read from audio fifo buffer "
-                                       "at time {0}.")
-                            .arg(time));
+                                       "at {0}.")
+                            .arg(timeRange));
                 }
-                
+
                 p.avAudioFrame->pts = av_rescale_q(
-                    p.totalSamples, ratio, p.avAudioCodecContext->time_base);
-                
-                _encodeAudio(p.avAudioFrame);
+                    p.totalSamples, ratio,
+                    p.avAudioCodecContext->time_base);
+
+                _encode(
+                    p.avAudioCodecContext, p.avAudioStream, p.avAudioFrame,
+                    p.avAudioPacket);
                 
                 p.totalSamples += frameSize;
             }
@@ -810,50 +896,52 @@ namespace tl
         {
             TLRENDER_P();
 
-            int frameSize = p.avAudioCodecContext->frame_size;
+            // If FIFO still has some data, send it
             const AVRational ratio = { 1, p.avAudioCodecContext->sample_rate };
             int fifoSize = av_audio_fifo_size(p.avAudioFifo);
-            while (fifoSize > 0)
+            if (fifoSize > 0)
             {
-                frameSize = std::min(fifoSize, frameSize);
-                
                 int r = av_frame_make_writable(p.avAudioFrame);
                 if (r < 0)
                     return;
 
+                p.avAudioFrame->nb_samples = fifoSize;
+
                 r = av_audio_fifo_read(
                     p.avAudioFifo,
                     reinterpret_cast<void**>(p.avAudioFrame->extended_data),
-                    frameSize);
+                    fifoSize);
                 if (r < 0)
                     return;
-                
+
                 p.avAudioFrame->pts = av_rescale_q(
-                    p.totalSamples, ratio, p.avAudioCodecContext->time_base);
+                    p.totalSamples, ratio,
+                    p.avAudioCodecContext->time_base);
 
-                _encodeAudio(p.avAudioFrame);
-
-                fifoSize -= frameSize;
-                p.totalSamples += frameSize;
+                _encode(
+                    p.avAudioCodecContext, p.avAudioStream, p.avAudioFrame,
+                    p.avAudioPacket);
             }
         }
         
-        void Write::_encodeAudio(AVFrame* frame)
+        void Write::_encode(AVCodecContext* context,
+                            const AVStream* stream,
+                            const AVFrame* frame,
+                            AVPacket* packet)
         {
             TLRENDER_P();
                 
-            int r = avcodec_send_frame(p.avAudioCodecContext, frame);
+            int r = avcodec_send_frame(context, frame);
             if (r < 0)
             {
                 throw std::runtime_error(
-                    string::Format("{0}: Cannot send audio frame")
+                    string::Format("{0}: Cannot send frame")
                         .arg(p.fileName));
             }
 
             while (r >= 0)
             {
-                r = avcodec_receive_packet(
-                    p.avAudioCodecContext, p.avAudioPacket);
+                r = avcodec_receive_packet(context, packet);
                 if (r == AVERROR(EAGAIN) || r == AVERROR_EOF)
                 {
                     return;
@@ -861,25 +949,20 @@ namespace tl
                 else if (r < 0) 
                 {
                     throw std::runtime_error(
-                        string::Format("{0}: Cannot receive audio packet")
+                        string::Format("{0}: Cannot receive packet")
                             .arg(p.fileName));
                 }
 
-                // Needed 
-                p.avAudioPacket->stream_index = p.avAudioStream->index;
+                packet->stream_index = stream->index; // Needed 
 
-                // log_packet(p.avFormatContext, p.avAudioPacket, true);
-                // av_packet_rescale_ts(
-                //     p.avAudioPacket, p.avAudioCodecContext->time_base,
-                //     p.avAudioStream->time_base);
-                r = av_interleaved_write_frame(p.avFormatContext, p.avAudioPacket);
+                r = av_interleaved_write_frame(p.avFormatContext, packet);
                 if (r < 0)
                 {
                     throw std::runtime_error(
-                        string::Format("{0}: Cannot write audio frame")
+                        string::Format("{0}: Cannot write frame")
                         .arg(p.fileName));
                 }
-                av_packet_unref(p.avAudioPacket);
+                av_packet_unref(packet);
             }
         
         }
