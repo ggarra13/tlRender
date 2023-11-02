@@ -196,7 +196,7 @@ namespace tl
                 }
             }
                 
-            if (info.audio.isValid() && !avCodecID == AV_CODEC_ID_NONE)
+            if (info.audio.isValid() && avCodecID != AV_CODEC_ID_NONE)
             {
                 if (!avCodec)
                     avCodec = const_cast<AVCodec*>(avcodec_find_encoder(avCodecID));
@@ -802,7 +802,7 @@ namespace tl
         {
             TLRENDER_P();
             
-            if (!audioIn || audioIn->getSampleCount() == 0)
+            if (!audioIn || !p.avAudioFifo || audioIn->getSampleCount() == 0)
                 return;
             
             const auto& info = audioIn->getInfo();
