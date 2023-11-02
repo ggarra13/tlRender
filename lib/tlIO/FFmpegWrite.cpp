@@ -26,13 +26,6 @@ namespace tl
     {
         namespace
         {
-            void dump_frame(AVFrame* f)
-            {
-                std::cerr << "f->nb_samples=" << f->nb_samples << std::endl;
-                std::cerr << "f->format=" << f->format << std::endl;
-                std::cerr << "f->sample_rate=" << f->sample_rate << std::endl;
-                std::cerr << "f->ch_layout.nb_channels=" << f->ch_layout.nb_channels << std::endl;
-            }
             
             AVSampleFormat toPlanarFormat(const enum AVSampleFormat s)
             {
@@ -225,7 +218,6 @@ namespace tl
                 
             if (info.audio.isValid() && avCodecID != AV_CODEC_ID_NONE)
             {
-                std::cerr << "codec_id=" << avCodecID << std::endl;
                 if (!avCodec)
                     avCodec = const_cast<AVCodec*>(avcodec_find_encoder(avCodecID));
                 if (!avCodec)
@@ -300,12 +292,6 @@ namespace tl
                     }
                 }
 
-                std::cerr << "Sample format "
-                          << av_get_sample_fmt_name(
-                                 p.avAudioCodecContext->sample_fmt)
-                          << " planar=" << p.avAudioPlanar
-                          << std::endl;
-
                 r = selectChannelLayout(
                     avCodec, &p.avAudioCodecContext->ch_layout,
                     info.audio.channelCount);
@@ -375,9 +361,6 @@ namespace tl
                 p.avAudioCodecContext->time_base.num = 1;
                 p.avAudioCodecContext->time_base.den = p.sampleRate;
 
-                // This value may be changed once we open the codec
-                p.avAudioCodecContext->frame_size = 1024;
-
                 if ((p.avAudioCodecContext->block_align == 1 ||
                      p.avAudioCodecContext->block_align == 1152 ||
                      p.avAudioCodecContext->block_align == 576) &&
@@ -436,10 +419,12 @@ namespace tl
                         .arg(getErrorLabel(r)));
                 }
 
-                int nb_samples = p.avAudioCodecContext->frame_size <= 0 ? 1024 :
-                                 p.avAudioCodecContext->frame_size;
-                p.avAudioCodecContext->frame_size = nb_samples;
-                p.avAudioFrame->nb_samples = nb_samples;
+                if (p.avAudioCodecContext->codec->capabilities &
+                    AV_CODEC_CAP_VARIABLE_FRAME_SIZE)
+                {
+                    p.avAudioCodecContext->frame_size = p.sampleRate;
+                }
+                p.avAudioFrame->nb_samples = p.avAudioCodecContext->frame_size;
                 p.avAudioFrame->format = p.avAudioCodecContext->sample_fmt;
                 p.avAudioFrame->sample_rate = p.sampleRate;
                 r = av_channel_layout_copy(
@@ -454,8 +439,6 @@ namespace tl
                         .arg(getErrorLabel(r)));
                 }
 
-                dump_frame(p.avAudioFrame);
-                
                 r = av_frame_get_buffer(p.avAudioFrame, 0);
                 if (r < 0)
                 {
@@ -870,13 +853,11 @@ namespace tl
             if (timeRange.start_time().value() >=
                 p.totalSamples + p.audioStartSamples + fifoSize)
             {
-                std::cerr << __FUNCTION__ << " " << __LINE__ << std::endl;
                 // If this is the start of the saving, store the start time.
                 if (p.totalSamples == 0)
                 {
                     p.audioStartSamples = timeRange.start_time().value();
                 }
-                std::cerr << __FUNCTION__ << " " << __LINE__ << std::endl;
 
                 auto audioResampled = audioIn;
                 // Resample audio
@@ -885,7 +866,6 @@ namespace tl
                     audioResampled = p.resample->process(audioIn);
                 }
                 
-                std::cerr << __FUNCTION__ << " " << __LINE__ << std::endl;
                 // Most codecs need non-interleaved audio.
                 std::shared_ptr<audio::Audio> audio;
                 if (p.avAudioPlanar)
@@ -894,8 +874,6 @@ namespace tl
                     audio = audioResampled;
                 
                 uint8_t* data = audio->getData();
-
-                std::cerr << __FUNCTION__ << " " << __LINE__ << std::endl;
                 
                 // Allocate flatData pointers
                 const size_t channels = audio->getChannelCount();
@@ -905,7 +883,6 @@ namespace tl
                 {
                     flatData[i] = data + i * stride;
                 }
-                std::cerr << __FUNCTION__ << " " << __LINE__ << std::endl;
                 
                 const size_t sampleCount = audio->getSampleCount();
                 r = av_audio_fifo_write(
@@ -925,14 +902,11 @@ namespace tl
                             "Could not write all samples fifo buffer at {0}.")
                         .arg(timeRange));
                 }
-                std::cerr << __FUNCTION__ << " " << __LINE__ << std::endl;
             }
 
             const AVRational ratio = { 1, p.avAudioCodecContext->sample_rate };
 
             const int frameSize = p.avAudioCodecContext->frame_size;
-            std::cerr << __FUNCTION__ << " " << __LINE__
-                      << " frameSize=" << frameSize << std::endl;
             while (av_audio_fifo_size(p.avAudioFifo) >= frameSize)
             {
                 r = av_frame_make_writable(p.avAudioFrame);
@@ -944,7 +918,6 @@ namespace tl
                         .arg(timeRange));
                 }
                 
-                std::cerr << __FUNCTION__ << " " << __LINE__ << std::endl;
                 r = av_audio_fifo_read(
                     p.avAudioFifo,
                     reinterpret_cast<void**>(p.avAudioFrame->extended_data),
@@ -957,7 +930,6 @@ namespace tl
                             .arg(timeRange));
                 }
 
-                std::cerr << __FUNCTION__ << " " << __LINE__ << std::endl;
                 p.avAudioFrame->pts = av_rescale_q(
                     p.totalSamples, ratio,
                     p.avAudioCodecContext->time_base);
@@ -966,7 +938,6 @@ namespace tl
                     p.avAudioCodecContext, p.avAudioStream, p.avAudioFrame,
                     p.avAudioPacket);
                 
-                std::cerr << __FUNCTION__ << " " << __LINE__ << std::endl;
                 p.totalSamples += frameSize;
             }
         }
@@ -1033,8 +1004,6 @@ namespace tl
                 }
 
                 packet->stream_index = stream->index; // Needed
-                std::cerr << __FUNCTION__ << " " << __LINE__ << " index=" << stream->index
-                          << std::endl;
 
                 r = av_interleaved_write_frame(p.avFormatContext, packet);
                 if (r < 0)
