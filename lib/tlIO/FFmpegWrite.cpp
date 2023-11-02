@@ -158,15 +158,29 @@ namespace tl
             
             int r = avformat_alloc_output_context2(&p.avFormatContext, NULL, NULL, p.fileName.c_str());
             
-            if (info.audio.isValid())
+            AVCodec* avCodec = nullptr;
+            AVCodecID avCodecID = AV_CODEC_ID_AAC;
+            auto option = options.find("FFmpeg/AudioCodec");
+            if (option != options.end())
             {
-                AVCodecID avCodecID = AV_CODEC_ID_AAC;
-                AVCodec* avCodec = nullptr;
-                
-                auto option = options.find("FFmpeg/AudioCodec");
-                if (option != options.end())
+                AudioCodec audioCodec;
+                std::stringstream ss(option->second);
+                ss >> audioCodec;
+                switch (audioCodec)
                 {
-                    std::stringstream ss(option->second);
+                case AudioCodec::None:
+                    avCodecID = AV_CODEC_ID_NONE;
+                    break;
+                case AudioCodec::AAC:
+                    avCodecID = AV_CODEC_ID_AAC;
+                    break;
+                case AudioCodec::AC3:
+                    avCodecID = AV_CODEC_ID_AC3;
+                    break;
+                case AudioCodec::True_HD:
+                    avCodecID = AV_CODEC_ID_TRUEHD;
+                    break;
+                default:
                     const char* name = ss.str().c_str();
                     avCodec = const_cast<AVCodec*>(avcodec_find_encoder_by_name(name));
                     if (!avCodec)
@@ -178,13 +192,17 @@ namespace tl
                             avCodecID = desc->id;
                         }
                     }
+                    break;
                 }
-
+            }
+                
+            if (info.audio.isValid() && !avCodecID == AV_CODEC_ID_NONE)
+            {
                 if (!avCodec)
                     avCodec = const_cast<AVCodec*>(avcodec_find_encoder(avCodecID));
                 if (!avCodec)
                     throw std::runtime_error("Could not find audio encoder");
-                
+                    
                 p.avAudioStream = avformat_new_stream(p.avFormatContext,
                                                       avCodec);
                 if (!p.avAudioStream)
