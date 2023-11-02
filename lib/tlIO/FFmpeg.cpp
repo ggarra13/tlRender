@@ -291,7 +291,7 @@ namespace tl
             const io::Info& info,
             const io::Options& options)
         {
-            if (!info.video.empty() && !_isWriteCompatible(info.video[0], options))
+            if (info.video.empty() || (!info.video.empty() && !_isWriteCompatible(info.video[0], options)))
                 throw std::runtime_error(string::Format("{0}: {1}").
                     arg(path.get()).
                     arg("Unsupported video"));
