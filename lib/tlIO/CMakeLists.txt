@@ -71,6 +71,10 @@ if(TLRENDER_FFMPEG)
     list(APPEND SOURCE FFmpeg.cpp FFmpegRead.cpp FFmpegReadAudio.cpp
         FFmpegReadVideo.cpp FFmpegWrite.cpp)
     list(APPEND LIBRARIES_PRIVATE FFmpeg)
+    if(WIN32)
+	set_source_files_properties(FFmpegWrite.cpp
+	    PROPERTIES COMPILE_FLAGS -std:c++20)
+    endif()
 endif()
 if(TLRENDER_USD)
     list(APPEND HEADERS_PRIVATE USD.h USDPrivate.h)
