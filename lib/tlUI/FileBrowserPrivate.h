@@ -7,6 +7,7 @@
 #include <tlUI/FileBrowser.h>
 
 #include <tlUI/IButton.h>
+#include <tlUI/ThumbnailSystem.h>
 
 #include <tlCore/FileInfo.h>
 
@@ -57,6 +58,8 @@ namespace tl
         protected:
             void _init(
                 const file::FileInfo&,
+                const FileBrowserOptions&,
+                const std::shared_ptr<ThumbnailGenerator>&,
                 const std::shared_ptr<system::Context>&,
                 const std::shared_ptr<IWidget>& parent);
 
@@ -67,6 +70,8 @@ namespace tl
 
             static std::shared_ptr<Button> create(
                 const file::FileInfo&,
+                const FileBrowserOptions&,
+                const std::shared_ptr<ThumbnailGenerator>&,
                 const std::shared_ptr<system::Context>&,
                 const std::shared_ptr<IWidget>& parent = nullptr);
 
@@ -74,14 +79,10 @@ namespace tl
 
             void setColumns(const std::vector<int>&);
 
+            void tickEvent(bool, bool, const TickEvent&) override;
             void sizeHintEvent(const SizeHintEvent&) override;
-            void clipEvent(
-                const math::Box2i&,
-                bool,
-                const ClipEvent&) override;
-            void drawEvent(
-                const math::Box2i&,
-                const DrawEvent&) override;
+            void clipEvent(const math::Box2i&, bool) override;
+            void drawEvent(const math::Box2i&, const DrawEvent&) override;
             void keyPressEvent(KeyEvent&) override;
             void keyReleaseEvent(KeyEvent&) override;
 
@@ -108,6 +109,8 @@ namespace tl
                 const std::shared_ptr<IWidget>& parent = nullptr);
 
             void setPath(const std::string&);
+
+            void reload();
 
             void setCallback(const std::function<void(const file::FileInfo&)>&);
 
@@ -153,17 +156,17 @@ namespace tl
             const FileBrowserOptions& getOptions() const;
 
             void setOptions(const FileBrowserOptions&);
+            
+            void setOptionsCallback(const std::function<void(const FileBrowserOptions&)>&);
 
             void setRecentFilesModel(const std::shared_ptr<RecentFilesModel>&);
 
             void setGeometry(const math::Box2i&) override;
             void sizeHintEvent(const SizeHintEvent&) override;
-            void mouseMoveEvent(MouseMoveEvent&) override;
-            void mousePressEvent(MouseClickEvent&) override;
-            void mouseReleaseEvent(MouseClickEvent&) override;
 
         private:
             void _pathUpdate();
+            void _optionsUpdate();
 
             TLRENDER_PRIVATE();
         };

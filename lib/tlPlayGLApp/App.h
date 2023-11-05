@@ -22,13 +22,14 @@ namespace tl
         class AudioModel;
         class ColorModel;
         class FilesModel;
+        class Settings;
+        class ViewportModel;
     }
 
     //! "tlplay-gl" application.
     namespace play_gl
     {
         class MainWindow;
-        class Settings;
         class ToolsModel;
 
         //! Application.
@@ -38,8 +39,7 @@ namespace tl
 
         protected:
             void _init(
-                int argc,
-                char* argv[],
+                const std::vector<std::string>&,
                 const std::shared_ptr<system::Context>&);
 
             App();
@@ -49,14 +49,13 @@ namespace tl
 
             //! Create a new application.
             static std::shared_ptr<App> create(
-                int argc,
-                char* argv[],
+                const std::vector<std::string>&,
                 const std::shared_ptr<system::Context>&);
 
             //! Open a file.
             void open(
-                const std::string&,
-                const std::string& audioFileName = std::string());
+                const file::Path& path,
+                const file::Path& audioPath = file::Path());
 
             //! Open a file dialog.
             void openDialog();
@@ -65,13 +64,16 @@ namespace tl
             void openSeparateAudioDialog();
 
             //! Get the settings.
-            const std::shared_ptr<Settings>& getSettings() const;
+            const std::shared_ptr<play::Settings>& getSettings() const;
 
             //! Get the files model.
             const std::shared_ptr<play::FilesModel>& getFilesModel() const;
 
             //! Observe the active timeline players.
             std::shared_ptr<observer::IList<std::shared_ptr<timeline::Player> > > observeActivePlayers() const;
+
+            //! Get the viewport model.
+            const std::shared_ptr<play::ViewportModel>& getViewportModel() const;
 
             //! Get the color model.
             const std::shared_ptr<play::ColorModel>& getColorModel() const;
@@ -90,13 +92,22 @@ namespace tl
             void _tick() override;
 
         private:
-            void _filesCallback(const std::vector<std::shared_ptr<play::FilesModelItem> >&);
-            void _activeCallback(const std::vector<std::shared_ptr<play::FilesModelItem> >&);
+            void _fileLogInit(const std::string&);
+            void _settingsInit(const std::string&);
+            void _modelsInit();
+            void _observersInit();
+            void _inputFilesInit();
+            void _mainWindowInit();
 
+            io::Options _getIOOptions() const;
             std::vector<std::shared_ptr<timeline::Player> > _getActivePlayers() const;
             otime::RationalTime _getCacheReadAhead() const;
             otime::RationalTime _getCacheReadBehind() const;
 
+            void _filesCallback(const std::vector<std::shared_ptr<play::FilesModelItem> >&);
+            void _activeCallback(const std::vector<std::shared_ptr<play::FilesModelItem> >&);
+
+            void _settingsUpdate(const std::string&);
             void _cacheUpdate();
             void _audioUpdate();
 

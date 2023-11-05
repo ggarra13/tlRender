@@ -41,10 +41,6 @@ namespace tl
             //! Set the text.
             void setText(const std::string&);
 
-            //! Set the number of characters to show. A value of
-            //! zero (the default) shows the entire text.
-            void setTextWidth(size_t);
-
             //! Set the text color role.
             void setTextRole(ColorRole);
 
@@ -55,13 +51,8 @@ namespace tl
             void setFontRole(FontRole);
 
             void sizeHintEvent(const SizeHintEvent&) override;
-            void clipEvent(
-                const math::Box2i&,
-                bool,
-                const ClipEvent&) override;
-            void drawEvent(
-                const math::Box2i&,
-                const DrawEvent&) override;
+            void clipEvent(const math::Box2i&, bool) override;
+            void drawEvent(const math::Box2i&, const DrawEvent&) override;
 
         private:
             void _textUpdate();

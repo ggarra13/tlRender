@@ -21,7 +21,7 @@ namespace tl
                 image::FontInfo fontInfo;
                 image::FontMetrics fontMetrics;
                 bool textInit = true;
-                math::Vector2i textSize;
+                math::Size2i textSize;
             };
             SizeData size;
 
@@ -101,7 +101,7 @@ namespace tl
             p.size.spacing = event.style->getSizeRole(SizeRole::SpacingSmall, event.displayScale);
             p.size.border = event.style->getSizeRole(SizeRole::Border, event.displayScale);
 
-            _sizeHint = math::Vector2i();
+            _sizeHint = math::Size2i();
             if (!_text.empty())
             {
                 p.size.fontMetrics = event.getFontMetrics(_fontRole);
@@ -114,34 +114,29 @@ namespace tl
                     p.draw.glyphs.clear();
                 }
 
-                _sizeHint.x = p.size.textSize.x + p.size.margin2 * 2;
-                _sizeHint.y = p.size.fontMetrics.lineHeight;
+                _sizeHint.w = p.size.textSize.w + p.size.margin2 * 2;
+                _sizeHint.h = p.size.fontMetrics.lineHeight;
             }
             if (_iconImage)
             {
-                _sizeHint.x += _iconImage->getWidth();
+                _sizeHint.w += _iconImage->getWidth();
                 if (!_text.empty())
                 {
-                    _sizeHint.x += p.size.spacing;
+                    _sizeHint.w += p.size.spacing;
                 }
-                _sizeHint.y = std::max(
-                    _sizeHint.y,
-                    static_cast<int>(_iconImage->getHeight()));
+                _sizeHint.h = std::max(_sizeHint.h, _iconImage->getHeight());
             }
-            _sizeHint.x +=
+            _sizeHint.w +=
                 p.size.margin * 2 +
                 p.size.border * 4;
-            _sizeHint.y +=
+            _sizeHint.h +=
                 p.size.margin2 * 2 +
                 p.size.border * 4;
         }
 
-        void PushButton::clipEvent(
-            const math::Box2i& clipRect,
-            bool clipped,
-            const ClipEvent& event)
+        void PushButton::clipEvent(const math::Box2i& clipRect, bool clipped)
         {
-            IWidget::clipEvent(clipRect, clipped, event);
+            IWidget::clipEvent(clipRect, clipped);
             TLRENDER_P();
             if (clipped)
             {
@@ -188,14 +183,14 @@ namespace tl
             }
 
             // Draw the pressed and hover states.
-            if (_pressed && _geometry.contains(_cursorPos))
+            if (_mouse.press && _geometry.contains(_mouse.pos))
             {
                 event.render->drawMesh(
                     mesh,
                     math::Vector2i(),
                     event.style->getColorRole(ColorRole::Pressed));
             }
-            else if (_inside)
+            else if (_mouse.inside)
             {
                 event.render->drawMesh(
                     mesh,
@@ -235,7 +230,7 @@ namespace tl
                 }
                 const math::Vector2i pos(
                     x + p.size.margin2,
-                    g3.y() + g3.h() / 2 - p.size.textSize.y / 2 +
+                    g3.y() + g3.h() / 2 - p.size.textSize.h / 2 +
                     p.size.fontMetrics.ascender);
                 event.render->drawText(
                     p.draw.glyphs,

@@ -4,13 +4,11 @@
 
 #include <tlGL/OffscreenBuffer.h>
 
+#include <tlGL/GL.h>
 #include <tlGL/Texture.h>
 
-#if defined(TLRENDER_GL_DEBUG)
-#include <tlGladDebug/gl.h>
-#else // TLRENDER_GL_DEBUG
-#include <tlGlad/gl.h>
-#endif // TLRENDER_GL_DEBUG
+#include <tlCore/Error.h>
+#include <tlCore/String.h>
 
 #include <array>
 #include <sstream>
@@ -19,6 +17,29 @@ namespace tl
 {
     namespace gl
     {
+        TLRENDER_ENUM_IMPL(
+            OffscreenDepth,
+            "None",
+            "16",
+            "24",
+            "32");
+        TLRENDER_ENUM_SERIALIZE_IMPL(OffscreenDepth);
+
+        TLRENDER_ENUM_IMPL(
+            OffscreenStencil,
+            "None",
+            "8");
+        TLRENDER_ENUM_SERIALIZE_IMPL(OffscreenStencil);
+
+        TLRENDER_ENUM_IMPL(
+            OffscreenSampling,
+            "None",
+            "2",
+            "4",
+            "8",
+            "16");
+        TLRENDER_ENUM_SERIALIZE_IMPL(OffscreenSampling);
+
         namespace
         {
             enum class Error
@@ -66,6 +87,10 @@ namespace tl
                         break;
                     }
                     break;
+                case OffscreenDepth::_16:
+                    out = GL_DEPTH_COMPONENT16;
+                    break;
+#if defined(TLRENDER_API_GL_4_1)
                 case OffscreenDepth::_24:
                     switch (stencil)
                     {
@@ -90,6 +115,7 @@ namespace tl
                     default: break;
                     }
                     break;
+#endif // TLRENDER_API_GL_4_1
                 default: break;
                 }
                 return out;
@@ -113,7 +139,7 @@ namespace tl
 
         struct OffscreenBuffer::Private
         {
-            image::Size size;
+            math::Size2i size;
             OffscreenBufferOptions options;
             GLuint id = 0;
             GLuint colorID = 0;
@@ -121,7 +147,7 @@ namespace tl
         };
 
         void OffscreenBuffer::_init(
-            const image::Size& size,
+            const math::Size2i& size,
             const OffscreenBufferOptions& options)
         {
             TLRENDER_P();
@@ -130,6 +156,8 @@ namespace tl
             p.options = options;
 
             GLenum target = GL_TEXTURE_2D;
+
+#if defined(TLRENDER_API_GL_4_1)
             size_t samples = 0;
             switch (p.options.sampling)
             {
@@ -151,6 +179,7 @@ namespace tl
                 break;
             default: break;
             }
+#endif // TLRENDER_API_GL_4_1
 
             // Create the color texture.
             if (p.options.colorType != image::PixelType::None)
@@ -163,6 +192,7 @@ namespace tl
                 glBindTexture(target, p.colorID);
                 switch (p.options.sampling)
                 {
+#if defined(TLRENDER_API_GL_4_1)
                 case OffscreenSampling::_2:
                 case OffscreenSampling::_4:
                 case OffscreenSampling::_8:
@@ -175,6 +205,7 @@ namespace tl
                         p.size.h,
                         false);
                     break;
+#endif // TLRENDER_API_GL_4_1
                 default:
                     glTexParameteri(target, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
                     glTexParameteri(target, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
@@ -204,12 +235,20 @@ namespace tl
                     throw std::runtime_error(getErrorLabel(Error::RenderBuffer));
                 }
                 glBindRenderbuffer(GL_RENDERBUFFER, p.depthStencilID);
+#if defined(TLRENDER_API_GL_4_1)
                 glRenderbufferStorageMultisample(
                     GL_RENDERBUFFER,
                     static_cast<GLsizei>(samples),
                     getBufferInternalFormat(p.options.depth, p.options.stencil),
                     p.size.w,
                     p.size.h);
+#elif defined(TLRENDER_API_GLES_2)
+                glRenderbufferStorage(
+                    GL_RENDERBUFFER,
+                    getBufferInternalFormat(p.options.depth, p.options.stencil),
+                    p.size.w,
+                    p.size.h);
+#endif // TLRENDER_API_GL_4_1
                 glBindRenderbuffer(GL_RENDERBUFFER, 0);
             }
 
@@ -233,7 +272,9 @@ namespace tl
             {
                 glFramebufferRenderbuffer(
                     GL_FRAMEBUFFER,
-                    GL_DEPTH_STENCIL_ATTACHMENT,
+                    p.options.stencil != OffscreenStencil::None ?
+                        GL_DEPTH_STENCIL_ATTACHMENT :
+                        GL_DEPTH_ATTACHMENT,
                     GL_RENDERBUFFER,
                     p.depthStencilID);
             }
@@ -269,7 +310,7 @@ namespace tl
         }
 
         std::shared_ptr<OffscreenBuffer> OffscreenBuffer::create(
-            const image::Size& size,
+            const math::Size2i& size,
             const OffscreenBufferOptions& options)
         {
             auto out = std::shared_ptr<OffscreenBuffer>(new OffscreenBuffer);
@@ -277,17 +318,17 @@ namespace tl
             return out;
         }
 
-        const image::Size& OffscreenBuffer::getSize() const
+        const math::Size2i& OffscreenBuffer::getSize() const
         {
             return _p->size;
         }
 
-        image::SizeType OffscreenBuffer::getWidth() const
+        int OffscreenBuffer::getWidth() const
         {
             return _p->size.w;
         }
 
-        image::SizeType OffscreenBuffer::getHeight() const
+        int OffscreenBuffer::getHeight() const
         {
             return _p->size.h;
         }
@@ -314,7 +355,7 @@ namespace tl
 
         bool doCreate(
             const std::shared_ptr<OffscreenBuffer>& offscreenBuffer,
-            const image::Size& size,
+            const math::Size2i& size,
             const OffscreenBufferOptions& options)
         {
             bool out = false;

@@ -136,18 +136,14 @@ namespace tl
         {
             {
                 Box2i b(1, 2, 3, 4);
-                TLRENDER_ASSERT(Vector2i(3, 4) == b.getSize());
+                TLRENDER_ASSERT(Size2i(3, 4) == b.getSize());
                 TLRENDER_ASSERT(Vector2i(2, 4) == b.getCenter());
-                TLRENDER_ASSERT(12 == b.getArea());
-                TLRENDER_ASSERT(3 / static_cast<float>(4) == b.getAspect());
             }
             {
                 Box2f b(1.F, 2.F, 3.F, 4.F);
-                TLRENDER_ASSERT(Vector2f(3.F, 4.F) == b.getSize());
+                TLRENDER_ASSERT(Size2f(3.F, 4.F) == b.getSize());
                 const auto c = b.getCenter();
                 TLRENDER_ASSERT(Vector2f(2.5F, 4.F) == c);
-                TLRENDER_ASSERT(12.F == b.getArea());
-                TLRENDER_ASSERT(3.F / 4.F == b.getAspect());
             }
         }
 
@@ -236,6 +232,12 @@ namespace tl
                 TLRENDER_ASSERT(Box2i(0, 1, 2, 3) != Box2i(3, 2, 1, 0));
                 TLRENDER_ASSERT(Box2f(0.F, 1.F, 2.F, 3.F) == Box2f(0.F, 1.F, 2.F, 3.F));
                 TLRENDER_ASSERT(Box2f(0.F, 1.F, 2.F, 3.F) != Box2f(3.F, 2.F, 1.F, 0.F));
+            }
+            {
+                const auto b = Box2i(0, 1, 2, 3) * 2.F;
+                TLRENDER_ASSERT(b == Box2i(0, 2, 3, 5));
+                const auto b2 = Box2f(0.F, 1.F, 2.F, 3.F) * 2.F;
+                TLRENDER_ASSERT(b2 == Box2f(0.F, 2.F, 4.F, 6.F));
             }
         }
 

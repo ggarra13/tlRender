@@ -8,6 +8,14 @@
 
 #include <tlCore/Context.h>
 
+#if defined(_WINDOWS)
+#define TLRENDER_MAIN() \
+    int wmain(int argc, wchar_t* argv[])
+#else // _WINDOWS
+#define TLRENDER_MAIN() \
+    int main(int argc, char* argv[])
+#endif // _WINDOWS
+
 namespace tl
 {
     //! General application functionality.
@@ -23,6 +31,12 @@ namespace tl
             bool help = false;
         };
 
+        //! Convert command line arguments.
+        std::vector<std::string> convert(int argc, char* argv[]);
+
+        //! Convert command line arguments.
+        std::vector<std::string> convert(int argc, wchar_t* argv[]);
+
         //! Base class for applications.
         class IApp : public std::enable_shared_from_this<IApp>
         {
@@ -30,13 +44,13 @@ namespace tl
 
         protected:
             void _init(
-                int argc,
-                char* argv[],
+                const std::vector<std::string>&,
                 const std::shared_ptr<system::Context>&,
                 const std::string& cmdLineName,
                 const std::string& cmdLineSummary,
                 const std::vector<std::shared_ptr<ICmdLineArg> >& = {},
                 const std::vector<std::shared_ptr<ICmdLineOption> >& = {});
+
             IApp();
 
         public:
@@ -48,6 +62,9 @@ namespace tl
             //! Get the exit code.
             int getExit() const;
 
+            //! Get unused arguments
+            const std::vector<std::string> getUnusedArgs() const;
+            
         protected:
             void _log(const std::string&, log::Type = log::Type::Message);
 
@@ -55,6 +72,7 @@ namespace tl
             void _printNewline();
             void _printError(const std::string&);
 
+            std::vector<std::string> _unusedArgs;
             std::shared_ptr<system::Context> _context;
             Options _options;
             int _exit = 0;

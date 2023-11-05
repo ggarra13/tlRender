@@ -6,6 +6,8 @@
 
 #include <tlTestLib/ITest.h>
 
+#include <tlTimeline/Player.h>
+
 namespace tl
 {
     namespace timeline_tests
@@ -24,6 +26,8 @@ namespace tl
             void _enums();
             void _loop();
             void _player();
+            void _player(const std::shared_ptr<timeline::Player>&);
+            void _externalTime();
         };
     }
 }

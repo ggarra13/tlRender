@@ -60,16 +60,8 @@ namespace tl
             //! Get the model.
             const std::shared_ptr<DoubleModel>& getModel() const;
 
-            void setVisible(bool) override;
-            void setEnabled(bool) override;
             void sizeHintEvent(const SizeHintEvent&) override;
-            void clipEvent(
-                const math::Box2i&,
-                bool,
-                const ClipEvent&) override;
-            void drawEvent(
-                const math::Box2i&,
-                const DrawEvent&) override;
+            void drawEvent(const math::Box2i&, const DrawEvent&) override;
             void mouseEnterEvent() override;
             void mouseLeaveEvent() override;
             void mouseMoveEvent(MouseMoveEvent&) override;
@@ -83,8 +75,6 @@ namespace tl
 
             double _posToValue(int) const;
             int _valueToPos(double) const;
-
-            void _resetMouse();
 
             TLRENDER_PRIVATE();
         };

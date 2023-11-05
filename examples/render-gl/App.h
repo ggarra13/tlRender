@@ -7,10 +7,13 @@
 #include <tlTimeline/IRender.h>
 #include <tlTimeline/Player.h>
 
-struct GLFWwindow;
-
 namespace tl
 {
+    namespace gl
+    {
+        class GLFWWindow;
+    }
+
     namespace examples
     {
         //! Example GLFW rendering application.
@@ -20,7 +23,7 @@ namespace tl
             struct Options
             {
                 std::string compareFileName;
-                image::Size windowSize = image::Size(1920, 1080);
+                math::Size2i windowSize = math::Size2i(1920, 1080);
                 bool fullscreen = false;
                 bool hud = true;
                 timeline::Playback playback = timeline::Playback::Forward;
@@ -37,8 +40,7 @@ namespace tl
 
             protected:
                 void _init(
-                    int argc,
-                    char* argv[],
+                    const std::vector<std::string>&,
                     const std::shared_ptr<system::Context>&);
 
                 App();
@@ -48,22 +50,17 @@ namespace tl
 
                 //! Create a new application.
                 static std::shared_ptr<App> create(
-                    int argc,
-                    char* argv[],
+                    const std::vector<std::string>&,
                     const std::shared_ptr<system::Context>&);
 
                 //! Run the application.
-                void run();
+                int run();
 
                 //! Exit the application.
                 void exit();
 
             private:
-                void _setFullscreenWindow(bool);
-                void _fullscreenCallback(bool);
-                static void _frameBufferSizeCallback(GLFWwindow*, int, int);
-                static void _windowContentScaleCallback(GLFWwindow*, float, float);
-                static void _keyCallback(GLFWwindow*, int, int, int, int);
+                void _keyCallback(int, int, int, int);
 
                 void _printShortcutsHelp();
 
@@ -86,11 +83,8 @@ namespace tl
                 std::vector<std::shared_ptr<timeline::Player> > _players;
                 std::vector<image::Size> _videoSizes;
 
-                GLFWwindow* _glfwWindow = nullptr;
-                image::Size _windowSize;
-                math::Vector2i _windowPos;
-                bool _fullscreen = false;
-                image::Size _frameBufferSize;
+                std::shared_ptr<gl::GLFWWindow> _window;
+                math::Size2i _frameBufferSize;
                 math::Vector2f _contentScale = math::Vector2f(1.F, 1.F);
                 timeline::CompareOptions _compareOptions;
                 float _rotation = 0.F;

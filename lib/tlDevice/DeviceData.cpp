@@ -29,7 +29,7 @@ namespace tl
             "10BitRGBXLE");
         TLRENDER_ENUM_SERIALIZE_IMPL(PixelType);
 
-        size_t getDataByteCount(const image::Size& size, PixelType pixelType)
+        size_t getDataByteCount(const math::Size2i& size, PixelType pixelType)
         {
             size_t out = 0;
             switch (pixelType)
@@ -46,7 +46,7 @@ namespace tl
         }
 
         void PixelData::_init(
-            const image::Size& size,
+            const math::Size2i& size,
             PixelType pixelType,
             const otime::RationalTime& time)
         {
@@ -54,19 +54,17 @@ namespace tl
             _pixelType = pixelType;
             _time = time;
             _dataByteCount = device::getDataByteCount(_size, _pixelType);
-            _data = new uint8_t[_dataByteCount];
+            _data.reserve(_dataByteCount);
         }
 
         PixelData::PixelData()
         {}
 
         PixelData::~PixelData()
-        {
-            delete[] _data;
-        }
+        {}
 
         std::shared_ptr<PixelData> PixelData::create(
-            const image::Size& size,
+            const math::Size2i& size,
             PixelType pixelType,
             const otime::RationalTime& time)
         {
@@ -75,7 +73,7 @@ namespace tl
             return out;
         }
 
-        const image::Size& PixelData::getSize() const
+        const math::Size2i& PixelData::getSize() const
         {
             return _size;
         }
@@ -102,17 +100,17 @@ namespace tl
 
         const uint8_t* PixelData::getData() const
         {
-            return _data;
+            return _data.data();
         }
 
         uint8_t* PixelData::getData()
         {
-            return _data;
+            return _data.data();
         }
 
         void PixelData::zero()
         {
-            std::memset(_data, 0, _dataByteCount);
+            std::memset(_data.data(), 0, _dataByteCount);
         }
 
         const std::shared_ptr<image::HDRData>& PixelData::getHDRData() const

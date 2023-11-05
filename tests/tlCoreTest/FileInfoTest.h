@@ -22,7 +22,9 @@ namespace tl
 
         private:
             void _enums();
-            void _tests();
+            void _ctors();
+            void _sequence();
+            void _list();
         };
     }
 }

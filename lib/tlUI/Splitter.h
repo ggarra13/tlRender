@@ -42,25 +42,18 @@ namespace tl
             void setSpacingRole(SizeRole);
 
             void setGeometry(const math::Box2i&) override;
-            void setVisible(bool) override;
-            void setEnabled(bool) override;
             void sizeHintEvent(const SizeHintEvent&) override;
-            void clipEvent(
-                const math::Box2i&,
-                bool,
-                const ClipEvent&) override;
-            void drawEvent(
-                const math::Box2i&,
-                const DrawEvent&) override;
+            void drawEvent(const math::Box2i&, const DrawEvent&) override;
             void mouseEnterEvent() override;
             void mouseLeaveEvent() override;
             void mouseMoveEvent(MouseMoveEvent&) override;
             void mousePressEvent(MouseClickEvent&) override;
             void mouseReleaseEvent(MouseClickEvent&) override;
 
-        private:
-            void _resetMouse();
+        protected:
+            void _releaseMouse() override;
 
+        private:
             TLRENDER_PRIVATE();
         };
     }

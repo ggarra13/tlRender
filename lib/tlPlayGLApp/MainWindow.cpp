@@ -20,8 +20,9 @@
 #include <tlPlayGLApp/PlaybackMenu.h>
 #include <tlPlayGLApp/RenderActions.h>
 #include <tlPlayGLApp/RenderMenu.h>
-#include <tlPlayGLApp/Settings.h>
 #include <tlPlayGLApp/SpeedPopup.h>
+#include <tlPlayGLApp/TimelineActions.h>
+#include <tlPlayGLApp/TimelineMenu.h>
 #include <tlPlayGLApp/ToolsActions.h>
 #include <tlPlayGLApp/ToolsMenu.h>
 #include <tlPlayGLApp/ToolsToolBar.h>
@@ -34,6 +35,9 @@
 #include <tlPlayGLApp/WindowToolBar.h>
 
 #include <tlPlay/ColorModel.h>
+#include <tlPlay/Info.h>
+#include <tlPlay/Settings.h>
+#include <tlPlay/ViewportModel.h>
 
 #include <tlTimelineUI/TimelineViewport.h>
 #include <tlTimelineUI/TimelineWidget.h>
@@ -54,7 +58,6 @@
 
 #include <tlTimeline/TimeUnits.h>
 
-#include <tlCore/StringFormat.h>
 #include <tlCore/Timer.h>
 
 namespace tl
@@ -84,7 +87,7 @@ namespace tl
         struct MainWindow::Private
         {
             std::weak_ptr<App> app;
-            std::weak_ptr<Settings> settings;
+            std::shared_ptr<play::Settings> settings;
             std::shared_ptr<observer::Value<WindowOptions> > windowOptions;
             std::shared_ptr<timeline::TimeUnitsModel> timeUnitsModel;
             std::shared_ptr<ui::DoubleModel> speedModel;
@@ -100,6 +103,7 @@ namespace tl
             std::shared_ptr<RenderActions> renderActions;
             std::shared_ptr<PlaybackActions> playbackActions;
             std::shared_ptr<FrameActions> frameActions;
+            std::shared_ptr<TimelineActions> timelineActions;
             std::shared_ptr<AudioActions> audioActions;
             std::shared_ptr<ToolsActions> toolsActions;
             std::shared_ptr<FileMenu> fileMenu;
@@ -109,6 +113,7 @@ namespace tl
             std::shared_ptr<RenderMenu> renderMenu;
             std::shared_ptr<PlaybackMenu> playbackMenu;
             std::shared_ptr<FrameMenu> frameMenu;
+            std::shared_ptr<TimelineMenu> timelineMenu;
             std::shared_ptr<AudioMenu> audioMenu;
             std::shared_ptr<ToolsMenu> toolsMenu;
             std::shared_ptr<ui::MenuBar> menuBar;
@@ -144,6 +149,7 @@ namespace tl
             std::shared_ptr<observer::ValueObserver<timeline::Playback> > playbackObserver;
             std::shared_ptr<observer::ValueObserver<otime::RationalTime> > currentTimeObserver;
             std::shared_ptr<observer::ValueObserver<timeline::CompareOptions> > compareOptionsObserver;
+            std::shared_ptr<observer::ValueObserver<timeline::BackgroundOptions> > backgroundOptionsObserver;
             std::shared_ptr<observer::ValueObserver<timeline::ColorConfigOptions> > colorConfigOptionsObserver;
             std::shared_ptr<observer::ValueObserver<timeline::LUTOptions> > lutOptionsObserver;
             std::shared_ptr<observer::ValueObserver<timeline::ImageOptions> > imageOptionsObserver;
@@ -162,33 +168,25 @@ namespace tl
             setBackgroundRole(ui::ColorRole::Window);
 
             p.app = app;
-                
-            auto settings = app->getSettings();
-            WindowOptions windowOptions;
-            settings->setDefaultValue("Window/Options", windowOptions);
-            settings->getValue("Window/Options", windowOptions);
-            bool frameView = true;
-            settings->setDefaultValue("Timeline/FrameView", frameView);
-            settings->getValue("Timeline/FrameView", frameView);
-            bool stopOnScrub = true;
-            settings->setDefaultValue("Timeline/StopOnScrub", stopOnScrub);
-            settings->getValue("Timeline/FrameView", stopOnScrub);
-            timelineui::ItemOptions itemOptions;
-            settings->setDefaultValue("Timeline/Thumbnails",
-                itemOptions.thumbnails);
-            settings->getValue("Timeline/Thumbnails", itemOptions.thumbnails);
-            settings->setDefaultValue("Timeline/ThumbnailsSize",
-                itemOptions.thumbnailHeight);
-            settings->getValue("Timeline/ThumbnailsSize", itemOptions.thumbnailHeight);
-            settings->setDefaultValue("Timeline/Transitions",
-                itemOptions.showTransitions);
-            settings->getValue("Timeline/Transitions", itemOptions.showTransitions);
-            settings->setDefaultValue("Timeline/Markers",
-                itemOptions.showMarkers);
-            settings->getValue("Timeline/Markers", itemOptions.showMarkers);
-            p.settings = settings;
 
-            p.windowOptions = observer::Value<WindowOptions>::create(windowOptions);
+            p.settings = app->getSettings();
+            p.settings->setDefaultValue("Window/Options", WindowOptions());
+            p.settings->setDefaultValue("Timeline/Editable", true);
+            p.settings->setDefaultValue("Timeline/EditAssociatedClips",
+                timelineui::ItemOptions().editAssociatedClips);
+            p.settings->setDefaultValue("Timeline/FrameView", true);
+            p.settings->setDefaultValue("Timeline/StopOnScrub", true);
+            p.settings->setDefaultValue("Timeline/Thumbnails",
+                timelineui::ItemOptions().thumbnails);
+            p.settings->setDefaultValue("Timeline/ThumbnailsSize",
+                timelineui::ItemOptions().thumbnailHeight);
+            p.settings->setDefaultValue("Timeline/Transitions",
+                timelineui::ItemOptions().showTransitions);
+            p.settings->setDefaultValue("Timeline/Markers",
+                timelineui::ItemOptions().showMarkers);
+
+            p.windowOptions = observer::Value<WindowOptions>::create(
+                p.settings->getValue<WindowOptions>("Window/Options"));
 
             p.timeUnitsModel = timeline::TimeUnitsModel::create(context);
 
@@ -200,9 +198,16 @@ namespace tl
             p.timelineViewport = timelineui::TimelineViewport::create(context);
 
             p.timelineWidget = timelineui::TimelineWidget::create(p.timeUnitsModel, context);
+            p.timelineWidget->setEditable(p.settings->getValue<bool>("Timeline/Editable"));
+            p.timelineWidget->setFrameView(p.settings->getValue<bool>("Timeline/FrameView"));
             p.timelineWidget->setScrollBarsVisible(false);
-            p.timelineWidget->setFrameView(frameView);
-            p.timelineWidget->setStopOnScrub(stopOnScrub);
+            p.timelineWidget->setStopOnScrub(p.settings->getValue<bool>("Timeline/StopOnScrub"));
+            timelineui::ItemOptions itemOptions;
+            itemOptions.editAssociatedClips = p.settings->getValue<bool>("Timeline/EditAssociatedClips");
+            itemOptions.thumbnails = p.settings->getValue<bool>("Timeline/Thumbnails");
+            itemOptions.thumbnailHeight = p.settings->getValue<int>("Timeline/ThumbnailsSize");
+            itemOptions.showTransitions = p.settings->getValue<bool>("Timeline/Transitions");
+            itemOptions.showMarkers = p.settings->getValue<bool>("Timeline/Markers");
             p.timelineWidget->setItemOptions(itemOptions);
 
             p.fileActions = FileActions::create(app, context);
@@ -221,6 +226,10 @@ namespace tl
                 app,
                 context);
             p.frameActions = FrameActions::create(
+                std::dynamic_pointer_cast<MainWindow>(shared_from_this()),
+                app,
+                context);
+            p.timelineActions = TimelineActions::create(
                 std::dynamic_pointer_cast<MainWindow>(shared_from_this()),
                 app,
                 context);
@@ -258,6 +267,11 @@ namespace tl
                 p.frameActions->getActions(),
                 app,
                 context);
+            p.timelineMenu = TimelineMenu::create(
+                p.timelineActions->getActions(),
+                std::dynamic_pointer_cast<MainWindow>(shared_from_this()),
+                app,
+                context);
             p.audioMenu = AudioMenu::create(
                 p.audioActions->getActions(),
                 app,
@@ -274,6 +288,7 @@ namespace tl
             p.menuBar->addMenu("Render", p.renderMenu);
             p.menuBar->addMenu("Playback", p.playbackMenu);
             p.menuBar->addMenu("Frame", p.frameMenu);
+            p.menuBar->addMenu("Timeline", p.timelineMenu);
             p.menuBar->addMenu("Audio", p.audioMenu);
             p.menuBar->addMenu("Tools", p.toolsMenu);
 
@@ -440,7 +455,9 @@ namespace tl
                 {
                     if (!_p->players.empty() && _p->players[0])
                     {
+                        _p->players[0]->setPlayback(timeline::Playback::Stop);
                         _p->players[0]->seek(value);
+                        _p->currentTimeEdit->setValue(_p->players[0]->getCurrentTime());
                     }
                 });
 
@@ -519,6 +536,13 @@ namespace tl
                     _viewportUpdate();
                 });
 
+            p.backgroundOptionsObserver = observer::ValueObserver<timeline::BackgroundOptions>::create(
+                app->getViewportModel()->observeBackgroundOptions(),
+                [this](const timeline::BackgroundOptions&)
+                {
+                    _viewportUpdate();
+                });
+
             p.colorConfigOptionsObserver = observer::ValueObserver<timeline::ColorConfigOptions>::create(
                 app->getColorModel()->observeColorConfigOptions(),
                 [this](const timeline::ColorConfigOptions&)
@@ -562,23 +586,25 @@ namespace tl
         MainWindow::~MainWindow()
         {
             TLRENDER_P();
-            if (auto settings = p.settings.lock())
-            {
-                settings->setValue("Window/Options", p.windowOptions->get());
-                settings->setValue("Timeline/FrameView",
-                    p.timelineWidget->hasFrameView());
-                settings->setValue("Timeline/StopOnScrub",
-                    p.timelineWidget->hasStopOnScrub());
-                const auto& timelineItemOptions = p.timelineWidget->getItemOptions();
-                settings->setValue("Timeline/Thumbnails",
-                    timelineItemOptions.thumbnails);
-                settings->setValue("Timeline/ThumbnailsSize",
-                    timelineItemOptions.thumbnailHeight);
-                settings->setValue("Timeline/Transitions",
-                    timelineItemOptions.showTransitions);
-                settings->setValue("Timeline/Markers",
-                    timelineItemOptions.showMarkers);
-            }
+            p.settings->setValue("Window/Size", _geometry.getSize());
+            p.settings->setValue("Window/Options", p.windowOptions->get());
+            p.settings->setValue("Timeline/Editable",
+                p.timelineWidget->isEditable());
+            const auto& timelineItemOptions = p.timelineWidget->getItemOptions();
+            p.settings->setValue("Timeline/EditAssociatedClips",
+                timelineItemOptions.editAssociatedClips);
+            p.settings->setValue("Timeline/FrameView",
+                p.timelineWidget->hasFrameView());
+            p.settings->setValue("Timeline/StopOnScrub",
+                p.timelineWidget->hasStopOnScrub());
+            p.settings->setValue("Timeline/Thumbnails",
+                timelineItemOptions.thumbnails);
+            p.settings->setValue("Timeline/ThumbnailsSize",
+                timelineItemOptions.thumbnailHeight);
+            p.settings->setValue("Timeline/Transitions",
+                timelineItemOptions.showTransitions);
+            p.settings->setValue("Timeline/Markers",
+                timelineItemOptions.showMarkers);
         }
 
         std::shared_ptr<MainWindow> MainWindow::create(
@@ -817,9 +843,11 @@ namespace tl
             if (auto app = p.app.lock())
             {
                 p.timelineViewport->setColorConfigOptions(
-                    { app->getColorModel()->getColorConfigOptions() });
+                    app->getColorModel()->getColorConfigOptions());
                 p.timelineViewport->setLUTOptions(
-                    { app->getColorModel()->getLUTOptions() });
+                    app->getColorModel()->getLUTOptions());
+                p.timelineViewport->setBackgroundOptions(
+                    app->getViewportModel()->getBackgroundOptions());
                 const auto& imageOptions = app->getColorModel()->getImageOptions();
                 p.timelineViewport->setImageOptions(
                     { imageOptions });
@@ -860,37 +888,8 @@ namespace tl
             {
                 const file::Path& path = p.players[0]->getPath();
                 const io::Info& info = p.players[0]->getIOInfo();
-                std::vector<std::string> s;
-                std::vector<std::string> t;
-                s.push_back(path.get(-1, false));
-                t.push_back(path.get(-1, false));
-                if (!info.video.empty())
-                {
-                    s.push_back(std::string(
-                        string::Format("V: {0}, {1}").
-                        arg(info.video[0].size).
-                        arg(info.video[0].pixelType)));
-                    t.push_back(std::string(
-                        string::Format("Video: {0}, {1}").
-                        arg(info.video[0].size).
-                        arg(info.video[0].pixelType)));
-                }
-                if (info.audio.isValid())
-                {
-                    s.push_back(std::string(
-                        string::Format("A: {0}, {1}, {2}").
-                        arg(info.audio.channelCount).
-                        arg(info.audio.dataType).
-                        arg(info.audio.sampleRate / 1000)));
-                    t.push_back(std::string(
-                        string::Format("Audio: {0} {1}, {2}, {3}kHz").
-                        arg(info.audio.channelCount).
-                        arg(1 == info.audio.channelCount ? "channel" : "channels").
-                        arg(info.audio.dataType).
-                        arg(info.audio.sampleRate / 1000)));
-                }
-                text = string::join(s, ", ");
-                toolTip = string::join(t, "\n");
+                text = play::infoLabel(path, info);
+                toolTip = play::infoToolTip(path, info);
             }
             p.infoLabel->setText(text);
             p.infoLabel->setToolTip(toolTip);

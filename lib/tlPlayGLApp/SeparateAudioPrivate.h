@@ -30,16 +30,13 @@ namespace tl
                 const std::shared_ptr<IWidget>& parent = nullptr);
 
             void setCallback(const std::function<void(
-                const std::string&,
-                const std::string&)>&);
+                const file::Path&,
+                const file::Path&)>&);
 
             void setCancelCallback(const std::function<void(void)>&);
 
             void setGeometry(const math::Box2i&) override;
             void sizeHintEvent(const ui::SizeHintEvent&) override;
-            void mouseMoveEvent(ui::MouseMoveEvent&) override;
-            void mousePressEvent(ui::MouseClickEvent&) override;
-            void mouseReleaseEvent(ui::MouseClickEvent&) override;
 
         private:
             TLRENDER_PRIVATE();

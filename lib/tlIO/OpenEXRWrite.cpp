@@ -2,7 +2,7 @@
 // Copyright (c) 2021-2023 Darby Johnston
 // All rights reserved.
 
-#include <tlIO/OpenEXR.h>
+#include <tlIO/OpenEXRPrivate.h>
 
 #include <tlCore/StringFormat.h>
 
@@ -36,12 +36,20 @@ namespace tl
             }
         }
         
+        struct Write::Private
+        {
+            Imf::MultiPartOutputFile* outputFile = nullptr;
+            image::PixelType pixelType = image::PixelType::RGBA_F16;
+        };
+        
         void Write::_init(
             const file::Path& path,
             const io::Info& info,
             const io::Options& options,
             const std::weak_ptr<log::System>& logSystem)
         {
+            TLRENDER_P();
+            
             ISequenceWrite::_init(path, info, options, logSystem);
 
             auto i = options.find("OpenEXR/Compression");
@@ -54,7 +62,7 @@ namespace tl
             if (i != options.end())
             {
                 std::stringstream ss(i->second);
-                ss >> _pixelType;
+                ss >> p.pixelType;
             }
             i = options.find("OpenEXR/ZipCompressionLevel");
             if (i != options.end())
@@ -69,8 +77,9 @@ namespace tl
                 ss >> _dwaCompressionLevel;
             }
         }
-
-        Write::Write()
+            
+        Write::Write() :
+            _p(new Private)
         {}
 
         Write::~Write()
@@ -91,10 +100,12 @@ namespace tl
             const std::shared_ptr<image::Image>& image,
             int layerId)
         {
-            const uint8_t channelCount = getChannelCount(_pixelType);
-            const uint8_t bitDepth = getBitDepth(_pixelType) / 8;
-            Imf::OutputPart out(*_outputFile, layerId);
-            const Imf::Header& header = _outputFile->header(layerId);
+            TLRENDER_P();
+            
+            const uint8_t channelCount = getChannelCount(p.pixelType);
+            const uint8_t bitDepth = getBitDepth(p.pixelType) / 8;
+            Imf::OutputPart out(*p.outputFile, layerId);
+            const Imf::Header& header = p.outputFile->header(layerId);
             const Imath::Box2i& daw = header.dataWindow();
 
             const size_t width   = daw.max.x - daw.min.x + 1;
@@ -115,7 +126,7 @@ namespace tl
                 char* buf = flip + k-- * bitDepth;
                 fb.insert(
                     name,
-                    Imf::Slice(toImf(_pixelType), buf, xStride, yStride));
+                    Imf::Slice(toImf(p.pixelType), buf, xStride, yStride));
             }
 
             out.setFrameBuffer(fb);
@@ -126,8 +137,11 @@ namespace tl
         void Write::_writeVideo(
             const std::string& fileName,
             const otime::RationalTime&,
-            const std::shared_ptr<image::Image>& image)
+            const std::shared_ptr<image::Image>& image,
+            const io::Options&)
         {
+            TLRENDER_P();
+            
             const auto& info = image->getInfo();
             Imf::Header header(
                 info.size.w,
@@ -142,22 +156,22 @@ namespace tl
             const auto tags = image->getTags();
             writeTags(tags, io::sequenceDefaultSpeed, header);
 
-            const uint8_t channelCount = getChannelCount(_pixelType);
+            const uint8_t channelCount = getChannelCount(p.pixelType);
             switch (channelCount)
             {
             case 2:
-                header.channels().insert("A", Imf::Channel(toImf(_pixelType)));
+                header.channels().insert("A", Imf::Channel(toImf(p.pixelType)));
                 // no break here
             case 1:
-                header.channels().insert("L", Imf::Channel(toImf(_pixelType)));
+                header.channels().insert("L", Imf::Channel(toImf(p.pixelType)));
                 break;
             case 4:
-                header.channels().insert("A", Imf::Channel(toImf(_pixelType)));
+                header.channels().insert("A", Imf::Channel(toImf(p.pixelType)));
                 // no break here
             case 3:
-                header.channels().insert("B", Imf::Channel(toImf(_pixelType)));
-                header.channels().insert("G", Imf::Channel(toImf(_pixelType)));
-                header.channels().insert("R", Imf::Channel(toImf(_pixelType)));
+                header.channels().insert("B", Imf::Channel(toImf(p.pixelType)));
+                header.channels().insert("G", Imf::Channel(toImf(p.pixelType)));
+                header.channels().insert("R", Imf::Channel(toImf(p.pixelType)));
                 break;
             default:
                 throw std::runtime_error("Invalid channel count");
@@ -194,7 +208,7 @@ namespace tl
             headers.push_back(header);
             
             const int numParts = static_cast<int>(headers.size());
-            _outputFile = new Imf::MultiPartOutputFile(
+            p.outputFile = new Imf::MultiPartOutputFile(
                 fileName.c_str(), &headers[0], numParts);
 
             for (int part = 0; part < numParts; ++part)
@@ -202,7 +216,7 @@ namespace tl
                 _writeLayer(image, part);
             }
 
-            delete _outputFile;
+            delete p.outputFile;
         }
     }
 }

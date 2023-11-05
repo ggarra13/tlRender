@@ -6,7 +6,9 @@
 
 #include <tlTimeline/Player.h>
 
-#include <tlCore/AudioConvert.h>
+#include <tlTimeline/Util.h>
+
+#include <tlCore/AudioResample.h>
 #include <tlCore/LRUCache.h>
 
 #if defined(TLRENDER_AUDIO)
@@ -21,12 +23,6 @@ namespace tl
 {
     namespace timeline
     {
-        enum class CacheDirection
-        {
-            Forward,
-            Reverse
-        };
-
         struct Player::Private
         {
             otime::RationalTime loopPlayback(const otime::RationalTime&);
@@ -34,7 +30,7 @@ namespace tl
             void cacheUpdate(
                 const otime::RationalTime& currentTime,
                 const otime::TimeRange& inOutRange,
-                size_t videoLayer,
+                const io::Options& ioOptions,
                 double audioOffset,
                 CacheDirection,
                 const PlayerCacheOptions&);
@@ -64,7 +60,7 @@ namespace tl
             std::shared_ptr<observer::Value<Loop> > loop;
             std::shared_ptr<observer::Value<otime::RationalTime> > currentTime;
             std::shared_ptr<observer::Value<otime::TimeRange> > inOutRange;
-            std::shared_ptr<observer::Value<size_t> > videoLayer;
+            std::shared_ptr<observer::Value<io::Options> > ioOptions;
             std::shared_ptr<observer::Value<VideoData> > currentVideoData;
             std::shared_ptr<observer::Value<float> > volume;
             std::shared_ptr<observer::Value<bool> > mute;
@@ -91,7 +87,7 @@ namespace tl
                 otime::RationalTime currentTime = time::invalidTime;
                 bool externalTime = false;
                 otime::TimeRange inOutRange = time::invalidTimeRange;
-                size_t videoLayer = 0;
+                io::Options ioOptions;
                 VideoData currentVideoData;
                 double audioOffset = 0.0;
                 std::vector<AudioData> currentAudioData;
@@ -107,6 +103,7 @@ namespace tl
             struct AudioMutex
             {
                 double speed = 0.0;
+                double defaultSpeed = 0.0;
                 float volume = 1.F;
                 bool mute = false;
                 std::chrono::steady_clock::time_point muteTimeout;
@@ -134,8 +131,9 @@ namespace tl
             struct AudioThread
             {
                 audio::Info info;
-                std::shared_ptr<audio::AudioConvert> convert;
+                std::shared_ptr<audio::AudioResample> resample;
                 std::list<std::shared_ptr<audio::Audio> > buffer;
+                std::shared_ptr<audio::Audio> silence;
                 size_t rtAudioCurrentFrame = 0;
                 size_t backwardsSize = std::numeric_limits<size_t>::max();
             };

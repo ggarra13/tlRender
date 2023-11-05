@@ -109,8 +109,8 @@ namespace tl
                 int border = 0;
                 image::FontInfo fontInfo;
                 image::FontMetrics fontMetrics;
-                math::Vector2i textSize;
-                math::Vector2i formatSize;
+                math::Size2i textSize;
+                math::Size2i formatSize;
             };
             SizeData size;
 
@@ -120,12 +120,6 @@ namespace tl
                 std::vector<math::Box2i> glyphsBox;
             };
             DrawData draw;
-
-            struct MouseData
-            {
-                bool press = false;
-            };
-            MouseData mouse;
         };
 
         void LineEdit::_init(
@@ -134,8 +128,9 @@ namespace tl
         {
             IWidget::_init("tl::ui::LineEdit", context, parent);
             TLRENDER_P();
-            setMouseHover(true);
             setAcceptsKeyFocus(true);
+            _setMouseHover(true);
+            _setMousePress(true);
             _textUpdate();
         }
 
@@ -278,22 +273,19 @@ namespace tl
             p.size.textSize = event.fontSystem->getSize(p.text, fontInfo);
             p.size.formatSize = event.fontSystem->getSize(p.format, fontInfo);
 
-            _sizeHint.x =
-                p.size.formatSize.x +
+            _sizeHint.w =
+                p.size.formatSize.w +
                 p.size.margin * 2 +
                 p.size.border * 4;
-            _sizeHint.y =
+            _sizeHint.h =
                 p.size.fontMetrics.lineHeight +
                 p.size.margin * 2 +
                 p.size.border * 4;
         }
 
-        void LineEdit::clipEvent(
-            const math::Box2i& clipRect,
-            bool clipped,
-            const ClipEvent& event)
+        void LineEdit::clipEvent(const math::Box2i& clipRect, bool clipped)
         {
-            IWidget::clipEvent(clipRect, clipped, event);
+            IWidget::clipEvent(clipRect, clipped);
             TLRENDER_P();
             if (clipped)
             {
@@ -341,9 +333,9 @@ namespace tl
             {
                 const auto selection = p.selection.getSorted();
                 const std::string text0 = p.text.substr(0, selection.first);
-                const int x0 = event.fontSystem->getSize(text0, p.size.fontInfo).x;
+                const int x0 = event.fontSystem->getSize(text0, p.size.fontInfo).w;
                 const std::string text1 = p.text.substr(0, selection.second);
-                const int x1 = event.fontSystem->getSize(text1, p.size.fontInfo).x;
+                const int x1 = event.fontSystem->getSize(text1, p.size.fontInfo).w;
                 event.render->drawRect(
                     math::Box2i(g2.x() + x0, g2.y(), x1 - x0, g2.h()),
                     event.style->getColorRole(ColorRole::Checked));
@@ -380,7 +372,7 @@ namespace tl
             if (p.cursorVisible)
             {
                 const std::string text = p.text.substr(0, p.cursorPos);
-                const int x = event.fontSystem->getSize(text, p.size.fontInfo).x;
+                const int x = event.fontSystem->getSize(text, p.size.fontInfo).w;
                 event.render->drawRect(
                     math::Box2i(
                         g2.x() + x,
@@ -391,18 +383,12 @@ namespace tl
             }
         }
 
-        void LineEdit::mouseEnterEvent()
-        {}
-
-        void LineEdit::mouseLeaveEvent()
-        {}
-
         void LineEdit::mouseMoveEvent(MouseMoveEvent& event)
         {
+            IWidget::mouseMoveEvent(event);
             TLRENDER_P();
-            if (p.mouse.press)
+            if (_mouse.press)
             {
-                event.accept = true;
                 const int cursorPos = _getCursorPos(event.pos);
                 if (cursorPos != p.cursorPos)
                 {
@@ -421,9 +407,8 @@ namespace tl
 
         void LineEdit::mousePressEvent(MouseClickEvent& event)
         {
+            IWidget::mousePressEvent(event);
             TLRENDER_P();
-            event.accept = true;
-            p.mouse.press = true;
             const int cursorPos = _getCursorPos(event.pos);
             if (cursorPos != p.cursorPos)
             {
@@ -441,13 +426,6 @@ namespace tl
             takeKeyFocus();
         }
 
-        void LineEdit::mouseReleaseEvent(MouseClickEvent& event)
-        {
-            TLRENDER_P();
-            event.accept = true;
-            p.mouse.press = false;
-        }
-
         void LineEdit::keyFocusEvent(bool value)
         {
             IWidget::keyFocusEvent(value);
@@ -455,6 +433,10 @@ namespace tl
             if (!value)
             {
                 p.selection.clear();
+                if (p.textCallback)
+                {
+                    p.textCallback(p.text);
+                }
                 _updates |= Update::Draw;
             }
             if (p.focusCallback)
@@ -483,7 +465,6 @@ namespace tl
                 {
                     p.selection.clear();
                     p.selection.select(0, p.text.size());
-
                     _updates |= Update::Draw;
                 }
                 break;

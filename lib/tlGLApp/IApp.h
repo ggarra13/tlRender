@@ -20,7 +20,7 @@ namespace tl
         //! Application options.
         struct Options
         {
-            image::Size windowSize = image::Size(1920, 1080);
+            math::Size2i windowSize = math::Size2i(1920, 1080);
             bool fullscreen = false;
         };
 
@@ -31,8 +31,7 @@ namespace tl
 
         protected:
             void _init(
-                int argc,
-                char* argv[],
+                const std::vector<std::string>&,
                 const std::shared_ptr<system::Context>&,
                 const std::string& cmdLineName,
                 const std::string& cmdLineSummary,
@@ -45,7 +44,7 @@ namespace tl
             ~IApp();
 
             //! Run the application.
-            virtual void run();
+            virtual int run();
 
             //! Exit the application.
             void exit(int = 0);
@@ -57,10 +56,10 @@ namespace tl
             const std::shared_ptr<ui::Style> getStyle() const;
 
             //! Get the window size.
-            image::Size getWindowSize() const;
+            math::Size2i getWindowSize() const;
 
             //! Set the window size.
-            void setWindowSize(const image::Size&);
+            void setWindowSize(const math::Size2i&);
 
             //! Get whether the window is in full screen mode.
             bool isFullScreen() const;
@@ -84,29 +83,21 @@ namespace tl
             void _setColorConfigOptions(const timeline::ColorConfigOptions&);
             void _setLUTOptions(const timeline::LUTOptions&);
 
-            void _setCursor(ui::StandardCursor value);
-            void _setCursor(
-                const std::shared_ptr<image::Image>&,
-                const math::Vector2i&);
-
-            std::shared_ptr<image::Image> _capture(const math::Box2i&);
+            std::shared_ptr<OffscreenBuffer> _capture(const math::Box2i&);
 
             virtual void _drop(const std::vector<std::string>&);
 
             virtual void _tick();
 
-        private:
-            static void _frameBufferSizeCallback(GLFWwindow*, int, int);
-            static void _windowContentScaleCallback(GLFWwindow*, float, float);
-            static void _windowRefreshCallback(GLFWwindow*);
-            static void _cursorEnterCallback(GLFWwindow*, int);
-            static void _cursorPosCallback(GLFWwindow*, double, double);
-            static void _mouseButtonCallback(GLFWwindow*, int, int, int);
-            static void _scrollCallback(GLFWwindow*, double, double);
-            static void _keyCallback(GLFWwindow*, int, int, int, int);
-            static void _charCallback(GLFWwindow*, unsigned int);
-            static void _dropCallback(GLFWwindow*, int, const char**);
+            Options _options;
 
+        private:
+            void _buttonCallback(int, int, int);
+            void _scrollCallback(const math::Vector2f&);
+            void _keyCallback(int, int, int, int);
+            void _charCallback(unsigned int);
+            void _dropCallback(int, const char**);
+            
             TLRENDER_PRIVATE();
         };
     }

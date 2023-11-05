@@ -21,7 +21,7 @@ namespace tl
                 image::FontMetrics fontMetrics;
                 int checkBox = 0;
                 bool textInit = true;
-                math::Vector2i textSize;
+                math::Size2i textSize;
             };
             SizeData size;
 
@@ -113,24 +113,21 @@ namespace tl
             }
             p.size.checkBox = p.size.fontMetrics.lineHeight * .8F;
 
-            _sizeHint.x =
+            _sizeHint.w =
                 p.size.checkBox +
                 p.size.spacing +
-                p.size.textSize.x + p.size.margin * 2 +
+                p.size.textSize.w + p.size.margin * 2 +
                 p.size.margin * 2 +
                 p.size.border * 4;
-            _sizeHint.y =
+            _sizeHint.h =
                 p.size.fontMetrics.lineHeight +
                 p.size.margin * 2 +
                 p.size.border * 4;
         }
 
-        void CheckBox::clipEvent(
-            const math::Box2i& clipRect,
-            bool clipped,
-            const ClipEvent& event)
+        void CheckBox::clipEvent(const math::Box2i& clipRect, bool clipped)
         {
-            IButton::clipEvent(clipRect, clipped, event);
+            IButton::clipEvent(clipRect, clipped);
             TLRENDER_P();
             if (clipped)
             {
@@ -157,13 +154,13 @@ namespace tl
             }
 
             const math::Box2i g2 = g.margin(-p.size.border * 2);
-            if (_pressed && _geometry.contains(_cursorPos))
+            if (_mouse.press && _geometry.contains(_mouse.pos))
             {
                 event.render->drawRect(
                     g2,
                     event.style->getColorRole(ColorRole::Pressed));
             }
-            else if (_inside)
+            else if (_mouse.inside)
             {
                 event.render->drawRect(
                     g2,
@@ -192,7 +189,7 @@ namespace tl
                 }
                 const math::Vector2i pos(
                     g3.x() + p.size.checkBox + p.size.spacing + p.size.margin,
-                    g3.y() + g3.h() / 2 - p.size.textSize.y / 2 +
+                    g3.y() + g3.h() / 2 - p.size.textSize.h / 2 +
                     p.size.fontMetrics.ascender);
                 event.render->drawText(
                     p.draw.glyphs,

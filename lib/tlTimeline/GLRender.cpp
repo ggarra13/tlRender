@@ -4,6 +4,7 @@
 
 #include <tlTimeline/GLRenderPrivate.h>
 
+#include <tlGL/GL.h>
 #include <tlGL/Mesh.h>
 #include <tlGL/Util.h>
 
@@ -12,12 +13,6 @@
 #include <tlCore/Error.h>
 #include <tlCore/String.h>
 #include <tlCore/StringFormat.h>
-
-#if defined(TLRENDER_GL_DEBUG)
-#include <tlGladDebug/gl.h>
-#else // TLRENDER_GL_DEBUG
-#include <tlGlad/gl.h>
-#endif // TLRENDER_GL_DEBUG
 
 #include <array>
 #include <list>
@@ -130,7 +125,7 @@ namespace tl
             }
             default:
                 glActiveTexture(static_cast<GLenum>(GL_TEXTURE0 + offset));
-                textures[0]->copy(*image);
+                textures[0]->copy(image);
                 break;
             }
         }
@@ -155,11 +150,7 @@ namespace tl
                     out.push_back(gl::Texture::create(infoTmp, options));
 
                     glActiveTexture(static_cast<GLenum>(GL_TEXTURE0 + 1 + offset));
-                    const std::size_t w = info.size.w;
-                    const std::size_t h = info.size.h;
-                    const std::size_t w2 = w / 2;
-                    const std::size_t h2 = h / 2;
-                    infoTmp = image::Info(image::Size(w2, h2), image::PixelType::L_U8);
+                    infoTmp = image::Info(image::Size(info.size.w / 2, info.size.h / 2), image::PixelType::L_U8);
                     out.push_back(gl::Texture::create(infoTmp, options));
 
                     glActiveTexture(static_cast<GLenum>(GL_TEXTURE0 + 2 + offset));
@@ -173,10 +164,7 @@ namespace tl
                     out.push_back(gl::Texture::create(infoTmp, options));
 
                     glActiveTexture(static_cast<GLenum>(GL_TEXTURE0 + 1 + offset));
-                    const std::size_t w = info.size.w;
-                    const std::size_t h = info.size.h;
-                    const std::size_t w2 = w / 2;
-                    infoTmp = image::Info(image::Size(w2, h), image::PixelType::L_U8);
+                    infoTmp = image::Info(image::Size(info.size.w / 2, info.size.h), image::PixelType::L_U8);
                     out.push_back(gl::Texture::create(infoTmp, options));
 
                     glActiveTexture(static_cast<GLenum>(GL_TEXTURE0 + 2 + offset));
@@ -190,9 +178,7 @@ namespace tl
                     out.push_back(gl::Texture::create(infoTmp, options));
 
                     glActiveTexture(static_cast<GLenum>(GL_TEXTURE0 + 1 + offset));
-                    const std::size_t w = info.size.w;
-                    const std::size_t h = info.size.h;
-                    infoTmp = image::Info(image::Size(w, h), image::PixelType::L_U8);
+                    infoTmp = image::Info(info.size, image::PixelType::L_U8);
                     out.push_back(gl::Texture::create(infoTmp, options));
 
                     glActiveTexture(static_cast<GLenum>(GL_TEXTURE0 + 2 + offset));
@@ -206,11 +192,7 @@ namespace tl
                     out.push_back(gl::Texture::create(infoTmp, options));
 
                     glActiveTexture(static_cast<GLenum>(GL_TEXTURE0 + 1 + offset));
-                    const std::size_t w = info.size.w;
-                    const std::size_t h = info.size.h;
-                    const std::size_t w2 = w / 2;
-                    const std::size_t h2 = h / 2;
-                    infoTmp = image::Info(image::Size(w2, h2), image::PixelType::L_U16);
+                    infoTmp = image::Info(image::Size(info.size.w / 2, info.size.h / 2), image::PixelType::L_U16);
                     out.push_back(gl::Texture::create(infoTmp, options));
 
                     glActiveTexture(static_cast<GLenum>(GL_TEXTURE0 + 2 + offset));
@@ -224,10 +206,7 @@ namespace tl
                     out.push_back(gl::Texture::create(infoTmp, options));
 
                     glActiveTexture(static_cast<GLenum>(GL_TEXTURE0 + 1 + offset));
-                    const std::size_t w = info.size.w;
-                    const std::size_t h = info.size.h;
-                    const std::size_t w2 = w / 2;
-                    infoTmp = image::Info(image::Size(w2, h), image::PixelType::L_U16);
+                    infoTmp = image::Info(image::Size(info.size.w / 2, info.size.h), image::PixelType::L_U16);
                     out.push_back(gl::Texture::create(infoTmp, options));
 
                     glActiveTexture(static_cast<GLenum>(GL_TEXTURE0 + 2 + offset));
@@ -241,9 +220,7 @@ namespace tl
                     out.push_back(gl::Texture::create(infoTmp, options));
 
                     glActiveTexture(static_cast<GLenum>(GL_TEXTURE0 + 1 + offset));
-                    const std::size_t w = info.size.w;
-                    const std::size_t h = info.size.h;
-                    infoTmp = image::Info(image::Size(w, h), image::PixelType::L_U16);
+                    infoTmp = image::Info(info.size, image::PixelType::L_U16);
                     out.push_back(gl::Texture::create(infoTmp, options));
 
                     glActiveTexture(static_cast<GLenum>(GL_TEXTURE0 + 2 + offset));
@@ -371,7 +348,7 @@ namespace tl
         }
 
         void GLRender::begin(
-            const image::Size& renderSize,
+            const math::Size2i& renderSize,
             const ColorConfigOptions& colorConfigOptions,
             const LUTOptions& lutOptions,
             const RenderOptions& renderOptions)
@@ -611,12 +588,12 @@ namespace tl
             }
         }
 
-        image::Size GLRender::getRenderSize() const
+        math::Size2i GLRender::getRenderSize() const
         {
             return _p->renderSize;
         }
 
-        void GLRender::setRenderSize(const image::Size& value)
+        void GLRender::setRenderSize(const math::Size2i& value)
         {
             _p->renderSize = value;
         }
@@ -846,8 +823,17 @@ namespace tl
                     unsigned width = 0;
                     unsigned height = 0;
                     OCIO::GpuShaderDesc::TextureType channel = OCIO::GpuShaderDesc::TEXTURE_RGB_CHANNEL;
+                    OCIO::GpuShaderCreator::TextureDimensions dimensions = OCIO::GpuShaderDesc::TEXTURE_1D;
                     OCIO::Interpolation interpolation = OCIO::INTERP_LINEAR;
-                    p.colorConfigData->shaderDesc->getTexture(i, textureName, samplerName, width, height, channel, interpolation);
+                    p.colorConfigData->shaderDesc->getTexture(
+                        i,
+                        textureName,
+                        samplerName,
+                        width,
+                        height,
+                        channel,
+                        dimensions,
+                        interpolation);
                     if (!textureName ||
                         !*textureName ||
                         !samplerName ||
@@ -875,17 +861,18 @@ namespace tl
                         format = GL_RED;
                     }
                     glGenTextures(1, &textureId);
-                    if (height > 1)
+                    switch (dimensions)
                     {
-                        glBindTexture(GL_TEXTURE_2D, textureId);
-                        setTextureParameters(GL_TEXTURE_2D, interpolation);
-                        glTexImage2D(GL_TEXTURE_2D, 0, internalformat, width, height, 0, format, GL_FLOAT, values);
-                    }
-                    else
-                    {
+                    case OCIO::GpuShaderDesc::TEXTURE_1D:
                         glBindTexture(GL_TEXTURE_1D, textureId);
                         setTextureParameters(GL_TEXTURE_1D, interpolation);
                         glTexImage1D(GL_TEXTURE_1D, 0, internalformat, width, 0, format, GL_FLOAT, values);
+                        break;
+                    case OCIO::GpuShaderDesc::TEXTURE_2D:
+                        glBindTexture(GL_TEXTURE_2D, textureId);
+                        setTextureParameters(GL_TEXTURE_2D, interpolation);
+                        glTexImage2D(GL_TEXTURE_2D, 0, internalformat, width, height, 0, format, GL_FLOAT, values);
+                        break;
                     }
                     p.colorConfigData->textures.push_back(OCIOTexture(
                         textureId,
@@ -1001,8 +988,16 @@ namespace tl
                     unsigned width = 0;
                     unsigned height = 0;
                     OCIO::GpuShaderDesc::TextureType channel = OCIO::GpuShaderDesc::TEXTURE_RGB_CHANNEL;
+                    OCIO::GpuShaderDesc::TextureDimensions dimensions = OCIO::GpuShaderDesc::TEXTURE_1D;
                     OCIO::Interpolation interpolation = OCIO::INTERP_LINEAR;
-                    p.lutData->shaderDesc->getTexture(i, textureName, samplerName, width, height, channel, interpolation);
+                    p.lutData->shaderDesc->getTexture(
+                        i, textureName,
+                        samplerName,
+                        width,
+                        height,
+                        channel,
+                        dimensions,
+                        interpolation);
                     if (!textureName ||
                         !*textureName ||
                         !samplerName ||
@@ -1030,17 +1025,18 @@ namespace tl
                         format = GL_RED;
                     }
                     glGenTextures(1, &textureId);
-                    if (height > 1)
+                    switch (dimensions)
                     {
-                        glBindTexture(GL_TEXTURE_2D, textureId);
-                        setTextureParameters(GL_TEXTURE_2D, interpolation);
-                        glTexImage2D(GL_TEXTURE_2D, 0, internalformat, width, height, 0, format, GL_FLOAT, values);
-                    }
-                    else
-                    {
+                    case OCIO::GpuShaderDesc::TEXTURE_1D:
                         glBindTexture(GL_TEXTURE_1D, textureId);
                         setTextureParameters(GL_TEXTURE_1D, interpolation);
                         glTexImage1D(GL_TEXTURE_1D, 0, internalformat, width, 0, format, GL_FLOAT, values);
+                        break;
+                    case OCIO::GpuShaderDesc::TEXTURE_2D:
+                        glBindTexture(GL_TEXTURE_2D, textureId);
+                        setTextureParameters(GL_TEXTURE_2D, interpolation);
+                        glTexImage2D(GL_TEXTURE_2D, 0, internalformat, width, height, 0, format, GL_FLOAT, values);
+                        break;
                     }
                     p.lutData->textures.push_back(OCIOTexture(
                         textureId,

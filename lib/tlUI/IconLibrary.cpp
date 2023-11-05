@@ -4,7 +4,8 @@
 
 #include <tlUI/IconLibrary.h>
 
-#include <tlIO/IOSystem.h>
+#include <tlIO/PNG.h>
+#include <tlIO/System.h>
 
 #include <tlCore/StringFormat.h>
 #include <tlCore/LRUCache.h>
@@ -99,6 +100,8 @@ namespace
 #include "Resources/PlaybackStop_96.h"
 #include "Resources/Prev_192.h"
 #include "Resources/Prev_96.h"
+#include "Resources/Reload_192.h"
+#include "Resources/Reload_96.h"
 #include "Resources/Reset_192.h"
 #include "Resources/Reset_96.h"
 #include "Resources/Settings_192.h"
@@ -109,6 +112,8 @@ namespace
 #include "Resources/TimeEnd_96.h"
 #include "Resources/TimeStart_192.h"
 #include "Resources/TimeStart_96.h"
+#include "Resources/View_192.h"
+#include "Resources/View_96.h"
 #include "Resources/ViewFrame_192.h"
 #include "Resources/ViewFrame_96.h"
 #include "Resources/ViewZoom1To1_192.h"
@@ -147,6 +152,7 @@ namespace tl
                 std::string name;
                 float displayScale = 1.F;
                 std::promise<std::shared_ptr<image::Image> > promise;
+                std::shared_ptr<io::IRead> reader;
                 std::future<io::VideoData> future;
             };
             const size_t requestTimeout = 5;
@@ -164,6 +170,7 @@ namespace tl
 
             struct Thread
             {
+                std::shared_ptr<io::IPlugin> plugin;
                 std::condition_variable cv;
                 std::thread thread;
                 std::atomic<bool> running;
@@ -221,10 +228,12 @@ namespace tl
             p.iconData[std::make_pair("PlaybackStop", 96)] = PlaybackStop_96_png;
             p.iconData[std::make_pair("Prev", 96)] = Prev_96_png;
             p.iconData[std::make_pair("Reset", 96)] = Reset_96_png;
+            p.iconData[std::make_pair("Reload", 96)] = Reload_96_png;
             p.iconData[std::make_pair("Settings", 96)] = Settings_96_png;
             p.iconData[std::make_pair("SubMenuArrow", 96)] = SubMenuArrow_96_png;
             p.iconData[std::make_pair("TimeEnd", 96)] = TimeEnd_96_png;
             p.iconData[std::make_pair("TimeStart", 96)] = TimeStart_96_png;
+            p.iconData[std::make_pair("View", 96)] = View_96_png;
             p.iconData[std::make_pair("ViewFrame", 96)] = ViewFrame_96_png;
             p.iconData[std::make_pair("ViewZoom1To1", 96)] = ViewZoom1To1_96_png;
             p.iconData[std::make_pair("Volume", 96)] = Volume_96_png;
@@ -276,10 +285,12 @@ namespace tl
             p.iconData[std::make_pair("PlaybackStop", 192)] = PlaybackStop_192_png;
             p.iconData[std::make_pair("Prev", 192)] = Prev_192_png;
             p.iconData[std::make_pair("Reset", 192)] = Reset_192_png;
+            p.iconData[std::make_pair("Reload", 192)] = Reload_192_png;
             p.iconData[std::make_pair("Settings", 192)] = Settings_192_png;
             p.iconData[std::make_pair("SubMenuArrow", 192)] = SubMenuArrow_192_png;
             p.iconData[std::make_pair("TimeEnd", 192)] = TimeEnd_192_png;
             p.iconData[std::make_pair("TimeStart", 192)] = TimeStart_192_png;
+            p.iconData[std::make_pair("View", 192)] = View_192_png;
             p.iconData[std::make_pair("ViewFrame", 192)] = ViewFrame_192_png;
             p.iconData[std::make_pair("ViewZoom1To1", 192)] = ViewZoom1To1_192_png;
             p.iconData[std::make_pair("Volume", 192)] = Volume_192_png;
@@ -288,6 +299,8 @@ namespace tl
 
             p.mutex.cache.setMax(1000);
 
+            auto io = context->getSystem<io::System>();
+            p.thread.plugin = io->getPlugin<png::Plugin>();
             p.thread.running = true;
             p.thread.thread = std::thread(
                 [this]
@@ -329,20 +342,17 @@ namespace tl
                             {
                                 try
                                 {
-                                    if (auto context = p.context.lock())
+                                    const std::string name = string::Format("{0}_{1}.png").
+                                        arg(request->name).
+                                        arg(dpi);
+                                    request->reader = p.thread.plugin->read(
+                                        file::Path(name),
+                                        { file::MemoryRead(i->second.data(), i->second.size()) });
+                                    if (request->reader)
                                     {
-                                        auto io = context->getSystem<io::System>();
-                                        const std::string name = string::Format("{0}_{1}.png").
-                                            arg(request->name).
-                                            arg(dpi);
-                                        auto reader = io->read(
-                                            file::Path(name),
-                                            { file::MemoryRead(i->second.data(), i->second.size()) });
-                                        if (reader)
-                                        {
-                                            const auto ioInfo = reader->getInfo().get();
-                                            request->future = reader->readVideo(ioInfo.videoTime.start_time());
-                                        }
+                                        const auto ioInfo = request->reader->getInfo().get();
+                                        request->future = request->reader->readVideo(
+                                            ioInfo.videoTime.start_time());
                                     }
                                 }
                                 catch (const std::exception&)

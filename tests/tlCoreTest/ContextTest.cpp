@@ -40,6 +40,13 @@ namespace tl
                 {}
 
             public:
+                virtual ~TestSystem()
+                {
+                    std::stringstream ss;
+                    ss << "Ticks: " << _ticks;
+                    _log(ss.str());
+                }
+
                 static std::shared_ptr<TestSystem> create(const std::shared_ptr<system::Context>& context)
                 {
                     auto out = std::shared_ptr<TestSystem>(new TestSystem);
@@ -49,9 +56,8 @@ namespace tl
                 
                 void tick() override
                 {
-                    std::stringstream ss;
-                    ss << "Tick: " << _ticks;
-                    _log(ss.str());
+                    ISystem::tick();
+                    ++_ticks;
                 }
                 
                 std::chrono::milliseconds getTickTime() const override

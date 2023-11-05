@@ -20,10 +20,13 @@
 #include <tlIO/USD.h>
 #endif // TLRENDER_USD
 
-struct GLFWwindow;
-
 namespace tl
 {
+    namespace gl
+    {
+        class GLFWWindow;
+    }
+
     //! "tlbake" application.
     namespace bake
     {
@@ -31,27 +34,31 @@ namespace tl
         struct Options
         {
             otime::TimeRange inOutRange = time::invalidTimeRange;
-            image::Size renderSize;
+            math::Size2i renderSize;
             image::PixelType outputPixelType = image::PixelType::None;
             timeline::ColorConfigOptions colorConfigOptions;
             timeline::LUTOptions lutOptions;
             float sequenceDefaultSpeed = io::sequenceDefaultSpeed;
             int sequenceThreadCount = io::sequenceThreadCount;
+
 #if defined(TLRENDER_EXR)
             exr::Compression exrCompression = exr::Compression::ZIP;
             float exrDWACompressionLevel = 45.F;
 #endif // TLRENDER_EXR
+
 #if defined(TLRENDER_FFMPEG)
             std::string ffmpegWriteProfile;
             int ffmpegThreadCount = ffmpeg::threadCount;
 #endif // TLRENDER_FFMPEG
+
 #if defined(TLRENDER_USD)
-            size_t usdRenderWidth = usd::RenderOptions().renderWidth;
-            float usdComplexity = usd::RenderOptions().complexity;
-            usd::DrawMode usdDrawMode = usd::RenderOptions().drawMode;
-            bool usdEnableLighting = usd::RenderOptions().enableLighting;
-            size_t usdStageCache = usd::RenderOptions().stageCacheCount;
-            size_t usdDiskCache = usd::RenderOptions().diskCacheByteCount / memory::gigabyte;
+            int usdRenderWidth = 1920;
+            float usdComplexity = 1.F;
+            usd::DrawMode usdDrawMode = usd::DrawMode::ShadedSmooth;
+            bool usdEnableLighting = true;
+            bool usdSRGB = true;
+            size_t usdStageCache = 10;
+            size_t usdDiskCache = 0;
 #endif // TLRENDER_USD
         };
 
@@ -62,8 +69,7 @@ namespace tl
 
         protected:
             void _init(
-                int argc,
-                char* argv[],
+                const std::vector<std::string>&,
                 const std::shared_ptr<system::Context>&);
             App();
 
@@ -72,14 +78,15 @@ namespace tl
 
             //! Create a new application.
             static std::shared_ptr<App> create(
-                int argc,
-                char* argv[],
+                const std::vector<std::string>&,
                 const std::shared_ptr<system::Context>&);
 
             //! Run the application.
-            void run();
+            int run();
 
         private:
+            io::Options _getIOOptions() const;
+
             void _tick();
             void _printProgress();
 
@@ -88,13 +95,13 @@ namespace tl
             Options _options;
 
             std::shared_ptr<timeline::Timeline> _timeline;
-            image::Size _renderSize;
+            math::Size2i _renderSize;
             image::Info _outputInfo;
             otime::TimeRange _timeRange = time::invalidTimeRange;
             otime::RationalTime _inputTime = time::invalidTime;
             otime::RationalTime _outputTime = time::invalidTime;
 
-            GLFWwindow* _glfwWindow = nullptr;
+            std::shared_ptr<gl::GLFWWindow> _window;
             std::shared_ptr<io::IPlugin> _usdPlugin;
             std::shared_ptr<timeline::IRender> _render;
             std::shared_ptr<gl::OffscreenBuffer> _buffer;

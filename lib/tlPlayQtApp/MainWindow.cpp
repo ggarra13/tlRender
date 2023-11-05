@@ -10,22 +10,29 @@
 #include <tlPlayQtApp/ColorConfigModel.h>
 #include <tlPlayQtApp/ColorTool.h>
 #include <tlPlayQtApp/CompareActions.h>
-#include <tlPlayQtApp/CompareTool.h>
 #include <tlPlayQtApp/DevicesModel.h>
 #include <tlPlayQtApp/DevicesTool.h>
 #include <tlPlayQtApp/FileActions.h>
 #include <tlPlayQtApp/FilesTool.h>
+#include <tlPlayQtApp/FrameActions.h>
 #include <tlPlayQtApp/InfoTool.h>
 #include <tlPlayQtApp/MessagesTool.h>
 #include <tlPlayQtApp/PlaybackActions.h>
 #include <tlPlayQtApp/RenderActions.h>
 #include <tlPlayQtApp/SecondaryWindow.h>
-#include <tlPlayQtApp/SettingsObject.h>
 #include <tlPlayQtApp/SettingsTool.h>
 #include <tlPlayQtApp/SystemLogTool.h>
+#include <tlPlayQtApp/TimelineActions.h>
 #include <tlPlayQtApp/ToolActions.h>
 #include <tlPlayQtApp/ViewActions.h>
+#include <tlPlayQtApp/ViewTool.h>
 #include <tlPlayQtApp/WindowActions.h>
+
+#include <tlPlay/AudioModel.h>
+#include <tlPlay/ColorModel.h>
+#include <tlPlay/FilesModel.h>
+#include <tlPlay/Info.h>
+#include <tlPlay/Settings.h>
 
 #include <tlQtWidget/Spacer.h>
 #include <tlQtWidget/TimeLabel.h>
@@ -36,13 +43,7 @@
 
 #include <tlQt/OutputDevice.h>
 
-#include <tlPlay/AudioModel.h>
-#include <tlPlay/ColorModel.h>
-#include <tlPlay/FilesModel.h>
-
 #include <tlCore/File.h>
-#include <tlCore/String.h>
-#include <tlCore/StringFormat.h>
 
 #include <QComboBox>
 #include <QDoubleSpinBox>
@@ -53,6 +54,7 @@
 #include <QMenuBar>
 #include <QMimeData>
 #include <QMouseEvent>
+#include <QPointer>
 #include <QSharedPointer>
 #include <QSlider>
 #include <QStatusBar>
@@ -88,6 +90,8 @@ namespace tl
             ViewActions* viewActions = nullptr;
             RenderActions* renderActions = nullptr;
             PlaybackActions* playbackActions = nullptr;
+            FrameActions* frameActions = nullptr;
+            TimelineActions* timelineActions = nullptr;
             AudioActions* audioActions = nullptr;
             ToolActions* toolActions = nullptr;
 
@@ -100,7 +104,7 @@ namespace tl
             QComboBox* timeUnitsComboBox = nullptr;
             QSlider* volumeSlider = nullptr;
             FilesTool* filesTool = nullptr;
-            CompareTool* compareTool = nullptr;
+            ViewTool* viewTool = nullptr;
             ColorTool* colorTool = nullptr;
             InfoTool* infoTool = nullptr;
             AudioTool* audioTool = nullptr;
@@ -111,12 +115,13 @@ namespace tl
             QLabel* infoLabel = nullptr;
             QLabel* cacheLabel = nullptr;
             QStatusBar* statusBar = nullptr;
-            SecondaryWindow* secondaryWindow = nullptr;
+            QPointer<SecondaryWindow> secondaryWindow;
 
             std::shared_ptr<observer::ListObserver<std::shared_ptr<play::FilesModelItem> > > filesObserver;
             std::shared_ptr<observer::ValueObserver<int> > aIndexObserver;
             std::shared_ptr<observer::ListObserver<int> > bIndexesObserver;
             std::shared_ptr<observer::ValueObserver<timeline::CompareOptions> > compareOptionsObserver;
+            std::shared_ptr<observer::ValueObserver<timeline::BackgroundOptions> > backgroundOptionsObserver;
             std::shared_ptr<observer::ValueObserver<timeline::ColorConfigOptions> > colorConfigOptionsObserver;
             std::shared_ptr<observer::ValueObserver<timeline::LUTOptions> > lutOptionsObserver;
             std::shared_ptr<observer::ValueObserver<timeline::DisplayOptions> > displayOptionsObserver;
@@ -135,8 +140,45 @@ namespace tl
 
             p.app = app;
 
+            auto settings = app->settings();
+            settings->setDefaultValue("MainWindow/Size", math::Size2i(1920, 1080));
+            settings->setDefaultValue("MainWindow/FloatOnTop", false);
+            settings->setDefaultValue("MainWindow/SecondaryFloatOnTop", false);
+            settings->setDefaultValue("Timeline/Editable", true);
+            settings->setDefaultValue("Timeline/EditAssociatedClips",
+                timelineui::ItemOptions().editAssociatedClips);
+            settings->setDefaultValue("Timeline/FrameView", true);
+            settings->setDefaultValue("Timeline/StopOnScrub", true);
+            settings->setDefaultValue("Timeline/Thumbnails",
+                timelineui::ItemOptions().thumbnails);
+            settings->setDefaultValue("Timeline/ThumbnailsSize",
+                timelineui::ItemOptions().thumbnailHeight);
+            settings->setDefaultValue("Timeline/Transitions",
+                timelineui::ItemOptions().showTransitions);
+            settings->setDefaultValue("Timeline/Markers",
+                timelineui::ItemOptions().showMarkers);
+
             setFocusPolicy(Qt::StrongFocus);
             setAcceptDrops(true);
+
+            auto context = app->getContext();
+            p.timelineViewport = new qtwidget::TimelineViewport(context);
+
+            p.timelineWidget = new qtwidget::TimelineWidget(
+                ui::Style::create(context),
+                app->timeUnitsModel(),
+                context);
+            p.timelineWidget->setEditable(settings->getValue<bool>("Timeline/Editable"));
+            p.timelineWidget->setFrameView(settings->getValue<bool>("Timeline/FrameView"));
+            p.timelineWidget->setScrollBarsVisible(false);
+            p.timelineWidget->setStopOnScrub(settings->getValue<bool>("Timeline/StopOnScrub"));
+            timelineui::ItemOptions itemOptions;
+            itemOptions.editAssociatedClips = settings->getValue<bool>("Timeline/EditAssociatedClips");
+            itemOptions.thumbnails = settings->getValue<bool>("Timeline/Thumbnails");
+            itemOptions.thumbnailHeight = settings->getValue<int>("Timeline/ThumbnailsSize");
+            itemOptions.showTransitions = settings->getValue<bool>("Timeline/Transitions");
+            itemOptions.showMarkers = settings->getValue<bool>("Timeline/Markers");
+            p.timelineWidget->setItemOptions(itemOptions);
 
             p.fileActions = new FileActions(app, this);
             p.compareActions = new CompareActions(app, this);
@@ -144,6 +186,8 @@ namespace tl
             p.viewActions = new ViewActions(app, this);
             p.renderActions = new RenderActions(app, this);
             p.playbackActions = new PlaybackActions(app, this);
+            p.frameActions = new FrameActions(app, this);
+            p.timelineActions = new TimelineActions(this, this);
             p.audioActions = new AudioActions(app, this);
             p.toolActions = new ToolActions(app, this);
 
@@ -154,6 +198,8 @@ namespace tl
             menuBar->addMenu(p.viewActions->menu());
             menuBar->addMenu(p.renderActions->menu());
             menuBar->addMenu(p.playbackActions->menu());
+            menuBar->addMenu(p.frameActions->menu());
+            menuBar->addMenu(p.timelineActions->menu());
             menuBar->addMenu(p.audioActions->menu());
             menuBar->addMenu(p.toolActions->menu());
             setMenuBar(menuBar);
@@ -214,15 +260,8 @@ namespace tl
             toolsToolBar->setFloatable(false);
             addToolBar(Qt::TopToolBarArea, toolsToolBar);
 
-            auto context = app->getContext();
-            p.timelineViewport = new qtwidget::TimelineViewport(context);
             setCentralWidget(p.timelineViewport);
 
-            p.timelineWidget = new qtwidget::TimelineWidget(
-                ui::Style::create(context),
-                app->timeUnitsModel(),
-                context);
-            p.timelineWidget->setScrollBarsVisible(false);
             auto timelineDockWidget = new QDockWidget;
             timelineDockWidget->setObjectName("Timeline");
             timelineDockWidget->setWindowTitle(tr("Timeline"));
@@ -269,10 +308,10 @@ namespace tl
             bottomToolBar->addAction(p.playbackActions->actions()["Reverse"]);
             bottomToolBar->addAction(p.playbackActions->actions()["Stop"]);
             bottomToolBar->addAction(p.playbackActions->actions()["Forward"]);
-            bottomToolBar->addAction(p.playbackActions->actions()["Start"]);
-            bottomToolBar->addAction(p.playbackActions->actions()["FramePrev"]);
-            bottomToolBar->addAction(p.playbackActions->actions()["FrameNext"]);
-            bottomToolBar->addAction(p.playbackActions->actions()["End"]);
+            bottomToolBar->addAction(p.frameActions->actions()["Start"]);
+            bottomToolBar->addAction(p.frameActions->actions()["FramePrev"]);
+            bottomToolBar->addAction(p.frameActions->actions()["FrameNext"]);
+            bottomToolBar->addAction(p.frameActions->actions()["End"]);
             bottomToolBar->addWidget(p.currentTimeSpinBox);
             bottomToolBar->addWidget(p.speedSpinBox);
             bottomToolBar->addWidget(p.speedButton);
@@ -292,19 +331,19 @@ namespace tl
             p.windowActions->menu()->addAction(timelineDockWidget->toggleViewAction());
             p.windowActions->menu()->addAction(bottomToolBar->toggleViewAction());
 
-            p.filesTool = new FilesTool(p.fileActions->actions(), app);
+            p.filesTool = new FilesTool(app);
             auto filesDockWidget = new FilesDockWidget(p.filesTool);
             filesDockWidget->hide();
             p.toolActions->menu()->addAction(filesDockWidget->toggleViewAction());
             toolsToolBar->addAction(filesDockWidget->toggleViewAction());
             addDockWidget(Qt::RightDockWidgetArea, filesDockWidget);
 
-            p.compareTool = new CompareTool(p.compareActions->actions(), app);
-            auto compareDockWidget = new CompareDockWidget(p.compareTool);
-            compareDockWidget->hide();
-            p.toolActions->menu()->addAction(compareDockWidget->toggleViewAction());
-            toolsToolBar->addAction(compareDockWidget->toggleViewAction());
-            addDockWidget(Qt::RightDockWidgetArea, compareDockWidget);
+            p.viewTool = new ViewTool(app);
+            auto viewDockWidget = new ViewDockWidget(p.viewTool);
+            viewDockWidget->hide();
+            p.toolActions->menu()->addAction(viewDockWidget->toggleViewAction());
+            toolsToolBar->addAction(viewDockWidget->toggleViewAction());
+            addDockWidget(Qt::RightDockWidgetArea, viewDockWidget);
 
             p.colorTool = new ColorTool(app);
             auto colorDockWidget = new ColorDockWidget(p.colorTool);
@@ -368,7 +407,6 @@ namespace tl
 
             p.timelineViewport->setFocus();
 
-            _timelinePlayersUpdate();
             _widgetUpdate();
 
             p.filesObserver = observer::ListObserver<std::shared_ptr<play::FilesModelItem> >::create(
@@ -392,6 +430,13 @@ namespace tl
             p.compareOptionsObserver = observer::ValueObserver<timeline::CompareOptions>::create(
                 app->filesModel()->observeCompareOptions(),
                 [this](const timeline::CompareOptions&)
+                {
+                    _widgetUpdate();
+                });
+
+            p.backgroundOptionsObserver = observer::ValueObserver<timeline::BackgroundOptions>::create(
+                app->viewportModel()->observeBackgroundOptions(),
+                [this](const timeline::BackgroundOptions& value)
                 {
                     _widgetUpdate();
                 });
@@ -544,7 +589,7 @@ namespace tl
                 });
 
             connect(
-                p.playbackActions->actions()["FocusCurrentFrame"],
+                p.frameActions->actions()["FocusCurrentFrame"],
                 &QAction::triggered,
                 [this]
                 {
@@ -554,10 +599,17 @@ namespace tl
 
             connect(
                 p.timelineWidget,
+                &qtwidget::TimelineWidget::editableChanged,
+                [this](bool value)
+                {
+                    _p->timelineActions->actions()["Editable"]->setChecked(value);
+                });
+            connect(
+                p.timelineWidget,
                 &qtwidget::TimelineWidget::frameViewChanged,
                 [this](bool value)
                 {
-                    _p->playbackActions->actions()["Timeline/FrameView"]->setChecked(value);
+                    _p->timelineActions->actions()["FrameView"]->setChecked(value);
                 });
 
             connect(
@@ -569,6 +621,7 @@ namespace tl
                     {
                         _p->timelinePlayers[0]->setPlayback(timeline::Playback::Stop);
                         _p->timelinePlayers[0]->seek(value);
+                        _p->currentTimeSpinBox->setValue(_p->timelinePlayers[0]->currentTime());
                     }
                 });
 
@@ -596,17 +649,6 @@ namespace tl
                 p.volumeSlider,
                 SIGNAL(valueChanged(int)),
                 SLOT(_volumeCallback(int)));
-
-            connect(
-                p.audioTool,
-                &AudioTool::audioOffsetChanged,
-                [this](double value)
-                {
-                    if (!_p->timelinePlayers.empty())
-                    {
-                        _p->timelinePlayers[0]->setAudioOffset(value);
-                    }
-                });
 
             connect(
                 p.timelineViewport,
@@ -639,6 +681,14 @@ namespace tl
                 });
 
             connect(
+                app,
+                &App::activePlayersChanged,
+                [this](const QVector<QSharedPointer<qt::TimelinePlayer> >& value)
+                {
+                    _playersUpdate(value);
+                });
+
+            connect(
                 app->timeObject(),
                 &qt::TimeObject::timeUnitsChanged,
                 [this](timeline::TimeUnits value)
@@ -647,79 +697,18 @@ namespace tl
                         static_cast<int>(value));
                 });
 
-            connect(
-                app->settingsObject(),
-                &SettingsObject::valueChanged,
-                [this](const QString& name, const QVariant& value)
-                {
-                    if ("Timeline/FrameView" == name)
-                    {
-                        _p->timelineWidget->setFrameView(value.toBool());
-                    }
-                    else if ("Timeline/StopOnScrub" == name)
-                    {
-                        _p->timelineWidget->setStopOnScrub(value.toBool());
-                    }
-                    else if ("Timeline/Thumbnails" == name)
-                    {
-                        auto itemOptions = _p->timelineWidget->itemOptions();
-                        itemOptions.thumbnails = value.toBool();
-                        _p->timelineWidget->setItemOptions(itemOptions);
-                    }
-                    else if ("Timeline/ThumbnailsSize" == name)
-                    {
-                        auto itemOptions = _p->timelineWidget->itemOptions();
-                        itemOptions.thumbnailHeight = value.toInt();
-                        itemOptions.waveformHeight = itemOptions.thumbnailHeight / 2;
-                        _p->timelineWidget->setItemOptions(itemOptions);
-                    }
-                    else if ("Timeline/Transitions" == name)
-                    {
-                        auto itemOptions = _p->timelineWidget->itemOptions();
-                        itemOptions.showTransitions = value.toBool();
-                        _p->timelineWidget->setItemOptions(itemOptions);
-                    }
-                    else if ("Timeline/Markers" == name)
-                    {
-                        auto itemOptions = _p->timelineWidget->itemOptions();
-                        itemOptions.showMarkers = value.toBool();
-                        _p->timelineWidget->setItemOptions(itemOptions);
-                    }
-                });
-
-            auto settingsObject = app->settingsObject();
-            settingsObject->setDefaultValue("MainWindow/geometry", QByteArray());
-            auto ba = settingsObject->value("MainWindow/geometry").toByteArray();
-            if (!ba.isEmpty())
-            {
-                restoreGeometry(ba);
-            }
-            else
-            {
-                resize(1280, 720);
-            }
-            settingsObject->setDefaultValue("MainWindow/windowState", QByteArray());
-            ba = settingsObject->value("MainWindow/windowState").toByteArray();
-            if (!ba.isEmpty())
-            {
-                restoreState(ba);
-            }
-            settingsObject->setDefaultValue("MainWindow/FloatOnTop", false);
-            p.floatOnTop = settingsObject->value("MainWindow/FloatOnTop").toBool();
+            const math::Size2i windowSize = settings->getValue<math::Size2i>("MainWindow/Size");
+            resize(windowSize.w, windowSize.h);
+            p.floatOnTop = settings->getValue<bool>("MainWindow/FloatOnTop");
             if (p.floatOnTop)
             {
                 setWindowFlags(windowFlags() | Qt::WindowStaysOnTopHint);
-            }
-            else
-            {
-                setWindowFlags(windowFlags() & ~Qt::WindowStaysOnTopHint);
             }
             {
                 QSignalBlocker blocker(p.windowActions->actions()["FloatOnTop"]);
                 p.windowActions->actions()["FloatOnTop"]->setChecked(p.floatOnTop);
             }
-            settingsObject->setDefaultValue("MainWindow/SecondaryFloatOnTop", false);
-            p.secondaryFloatOnTop = settingsObject->value("MainWindow/SecondaryFloatOnTop").toBool();
+            p.secondaryFloatOnTop = settings->getValue<bool>("MainWindow/SecondaryFloatOnTop");
             {
                 QSignalBlocker blocker(p.windowActions->actions()["SecondaryFloatOnTop"]);
                 p.windowActions->actions()["SecondaryFloatOnTop"]->setChecked(p.secondaryFloatOnTop);
@@ -729,70 +718,41 @@ namespace tl
         MainWindow::~MainWindow()
         {
             TLRENDER_P();
-            auto settingsObject = p.app->settingsObject();
-            settingsObject->setValue("MainWindow/geometry", saveGeometry());
-            settingsObject->setValue("MainWindow/windowState", saveState());
-            settingsObject->setValue("MainWindow/FloatOnTop", p.floatOnTop);
-            settingsObject->setValue("MainWindow/SecondaryFloatOnTop", p.secondaryFloatOnTop);
+            auto settings = p.app->settings();
+            settings->setValue("MainWindow/Size", math::Size2i(width(), height()));
+            settings->setValue("MainWindow/FloatOnTop", p.floatOnTop);
+            settings->setValue("MainWindow/SecondaryFloatOnTop", p.secondaryFloatOnTop);
+            settings->setValue("Timeline/Editable",
+                p.timelineWidget->isEditable());
+            const auto& timelineItemOptions = p.timelineWidget->itemOptions();
+            settings->setValue("Timeline/EditAssociatedClips",
+                timelineItemOptions.editAssociatedClips);
+            settings->setValue("Timeline/FrameView",
+                p.timelineWidget->hasFrameView());
+            settings->setValue("Timeline/StopOnScrub",
+                p.timelineWidget->hasStopOnScrub());
+            settings->setValue("Timeline/Thumbnails",
+                timelineItemOptions.thumbnails);
+            settings->setValue("Timeline/ThumbnailsSize",
+                timelineItemOptions.thumbnailHeight);
+            settings->setValue("Timeline/Transitions",
+                timelineItemOptions.showTransitions);
+            settings->setValue("Timeline/Markers",
+                timelineItemOptions.showMarkers);
             if (p.secondaryWindow)
             {
-                delete p.secondaryWindow;
-                p.secondaryWindow = nullptr;
+                p.secondaryWindow->close();
             }
         }
 
-        void MainWindow::setTimelinePlayers(const QVector<QSharedPointer<qt::TimelinePlayer> >& timelinePlayers)
+        qtwidget::TimelineWidget* MainWindow::timelineWidget() const
         {
-            TLRENDER_P();
-            if (!p.timelinePlayers.empty() && p.timelinePlayers[0])
-            {
-                disconnect(
-                    p.timelinePlayers[0].get(),
-                    SIGNAL(speedChanged(double)),
-                    this,
-                    SLOT(_speedCallback(double)));
-                disconnect(
-                    p.timelinePlayers[0].get(),
-                    SIGNAL(playbackChanged(tl::timeline::Playback)),
-                    this,
-                    SLOT(_playbackCallback(tl::timeline::Playback)));
-                disconnect(
-                    p.timelinePlayers[0].get(),
-                    SIGNAL(currentTimeChanged(const otime::RationalTime&)),
-                    this,
-                    SLOT(_currentTimeCallback(const otime::RationalTime&)));
-                disconnect(
-                    p.timelinePlayers[0].get(),
-                    SIGNAL(audioOffsetChanged(double)),
-                    p.audioTool,
-                    SLOT(setAudioOffset(double)));
-            }
+            return _p->timelineWidget;
+        }
 
-            p.timelinePlayers = timelinePlayers;
-
-            if (!p.timelinePlayers.empty() && p.timelinePlayers[0])
-            {
-                connect(
-                    p.timelinePlayers[0].get(),
-                    SIGNAL(speedChanged(double)),
-                    SLOT(_speedCallback(double)));
-                connect(
-                    p.timelinePlayers[0].get(),
-                    SIGNAL(playbackChanged(tl::timeline::Playback)),
-                    SLOT(_playbackCallback(tl::timeline::Playback)));
-                connect(
-                    p.timelinePlayers[0].get(),
-                    SIGNAL(currentTimeChanged(const otime::RationalTime&)),
-                    SLOT(_currentTimeCallback(const otime::RationalTime&)));
-                connect(
-                    p.timelinePlayers[0].get(),
-                    SIGNAL(audioOffsetChanged(double)),
-                    p.audioTool,
-                    SLOT(setAudioOffset(double)));
-            }
-
-            _timelinePlayersUpdate();
-            _widgetUpdate();
+        qtwidget::TimelineViewport* MainWindow::timelineViewport() const
+        {
+            return _p->timelineViewport;
         }
 
         void MainWindow::closeEvent(QCloseEvent*)
@@ -800,8 +760,7 @@ namespace tl
             TLRENDER_P();
             if (p.secondaryWindow)
             {
-                delete p.secondaryWindow;
-                p.secondaryWindow = nullptr;
+                p.secondaryWindow->close();
             }
         }
 
@@ -849,6 +808,7 @@ namespace tl
             if (value && !p.secondaryWindow)
             {
                 p.secondaryWindow = new SecondaryWindow(p.app);
+                p.secondaryWindow->viewport()->setBackgroundOptions(p.app->viewportModel()->getBackgroundOptions());
                 auto colorModel = p.app->colorModel();
                 p.secondaryWindow->viewport()->setColorConfigOptions(colorModel->getColorConfigOptions());
                 p.secondaryWindow->viewport()->setLUTOptions(colorModel->getLUTOptions());
@@ -892,15 +852,13 @@ namespace tl
             }
             else if (!value && p.secondaryWindow)
             {
-                delete p.secondaryWindow;
-                p.secondaryWindow = nullptr;
+                p.secondaryWindow->close();
             }
         }
 
         void MainWindow::_secondaryWindowDestroyedCallback()
         {
             TLRENDER_P();
-            p.secondaryWindow = nullptr;
             {
                 QSignalBlocker blocker(p.windowActions->actions()["Secondary"]);
                 p.windowActions->actions()["Secondary"]->setChecked(false);
@@ -930,16 +888,49 @@ namespace tl
             p.app->audioModel()->setVolume(value / static_cast<float>(sliderSteps));
         }
 
-        void MainWindow::_timelinePlayersUpdate()
+        void MainWindow::_playersUpdate(const QVector<QSharedPointer<qt::TimelinePlayer> >& timelinePlayers)
         {
             TLRENDER_P();
-            p.playbackActions->setTimelinePlayers(p.timelinePlayers);
-            p.timelineViewport->setTimelinePlayers(p.timelinePlayers);
-            if (p.secondaryWindow)
+            if (!p.timelinePlayers.empty() && p.timelinePlayers[0])
             {
-                p.secondaryWindow->viewport()->setTimelinePlayers(p.timelinePlayers);
+                disconnect(
+                    p.timelinePlayers[0].get(),
+                    SIGNAL(speedChanged(double)),
+                    this,
+                    SLOT(_speedCallback(double)));
+                disconnect(
+                    p.timelinePlayers[0].get(),
+                    SIGNAL(playbackChanged(tl::timeline::Playback)),
+                    this,
+                    SLOT(_playbackCallback(tl::timeline::Playback)));
+                disconnect(
+                    p.timelinePlayers[0].get(),
+                    SIGNAL(currentTimeChanged(const otime::RationalTime&)),
+                    this,
+                    SLOT(_currentTimeCallback(const otime::RationalTime&)));
             }
-            p.app->outputDevice()->setTimelinePlayers(p.timelinePlayers);
+
+            p.timelinePlayers = timelinePlayers;
+
+            if (!p.timelinePlayers.empty() && p.timelinePlayers[0])
+            {
+                connect(
+                    p.timelinePlayers[0].get(),
+                    SIGNAL(speedChanged(double)),
+                    SLOT(_speedCallback(double)));
+                connect(
+                    p.timelinePlayers[0].get(),
+                    SIGNAL(playbackChanged(tl::timeline::Playback)),
+                    SLOT(_playbackCallback(tl::timeline::Playback)));
+                connect(
+                    p.timelinePlayers[0].get(),
+                    SIGNAL(currentTimeChanged(const otime::RationalTime&)),
+                    SLOT(_currentTimeCallback(const otime::RationalTime&)));
+            }
+
+            p.timelineViewport->setTimelinePlayers(p.timelinePlayers);
+
+            _widgetUpdate();
         }
 
         void MainWindow::_widgetUpdate()
@@ -993,10 +984,15 @@ namespace tl
                 }
             }
 
-            p.viewActions->actions()["Frame"]->setChecked(p.timelineViewport->hasFrameView());
+            p.viewActions->actions()["Frame"]->setChecked(
+                p.timelineViewport->hasFrameView());
 
+            auto viewportModel = p.app->viewportModel();
+            p.timelineViewport->setBackgroundOptions(
+                viewportModel->getBackgroundOptions());
             auto colorModel = p.app->colorModel();
-            p.timelineViewport->setColorConfigOptions(colorModel->getColorConfigOptions());
+            p.timelineViewport->setColorConfigOptions(
+                colorModel->getColorConfigOptions());
             p.timelineViewport->setLUTOptions(colorModel->getLUTOptions());
             std::vector<timeline::ImageOptions> imageOptions;
             std::vector<timeline::DisplayOptions> displayOptions;
@@ -1007,22 +1003,13 @@ namespace tl
             }
             p.timelineViewport->setImageOptions(imageOptions);
             p.timelineViewport->setDisplayOptions(displayOptions);
-            p.timelineViewport->setCompareOptions(p.app->filesModel()->getCompareOptions());
+            p.timelineViewport->setCompareOptions(
+                p.app->filesModel()->getCompareOptions());
 
             p.timelineWidget->setPlayer(
                 (!p.timelinePlayers.empty() && p.timelinePlayers[0]) ?
                 p.timelinePlayers[0]->player() :
                 nullptr);
-            auto settingsObject = p.app->settingsObject();
-            p.timelineWidget->setFrameView(settingsObject->value("Timeline/FrameView").toBool());
-            p.timelineWidget->setStopOnScrub(settingsObject->value("Timeline/StopOnScrub").toBool());
-            auto itemOptions = p.timelineWidget->itemOptions();
-            itemOptions.thumbnails = settingsObject->value("Timeline/Thumbnails").toBool();
-            itemOptions.thumbnailHeight = settingsObject->value("Timeline/ThumbnailsSize").toInt();
-            itemOptions.waveformHeight = itemOptions.thumbnailHeight / 2;
-            itemOptions.showTransitions = settingsObject->value("Timeline/Transitions").toBool();
-            itemOptions.showMarkers = settingsObject->value("Timeline/Markers").toBool();
-            p.timelineWidget->setItemOptions(itemOptions);
 
             {
                 const QSignalBlocker blocker(p.volumeSlider);
@@ -1035,73 +1022,21 @@ namespace tl
                 p.timelinePlayers[0]->ioInfo() :
                 io::Info());
 
-            p.audioTool->setAudioOffset(
-                (!p.timelinePlayers.empty() && p.timelinePlayers[0])
-                ? p.timelinePlayers[0]->audioOffset() :
-                0.0);
-
-            std::vector<std::string> infoLabel;
-            std::vector<std::string> infoTooltip;
+            std::string infoLabel;
+            std::string infoToolTip;
             if (!p.timelinePlayers.empty() && p.timelinePlayers[0])
             {
-                const std::string fileName = p.timelinePlayers[0]->path().get(-1, false);
-                std::string fileNameLabel = fileName;
-                if (fileNameLabel.size() > infoLabelMax)
-                {
-                    fileNameLabel.replace(infoLabelMax, fileNameLabel.size() - infoLabelMax, "...");
-                }
-                infoLabel.push_back(fileNameLabel);
-                infoTooltip.push_back(fileName);
-
+                const file::Path& path = p.timelinePlayers[0]->path();
                 const io::Info& ioInfo = p.timelinePlayers[0]->ioInfo();
-                if (!ioInfo.video.empty())
-                {
-                    {
-                        std::stringstream ss;
-                        ss.precision(2);
-                        ss << "V:" <<
-                            ioInfo.video[0].size.w << "x" <<
-                            ioInfo.video[0].size.h << ":" <<
-                            std::fixed << ioInfo.video[0].size.getAspect() << " " <<
-                            ioInfo.video[0].pixelType;
-                        infoLabel.push_back(ss.str());
-                    }
-                    {
-                        std::stringstream ss;
-                        ss.precision(2);
-                        ss << "Video :" <<
-                            ioInfo.video[0].size.w << "x" <<
-                            ioInfo.video[0].size.h << ":" <<
-                            std::fixed << ioInfo.video[0].size.getAspect() << " " <<
-                            ioInfo.video[0].pixelType;
-                        infoTooltip.push_back(ss.str());
-                    }
-                }
-                if (ioInfo.audio.isValid())
-                {
-                    {
-                        std::stringstream ss;
-                        ss << "A: " <<
-                            static_cast<size_t>(ioInfo.audio.channelCount) << " " <<
-                            ioInfo.audio.dataType << " " <<
-                            ioInfo.audio.sampleRate;
-                        infoLabel.push_back(ss.str());
-                    }
-                    {
-                        std::stringstream ss;
-                        ss << "Audio: " <<
-                            static_cast<size_t>(ioInfo.audio.channelCount) << " " <<
-                            ioInfo.audio.dataType << " " <<
-                            ioInfo.audio.sampleRate;
-                        infoTooltip.push_back(ss.str());
-                    }
-                }
+                infoLabel = play::infoLabel(path, ioInfo);
+                infoToolTip = play::infoToolTip(path, ioInfo);
             }
-            p.infoLabel->setText(QString::fromUtf8(string::join(infoLabel, ", ").c_str()));
-            p.infoLabel->setToolTip(QString::fromUtf8(string::join(infoTooltip, "\n").c_str()));
+            p.infoLabel->setText(QString::fromUtf8(infoLabel.c_str()));
+            p.infoLabel->setToolTip(QString::fromUtf8(infoToolTip.c_str()));
 
             if (p.secondaryWindow)
             {
+                p.secondaryWindow->viewport()->setBackgroundOptions(viewportModel->getBackgroundOptions());
                 p.secondaryWindow->viewport()->setColorConfigOptions(colorModel->getColorConfigOptions());
                 p.secondaryWindow->viewport()->setLUTOptions(colorModel->getLUTOptions());
                 p.secondaryWindow->viewport()->setImageOptions(imageOptions);

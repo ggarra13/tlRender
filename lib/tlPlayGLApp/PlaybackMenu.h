@@ -40,13 +40,10 @@ namespace tl
                 const std::shared_ptr<system::Context>&,
                 const std::shared_ptr<IWidget>& parent = nullptr);
 
-            void close() override;
-
         private:
             void _setPlayer(const std::shared_ptr<timeline::Player>&);
             void _playbackUpdate();
             void _loopUpdate();
-            void _thumbnailsSizeUpdate();
 
             TLRENDER_PRIVATE();
         };

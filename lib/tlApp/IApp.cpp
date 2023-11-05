@@ -13,43 +13,67 @@ namespace tl
 {
     namespace app
     {
+        std::vector<std::string> convert(int argc, char* argv[])
+        {
+            std::vector<std::string> out;
+            for (int i = 0; i < argc; ++i)
+            {
+                out.push_back(argv[i]);
+            }
+            return out;
+        }
+
+        std::vector<std::string> convert(int argc, wchar_t* argv[])
+        {
+            std::vector<std::string> out;
+            for (int i = 0; i < argc; ++i)
+            {
+                out.push_back(string::fromWide(argv[i]));
+            }
+            return out;
+        }
+
         struct IApp::Private
         {
-            std::vector<std::string> cmdLine;
-            std::string cmdLineName;
-            std::string cmdLineSummary;
-            std::vector<std::shared_ptr<ICmdLineArg> > cmdLineArgs;
-            std::vector<std::shared_ptr<ICmdLineOption> > cmdLineOptions;
+            struct CmdLineData
+            {
+                std::vector<std::string> argv;
+                std::string name;
+                std::string summary;
+                std::vector<std::shared_ptr<ICmdLineArg> > args;
+                std::vector<std::shared_ptr<ICmdLineOption> > options;
+            };
+            CmdLineData cmdLine;
+
             std::shared_ptr<observer::ListObserver<log::Item> > logObserver;
         };
 
         void IApp::_init(
-            int argc,
-            char* argv[],
+            const std::vector<std::string>& argv,
             const std::shared_ptr<system::Context>& context,
             const std::string& cmdLineName,
             const std::string& cmdLineSummary,
-            const std::vector<std::shared_ptr<ICmdLineArg> >& args,
-            const std::vector<std::shared_ptr<ICmdLineOption> >& options)
+            const std::vector<std::shared_ptr<ICmdLineArg> >& cmdLineArgs,
+            const std::vector<std::shared_ptr<ICmdLineOption> >& cmdLineOptions)
         {
             TLRENDER_P();
 
             _context = context;
 
             // Parse the command line.
-            for (int i = 1; i < argc; ++i)
+            for (size_t i = 1; i < argv.size(); ++i)
             {
-                p.cmdLine.push_back(argv[i]);
+                p.cmdLine.argv.push_back(argv[i]);
             }
-            p.cmdLineName = cmdLineName;
-            p.cmdLineSummary = cmdLineSummary;
-            p.cmdLineArgs = args;
-            p.cmdLineOptions = options;
-            p.cmdLineOptions.push_back(CmdLineFlagOption::create(
+            p.cmdLine.name = cmdLineName;
+            p.cmdLine.summary = cmdLineSummary;
+            p.cmdLine.args = cmdLineArgs;
+            p.cmdLine.options = cmdLineOptions;
+            p.cmdLine.options.push_back(CmdLineFlagOption::create(
                 _options.log,
                 { "-log" },
                 "Print the log to the console."));
-            p.cmdLineOptions.push_back(CmdLineFlagOption::create(
+            p.cmdLine.options.push_back(CmdLineFlagOption::create(
                 _options.help,
                 { "-help", "-h", "--help", "--h" },
                 "Show this message."));
@@ -91,9 +115,14 @@ namespace tl
             return _exit;
         }
 
+        const std::vector<std::string> IApp::getUnusedArgs() const
+        {
+            return _unusedArgs;
+        }
+
         void IApp::_log(const std::string& value, log::Type type)
         {
-            _context->log(_p->cmdLineName, value, type);
+            _context->log(_p->cmdLine.name, value, type);
         }
 
         void IApp::_print(const std::string& value)
@@ -114,11 +143,11 @@ namespace tl
         int IApp::_parseCmdLine()
         {
             TLRENDER_P();
-            for (const auto& i : p.cmdLineOptions)
+            for (const auto& i : p.cmdLine.options)
             {
                 try
                 {
-                    i->parse(p.cmdLine);
+                    i->parse(p.cmdLine.argv);
                 }
                 catch (const std::exception& e)
                 {
@@ -127,11 +156,16 @@ namespace tl
                         arg(e.what()));
                 }
             }
+            bool   unusedArgs   = false;
             size_t requiredArgs = 0;
             size_t optionalArgs = 0;
-            for (const auto& i : p.cmdLineArgs)
+            for (const auto& i : p.cmdLine.args)
             {
-                if (!i->isOptional())
+                if (i->isUnused())
+                {
+                    unusedArgs = true;
+                }
+                else if (!i->isOptional())
                 {
                     ++requiredArgs;
                 }
@@ -140,20 +174,25 @@ namespace tl
                     ++optionalArgs;
                 }
             }
-            if (p.cmdLine.size() < requiredArgs ||
-                p.cmdLine.size() > requiredArgs + optionalArgs ||
-                _options.help)
+            if (p.cmdLine.argv.size() < requiredArgs ||
+                (p.cmdLine.argv.size() > requiredArgs + optionalArgs &&
+                 !unusedArgs) || _options.help)
             {
-                  _printCmdLineHelp();
+                _printCmdLineHelp();
                 return 1;
             }
-            for (const auto& i : p.cmdLineArgs)
+            for (const auto& i : p.cmdLine.args)
             {
                 try
                 {
-                    if (!(p.cmdLine.empty() && i->isOptional()))
+                    if (!p.cmdLine.argv.empty())
                     {
-                        i->parse(p.cmdLine);
+                        if(i->isUnused())
+                        {
+                            _unusedArgs = p.cmdLine.argv;
+                            break;
+                        }
+                        i->parse(p.cmdLine.argv);
                     }
                 }
                 catch (const std::exception& e)
@@ -169,41 +208,44 @@ namespace tl
         void IApp::_printCmdLineHelp()
         {
             TLRENDER_P();
-            _print("\n" + p.cmdLineName + "\n");
-            _print("    " + p.cmdLineSummary + "\n");
+            _print("\n" + p.cmdLine.name + "\n");
+            _print("    " + p.cmdLine.summary + "\n");
             _print("Usage:\n");
             {
                 std::stringstream ss;
-                ss << "    " + p.cmdLineName;
-                if (p.cmdLineArgs.size())
+                ss << "    " + p.cmdLine.name;
+                if (p.cmdLine.options.size())
+                {
+                    ss << " [options]...";
+                }
+                if (p.cmdLine.args.size())
                 {
                     std::vector<std::string> args;
-                    for (const auto& i : p.cmdLineArgs)
+                    for (const auto& i : p.cmdLine.args)
                     {
                         const bool optional = i->isOptional();
+                        const bool unused   = i->isUnused();
                         args.push_back(
                             (optional ? "[" : "(") +
                             string::toLower(i->getName()) +
                             (optional ? "]" : ")"));
+                        if (unused)
+                            args.push_back("...");
                     }
                     ss << " " << string::join(args, " ");
-                }
-                if (p.cmdLineOptions.size())
-                {
-                    ss << " [option],...";
                 }
                 _print(ss.str());
                 _printNewline();
             }
             _print("Arguments:\n");
-            for (const auto& i : p.cmdLineArgs)
+            for (const auto& i : p.cmdLine.args)
             {
                 _print("    " + i->getName());
                 _print("        " + i->getHelp());
                 _printNewline();
             }
             _print("Options:\n");
-            for (const auto& i : p.cmdLineOptions)
+            for (const auto& i : p.cmdLine.options)
             {
                 bool first = true;
                 for (const auto& j : i->getHelpText())

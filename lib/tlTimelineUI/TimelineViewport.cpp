@@ -4,9 +4,14 @@
 
 #include <tlTimelineUI/TimelineViewport.h>
 
-#include <tlGL/OffscreenBuffer.h>
+#include <tlUI/DrawUtil.h>
 
 #include <tlTimeline/RenderUtil.h>
+
+#include <tlGL/OffscreenBuffer.h>
+
+#include <tlCore/Error.h>
+#include <tlCore/String.h>
 
 namespace tl
 {
@@ -14,8 +19,10 @@ namespace tl
     {
         struct TimelineViewport::Private
         {
+            timeline::BackgroundOptions backgroundOptions;
             timeline::ColorConfigOptions colorConfigOptions;
             timeline::LUTOptions lutOptions;
+            timeline::RenderOptions renderOptions;
             std::vector<timeline::ImageOptions> imageOptions;
             std::vector<timeline::DisplayOptions> displayOptions;
             timeline::CompareOptions compareOptions;
@@ -39,7 +46,6 @@ namespace tl
             struct MouseData
             {
                 MouseMode mode = MouseMode::None;
-                math::Vector2i pressPos;
                 math::Vector2i viewPos;
             };
             MouseData mouse;
@@ -58,6 +64,9 @@ namespace tl
             setHStretch(ui::Stretch::Expanding);
             setVStretch(ui::Stretch::Expanding);
 
+            _setMouseHover(true);
+            _setMousePress(true);
+
             p.frameView = observer::Value<bool>::create(true);
         }
 
@@ -75,6 +84,16 @@ namespace tl
             auto out = std::shared_ptr<TimelineViewport>(new TimelineViewport);
             out->_init(context, parent);
             return out;
+        }
+
+        void TimelineViewport::setBackgroundOptions(const timeline::BackgroundOptions& value)
+        {
+            TLRENDER_P();
+            if (value == p.backgroundOptions)
+                return;
+            p.backgroundOptions = value;
+            p.renderBuffer = true;
+            _updates |= ui::Update::Draw;
         }
 
         void TimelineViewport::setColorConfigOptions(const timeline::ColorConfigOptions& value)
@@ -249,26 +268,6 @@ namespace tl
             _p->viewPosAndZoomCallback = value;
         }
 
-        void TimelineViewport::setVisible(bool value)
-        {
-            const bool changed = value != _visible;
-            IWidget::setVisible(value);
-            if (changed && !_visible)
-            {
-                _resetMouse();
-            }
-        }
-
-        void TimelineViewport::setEnabled(bool value)
-        {
-            const bool changed = value != _enabled;
-            IWidget::setEnabled(value);
-            if (changed && !_enabled)
-            {
-                _resetMouse();
-            }
-        }
-
         void TimelineViewport::setGeometry(const math::Box2i& value)
         {
             const bool changed = value != _geometry;
@@ -284,21 +283,8 @@ namespace tl
         {
             IWidget::sizeHintEvent(event);
             const int sa = event.style->getSizeRole(ui::SizeRole::ScrollArea, event.displayScale);
-            _sizeHint.x = sa;
-            _sizeHint.y = sa;
-        }
-
-        void TimelineViewport::clipEvent(
-            const math::Box2i& clipRect,
-            bool clipped,
-            const ui::ClipEvent& event)
-        {
-            const bool changed = clipped != _clipped;
-            IWidget::clipEvent(clipRect, clipped, event);
-            if (changed && clipped)
-            {
-                _resetMouse();
-            }
+            _sizeHint.w = sa;
+            _sizeHint.h = sa;
         }
 
         void TimelineViewport::drawEvent(
@@ -315,8 +301,6 @@ namespace tl
 
             const math::Box2i& g = _geometry;
 
-            event.render->drawRect(g, image::Color4f(0.F, 0.F, 0.F));
-
             if (p.renderBuffer)
             {
                 p.renderBuffer = false;
@@ -327,11 +311,14 @@ namespace tl
                 const timeline::TransformState transformState(event.render);
                 const timeline::RenderSizeState renderSizeState(event.render);
 
-                const image::Size size(g.w(), g.h());
+                const math::Size2i size = g.getSize();
                 gl::OffscreenBufferOptions options;
-                options.colorType = image::PixelType::RGB_F32;
+                options.colorType = gl::offscreenColorDefault;
+#if defined(TLRENDER_API_GL_4_1)
                 options.depth = gl::OffscreenDepth::_24;
                 options.stencil = gl::OffscreenStencil::_8;
+#elif defined(TLRENDER_API_GLES_2)
+#endif // TLRENDER_API_GL_4_1
                 if (gl::doCreate(p.buffer, size, options))
                 {
                     p.buffer = gl::OffscreenBuffer::create(size, options);
@@ -342,24 +329,52 @@ namespace tl
                     event.render->setRenderSize(size);
                     event.render->setViewport(math::Box2i(0, 0, g.w(), g.h()));
                     event.render->setClipRectEnabled(false);
-                    math::Matrix4x4f vm;
-                    vm = vm * math::translate(math::Vector3f(p.viewPos.x, p.viewPos.y, 0.F));
-                    vm = vm * math::scale(math::Vector3f(p.viewZoom, p.viewZoom, 1.F));
-                    const auto pm = math::ortho(
+                    event.render->setTransform(math::ortho(
                         0.F,
                         static_cast<float>(g.w()),
-                        0.F,
                         static_cast<float>(g.h()),
+                        0.F,
                         -1.F,
-                        1.F);
-                    event.render->setTransform(pm * vm);
-                    event.render->clearViewport(image::Color4f(0.F, 0.F, 0.F));
-                    event.render->drawVideo(
-                        p.videoData,
-                        timeline::getBoxes(p.compareOptions.mode, p.timelineSizes),
-                        p.imageOptions,
-                        p.displayOptions,
-                        p.compareOptions);
+                        1.F));
+                    switch (p.backgroundOptions.type)
+                    {
+                    case timeline::Background::Solid:
+                        event.render->clearViewport(
+                            p.backgroundOptions.solidColor);
+                        break;
+                    case timeline::Background::Checkers:
+                        event.render->clearViewport(image::Color4f(0.F, 0.F, 0.F));
+                        event.render->drawColorMesh(
+                            ui::checkers(
+                                math::Box2i(0, 0, g.w(), g.h()),
+                                p.backgroundOptions.checkersColor0,
+                                p.backgroundOptions.checkersColor1,
+                                p.backgroundOptions.checkersSize * event.displayScale),
+                            math::Vector2i(),
+                            image::Color4f(1.F, 1.F, 1.F));
+                        break;
+                    default: break;
+                    }
+                    if (!p.videoData.empty())
+                    {
+                        math::Matrix4x4f vm;
+                        vm = vm * math::translate(math::Vector3f(p.viewPos.x, p.viewPos.y, 0.F));
+                        vm = vm * math::scale(math::Vector3f(p.viewZoom, p.viewZoom, 1.F));
+                        const auto pm = math::ortho(
+                            0.F,
+                            static_cast<float>(g.w()),
+                            0.F,
+                            static_cast<float>(g.h()),
+                            -1.F,
+                            1.F);
+                        event.render->setTransform(pm * vm);
+                        event.render->drawVideo(
+                            p.videoData,
+                            timeline::getBoxes(p.compareOptions.mode, p.timelineSizes),
+                            p.imageOptions,
+                            p.displayOptions,
+                            p.compareOptions);
+                    }
                 }
             }
 
@@ -372,13 +387,13 @@ namespace tl
 
         void TimelineViewport::mouseMoveEvent(ui::MouseMoveEvent& event)
         {
+            IWidget::mouseMoveEvent(event);
             TLRENDER_P();
-            event.accept = true;
             switch (p.mouse.mode)
             {
             case Private::MouseMode::View:
-                p.viewPos.x = p.mouse.viewPos.x + (event.pos.x - p.mouse.pressPos.x);
-                p.viewPos.y = p.mouse.viewPos.y + (event.pos.y - p.mouse.pressPos.y);
+                p.viewPos.x = p.mouse.viewPos.x + (event.pos.x - _mouse.pressPos.x);
+                p.viewPos.y = p.mouse.viewPos.y + (event.pos.y - _mouse.pressPos.y);
                 p.renderBuffer = true;
                 _updates |= ui::Update::Draw;
                 if (p.viewPosAndZoomCallback)
@@ -415,28 +430,26 @@ namespace tl
 
         void TimelineViewport::mousePressEvent(ui::MouseClickEvent& event)
         {
+            IWidget::mousePressEvent(event);
             TLRENDER_P();
-            event.accept = true;
             takeKeyFocus();
             if (0 == event.button &&
                 event.modifiers & static_cast<int>(ui::KeyModifier::Control))
             {
                 p.mouse.mode = Private::MouseMode::View;
-                p.mouse.pressPos = event.pos;
                 p.mouse.viewPos = p.viewPos;
             }
             else if (0 == event.button &&
                 event.modifiers & static_cast<int>(ui::KeyModifier::Alt))
             {
                 p.mouse.mode = Private::MouseMode::Wipe;
-                p.mouse.pressPos = event.pos;
             }
         }
 
         void TimelineViewport::mouseReleaseEvent(ui::MouseClickEvent& event)
         {
+            IWidget::mouseReleaseEvent(event);
             TLRENDER_P();
-            event.accept = true;
             p.mouse.mode = Private::MouseMode::None;
         }
 
@@ -448,9 +461,9 @@ namespace tl
                 event.accept = true;
                 const double mult = 1.1;
                 const double zoom =
-                    event.dy < 0 ?
-                    p.viewZoom / (-event.dy * mult) :
-                    p.viewZoom * (event.dy * mult);
+                    event.value.y < 0 ?
+                    p.viewZoom / (-event.value.y * mult) :
+                    p.viewZoom * (event.value.y * mult);
                 setViewZoom(zoom, event.pos - _geometry.min);
             }
             else if (event.modifiers & static_cast<int>(ui::KeyModifier::Control))
@@ -459,7 +472,7 @@ namespace tl
                 if (!p.players.empty() && p.players[0])
                 {
                     const otime::RationalTime t = p.players[0]->getCurrentTime();
-                    p.players[0]->seek(t + otime::RationalTime(event.dy, t.rate()));
+                    p.players[0]->seek(t + otime::RationalTime(event.value.y, t.rate()));
                 }
             }
         }
@@ -496,7 +509,14 @@ namespace tl
             event.accept = true;
         }
 
-        image::Size TimelineViewport::_renderSize() const
+        void TimelineViewport::_releaseMouse()
+        {
+            IWidget::_releaseMouse();
+            TLRENDER_P();
+            p.mouse.mode = Private::MouseMode::None;
+        }
+
+        math::Size2i TimelineViewport::_renderSize() const
         {
             TLRENDER_P();
             return timeline::getRenderSize(p.compareOptions.mode, p.timelineSizes);
@@ -510,8 +530,8 @@ namespace tl
         void TimelineViewport::_frameView()
         {
             TLRENDER_P();
-            const image::Size viewportSize(_geometry.w(), _geometry.h());
-            const image::Size renderSize = _renderSize();
+            const math::Size2i viewportSize(_geometry.w(), _geometry.h());
+            const math::Size2i renderSize = _renderSize();
             double zoom = viewportSize.w / static_cast<double>(renderSize.w);
             if (zoom * renderSize.h > viewportSize.h)
             {
@@ -530,12 +550,6 @@ namespace tl
                     p.viewPosAndZoomCallback(p.viewPos, p.viewZoom);
                 }
             }
-        }
-
-        void TimelineViewport::_resetMouse()
-        {
-            TLRENDER_P();
-            p.mouse.mode = Private::MouseMode::None;
         }
 
         void TimelineViewport::_videoDataCallback(const timeline::VideoData& value, size_t index)

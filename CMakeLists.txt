@@ -24,9 +24,10 @@ project(
 #-------------------------------------------------------------------------------
 # Build options
 
-set(TLRENDER_MMAP TRUE CACHE BOOL "Enable memory-mapped file I/O")
 set(TLRENDER_PYTHON FALSE CACHE BOOL "Enable Python support (for OTIO Python adapters)")
+set(TLRENDER_API "GL_4_1" CACHE STRING "Graphics API (GL_4_1, GL_4_1_Debug, GLES_2)")
 set(TLRENDER_GLFW TRUE CACHE BOOL "Enable support for GLFW")
+set(TLRENDER_NET FALSE CACHE BOOL "Enable network support")
 set(TLRENDER_OCIO TRUE CACHE BOOL "Enable support for OpenColorIO")
 set(TLRENDER_AUDIO TRUE CACHE BOOL "Enable support for audio")
 set(TLRENDER_JPEG TRUE CACHE BOOL "Enable support for JPEG I/O")
@@ -36,6 +37,7 @@ set(TLRENDER_PNG TRUE CACHE BOOL "Enable support for PNG I/O")
 set(TLRENDER_EXR TRUE CACHE BOOL "Enable support for EXR I/O")
 set(TLRENDER_FFMPEG TRUE CACHE BOOL "Enable support for FFmpeg I/O")
 set(TLRENDER_USD FALSE CACHE BOOL "Enable support for USD")
+set(TLRENDER_RAW TRUE CACHE BOOL  "Enable support for LibRaw")
 set(TLRENDER_BMD FALSE CACHE BOOL "Enable support for Blackmagic Design devices")
 set(TLRENDER_BMD_SDK "" CACHE PATH "Full path to the Blackmagic Design SDK")
 if(WIN32 OR APPLE)
@@ -51,17 +53,13 @@ set(TLRENDER_EXAMPLES TRUE CACHE BOOL "Build examples")
 set(TLRENDER_TESTS TRUE CACHE BOOL "Build tests")
 set(TLRENDER_GCOV FALSE CACHE BOOL "Enable gcov code coverage")
 set(TLRENDER_GPROF FALSE CACHE BOOL "Enable gprof code profiling")
-set(TLRENDER_GL_DEBUG FALSE CACHE BOOL "Enable OpenGL debugging")
 
 #-------------------------------------------------------------------------------
 # Internal configuration
 
-list(PREPEND CMAKE_MODULE_PATH
+set(CMAKE_MODULE_PATH
     ${PROJECT_SOURCE_DIR}/cmake/Modules)
 
-if(TLRENDER_MMAP)
-    add_definitions(-DTLRENDER_MMAP)
-endif()
 if(TLRENDER_PYTHON)
     add_definitions(-DTLRENDER_PYTHON)
 endif()
@@ -71,9 +69,9 @@ endif()
 if(TLRENDER_BMD)
     add_definitions(-DTLRENDER_BMD)
 endif()
-if(TLRENDER_QT6)
+if(TLRENDER_QT6 AND NOT "${TLRENDER_API}" STREQUAL "GLES_2")
     add_definitions(-DTLRENDER_QT6)
-elseif(TLRENDER_QT5)
+elseif(TLRENDER_QT5 AND NOT "${TLRENDER_API}" STREQUAL "GLES_2")
     add_definitions(-DTLRENDER_QT5)
 endif()
 
@@ -82,16 +80,23 @@ if(CMAKE_BUILD_TYPE MATCHES "^Debug$")
 endif()
 
 if(TLRENDER_TESTS)
+    add_definitions(-DTLRENDER_SAMPLE_DATA="${CMAKE_CURRENT_SOURCE_DIR}/etc/SampleData")
     set(CTEST_OUTPUT_ON_FAILURE ON)
     enable_testing()
 endif()
 
 include_directories(
     ${PROJECT_SOURCE_DIR}/deps
-    ${PROJECT_SOURCE_DIR}/deps/FSeq
     ${PROJECT_SOURCE_DIR}/lib
     ${PROJECT_SOURCE_DIR}/etc
     ${PROJECT_SOURCE_DIR}/tests)
+if ("${TLRENDER_API}" STREQUAL "GL_4_1")
+    include_directories(${PROJECT_SOURCE_DIR}/deps/glad_GL_4_1/include)
+elseif ("${TLRENDER_API}" STREQUAL "GL_4_1_Debug")
+    include_directories(${PROJECT_SOURCE_DIR}/deps/glad_GL_4_1_Debug/include)
+elseif ("${TLRENDER_API}" STREQUAL "GLES_2")
+    include_directories(${PROJECT_SOURCE_DIR}/deps/glad_GLES_2/include)
+endif()
 
 if(TLRENDER_GPROF)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")
@@ -106,6 +111,19 @@ endif()
 
 set(CMAKE_FIND_FRAMEWORK LAST)
 
+if(WIN32)
+elseif(APPLE)
+    set(CMAKE_SKIP_BUILD_RPATH FALSE)
+    set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+    set(CMAKE_INSTALL_RPATH "@executable_path/../lib")
+    set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+else()
+    set(CMAKE_SKIP_BUILD_RPATH FALSE)
+    set(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE)
+    set(CMAKE_INSTALL_RPATH "../lib")
+    set(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+endif()
+
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 #-------------------------------------------------------------------------------
@@ -113,37 +131,37 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 # Required dependencies
 find_package(Threads REQUIRED)
-find_package(GLM REQUIRED)
+find_package(OpenGL REQUIRED)
 find_package(Imath REQUIRED)
 find_package(nlohmann_json REQUIRED)
+find_package(ZLIB REQUIRED)
 find_package(minizip REQUIRED)
 find_package(OTIO REQUIRED)
-find_package(FreeType)
-find_package(OpenGL REQUIRED)
+find_package(freetype)
 
 # GLFW dependency
 if(TLRENDER_GLFW)
-    find_package(GLFW REQUIRED)
+    find_package(glfw3 REQUIRED)
     add_definitions(-DTLRENDER_GLFW)
 endif()
 
 # OpenColorIO dependencies
-if(TLRENDER_OCIO)
+if(TLRENDER_OCIO AND NOT "${TLRENDER_API}" STREQUAL "GLES_2")
     find_package(OpenColorIO REQUIRED)
     add_definitions(-DTLRENDER_OCIO)
 endif()
 
 # Audio dependencies
 if(TLRENDER_AUDIO)
-    find_package(libsamplerate REQUIRED)
+    find_package(SampleRate REQUIRED)
     find_package(RtAudio REQUIRED)
     add_definitions(-DTLRENDER_AUDIO)
 endif()
 
 # I/O dependencies
 if(TLRENDER_JPEG)
-    find_package(JPEG)
-    if(JPEG_FOUND)
+    find_package(libjpeg-turbo)
+    if(libjpeg-turbo_FOUND)
         add_definitions(-DTLRENDER_JPEG)
     endif()
 endif()
@@ -180,6 +198,12 @@ if(TLRENDER_USD)
         add_definitions(-DTLRENDER_USD)
     endif()
 endif()
+if(TLRENDER_RAW)
+    find_package(LibRaw)
+    if(LibRaw_FOUND)
+        add_definitions(-DTLRENDER_RAW)
+    endif()
+endif()
 
 # Python dependencies
 if(TLRENDER_PYTHON)
@@ -195,12 +219,12 @@ if(TLRENDER_NFD)
 endif()
 
 # Qt dependencies
-if(TLRENDER_QT6)
+if(TLRENDER_QT6 AND NOT "${TLRENDER_API}" STREQUAL "GLES_2")
     set(CMAKE_AUTOMOC ON)
     set(CMAKE_AUTORCC ON)
     set(CMAKE_AUTOUIC ON)
     find_package(Qt6 COMPONENTS Quick Widgets OpenGLWidgets Svg HINTS "$ENV{QTDIR}")
-elseif(TLRENDER_QT5)
+elseif(TLRENDER_QT5 AND NOT "${TLRENDER_API}" STREQUAL "GLES_2")
     set(CMAKE_AUTOMOC ON)
     set(CMAKE_AUTORCC ON)
     set(CMAKE_AUTOUIC ON)
@@ -210,15 +234,11 @@ endif()
 #-------------------------------------------------------------------------------
 # Sub-directories
 
-add_subdirectory(deps/FSeq)
-set_target_properties(fseq PROPERTIES FOLDER deps)
-
-if(TLRENDER_GL_DEBUG)
-    add_definitions(-DTLRENDER_GL_DEBUG)
-    add_subdirectory(deps/tlGladDebug)
-else()
-    add_subdirectory(deps/tlGlad)
+add_definitions(-DTLRENDER_API_${TLRENDER_API})
+if("${TLRENDER_API}" STREQUAL "GL_4_1_Debug")
+    add_definitions(-DTLRENDER_API_GL_4_1)
 endif()
+add_subdirectory(deps/glad_${TLRENDER_API})
 
 add_subdirectory(lib)
 if(TLRENDER_PROGRAMS)
@@ -230,3 +250,11 @@ endif()
 if(TLRENDER_EXAMPLES)
     add_subdirectory(examples)
 endif()
+add_subdirectory(etc)
+
+#-------------------------------------------------------------------------------
+# Packaging (not used by mrv2)
+
+#include(Package)
+#include(CPack)
+#include(InstallRequiredSystemLibraries)

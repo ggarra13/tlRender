@@ -6,12 +6,10 @@ set(SOURCE
 set(LIBRARIES
     tlAppTest
     tlCoreTest
+    tlGLTest
     tlIOTest
     tlTimelineTest)
-if(TLRENDER_GL)
-    list(APPEND LIBRARIES tlGLTest)
-endif()
-if(TLRENDER_QT6 OR TLRENDER_QT5)
+if(TLRENDER_QT6 OR TLRENDER_QT5 AND NOT "${TLRENDER_API}" STREQUAL "GLES_2")
     list(APPEND LIBRARIES tlQtTest)
 endif()
 

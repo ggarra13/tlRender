@@ -11,12 +11,12 @@ namespace tl
     namespace ui
     {
         void IWidget::_init(
-            const std::string& name,
+            const std::string& objectName,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
         {
             _context = context;
-            _name = name;
+            _objectName = objectName;
             _parent = parent;
             if (parent)
             {
@@ -35,9 +35,9 @@ namespace tl
         IWidget::~IWidget()
         {}
 
-        void IWidget::setName(const std::string& value)
+        void IWidget::setObjectName(const std::string& value)
         {
-            _name = value;
+            _objectName = value;
         }
 
         void IWidget::setBackgroundRole(ColorRole value)
@@ -74,6 +74,32 @@ namespace tl
                 ChildEvent event;
                 event.child = shared_from_this();
                 value->childAddedEvent(event);
+                value->_updates |= Update::Size;
+                value->_updates |= Update::Draw;
+            }
+        }
+
+        void IWidget::moveToFront(const std::shared_ptr<IWidget>& value)
+        {
+            auto i = std::find(_children.begin(), _children.end(), value);
+            if (i != _children.end())
+            {
+                auto child = *i;
+                _children.erase(i);
+                _children.push_back(child);
+                value->_updates |= Update::Size;
+                value->_updates |= Update::Draw;
+            }
+        }
+
+        void IWidget::moveToBack(const std::shared_ptr<IWidget>& value)
+        {
+            auto i = std::find(_children.begin(), _children.end(), value);
+            if (i != _children.end())
+            {
+                auto child = *i;
+                _children.erase(i);
+                _children.push_front(child);
                 value->_updates |= Update::Size;
                 value->_updates |= Update::Draw;
             }
@@ -163,6 +189,7 @@ namespace tl
             _visible = value;
             if (!_visible)
             {
+                _releaseMouse();
                 releaseKeyFocus();
             }
             _updates |= Update::Size;
@@ -181,15 +208,11 @@ namespace tl
             _enabled = value;
             if (!_enabled)
             {
+                _releaseMouse();
                 releaseKeyFocus();
             }
             _updates |= Update::Size;
             _updates |= Update::Draw;
-        }
-
-        void IWidget::setMouseHover(bool value)
-        {
-            _mouseHover = value;
         }
 
         void IWidget::setAcceptsKeyFocus(bool value)
@@ -219,7 +242,6 @@ namespace tl
         void IWidget::setToolTip(const std::string& value)
         {
             _toolTip = value;
-            setMouseHover(!_toolTip.empty());
         }
 
         void IWidget::childAddedEvent(const ChildEvent&)
@@ -242,13 +264,11 @@ namespace tl
             _updates &= ~static_cast<int>(Update::Size);
         }
 
-        void IWidget::clipEvent(
-            const math::Box2i&,
-            bool clipped,
-            const ClipEvent& event)
+        void IWidget::clipEvent(const math::Box2i&, bool clipped)
         {
             if (clipped && clipped != _clipped)
             {
+                _releaseMouse();
                 releaseKeyFocus();
             }
             _clipped = clipped;
@@ -275,19 +295,50 @@ namespace tl
         }
 
         void IWidget::mouseEnterEvent()
-        {}
+        {
+            _mouse.inside = true;
+        }
 
         void IWidget::mouseLeaveEvent()
-        {}
+        {
+            _mouse.inside = false;
+        }
 
         void IWidget::mouseMoveEvent(MouseMoveEvent& event)
-        {}
+        {
+            if (_mouseHoverEnabled)
+            {
+                event.accept = true;
+            }
+            _mouse.pos = event.pos;
+        }
 
-        void IWidget::mousePressEvent(MouseClickEvent&)
-        {}
+        void IWidget::mousePressEvent(MouseClickEvent& event)
+        {
+            const bool button =
+                _mousePressButton != -1 ?
+                event.button == _mousePressButton :
+                true;
+            const bool modifiers =
+                _mousePressModifiers != -1 ?
+                event.modifiers == _mousePressModifiers :
+                true;
+            if (_mousePressEnabled && button && modifiers)
+            {
+                event.accept = true;
+                _mouse.press = true;
+                _mouse.pressPos = event.pos;
+            }
+        }
 
-        void IWidget::mouseReleaseEvent(MouseClickEvent&)
-        {}
+        void IWidget::mouseReleaseEvent(MouseClickEvent& event)
+        {
+            if (_mouse.press)
+            {
+                event.accept = true;
+                _mouse.press = false;
+            }
+        }
 
         void IWidget::scrollEvent(ScrollEvent&)
         {}
@@ -317,5 +368,27 @@ namespace tl
 
         void IWidget::dropEvent(DragAndDropEvent&)
         {}
+
+        void IWidget::_setMouseHover(bool value)
+        {
+            _mouseHoverEnabled = value;
+        }
+
+        void IWidget::_setMousePress(bool value, int button, int modifiers)
+        {
+            _mousePressEnabled = value;
+            _mousePressButton = button;
+            _mousePressModifiers = modifiers;
+        }
+
+        void IWidget::_releaseMouse()
+        {
+            if (_mouse.inside || _mouse.press)
+            {
+                _mouse.inside = false;
+                _mouse.press = false;
+                _updates |= Update::Draw;
+            }
+        }
     }
 }

@@ -1,8 +1,8 @@
 set(HEADERS
     Assert.h
     Audio.h
-    AudioConvert.h
     AudioInline.h
+    AudioResample.h
     AudioSystem.h
     Box.h
     BoxInline.h
@@ -16,6 +16,7 @@ set(HEADERS
     FileIOInline.h
     FileInfo.h
     FileInfoInline.h
+    FileInfoPrivate.h
     FileLogSystem.h
     FontSystem.h
     FontSystemInline.h
@@ -49,6 +50,8 @@ set(HEADERS
     RandomInline.h
     Range.h
     RangeInline.h
+    Size.h
+    SizeInline.h
     String.h
     StringFormat.h
     StringFormatInline.h
@@ -64,7 +67,7 @@ set(HEADERS
 set(SOURCE
     Assert.cpp
     Audio.cpp
-    AudioConvert.cpp
+    AudioResample.cpp
     AudioSystem.cpp
     Box.cpp
     Color.cpp
@@ -86,6 +89,7 @@ set(SOURCE
     Path.cpp
     Random.cpp
     Range.cpp
+    Size.cpp
     String.cpp
     StringFormat.cpp
     Time.cpp
@@ -111,12 +115,12 @@ else()
 endif()
 
 set(LIBRARIES OTIO Imath::Imath)
-set(LIBRARIES_PRIVATE FreeType nlohmann_json::nlohmann_json MINIZIP::minizip ZLIB GLM fseq)
-if(TLRENDER_OCIO)
+set(LIBRARIES_PRIVATE Freetype::Freetype nlohmann_json::nlohmann_json MINIZIP::minizip ZLIB)
+if(TLRENDER_OCIO AND NOT "${TLRENDER_API}" STREQUAL "GLES_2")
     list(APPEND LIBRARIES OpenColorIO::OpenColorIO)
 endif()
 if(TLRENDER_AUDIO)
-    list(APPEND LIBRARIES_PRIVATE RtAudio libsamplerate)
+    list(APPEND LIBRARIES_PRIVATE RtAudio SampleRate::samplerate)
 endif()
 if(TLRENDER_FFMPEG)
     list(APPEND LIBRARIES_PRIVATE FFmpeg::swresample)

@@ -12,9 +12,10 @@ namespace tl
     {
         struct TimelineWidget::Private
         {
-            std::shared_ptr<timeline::ITimeUnitsModel> timeUnitsModel;
+            std::shared_ptr<ItemData> itemData;
             std::shared_ptr<timeline::Player> player;
             std::shared_ptr<observer::ValueObserver<bool> > timelineObserver;
+            std::shared_ptr<observer::Value<bool> > editable;
             std::shared_ptr<observer::Value<bool> > frameView;
             std::function<void(bool)> frameViewCallback;
             ui::KeyModifier scrollKeyModifier = ui::KeyModifier::Control;
@@ -27,6 +28,8 @@ namespace tl
             std::shared_ptr<ui::ScrollWidget> scrollWidget;
             std::shared_ptr<TimelineItem> timelineItem;
 
+            std::function<void(const std::vector<timeline::MoveData>&)> moveCallback;
+            
             enum class MouseMode
             {
                 None,
@@ -34,7 +37,6 @@ namespace tl
             };
             struct MouseData
             {
-                math::Vector2i pressPos;
                 MouseMode mode = MouseMode::None;
                 math::Vector2i scrollPos;
                 std::chrono::steady_clock::time_point wheelTimer;
@@ -50,8 +52,13 @@ namespace tl
             IWidget::_init("tl::ui::TimelineWidget", context, parent);
             TLRENDER_P();
 
-            p.timeUnitsModel = timeUnitsModel;
+            _setMouseHover(true);
+            _setMousePress(true, 0, static_cast<int>(p.scrollKeyModifier));
 
+            p.itemData = std::make_shared<ItemData>();
+            p.itemData->timeUnitsModel = timeUnitsModel;
+
+            p.editable = observer::Value<bool>::create(false);
             p.frameView = observer::Value<bool>::create(true);
             p.stopOnScrub = observer::Value<bool>::create(true);
             p.itemOptions = observer::Value<ItemOptions>::create();
@@ -99,18 +106,16 @@ namespace tl
             if (player == p.player)
                 return;
 
+            p.itemData->info.clear();
+            p.itemData->thumbnails.clear();
+            p.itemData->waveforms.clear();
             p.timelineObserver.reset();
             p.scrollWidget->setWidget(nullptr);
             p.timelineItem.reset();
 
             p.player = player;
 
-            _timelineUpdate();
-            if (p.timelineItem)
-            {
-                p.scale = _getTimelineScale();
-                _setItemScale(p.timelineItem, p.scale);
-            }
+            p.scale = _getTimelineScale();
             if (p.player)
             {
                 p.timelineObserver = observer::ValueObserver<bool>::create(
@@ -118,8 +123,33 @@ namespace tl
                     [this](bool)
                     {
                         _timelineUpdate();
-                        _setItemScale(_p->timelineItem, _p->scale);
                     });
+            }
+            else
+            {
+                _timelineUpdate();
+            }
+        }
+
+        bool TimelineWidget::isEditable() const
+        {
+            return _p->editable->get();
+        }
+
+        std::shared_ptr<observer::IValue<bool> > TimelineWidget::observeEditable() const
+        {
+            return _p->editable;
+        }
+
+        void TimelineWidget::setEditable(bool value)
+        {
+            TLRENDER_P();
+            if (p.editable->setIfChanged(value))
+            {
+                if (p.timelineItem)
+                {
+                    p.timelineItem->setEditable(value);
+                }
             }
         }
 
@@ -144,13 +174,14 @@ namespace tl
         {
             TLRENDER_P();
             p.scrollWidget->setScrollPos(math::Vector2i());
-            p.scale = _getTimelineScale();
-            if (p.timelineItem)
+            const float scale = _getTimelineScale();
+            if (scale != p.scale)
             {
-                _setItemScale(p.timelineItem, p.scale);
+                p.scale = scale;
+                _setItemScale();
+                _updates |= ui::Update::Size;
+                _updates |= ui::Update::Draw;
             }
-            _updates |= ui::Update::Size;
-            _updates |= ui::Update::Draw;
         }
 
         bool TimelineWidget::hasFrameView() const
@@ -192,7 +223,9 @@ namespace tl
 
         void TimelineWidget::setScrollKeyModifier(ui::KeyModifier value)
         {
-            _p->scrollKeyModifier = value;
+            TLRENDER_P();
+            p.scrollKeyModifier = value;
+            _setMousePress(true, 0, static_cast<int>(p.scrollKeyModifier));
         }
 
         bool TimelineWidget::hasStopOnScrub() const
@@ -243,6 +276,9 @@ namespace tl
             TLRENDER_P();
             if (p.itemOptions->setIfChanged(value))
             {
+                p.itemData->info.clear();
+                p.itemData->thumbnails.clear();
+                p.itemData->waveforms.clear();
                 if (p.timelineItem)
                 {
                     _setItemOptions(p.timelineItem, value);
@@ -267,24 +303,12 @@ namespace tl
             }
         }
 
-        void TimelineWidget::setVisible(bool value)
+        void TimelineWidget::tickEvent(
+            bool parentsVisible,
+            bool parentsEnabled,
+            const ui::TickEvent& event)
         {
-            const bool changed = value != _visible;
-            IWidget::setVisible(value);
-            if (changed && !_visible)
-            {
-                _resetMouse();
-            }
-        }
-
-        void TimelineWidget::setEnabled(bool value)
-        {
-            const bool changed = value != _enabled;
-            IWidget::setEnabled(value);
-            if (changed && !_enabled)
-            {
-                _resetMouse();
-            }
+            IWidget::tickEvent(parentsVisible, parentsEnabled, event);
         }
 
         void TimelineWidget::sizeHintEvent(const ui::SizeHintEvent& event)
@@ -292,32 +316,19 @@ namespace tl
             IWidget::sizeHintEvent(event);
             TLRENDER_P();
             const int sa = event.style->getSizeRole(ui::SizeRole::ScrollArea, event.displayScale);
-            _sizeHint.x = sa;
-            _sizeHint.y = sa * 2;
-        }
-
-        void TimelineWidget::clipEvent(
-            const math::Box2i& clipRect,
-            bool clipped,
-            const ui::ClipEvent& event)
-        {
-            const bool changed = clipped != _clipped;
-            IWidget::clipEvent(clipRect, clipped, event);
-            if (changed && clipped)
-            {
-                _resetMouse();
-            }
+            _sizeHint.w = sa;
+            _sizeHint.h = sa * 2;
         }
 
         void TimelineWidget::mouseMoveEvent(ui::MouseMoveEvent& event)
         {
+            IWidget::mouseMoveEvent(event);
             TLRENDER_P();
-            event.accept = true;
             switch (p.mouse.mode)
             {
             case Private::MouseMode::Scroll:
             {
-                const math::Vector2i d = event.pos - p.mouse.pressPos;
+                const math::Vector2i d = event.pos - _mouse.pressPos;
                 p.scrollWidget->setScrollPos(p.mouse.scrollPos - d);
                 setFrameView(false);
                 break;
@@ -326,33 +337,43 @@ namespace tl
             }
         }
 
-        void TimelineWidget::mousePressEvent(ui::MouseClickEvent& event)
+        bool TimelineWidget::isDragging() const
         {
             TLRENDER_P();
-            event.accept = true;
-            takeKeyFocus();
-            p.mouse.pressPos = event.pos;
-            if (event.modifiers & static_cast<int>(p.scrollKeyModifier))
+            return p.timelineItem->isDragging();
+        }
+        
+        //! Sets a callback for inserting items
+        void TimelineWidget::setMoveCallback(const std::function<void(const std::vector<timeline::MoveData>&)>& value)
+        {
+            TLRENDER_P();
+            p.moveCallback = value;
+            
+            if (p.timelineItem)
+                p.timelineItem->setMoveCallback(value);
+        }
+        
+        void TimelineWidget::mousePressEvent(ui::MouseClickEvent& event)
+        {
+            IWidget::mousePressEvent(event);
+            TLRENDER_P();
+            if (0 == event.button &&
+                event.modifiers & static_cast<int>(p.scrollKeyModifier))
             {
+                takeKeyFocus();
                 p.mouse.mode = Private::MouseMode::Scroll;
+                p.mouse.scrollPos = p.scrollWidget->getScrollPos();
             }
             else
             {
                 p.mouse.mode = Private::MouseMode::None;
             }
-            switch (p.mouse.mode)
-            {
-            case Private::MouseMode::Scroll:
-                p.mouse.scrollPos = p.scrollWidget->getScrollPos();
-                break;
-            default: break;
-            }
         }
 
         void TimelineWidget::mouseReleaseEvent(ui::MouseClickEvent& event)
         {
+            IWidget::mouseReleaseEvent(event);
             TLRENDER_P();
-            event.accept = true;
             p.mouse.mode = Private::MouseMode::None;
         }
 
@@ -360,7 +381,7 @@ namespace tl
         {
             TLRENDER_P();
             event.accept = true;
-            if (event.dy > 0)
+            if (event.value.y > 0)
             {
                 const double zoom = p.scale * p.mouseWheelScale;
                 setViewZoom(zoom, event.pos);
@@ -395,37 +416,6 @@ namespace tl
                     event.accept = true;
                     setFrameView(true);
                     break;
-                /*case ui::Key::E:
-                {
-                    event.accept = true;
-                    if (p.player)
-                    {
-                        otio::ErrorStatus error;
-                        auto json = p.player->getTimeline()->getTimeline()->to_json_string(&error);
-                        otio::SerializableObject::Retainer<otio::Timeline> otioTimeline(
-                            dynamic_cast<otio::Timeline*>(otio::Timeline::from_json_string(json)));
-                        auto videoTracks = otioTimeline->video_tracks();
-                        if (!videoTracks.empty())
-                        {
-                            const auto children = videoTracks[0]->children();
-                            std::vector<otio::Composable*> childrenTmp;
-                            for (const auto& child : children)
-                            {
-                                childrenTmp.push_back(child.value);
-                            }
-                            videoTracks[0]->clear_children();
-                            if (children.size() > 1)
-                            {
-                                auto child = childrenTmp[1];
-                                childrenTmp[1] = childrenTmp[0];
-                                childrenTmp[0] = child;
-                                videoTracks[0]->set_children(childrenTmp, &error);
-                            }
-                        }
-                        p.player->getTimeline()->setTimeline(otioTimeline);
-                    }
-                    break;
-                }*/
                 default: break;
                 }
             }
@@ -434,6 +424,13 @@ namespace tl
         void TimelineWidget::keyReleaseEvent(ui::KeyEvent& event)
         {
             event.accept = true;
+        }
+
+        void TimelineWidget::_releaseMouse()
+        {
+            IWidget::_releaseMouse();
+            TLRENDER_P();
+            p.mouse.mode = Private::MouseMode::None;
         }
 
         void TimelineWidget::_setViewZoom(
@@ -451,10 +448,7 @@ namespace tl
             if (zoomClamped != p.scale)
             {
                 p.scale = zoomClamped;
-                if (p.timelineItem)
-                {
-                    _setItemScale(p.timelineItem, p.scale);
-                }
+                _setItemScale();
                 const double s = zoomClamped / zoomPrev;
                 const math::Vector2i scrollPosNew(
                     (scrollPos.x + focus.x) * s - focus.x,
@@ -480,6 +474,16 @@ namespace tl
                 }
             }
             return out;
+        }
+
+        void TimelineWidget::_setItemScale()
+        {
+            TLRENDER_P();
+            p.itemData->waveforms.clear();
+            if (p.timelineItem)
+            {
+                _setItemScale(p.timelineItem, p.scale);
+            }
         }
 
         void TimelineWidget::_setItemScale(
@@ -510,15 +514,11 @@ namespace tl
             }
         }
 
-        void TimelineWidget::_resetMouse()
-        {
-            TLRENDER_P();
-            p.mouse.mode = Private::MouseMode::None;
-        }
-        
         void TimelineWidget::_timelineUpdate()
         {
             TLRENDER_P();
+
+            const math::Vector2i scrollPos = p.scrollWidget->getScrollPos();
 
             p.scrollWidget->setWidget(nullptr);
             p.timelineItem.reset();
@@ -527,19 +527,20 @@ namespace tl
             {
                 if (auto context = _context.lock())
                 {
-                    ItemData itemData;
-                    itemData.speed = p.player->getDefaultSpeed();
-                    itemData.directory = p.player->getPath().getDirectory();
-                    itemData.options = p.player->getOptions();
-                    itemData.ioManager = IOManager::create(
-                        p.player->getOptions().ioOptions,
+                    p.itemData->speed = p.player->getDefaultSpeed();
+                    p.itemData->directory = p.player->getPath().getDirectory();
+                    p.itemData->options = p.player->getOptions();
+                    p.timelineItem = TimelineItem::create(
+                        p.player,
+                        p.player->getTimeline()->getTimeline()->tracks(),
+                        p.scale,
+                        p.itemOptions->get(),
+                        p.itemData,
                         context);
-                    itemData.timeUnitsModel = p.timeUnitsModel;
-
-                    p.timelineItem = TimelineItem::create(p.player, itemData, context);
+                    p.timelineItem->setEditable(p.editable->get());
                     p.timelineItem->setStopOnScrub(p.stopOnScrub->get());
-                    p.scrollWidget->setScrollPos(math::Vector2i());
-                    _setItemOptions(p.timelineItem, p.itemOptions->get());
+                    p.timelineItem->setMoveCallback(p.moveCallback);
+                    p.scrollWidget->setScrollPos(scrollPos);
                     p.scrollWidget->setWidget(p.timelineItem);
                 }
             }

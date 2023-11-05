@@ -17,14 +17,14 @@ namespace tl
             SubMenu
         };
 
-        //! Base class for menu popup widgets.
+        //! Base class for popup menus.
         class IMenuPopup : public IPopup
         {
             TLRENDER_NON_COPYABLE(IMenuPopup);
 
         protected:
             void _init(
-                const std::string& name,
+                const std::string& objectName,
                 const std::shared_ptr<system::Context>&,
                 const std::shared_ptr<IWidget>& parent = nullptr);
 
@@ -33,24 +33,24 @@ namespace tl
         public:
             virtual ~IMenuPopup() = 0;
 
-            //! Open the menu popup.
+            //! Open the popup.
             void open(
                 const std::shared_ptr<EventLoop>&,
                 const math::Box2i& buttonGeometry);
 
-            //! Get whether the menu popup is open.
+            //! Get whether the popup is open.
             bool isOpen() const;
 
-            //! Close the menu popup.
+            //! Close the popup.
             void close() override;
 
             //! Set the close callback.
             void setCloseCallback(const std::function<void(void)>&);
 
-            //! Set the menu popup style.
+            //! Set the popup style.
             void setPopupStyle(MenuPopupStyle);
 
-            //! Set the menu popup color role.
+            //! Set the popup color role.
             void setPopupRole(ColorRole);
 
             //! Set the widget.
@@ -58,9 +58,7 @@ namespace tl
 
             void setGeometry(const math::Box2i&) override;
             void sizeHintEvent(const SizeHintEvent&) override;
-            void drawEvent(
-                const math::Box2i&,
-                const DrawEvent&) override;
+            void drawEvent(const math::Box2i&, const DrawEvent&) override;
 
         private:
             TLRENDER_PRIVATE();

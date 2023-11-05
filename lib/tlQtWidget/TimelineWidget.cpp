@@ -92,6 +92,7 @@ namespace tl
 
             int timer = 0;
 
+            std::shared_ptr<observer::ValueObserver<bool> > editableObserver;
             std::shared_ptr<observer::ValueObserver<bool> > frameViewObserver;
         };
 
@@ -114,7 +115,6 @@ namespace tl
             //surfaceFormat.setStencilBufferSize(8);
             //setFormat(surfaceFormat);
 
-            setMinimumSize(16, 16);
             setMouseTracking(true);
             setFocusPolicy(Qt::StrongFocus);
 
@@ -126,11 +126,26 @@ namespace tl
                 p.iconLibrary,
                 p.clipboard,
                 context);
+            p.eventLoop->setCapture(
+                [this](const math::Box2i& value)
+                {
+                    makeCurrent();
+                    auto out = _capture(value);
+                    doneCurrent();
+                    return out;
+                });
             p.timelineWidget = timelineui::TimelineWidget::create(timeUnitsModel, context);
             //p.timelineWidget->setScrollBarsVisible(false);
             p.eventLoop->addWidget(p.timelineWidget);
 
             _styleUpdate();
+
+            p.editableObserver = observer::ValueObserver<bool>::create(
+                p.timelineWidget->observeEditable(),
+                [this](bool value)
+                {
+                    Q_EMIT editableChanged(value);
+                });
 
             p.frameViewObserver = observer::ValueObserver<bool>::create(
                 p.timelineWidget->observeFrameView(),
@@ -152,6 +167,11 @@ namespace tl
                 return;
             p.player = player;
             p.timelineWidget->setPlayer(p.player);
+        }
+
+        bool TimelineWidget::isEditable() const
+        {
+            return _p->timelineWidget->isEditable();
         }
 
         bool TimelineWidget::hasFrameView() const
@@ -182,6 +202,16 @@ namespace tl
         const timelineui::ItemOptions& TimelineWidget::itemOptions() const
         {
             return _p->timelineWidget->getItemOptions();
+        }
+
+        QSize TimelineWidget::minimumSizeHint() const
+        {
+            return QSize(150, 150);
+        }
+
+        void TimelineWidget::setEditable(bool value)
+        {
+            _p->timelineWidget->setEditable(value);
         }
 
         void TimelineWidget::setFrameView(bool value)
@@ -275,7 +305,7 @@ namespace tl
             
             const float devicePixelRatio = window()->devicePixelRatio();
             p.eventLoop->setDisplayScale(devicePixelRatio);
-            p.eventLoop->setDisplaySize(image::Size(_toUI(w), _toUI(h)));
+            p.eventLoop->setDisplaySize(math::Size2i(_toUI(w), _toUI(h)));
             
             p.vao.reset();
             p.vbo.reset();
@@ -284,7 +314,7 @@ namespace tl
         void TimelineWidget::paintGL()
         {
             TLRENDER_P();
-            const image::Size renderSize(_toUI(width()), _toUI(height()));
+            const math::Size2i renderSize(_toUI(width()), _toUI(height()));
             if (p.eventLoop->hasDrawUpdate())
             {
                 try
@@ -292,7 +322,7 @@ namespace tl
                     if (renderSize.isValid())
                     {
                         gl::OffscreenBufferOptions offscreenBufferOptions;
-                        offscreenBufferOptions.colorType = image::PixelType::RGBA_F32;
+                        offscreenBufferOptions.colorType = gl::offscreenColorDefault;
                         if (gl::doCreate(p.buffer, renderSize, offscreenBufferOptions))
                         {
                             p.buffer = gl::OffscreenBuffer::create(renderSize, offscreenBufferOptions);
@@ -417,11 +447,10 @@ namespace tl
         {
             TLRENDER_P();
             event->accept();
-            setFocus();
-            int button = 0;
+            int button = -1;
             if (event->button() == Qt::LeftButton)
             {
-                button = 1;
+                button = 0;
             }
             p.eventLoop->mouseButton(
                 button,
@@ -461,8 +490,9 @@ namespace tl
             const float delta = event->angleDelta().y() / 8.F / 15.F;
             p.mouseWheelTimer = now;
             p.eventLoop->scroll(
-                event->angleDelta().x() / 8.F / 15.F,
-                event->angleDelta().y() / 8.F / 15.F,
+                math::Vector2f(
+                    event->angleDelta().x() / 8.F / 15.F,
+                    event->angleDelta().y() / 8.F / 15.F),
                 fromQtModifiers(event->modifiers()));
         }
 
@@ -572,6 +602,10 @@ namespace tl
             {
                 event->accept();
             }
+            else
+            {
+                QOpenGLWidget::keyPressEvent(event);
+            }
         }
 
         void TimelineWidget::keyReleaseEvent(QKeyEvent* event)
@@ -583,6 +617,10 @@ namespace tl
                 fromQtModifiers(event->modifiers())))
             {
                 event->accept();
+            }
+            else
+            {
+                QOpenGLWidget::keyReleaseEvent(event);
             }
         }
 
@@ -629,6 +667,36 @@ namespace tl
         {
             const float devicePixelRatio = window()->devicePixelRatio();
             return devicePixelRatio > 0.F ? (value / devicePixelRatio) : math::Vector2i();
+        }
+
+        std::shared_ptr<gl::OffscreenBuffer> TimelineWidget::_capture(const math::Box2i& value)
+        {
+            TLRENDER_P();
+            std::shared_ptr<gl::OffscreenBuffer> out;
+            try
+            {
+                gl::OffscreenBufferOptions offscreenBufferOptions;
+                offscreenBufferOptions.colorType = image::PixelType::RGBA_U8;
+                out = gl::OffscreenBuffer::create(value.getSize(), offscreenBufferOptions);
+                glBindFramebuffer(GL_READ_FRAMEBUFFER, p.buffer->getID());
+                glBindFramebuffer(GL_DRAW_FRAMEBUFFER, out->getID());
+                glBlitFramebuffer(
+                    value.min.x,
+                    p.buffer->getHeight() - 1 - value.min.y,
+                    value.max.x,
+                    p.buffer->getHeight() - 1 - value.max.y,
+                    0,
+                    0,
+                    value.w(),
+                    value.h(),
+                    GL_COLOR_BUFFER_BIT,
+                    GL_LINEAR);
+                glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            }
+            catch (const std::exception&)
+            {
+            }
+            return out;
         }
 
         void TimelineWidget::_styleUpdate()

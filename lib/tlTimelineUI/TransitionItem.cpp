@@ -10,17 +10,28 @@ namespace tl
     {
         void TransitionItem::_init(
             const otio::SerializableObject::Retainer<otio::Transition>& transition,
-            const ItemData& itemData,
+            double scale,
+            const ItemOptions& options,
+            const std::shared_ptr<ItemData>& itemData,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
         {
-            const auto rangeOpt = transition->trimmed_range_in_parent();
-            IBasicItem::_init(
-                rangeOpt.has_value() ? rangeOpt.value() : time::invalidTimeRange,
-                !transition->name().empty() ? transition->name() : "Transition",
-                ui::ColorRole::Transition,
-                {},
+            otime::TimeRange timeRange = time::invalidTimeRange;
+            otime::TimeRange trimmedRange = time::invalidTimeRange;
+            const auto timeRangeOpt = transition->trimmed_range_in_parent();
+            if (timeRangeOpt.has_value())
+            {
+                timeRange = timeRangeOpt.value();
+                trimmedRange = otime::TimeRange(
+                    otime::RationalTime(0.0, timeRange.duration().rate()),
+                    timeRange.duration());
+            }
+            IItem::_init(
                 "tl::timelineui::TransitionItem",
+                timeRange,
+                trimmedRange,
+                scale,
+                options,
                 itemData,
                 context,
                 parent);
@@ -34,12 +45,14 @@ namespace tl
 
         std::shared_ptr<TransitionItem> TransitionItem::create(
             const otio::SerializableObject::Retainer<otio::Transition>& transition,
-            const ItemData& itemData,
+            double scale,
+            const ItemOptions& options,
+            const std::shared_ptr<ItemData>& itemData,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
         {
             auto out = std::shared_ptr<TransitionItem>(new TransitionItem);
-            out->_init(transition, itemData, context, parent);
+            out->_init(transition, scale, options, itemData, context, parent);
             return out;
         }
     }

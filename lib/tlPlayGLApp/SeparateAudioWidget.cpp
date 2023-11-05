@@ -23,7 +23,8 @@ namespace tl
             std::shared_ptr<ui::PushButton> okButton;
             std::shared_ptr<ui::PushButton> cancelButton;
             std::shared_ptr<ui::VerticalLayout> layout;
-            std::function<void(const std::string&, const std::string&)> callback;
+
+            std::function<void(const file::Path&, const file::Path&)> callback;
             std::function<void(void)> cancelCallback;
         };
 
@@ -38,7 +39,8 @@ namespace tl
             TLRENDER_P();
 
             setHStretch(ui::Stretch::Expanding);
-            setMouseHover(true);
+            _setMouseHover(true);
+            _setMousePress(true);
 
             p.videoFileEdit = ui::FileEdit::create(context);
 
@@ -111,8 +113,8 @@ namespace tl
         }
 
         void SeparateAudioWidget::setCallback(const std::function<void(
-            const std::string&,
-            const std::string&)>& value)
+            const file::Path&,
+            const file::Path&)>& value)
         {
             _p->callback = value;
         }
@@ -132,21 +134,6 @@ namespace tl
         {
             IWidget::sizeHintEvent(event);
             _sizeHint = _p->layout->getSizeHint();
-        }
-
-        void SeparateAudioWidget::mouseMoveEvent(ui::MouseMoveEvent& event)
-        {
-            event.accept = true;
-        }
-
-        void SeparateAudioWidget::mousePressEvent(ui::MouseClickEvent& event)
-        {
-            event.accept = true;
-        }
-
-        void SeparateAudioWidget::mouseReleaseEvent(ui::MouseClickEvent& event)
-        {
-            event.accept = true;
         }
     }
 }

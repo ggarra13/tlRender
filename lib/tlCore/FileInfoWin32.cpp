@@ -2,7 +2,7 @@
 // Copyright (c) 2021-2023 Darby Johnston
 // All rights reserved.
 
-#include <tlCore/FileInfo.h>
+#include <tlCore/FileInfoPrivate.h>
 
 #include <tlCore/String.h>
 
@@ -46,6 +46,30 @@ namespace tl
             _time = info.st_mtime;
 
             return true;
+        }
+
+        void _list(
+            const std::string& path,
+            std::vector<FileInfo>& out,
+            const ListOptions& options)
+        {
+            const std::string glob =
+                appendSeparator(!path.empty() ? path : std::string(".")) + "*";
+            WIN32_FIND_DATAW ffd;
+            HANDLE hFind = FindFirstFileW(string::toWide(glob).c_str(), &ffd);
+            if (hFind != INVALID_HANDLE_VALUE)
+            {
+                do
+                {
+                    const std::string fileName = string::fromWide(ffd.cFileName);
+                    if (!listFilter(fileName, options))
+                    {
+                        listSequence(path, fileName, out, options);
+                    }
+                }
+                while (FindNextFileW(hFind, &ffd) != 0);
+                FindClose(hFind);
+            }
         }
     }
 }

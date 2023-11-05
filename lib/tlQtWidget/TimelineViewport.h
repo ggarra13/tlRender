@@ -6,7 +6,10 @@
 
 #include <tlQt/TimelinePlayer.h>
 
-#include <tlTimeline/IRender.h>
+#include <tlTimeline/BackgroundOptions.h>
+#include <tlTimeline/ColorConfigOptions.h>
+#include <tlTimeline/CompareOptions.h>
+#include <tlTimeline/LUTOptions.h>
 
 #include <QOpenGLWidget>
 #include <QOpenGLFunctions_4_1_Core>
@@ -30,6 +33,9 @@ namespace tl
                 QWidget* parent = nullptr);
 
             virtual ~TimelineViewport();
+
+            //! Set the background options.
+            void setBackgroundOptions(const timeline::BackgroundOptions&);
 
             //! Set the color configuration options.
             void setColorConfigOptions(const timeline::ColorConfigOptions&);
@@ -107,9 +113,8 @@ namespace tl
             void keyPressEvent(QKeyEvent*) override;
 
         private:
-            image::Size _viewportSize() const;
-            image::Size _renderSize() const;
-            
+            math::Size2i _viewportSize() const;
+            math::Size2i _renderSize() const;
             math::Vector2i _viewportCenter() const;
             void _frameView();
 

@@ -6,6 +6,7 @@
 
 #include <tlCore/Assert.h>
 #include <tlCore/Image.h>
+#include <tlCore/StringFormat.h>
 
 using namespace tl::image;
 
@@ -74,6 +75,11 @@ namespace tl
         {
             _enum<PixelType>("PixelType", getPixelTypeEnums);
             _enum<VideoLevels>("VideoLevels", getVideoLevelsEnums);
+            _enum<YUVCoefficients>("YUVCoefficients", getYUVCoefficientsEnums);
+            for (auto i : getYUVCoefficientsEnums())
+            {
+                _print(string::Format("%0: %1").arg(getLabel(i)).arg(getYUVCoefficients(i)));
+            }
         }
 
         void ImageTest::_info()
@@ -127,13 +133,13 @@ namespace tl
             for (auto i : getPixelTypeEnums())
             {
                 std::stringstream ss;
-                ss << i << " channel count: " << static_cast<int>(getChannelCount(i));
+                ss << i << " channel count: " << getChannelCount(i);
                 _print(ss.str());
             }
             for (auto i : getPixelTypeEnums())
             {
                 std::stringstream ss;
-                ss << i << " bit depth: " << static_cast<int>(getBitDepth(i));
+                ss << i << " bit depth: " << getBitDepth(i);
                 _print(ss.str());
             }
             for (size_t c : { 1, 2, 3, 4 })
@@ -193,6 +199,12 @@ namespace tl
                 TLRENDER_ASSERT(image->getData());
                 TLRENDER_ASSERT(static_cast<const Image*>(image.get())->getData());
             }
+            {
+                auto image = Image::create(1, 2, PixelType::L_U8);
+                TLRENDER_ASSERT(image->getWidth() == 1);
+                TLRENDER_ASSERT(image->getHeight() == 2);
+                TLRENDER_ASSERT(image->getPixelType() == PixelType::L_U8);
+            }
         }
 
         void ImageTest::_serialize()
@@ -221,6 +233,15 @@ namespace tl
                 ss >> s2;
                 TLRENDER_ASSERT(s == s2);
             }
+            try
+            {
+                Size s;
+                std::stringstream ss;
+                ss >> s;
+                TLRENDER_ASSERT(false);
+            }
+            catch (const std::exception&)
+            {}
             try
             {
                 Size s;

@@ -10,14 +10,14 @@ namespace tl
 {
     namespace ui
     {
-        //! Base class for popup widgets.
+        //! Base class for popups.
         class IPopup : public IWidget
         {
             TLRENDER_NON_COPYABLE(IPopup);
 
         protected:
             void _init(
-                const std::string& name,
+                const std::string& objectName,
                 const std::shared_ptr<system::Context>&,
                 const std::shared_ptr<IWidget>& parent = nullptr);
 

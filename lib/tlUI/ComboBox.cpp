@@ -144,7 +144,7 @@ namespace tl
                 int border = 0;
                 image::FontInfo fontInfo;
                 image::FontMetrics fontMetrics;
-                math::Vector2i textSize;
+                math::Size2i textSize;
             };
             SizeData size;
 
@@ -153,14 +153,6 @@ namespace tl
                 std::vector<std::shared_ptr<image::Glyph> > glyphs;
             };
             DrawData draw;
-
-            struct MouseData
-            {
-                bool inside = false;
-                math::Vector2i cursorPos;
-                bool pressed = false;
-            };
-            MouseData mouse;
         };
 
         void ComboBox::_init(
@@ -168,8 +160,9 @@ namespace tl
             const std::shared_ptr<IWidget>& parent)
         {
             IWidget::_init("tl::ui::ComboBox", context, parent);
-            setMouseHover(true);
             setAcceptsKeyFocus(true);
+            _setMouseHover(true);
+            _setMousePress(true);
         }
 
         ComboBox::ComboBox() :
@@ -273,26 +266,6 @@ namespace tl
             _updates |= Update::Draw;
         }
 
-        void ComboBox::setVisible(bool value)
-        {
-            const bool changed = value != _visible;
-            IWidget::setVisible(value);
-            if (changed && !_visible)
-            {
-                _resetMouse();
-            }
-        }
-
-        void ComboBox::setEnabled(bool value)
-        {
-            const bool changed = value != _enabled;
-            IWidget::setEnabled(value);
-            if (changed && !_enabled)
-            {
-                _resetMouse();
-            }
-        }
-
         void ComboBox::tickEvent(
             bool parentsVisible,
             bool parentsEnabled,
@@ -348,57 +321,44 @@ namespace tl
             p.size.fontMetrics = event.getFontMetrics(p.fontRole);
             auto fontInfo = event.style->getFontRole(p.fontRole, event.displayScale);
             p.size.fontInfo = fontInfo;
-            p.size.textSize = math::Vector2i();
+            p.size.textSize = math::Size2i();
             for (const auto& i : p.items)
             {
                 if (!i.text.empty())
                 {
-                    const math::Vector2i textSize = event.fontSystem->getSize(i.text, fontInfo);
-                    p.size.textSize.x = std::max(p.size.textSize.x, textSize.x);
-                    p.size.textSize.y = std::max(p.size.textSize.y, textSize.y);
+                    const math::Size2i textSize = event.fontSystem->getSize(i.text, fontInfo);
+                    p.size.textSize.w = std::max(p.size.textSize.w, textSize.w);
+                    p.size.textSize.h = std::max(p.size.textSize.h, textSize.h);
                 }
             }
 
-            _sizeHint.x = p.size.textSize.x + p.size.margin * 2;
-            _sizeHint.y = p.size.fontMetrics.lineHeight;
+            _sizeHint.w = p.size.textSize.w + p.size.margin * 2;
+            _sizeHint.h = p.size.fontMetrics.lineHeight;
             if (p.iconImage)
             {
-                _sizeHint.x += p.iconImage->getWidth();
+                _sizeHint.w += p.iconImage->getWidth();
                 if (!p.text.empty())
                 {
-                    _sizeHint.x += p.size.spacing;
+                    _sizeHint.w += p.size.spacing;
                 }
-                _sizeHint.y = std::max(
-                    _sizeHint.y,
+                _sizeHint.h = std::max(
+                    _sizeHint.h,
                     static_cast<int>(p.iconImage->getHeight()));
             }
             if (p.arrowIconImage)
             {
-                _sizeHint.x += p.arrowIconImage->getWidth();
-                _sizeHint.x += p.size.spacing;
-                _sizeHint.y = std::max(
-                    _sizeHint.y,
+                _sizeHint.w += p.arrowIconImage->getWidth();
+                _sizeHint.w += p.size.spacing;
+                _sizeHint.h = std::max(
+                    _sizeHint.h,
                     static_cast<int>(p.arrowIconImage->getHeight()));
             }
-            _sizeHint.x +=
+            _sizeHint.w +=
                 p.size.margin * 2 +
                 p.size.border * 4;
-            _sizeHint.y +=
+            _sizeHint.h +=
                 p.size.margin * 2 +
                 p.size.border * 4;
-        }
-
-        void ComboBox::clipEvent(
-            const math::Box2i& clipRect,
-            bool clipped,
-            const ClipEvent& event)
-        {
-            const bool changed = clipped != _clipped;
-            IWidget::clipEvent(clipRect, clipped, event);
-            if (changed && clipped)
-            {
-                _resetMouse();
-            }
         }
 
         void ComboBox::drawEvent(
@@ -431,13 +391,13 @@ namespace tl
                 g2,
                 event.style->getColorRole(ColorRole::Button));
 
-            if (p.mouse.pressed && _geometry.contains(p.mouse.cursorPos))
+            if (_mouse.press && _geometry.contains(_mouse.pos))
             {
                 event.render->drawRect(
                     g2,
                     event.style->getColorRole(ColorRole::Pressed));
             }
-            else if (p.mouse.inside)
+            else if (_mouse.inside)
             {
                 event.render->drawRect(
                     g2,
@@ -470,7 +430,7 @@ namespace tl
                 }
                 const math::Vector2i pos(
                     x + p.size.margin,
-                    g3.y() + g3.h() / 2 - p.size.textSize.y / 2 +
+                    g3.y() + g3.h() / 2 - p.size.textSize.h / 2 +
                     p.size.fontMetrics.ascender);
                 event.render->drawText(
                     p.draw.glyphs,
@@ -478,7 +438,7 @@ namespace tl
                     event.style->getColorRole(enabled ?
                         ColorRole::Text :
                         ColorRole::TextDisabled));
-                x += p.size.textSize.x + p.size.margin * 2 + p.size.spacing;
+                x += p.size.textSize.w + p.size.margin * 2 + p.size.spacing;
             }
 
             if (p.arrowIconImage)
@@ -499,39 +459,27 @@ namespace tl
 
         void ComboBox::mouseEnterEvent()
         {
-            TLRENDER_P();
-            p.mouse.inside = true;
+            IWidget::mouseEnterEvent();
             _updates |= Update::Draw;
         }
 
         void ComboBox::mouseLeaveEvent()
         {
-            TLRENDER_P();
-            p.mouse.inside = false;
+            IWidget::mouseLeaveEvent();
             _updates |= Update::Draw;
-        }
-
-        void ComboBox::mouseMoveEvent(MouseMoveEvent& event)
-        {
-            TLRENDER_P();
-            event.accept = true;
-            p.mouse.cursorPos = event.pos;
         }
 
         void ComboBox::mousePressEvent(MouseClickEvent& event)
         {
+            IWidget::mousePressEvent(event);
             TLRENDER_P();
-            event.accept = true;
-            p.mouse.pressed = true;
-            _updates |= Update::Draw;
             _click();
+            _updates |= Update::Draw;
         }
 
         void ComboBox::mouseReleaseEvent(MouseClickEvent& event)
         {
-            TLRENDER_P();
-            event.accept = true;
-            p.mouse.pressed = false;
+            IWidget::mouseReleaseEvent(event);
             _updates |= Update::Draw;
         }
 
@@ -624,17 +572,6 @@ namespace tl
                         p.menu.reset();
                     }
                 }
-            }
-        }
-
-        void ComboBox::_resetMouse()
-        {
-            TLRENDER_P();
-            if (p.mouse.pressed || p.mouse.inside)
-            {
-                p.mouse.pressed = false;
-                p.mouse.inside = false;
-                _updates |= Update::Draw;
             }
         }
 

@@ -28,8 +28,8 @@ namespace tl
                 {
                     T* out0 = data + i * channelCount;
                     T* out1 = data + (sampleCount - i - 1) * channelCount;
-
-                    for (size_t j = 0; j < channelCount; ++j)
+                    
+                    for (uint8_t j = 0; j < channelCount; ++j)
                     {
                         T tmp = out0[j];
                         out0[j] = out1[j];
@@ -49,7 +49,7 @@ namespace tl
             "F64");
         TLRENDER_ENUM_SERIALIZE_IMPL(DataType);
 
-        size_t getByteCount(DataType value) noexcept
+        size_t getByteCount(DataType value)
         {
             const std::array<uint8_t, static_cast<size_t>(DataType::Count)> data =
             {
@@ -63,7 +63,7 @@ namespace tl
             return data[static_cast<size_t>(value)];
         }
 
-        DataType getIntType(uint8_t value) noexcept
+        DataType getIntType(size_t value)
         {
             const std::array<DataType, 9> data =
             {
@@ -80,7 +80,7 @@ namespace tl
             return value < data.size() ? data[value] : DataType::None;
         }
 
-        DataType getFloatType(uint8_t value) noexcept
+        DataType getFloatType(size_t value)
         {
             const std::array<DataType, 9> data =
             {
@@ -100,7 +100,7 @@ namespace tl
         Info::Info()
         {}
 
-        Info::Info(uint8_t channelCount, DataType dataType, size_t sampleRate) :
+        Info::Info(size_t channelCount, DataType dataType, size_t sampleRate) :
             channelCount(channelCount),
             dataType(dataType),
             sampleRate(sampleRate)
@@ -111,16 +111,14 @@ namespace tl
             _info = info;
             _sampleCount = sampleCount;
             const size_t byteCount = getByteCount();
-            _data = new uint8_t[byteCount];
+            _data.reserve(byteCount);
         }
 
         Audio::Audio()
         {}
 
         Audio::~Audio()
-        {
-            delete[] _data;
-        }
+        {}
 
         std::shared_ptr<Audio> Audio::create(
             const Info& info,
@@ -133,7 +131,7 @@ namespace tl
 
         void Audio::zero()
         {
-            std::memset(_data, 0, getByteCount());
+            std::memset(_data.data(), 0, getByteCount());
         }
 
         namespace
@@ -240,7 +238,7 @@ namespace tl
             uint8_t* out,
             float volume,
             size_t sampleCount,
-            uint8_t channelCount,
+            size_t channelCount,
             DataType type)
         {
             const size_t size = sampleCount * static_cast<size_t>(channelCount);
@@ -266,14 +264,14 @@ namespace tl
         }
 
 #define _CONVERT(a, b) \
-{ \
-    const a##_T * inP = reinterpret_cast<const a##_T *>(in->getData()); \
-    b##_T * outP = reinterpret_cast<b##_T *>(out->getData()); \
-    for (size_t i = 0; i < sampleCount * channelCount; ++i, ++inP, ++outP) \
     { \
-        a##To##b(*inP, *outP); \
-    } \
-}
+        const a##_T * inP = reinterpret_cast<const a##_T *>(in->getData()); \
+        b##_T * outP = reinterpret_cast<b##_T *>(out->getData()); \
+        for (size_t i = 0; i < sampleCount * channelCount; ++i, ++inP, ++outP) \
+        { \
+            a##To##b(*inP, *outP); \
+        } \
+    }
 
         std::shared_ptr<Audio> convert(const std::shared_ptr<Audio>& in, DataType type)
         {
@@ -353,10 +351,10 @@ namespace tl
             template<typename T>
             void _planarInterleave(const std::shared_ptr<Audio>& value, const std::shared_ptr<Audio>& out)
             {
-                const uint8_t channelCount = value->getChannelCount();
+                const size_t channelCount = value->getChannelCount();
                 const size_t sampleCount = value->getSampleCount();
                 std::vector<const T*> planes;
-                for (uint8_t i = 0; i < channelCount; ++i)
+                for (size_t i = 0; i < channelCount; ++i)
                 {
                     planes.push_back(reinterpret_cast<const T*>(value->getData()) + i * sampleCount);
                 }
@@ -403,7 +401,7 @@ namespace tl
 
         std::shared_ptr<Audio> planarDeinterleave(const std::shared_ptr<Audio>& value)
         {
-            const uint8_t channelCount = value->getChannelCount();
+            const size_t channelCount = value->getChannelCount();
             const size_t sampleCount = value->getSampleCount();
             auto out = Audio::create(value->getInfo(), sampleCount);
             switch (value->getDataType())
@@ -461,7 +459,7 @@ namespace tl
             return out;
         }
 
-        void copy(std::list<std::shared_ptr<Audio> >& in, uint8_t* out, size_t sampleCount)
+        void move(std::list<std::shared_ptr<Audio> >& in, uint8_t* out, size_t sampleCount)
         {
             size_t size = 0;
             while (!in.empty() && (size + in.front()->getSampleCount() <= sampleCount))

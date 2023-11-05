@@ -1,16 +1,25 @@
 set(HEADERS
+    App.h
     AudioModel.h
     ColorConfigModel.h
     ColorModel.h
     FilesModel.h
-    Util.h)
+    Info.h
+    Settings.h
+    SettingsInline.h
+    Util.h
+    ViewportModel.h)
 
 set(SOURCE
+    App.cpp
     AudioModel.cpp
     ColorConfigModel.cpp
     ColorModel.cpp
     FilesModel.cpp
-    Util.cpp)
+    Info.cpp
+    Settings.cpp
+    Util.cpp
+    ViewportModel.cpp)
 
 add_library(tlPlay ${HEADERS} ${SOURCE})
 target_link_libraries(tlPlay tlTimeline)

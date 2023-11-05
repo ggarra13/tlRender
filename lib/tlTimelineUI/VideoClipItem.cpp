@@ -6,14 +6,11 @@
 
 #include <tlUI/DrawUtil.h>
 
-#include <tlGL/OffscreenBuffer.h>
-
 #include <tlTimeline/RenderUtil.h>
 #include <tlTimeline/Util.h>
 
-#include <opentimelineio/track.h>
-
-#include <sstream>
+#include <tlCore/Assert.h>
+#include <tlCore/StringFormat.h>
 
 namespace tl
 {
@@ -21,83 +18,56 @@ namespace tl
     {
         struct VideoClipItem::Private
         {
-            otio::SerializableObject::Retainer<otio::Clip> clip;
-            otio::SerializableObject::Retainer<otio::Track> track;
             file::Path path;
             std::vector<file::MemoryRead> memoryRead;
-            otime::TimeRange timeRange = time::invalidTimeRange;
-            otime::TimeRange availableRange = time::invalidTimeRange;
-            bool ioInfoInit = true;
-            io::Info ioInfo;
+            std::shared_ptr<ui::ThumbnailGenerator> thumbnailGenerator;
 
             struct SizeData
             {
-                int thumbnailWidth = 0;
+                int dragLength = 0;
                 math::Box2i clipRect;
             };
             SizeData size;
 
-            std::map<otime::RationalTime, std::future<io::VideoData> > videoDataFutures;
-            std::map<otime::RationalTime, io::VideoData> videoData;
-            struct Thumbnail
-            {
-                std::shared_ptr<gl::OffscreenBuffer> buffer;
-                std::chrono::steady_clock::time_point time;
-            };
-            std::map<otime::RationalTime, Thumbnail> thumbnails;
-            std::list<std::shared_ptr<gl::OffscreenBuffer> > bufferPool;
-            std::shared_ptr<observer::ValueObserver<bool> > cancelObserver;
+            ui::InfoRequest infoRequest;
+            std::shared_ptr<io::Info> ioInfo;
+            std::map<otime::RationalTime, ui::ThumbnailRequest> thumbnailRequests;
         };
 
         void VideoClipItem::_init(
             const otio::SerializableObject::Retainer<otio::Clip>& clip,
-            const ItemData& itemData,
+            double scale,
+            const ItemOptions& options,
+            const std::shared_ptr<ItemData>& itemData,
+            const std::shared_ptr<ui::ThumbnailGenerator> thumbnailGenerator,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
         {
-            const auto rangeOpt = clip->trimmed_range_in_parent();
             const auto path = timeline::getPath(
                 clip->media_reference(),
-                itemData.directory,
-                itemData.options.pathOptions);
+                itemData->directory,
+                itemData->options.pathOptions);
             IBasicItem::_init(
-                rangeOpt.has_value() ? rangeOpt.value() : time::invalidTimeRange,
                 !clip->name().empty() ? clip->name() : path.get(-1, false),
                 ui::ColorRole::VideoClip,
-                getMarkers(clip),
                 "tl::timelineui::VideoClipItem",
+                clip.value,
+                scale,
+                options,
                 itemData,
                 context,
                 parent);
             TLRENDER_P();
 
-            p.clip = clip;
-            p.track = dynamic_cast<otio::Track*>(clip->parent());
-
             p.path = path;
             p.memoryRead = timeline::getMemoryRead(clip->media_reference());
+            p.thumbnailGenerator = thumbnailGenerator;
 
-            if (rangeOpt.has_value())
+            const auto i = itemData->info.find(path.get());
+            if (i != itemData->info.end())
             {
-                p.timeRange = rangeOpt.value();
+                p.ioInfo = i->second;
             }
-            otio::ErrorStatus error;
-            const otime::TimeRange availableRange = clip->available_range(&error);
-            if (!otio::is_error(error))
-            {
-                p.availableRange = availableRange;
-            }
-            else if (clip->source_range().has_value())
-            {
-                p.availableRange = clip->source_range().value();
-            }
-
-            p.cancelObserver = observer::ValueObserver<bool>::create(
-                _data.ioManager->observeCancelRequests(),
-                [this](bool)
-                {
-                    _p->videoDataFutures.clear();
-                });
         }
 
         VideoClipItem::VideoClipItem() :
@@ -105,16 +75,22 @@ namespace tl
         {}
 
         VideoClipItem::~VideoClipItem()
-        {}
+        {
+            TLRENDER_P();
+            _cancelRequests();
+        }
 
         std::shared_ptr<VideoClipItem> VideoClipItem::create(
             const otio::SerializableObject::Retainer<otio::Clip>& clip,
-            const ItemData& itemData,
+            double scale,
+            const ItemOptions& options,
+            const std::shared_ptr<ItemData>& itemData,
+            const std::shared_ptr<ui::ThumbnailGenerator> thumbnailGenerator,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
         {
             auto out = std::shared_ptr<VideoClipItem>(new VideoClipItem);
-            out->_init(clip, itemData, context, parent);
+            out->_init(clip, scale, options, itemData, thumbnailGenerator, context, parent);
             return out;
         }
 
@@ -125,13 +101,8 @@ namespace tl
             TLRENDER_P();
             if (changed)
             {
-                _data.ioManager->cancelRequests();
-                if (!_options.thumbnails)
-                {
-                    p.videoData.clear();
-                    p.thumbnails.clear();
-                    p.bufferPool.clear();
-                }
+                _cancelRequests();
+                _updates |= ui::Update::Draw;
             }
         }
 
@@ -144,13 +115,7 @@ namespace tl
             TLRENDER_P();
             if (thumbnailsChanged)
             {
-                _data.ioManager->cancelRequests();
-                if (!_options.thumbnails)
-                {
-                    p.videoData.clear();
-                    p.thumbnails.clear();
-                    p.bufferPool.clear();
-                }
+                _cancelRequests();
                 _updates |= ui::Update::Draw;
             }
         }
@@ -163,32 +128,32 @@ namespace tl
             IWidget::tickEvent(parentsVisible, parentsEnabled, event);
             TLRENDER_P();
 
-            // Check if any thumbnail reads are finished.
-            auto i = p.videoDataFutures.begin();
-            while (i != p.videoDataFutures.end())
+            // Check if the I/O information is finished.
+            const std::string fileName = p.path.get();
+            if (p.infoRequest.future.valid() &&
+                p.infoRequest.future.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
             {
-                if (i->second.valid() &&
-                    i->second.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+                p.ioInfo = std::make_shared<io::Info>(p.infoRequest.future.get());
+                _data->info[fileName] = p.ioInfo;
+                _updates |= ui::Update::Size;
+                _updates |= ui::Update::Draw;
+            }
+
+            // Check if any thumbnails are finished.
+            auto i = p.thumbnailRequests.begin();
+            while (i != p.thumbnailRequests.end())
+            {
+                if (i->second.future.valid() &&
+                    i->second.future.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
                 {
-                    const auto videoData = i->second.get();
-                    p.videoData[i->first] = videoData;
-                    i = p.videoDataFutures.erase(i);
+                    const auto image = i->second.future.get();
+                    _data->thumbnails[_getThumbnailKey(i->first)] = image;
+                    i = p.thumbnailRequests.erase(i);
                     _updates |= ui::Update::Draw;
                 }
                 else
                 {
                     ++i;
-                }
-            }
-
-            // Check if any thumbnails need to be redrawn.
-            const auto now = std::chrono::steady_clock::now();
-            for (const auto& thumbnail : p.thumbnails)
-            {
-                const std::chrono::duration<float> diff = now - thumbnail.second.time;
-                if (diff.count() <= _options.thumbnailFade)
-                {
-                    _updates |= ui::Update::Draw;
                 }
             }
         }
@@ -197,42 +162,25 @@ namespace tl
         {
             IBasicItem::sizeHintEvent(event);
             TLRENDER_P();
-            const int thumbnailWidth = (_options.thumbnails && !p.ioInfo.video.empty()) ?
-                static_cast<int>(_options.thumbnailHeight * p.ioInfo.video[0].size.getAspect()) :
-                0;
-            if (thumbnailWidth != p.size.thumbnailWidth)
-            {
-                p.size.thumbnailWidth = thumbnailWidth;
-                _data.ioManager->cancelRequests();
-                p.videoData.clear();
-                p.thumbnails.clear();
-                p.bufferPool.clear();
-                _updates |= ui::Update::Draw;
-            }
+            p.size.dragLength = event.style->getSizeRole(ui::SizeRole::DragLength, event.displayScale);
             if (_options.thumbnails)
             {
-                _sizeHint.y += _options.thumbnailHeight;
+                _sizeHint.h += _options.thumbnailHeight;
             }
         }
 
-        void VideoClipItem::clipEvent(
-            const math::Box2i& clipRect,
-            bool clipped,
-            const ui::ClipEvent& event)
+        void VideoClipItem::clipEvent(const math::Box2i& clipRect, bool clipped)
         {
-            IBasicItem::clipEvent(clipRect, clipped, event);
+            IBasicItem::clipEvent(clipRect, clipped);
             TLRENDER_P();
             if (clipRect == p.size.clipRect)
                 return;
             p.size.clipRect = clipRect;
             if (clipped)
             {
-                p.videoData.clear();
-                p.thumbnails.clear();
-                p.bufferPool.clear();
+                _cancelRequests();
+                _updates |= ui::Update::Draw;
             }
-            _data.ioManager->cancelRequests();
-            _updates |= ui::Update::Draw;
         }
 
         void VideoClipItem::drawEvent(
@@ -246,6 +194,12 @@ namespace tl
             }
         }
 
+        std::string VideoClipItem::_getThumbnailKey(const otime::RationalTime& time) const
+        {
+            TLRENDER_P();
+            return string::Format("{0}_{1}").arg(p.path.get()).arg(time);
+        }
+
         void VideoClipItem::_drawThumbnails(
             const math::Box2i& drawRect,
             const ui::DrawEvent& event)
@@ -254,7 +208,6 @@ namespace tl
 
             const math::Box2i g = _getInsideGeometry();
             const int m = _getMargin();
-            const auto now = std::chrono::steady_clock::now();
 
             const math::Box2i box(
                 g.min.x,
@@ -270,146 +223,86 @@ namespace tl
             event.render->setClipRectEnabled(true);
             event.render->setClipRect(box.intersect(clipRectState.getClipRect()));
 
-            std::set<otime::RationalTime> thumbnailsDelete;
-            for (const auto& thumbnail : p.thumbnails)
-            {
-                thumbnailsDelete.insert(thumbnail.first);
-            }
-
             const math::Box2i clipRect = _getClipRect(
                 drawRect,
                 _options.clipRectScale);
             if (g.intersects(clipRect))
             {
-                if (p.ioInfoInit)
+                if (!p.ioInfo && !p.infoRequest.future.valid())
                 {
-                    p.ioInfoInit = false;
-                    p.ioInfo = _data.ioManager->getInfo(
-                        p.path,
-                        p.memoryRead,
-                        p.availableRange.start_time()).get();
-                    _updates |= ui::Update::Size;
-                    _updates |= ui::Update::Draw;
+                    p.infoRequest = p.thumbnailGenerator->getInfo(p.path, p.memoryRead);
                 }
             }
 
-            if (p.size.thumbnailWidth > 0)
+            const int thumbnailWidth =
+                (_options.thumbnails && p.ioInfo && !p.ioInfo->video.empty()) ?
+                static_cast<int>(_options.thumbnailHeight * p.ioInfo->video[0].size.getAspect()) :
+                0;
+            if (thumbnailWidth > 0)
             {
-                if (!p.videoData.empty())
-                {
-                    const timeline::ViewportState viewportState(event.render);
-                    const timeline::ClipRectEnabledState clipRectEnabledState(event.render);
-                    const timeline::ClipRectState clipRectState(event.render);
-                    const timeline::TransformState transformState(event.render);
-                    const timeline::RenderSizeState renderSizeState(event.render);
-                    for (const auto& i : p.videoData)
-                    {
-                        const image::Size size(
-                            p.size.thumbnailWidth,
-                            _options.thumbnailHeight);
-                        std::shared_ptr<gl::OffscreenBuffer> buffer;
-                        if (p.bufferPool.size())
-                        {
-                            buffer = p.bufferPool.front();
-                            p.bufferPool.pop_front();
-                        }
-                        else
-                        {
-                            gl::OffscreenBufferOptions options;
-                            options.colorType = image::PixelType::RGB_F32;
-                            buffer = gl::OffscreenBuffer::create(size, options);
-                        }
-                        if (buffer)
-                        {
-                            gl::OffscreenBufferBinding binding(buffer);
-                            event.render->setRenderSize(size);
-                            event.render->setViewport(math::Box2i(0, 0, size.w, size.h));
-                            event.render->setClipRectEnabled(false);
-                            event.render->setTransform(
-                                math::ortho(
-                                    0.F,
-                                    static_cast<float>(size.w),
-                                    0.F,
-                                    static_cast<float>(size.h),
-                                    -1.F,
-                                    1.F));
-                            event.render->clearViewport(image::Color4f(0.F, 0.F, 0.F));
-                            if (i.second.image)
-                            {
-                                event.render->drawImage(
-                                    i.second.image,
-                                    math::Box2i(0, 0, size.w, size.h));
-                            }
-                        }
-                        p.thumbnails[i.first] = { buffer, now };
-                    }
-                }
-                p.videoData.clear();
-
-                const int w = _sizeHint.x;
-                for (int x = 0; x < w; x += p.size.thumbnailWidth)
+                const int w = _sizeHint.w;
+                for (int x = 0; x < w; x += thumbnailWidth)
                 {
                     const math::Box2i box(
                         g.min.x +
                         x,
                         g.min.y +
                         _getLineHeight() + m * 2,
-                        p.size.thumbnailWidth,
+                        thumbnailWidth,
                         _options.thumbnailHeight);
                     if (box.intersects(clipRect))
                     {
                         const otime::RationalTime time = time::floor(otime::RationalTime(
-                            p.timeRange.start_time().value() +
+                            _timeRange.start_time().value() +
                             (w > 0 ? (x / static_cast<double>(w - 1)) : 0) *
-                            p.timeRange.duration().value(),
-                            p.timeRange.duration().rate()));
+                            _timeRange.duration().value(),
+                            _timeRange.duration().rate()));
+                        const otime::RationalTime mediaTime = timeline::toVideoMediaTime(
+                            time,
+                            _timeRange,
+                            _trimmedRange,
+                            p.ioInfo->videoTime.duration().rate());
 
-                        const auto i = p.thumbnails.find(time);
-                        if (i != p.thumbnails.end())
+                        const auto i = _data->thumbnails.find(_getThumbnailKey(mediaTime));
+                        if (i != _data->thumbnails.end())
                         {
-                            const unsigned int id = i->second.buffer->getColorID();
-                            const std::chrono::duration<float> diff = now - i->second.time;
-                            float a = 1.F;
-                            if (_options.thumbnailFade > 0.F)
+                            if (i->second)
                             {
-                                a = std::min(diff.count() / _options.thumbnailFade, 1.F);
+                                event.render->drawImage(i->second, box);
                             }
-                            event.render->drawTexture(
-                                id,
-                                box,
-                                image::Color4f(1.F, 1.F, 1.F, a));
-                            thumbnailsDelete.erase(time);
                         }
-                        else if (!p.ioInfo.video.empty())
+                        else if (p.ioInfo && !p.ioInfo->video.empty())
                         {
-                            const auto k = p.videoDataFutures.find(time);
-                            if (k == p.videoDataFutures.end())
+                            const auto k = p.thumbnailRequests.find(mediaTime);
+                            if (k == p.thumbnailRequests.end())
                             {
-                                const auto mediaTime = timeline::toVideoMediaTime(
-                                    time,
-                                    p.track,
-                                    p.clip,
-                                    p.ioInfo);
-                                p.videoDataFutures[time] = _data.ioManager->readVideo(
+                                p.thumbnailRequests[mediaTime] = p.thumbnailGenerator->getThumbnail(
                                     p.path,
                                     p.memoryRead,
-                                    p.availableRange.start_time(),
+                                    _options.thumbnailHeight,
                                     mediaTime);
                             }
                         }
                     }
                 }
             }
+        }
 
-            for (auto i : thumbnailsDelete)
+        void VideoClipItem::_cancelRequests()
+        {
+            TLRENDER_P();
+            std::vector<uint64_t> ids;
+            if (p.infoRequest.future.valid())
             {
-                const auto j = p.thumbnails.find(i);
-                if (j != p.thumbnails.end())
-                {
-                    p.bufferPool.push_back(j->second.buffer);
-                    p.thumbnails.erase(j);
-                }
+                ids.push_back(p.infoRequest.id);
+                p.infoRequest = ui::InfoRequest();
             }
+            for (const auto& i : p.thumbnailRequests)
+            {
+                ids.push_back(i.second.id);
+            }
+            p.thumbnailRequests.clear();
+            p.thumbnailGenerator->cancelRequests(ids);
         }
     }
 }

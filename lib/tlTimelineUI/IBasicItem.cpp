@@ -14,7 +14,6 @@ namespace tl
     {
         struct IBasicItem::Private
         {
-            otime::TimeRange timeRange = time::invalidTimeRange;
             std::string label;
             std::string durationLabel;
             ui::ColorRole colorRole = ui::ColorRole::VideoClip;
@@ -27,9 +26,9 @@ namespace tl
                 image::FontInfo fontInfo = image::FontInfo("", 0);
                 image::FontMetrics fontMetrics;
                 bool textUpdate = true;
-                math::Vector2i labelSize;
-                math::Vector2i durationSize;
-                std::vector<math::Vector2i> markerSizes;
+                math::Size2i labelSize;
+                math::Size2i durationSize;
+                std::vector<math::Size2i> markerSizes;
             };
             SizeData size;
 
@@ -43,22 +42,37 @@ namespace tl
         };
 
         void IBasicItem::_init(
-            const otime::TimeRange& timeRange,
             const std::string& label,
             ui::ColorRole colorRole,
-            const std::vector<Marker>& markers,
-            const std::string& name,
-            const ItemData& itemData,
+            const std::string& objectName,
+            const otio::SerializableObject::Retainer<otio::Item>& item,
+            double scale,
+            const ItemOptions& options,
+            const std::shared_ptr<ItemData>& itemData,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
         {
-            IItem::_init(name, itemData, context, parent);
+            otime::TimeRange timeRange = time::invalidTimeRange;
+            const auto timeRangeOpt = item->trimmed_range_in_parent();
+            if (timeRangeOpt.has_value())
+            {
+                timeRange = timeRangeOpt.value();
+            }
+            const otime::TimeRange trimmedRange = item->trimmed_range();
+            IItem::_init(
+                objectName,
+                timeRange,
+                trimmedRange,
+                scale,
+                options,
+                itemData,
+                context,
+                parent);
             TLRENDER_P();
 
-            p.timeRange = timeRange;
             p.label = label;
             p.colorRole = colorRole;
-            p.markers = markers;
+            p.markers = getMarkers(item.value);
 
             _textUpdate();
         }
@@ -99,26 +113,23 @@ namespace tl
             }
             p.size.textUpdate = false;
 
-            _sizeHint = math::Vector2i(
-                p.timeRange.duration().rescaled_to(1.0).value() * _scale,
+            _sizeHint = math::Size2i(
+                _timeRange.duration().rescaled_to(1.0).value() * _scale,
                 p.size.fontMetrics.lineHeight +
                 p.size.margin * 2 +
                 p.size.border * 4);
             if (_options.showMarkers)
             {
-                _sizeHint.y += p.markers.size() *
+                _sizeHint.h += p.markers.size() *
                     (p.size.fontMetrics.lineHeight +
                     p.size.margin * 2 +
                     p.size.border * 2);
             }
         }
 
-        void IBasicItem::clipEvent(
-            const math::Box2i& clipRect,
-            bool clipped,
-            const ui::ClipEvent& event)
+        void IBasicItem::clipEvent(const math::Box2i& clipRect, bool clipped)
         {
-            IItem::clipEvent(clipRect, clipped, event);
+            IItem::clipEvent(clipRect, clipped);
             TLRENDER_P();
             if (clipped)
             {
@@ -135,20 +146,30 @@ namespace tl
             IItem::drawEvent(drawRect, event);
             TLRENDER_P();
 
-            const math::Box2i g = _geometry.margin(-(p.size.border * 2));
+            const math::Box2i& g = _geometry;
+            ui::ColorRole colorRole = getSelectRole();
+            if (colorRole != ui::ColorRole::None)
+            {
+                event.render->drawMesh(
+                    ui::border(g, p.size.border * 2),
+                    math::Vector2i(),
+                    event.style->getColorRole(colorRole));
+            }
+
+            const math::Box2i g2 = g.margin(-(p.size.border * 2));
             event.render->drawRect(
-                g,
+                g2,
                 event.style->getColorRole(p.colorRole));
 
             const timeline::ClipRectEnabledState clipRectEnabledState(event.render);
             const timeline::ClipRectState clipRectState(event.render);
             event.render->setClipRectEnabled(true);
-            event.render->setClipRect(g.intersect(drawRect));
+            event.render->setClipRect(g2.intersect(drawRect));
 
             math::Box2i labelGeometry(
-                g.min.x + p.size.margin,
-                g.min.y + p.size.margin,
-                p.size.labelSize.x,
+                g2.min.x + p.size.margin,
+                g2.min.y + p.size.margin,
+                p.size.labelSize.w,
                 p.size.fontMetrics.lineHeight);
             if (drawRect.intersects(labelGeometry))
             {
@@ -166,11 +187,11 @@ namespace tl
             }
 
             const math::Box2i durationGeometry(
-                g.max.x -
-                p.size.durationSize.x -
+                g2.max.x -
+                p.size.durationSize.w -
                 p.size.margin,
-                g.min.y + p.size.margin,
-                p.size.durationSize.x,
+                g2.min.y + p.size.margin,
+                p.size.durationSize.w,
                 p.size.fontMetrics.lineHeight);
             if (drawRect.intersects(durationGeometry) &&
                 !durationGeometry.intersects(labelGeometry))
@@ -194,7 +215,7 @@ namespace tl
                 {
                     p.draw.markerGlyphs.resize(p.markers.size());
                 }
-                float y = g.max.y + 1 -
+                float y = g2.max.y + 1 -
                     (p.size.fontMetrics.lineHeight +
                     p.size.margin * 2 +
                     p.size.border * 2) *
@@ -208,9 +229,9 @@ namespace tl
                         _geometry.min.x +
                         p.markers[i].range.end_time_exclusive().rescaled_to(1.0).value() * _scale - 1;
                     math::Box2i g2;
-                    g2.min.x = std::max(x0, g.min.x);
+                    g2.min.x = std::max(x0, g2.min.x);
                     g2.min.y = y;
-                    g2.max.x = std::min(x1, g.max.x);
+                    g2.max.x = std::min(x1, g2.max.x);
                     g2.max.y = y + p.size.border * 2 - 1;
                     event.render->drawRect(g2, p.markers[i].color);
 
@@ -219,7 +240,7 @@ namespace tl
                     labelGeometry = math::Box2i(
                         g2.min.x + p.size.margin,
                         y + p.size.margin,
-                        p.size.markerSizes[i].x,
+                        p.size.markerSizes[i].w,
                         p.size.fontMetrics.lineHeight);
                     if (drawRect.intersects(labelGeometry))
                     {
@@ -266,7 +287,7 @@ namespace tl
         void IBasicItem::_textUpdate()
         {
             TLRENDER_P();
-            p.durationLabel = _getDurationLabel(p.timeRange.duration());
+            p.durationLabel = _getDurationLabel(_timeRange.duration());
             p.size.textUpdate = true;
             p.draw.durationGlyphs.clear();
             _updates |= ui::Update::Size;

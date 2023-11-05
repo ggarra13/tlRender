@@ -2,7 +2,7 @@
 // Copyright (c) 2021-2023 Darby Johnston
 // All rights reserved.
 
-#include <tlIO/OpenEXR.h>
+#include <tlIO/OpenEXRPrivate.h>
 
 #include <tlCore/FileIO.h>
 #include <tlCore/LogSystem.h>
@@ -157,7 +157,6 @@ namespace tl
                     const std::weak_ptr<log::System>& logSystemWeak)
                 {
                     // Open the file.
-                    // \bug https://lists.aswf.io/g/openexr-dev/message/43
                     if (memory)
                     {
                         _s.reset(new IStream(fileName.c_str(), memory->p, memory->size));
@@ -256,11 +255,18 @@ namespace tl
                 io::VideoData read(
                     const std::string& fileName,
                     const otime::RationalTime& time,
-                    uint16_t layer)
+                    const io::Options& options)
                 {
                     io::VideoData out;
-                
-                    layer = std::min(static_cast<size_t>(layer), _info.video.size() - 1);
+                    int layer = 0;
+                    const auto i = options.find("Layer");
+                    if (i != options.end())
+                    {
+                        layer = std::min(
+                            std::atoi(i->second.c_str()),
+                            static_cast<int>(_info.video.size()) - 1);
+                    }
+                    
                     const Imf::Header& header = _f->header(_layers[layer].partNumber);
 
                     // Get the display and data windows which can change
@@ -365,9 +371,10 @@ namespace tl
             const file::Path& path,
             const std::vector<file::MemoryRead>& memory,
             const io::Options& options,
+            const std::shared_ptr<io::Cache>& cache,
             const std::weak_ptr<log::System>& logSystem)
         {
-            ISequenceRead::_init(path, memory, options, logSystem);
+            ISequenceRead::_init(path, memory, options, cache, logSystem);
 
             auto option = options.find("OpenEXR/ChannelGrouping");
             if (option != options.end())
@@ -388,10 +395,11 @@ namespace tl
         std::shared_ptr<Read> Read::create(
             const file::Path& path,
             const io::Options& options,
+            const std::shared_ptr<io::Cache>& cache,
             const std::weak_ptr<log::System>& logSystem)
         {
             auto out = std::shared_ptr<Read>(new Read);
-            out->_init(path, {}, options, logSystem);
+            out->_init(path, {}, options, cache, logSystem);
             return out;
         }
 
@@ -399,10 +407,11 @@ namespace tl
             const file::Path& path,
             const std::vector<file::MemoryRead>& memory,
             const io::Options& options,
+            const std::shared_ptr<io::Cache>& cache,
             const std::weak_ptr<log::System>& logSystem)
         {
             auto out = std::shared_ptr<Read>(new Read);
-            out->_init(path, memory, options, logSystem);
+            out->_init(path, memory, options, cache, logSystem);
             return out;
         }
 
@@ -430,9 +439,9 @@ namespace tl
             const std::string& fileName,
             const file::MemoryRead* memory,
             const otime::RationalTime& time,
-            uint16_t layer)
+            const io::Options& options)
         {
-            return File(fileName, memory, _channelGrouping, _logSystem).read(fileName, time, layer);
+            return File(fileName, memory, _channelGrouping, _logSystem).read(fileName, time, options);
         }
     }
 }

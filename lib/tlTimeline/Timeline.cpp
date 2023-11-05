@@ -6,7 +6,7 @@
 
 #include <tlTimeline/Util.h>
 
-#include <tlIO/IOSystem.h>
+#include <tlIO/System.h>
 
 #include <tlCore/Assert.h>
 #include <tlCore/Error.h>
@@ -17,28 +17,6 @@ namespace tl
 {
     namespace timeline
     {
-        std::vector<std::string> getExtensions(
-            int types,
-            const std::shared_ptr<system::Context>& context)
-        {
-            std::vector<std::string> out;
-            //! \todo Get extensions for the Python adapters?
-            if (types & static_cast<int>(io::FileType::Movie))
-            {
-                out.push_back(".otio");
-                out.push_back(".otioz");
-            }
-            if (auto ioSystem = context->getSystem<io::System>())
-            {
-                for (const auto& plugin : ioSystem->getPlugins())
-                {
-                    const auto& extensions = plugin->getExtensions(types);
-                    out.insert(out.end(), extensions.begin(), extensions.end());
-                }
-            }
-            return out;
-        }
-
         TLRENDER_ENUM_IMPL(
             FileSequenceAudio,
             "None",
@@ -104,7 +82,7 @@ namespace tl
             p.context = context;
             p.options = options;
             p.otioTimeline = otioTimeline;
-            const auto i = otioTimeline->metadata().find("tl::timeline");
+            const auto i = otioTimeline->metadata().find("tlRender");
             if (i != otioTimeline->metadata().end())
             {
                 try
@@ -223,6 +201,8 @@ namespace tl
         {
             TLRENDER_P();
             p.otioTimeline = value;
+            if (p.otioTimeline.value)
+                p.timeRange = timeline::getTimeRange(p.otioTimeline.value);
             std::unique_lock<std::mutex> lock(p.mutex.mutex);
             if (!p.mutex.stopped)
             {
@@ -255,12 +235,14 @@ namespace tl
             return _p->ioInfo;
         }
 
-        std::future<VideoData> Timeline::getVideo(const otime::RationalTime& time, uint16_t videoLayer)
+        std::future<VideoData> Timeline::getVideo(
+            const otime::RationalTime& time,
+            const io::Options& options)
         {
             TLRENDER_P();
             auto request = std::make_shared<Private::VideoRequest>();
             request->time = time;
-            request->videoLayer = videoLayer;
+            request->options = options;
             auto future = request->promise.get_future();
             bool valid = false;
             {
@@ -282,11 +264,14 @@ namespace tl
             return future;
         }
 
-        std::future<AudioData> Timeline::getAudio(int64_t seconds)
+        std::future<AudioData> Timeline::getAudio(
+            double seconds,
+            const io::Options& options)
         {
             TLRENDER_P();
             auto request = std::make_shared<Private::AudioRequest>();
             request->seconds = seconds;
+            request->options = options;
             auto future = request->promise.get_future();
             bool valid = false;
             {

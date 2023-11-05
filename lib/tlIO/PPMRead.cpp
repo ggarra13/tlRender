@@ -141,9 +141,10 @@ namespace tl
             const file::Path& path,
             const std::vector<file::MemoryRead>& memory,
             const io::Options& options,
+            const std::shared_ptr<io::Cache>& cache,
             const std::weak_ptr<log::System>& logSystem)
         {
-            ISequenceRead::_init(path, memory, options, logSystem);
+            ISequenceRead::_init(path, memory, options, cache, logSystem);
         }
 
         Read::Read()
@@ -157,10 +158,11 @@ namespace tl
         std::shared_ptr<Read> Read::create(
             const file::Path& path,
             const io::Options& options,
+            const std::shared_ptr<io::Cache>& cache,
             const std::weak_ptr<log::System>& logSystem)
         {
             auto out = std::shared_ptr<Read>(new Read);
-            out->_init(path, {}, options, logSystem);
+            out->_init(path, {}, options, cache, logSystem);
             return out;
         }
 
@@ -168,10 +170,11 @@ namespace tl
             const file::Path& path,
             const std::vector<file::MemoryRead>& memory,
             const io::Options& options,
+            const std::shared_ptr<io::Cache>& cache,
             const std::weak_ptr<log::System>& logSystem)
         {
             auto out = std::shared_ptr<Read>(new Read);
-            out->_init(path, memory, options, logSystem);
+            out->_init(path, memory, options, cache, logSystem);
             return out;
         }
 
@@ -191,7 +194,7 @@ namespace tl
             const std::string& fileName,
             const file::MemoryRead* memory,
             const otime::RationalTime& time,
-            uint16_t layer)
+            const io::Options&)
         {
             return File(fileName, memory).read(fileName, time);
         }

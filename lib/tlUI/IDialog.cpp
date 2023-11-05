@@ -26,11 +26,11 @@ namespace tl
         };
 
         void IDialog::_init(
-            const std::string& name,
+            const std::string& objectName,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
         {
-            IPopup::_init(name, context, parent);
+            IPopup::_init(objectName, context, parent);
         }
 
         IDialog::IDialog() :
@@ -78,10 +78,10 @@ namespace tl
             if (!_children.empty())
             {
                 const math::Box2i g = value.margin(-p.size.margin);
-                const math::Vector2i& sizeHint = _children.front()->getSizeHint();
+                const math::Size2i& sizeHint = _children.front()->getSizeHint();
                 math::Vector2i size;
-                size.x = std::min(sizeHint.x, g.w());
-                size.y = std::min(sizeHint.y, g.h());
+                size.x = std::min(sizeHint.w, g.w());
+                size.y = std::min(sizeHint.h, g.h());
                 if (Stretch::Expanding == _children.front()->getHStretch())
                 {
                     size.x = g.w();

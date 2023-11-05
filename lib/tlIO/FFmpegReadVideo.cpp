@@ -95,6 +95,19 @@ namespace tl
                 auto avVideoStream = _avFormatContext->streams[_avStream];
                 auto avVideoCodecParameters = avVideoStream->codecpar;
                 auto avVideoCodec = avcodec_find_decoder(avVideoCodecParameters->codec_id);
+                
+                // If we are reading VPX, use libvpx-vp9 external lib if available so
+                // we can read an alpha channel.
+                if (avVideoCodecParameters->codec_id == AV_CODEC_ID_VP9)
+                {
+                    auto avLibVpxCodec = avcodec_find_decoder_by_name("libvpx-vp9");
+                    if (avLibVpxCodec)
+                    {
+                        avVideoCodec = avLibVpxCodec;
+                        avVideoCodecParameters->codec_id = avVideoCodec->id;
+                    }
+                }
+                
                 if (!avVideoCodec)
                 {
                     throw std::runtime_error(string::Format("{0}: No video codec found").arg(fileName));
@@ -137,6 +150,25 @@ namespace tl
                 _info.layout.mirror.y = true;
 
                 _avInputPixelFormat = static_cast<AVPixelFormat>(_avCodecParameters[_avStream]->format);
+
+                // LibVPX return AV_PIX_FMT_YUV420P with metadata "alpha_mode" set to 1.
+                AVDictionaryEntry* tag = nullptr;
+                while ((tag = av_dict_get(avVideoStream->metadata, "", tag, AV_DICT_IGNORE_SUFFIX)))
+                {
+                    const std::string key(tag->key);
+                    const std::string value(tag->value);
+                    if (string::compare(
+                        key,
+                        "alpha_mode",
+                        string::Compare::CaseSensitive))
+                    {
+                        if (value == "1" && _avInputPixelFormat == AV_PIX_FMT_YUV420P)
+                        {
+                            _avInputPixelFormat = AV_PIX_FMT_YUVA420P;
+                        }
+                    }
+                }
+
                 switch (_avInputPixelFormat)
                 {
                 case AV_PIX_FMT_RGB24:
@@ -231,12 +263,6 @@ namespace tl
                 case AV_PIX_FMT_YUV444P12LE:
                 case AV_PIX_FMT_YUV444P16BE:
                 case AV_PIX_FMT_YUV444P16LE:
-                case AV_PIX_FMT_YUVA444P10BE:
-                case AV_PIX_FMT_YUVA444P10LE:
-                case AV_PIX_FMT_YUVA444P12BE:
-                case AV_PIX_FMT_YUVA444P12LE:
-                case AV_PIX_FMT_YUVA444P16BE:
-                case AV_PIX_FMT_YUVA444P16LE:
                     if (options.yuvToRGBConversion)
                     {
                         _avOutputPixelFormat = AV_PIX_FMT_RGB48;
@@ -249,6 +275,29 @@ namespace tl
                         _avOutputPixelFormat = AV_PIX_FMT_YUV444P16LE;
                         _info.pixelType = image::PixelType::YUV_444P_U16;
                     }
+                    break;
+                case AV_PIX_FMT_YUVA420P:
+                case AV_PIX_FMT_YUVA422P:
+                case AV_PIX_FMT_YUVA444P:
+                    //! \todo Support these formats natively.
+                    // if (options.yuvToRGBConversion)
+                    // {
+                    _avOutputPixelFormat = AV_PIX_FMT_RGBA;
+                    _info.pixelType = image::PixelType::RGBA_U8;
+                    // }
+                    break;
+                case AV_PIX_FMT_YUVA444P10BE:
+                case AV_PIX_FMT_YUVA444P10LE:
+                case AV_PIX_FMT_YUVA444P12BE:
+                case AV_PIX_FMT_YUVA444P12LE:
+                case AV_PIX_FMT_YUVA444P16BE:
+                case AV_PIX_FMT_YUVA444P16LE:
+                    //! \todo Support these formats natively.
+                    // if (options.yuvToRGBConversion)
+                    // {
+                        _avOutputPixelFormat = AV_PIX_FMT_RGBA64;
+                        _info.pixelType = image::PixelType::RGBA_U16;
+                    // }
                     break;
                 default:
                     if (options.yuvToRGBConversion)
@@ -304,7 +353,6 @@ namespace tl
                 }
         
                 image::Tags tags;
-                AVDictionaryEntry* tag = nullptr;
                 while ((tag = av_dict_get(_avFormatContext->metadata, "", tag, AV_DICT_IGNORE_SUFFIX)))
                 {
                     const std::string key(tag->key);
@@ -541,8 +589,9 @@ namespace tl
             _eof = false;
         }
 
-        void ReadVideo::process(const otime::RationalTime& currentTime)
+        bool ReadVideo::process(const otime::RationalTime& currentTime)
         {
+            bool out = false;
             if (_avStream != -1 &&
                 _buffer.size() < _options.videoBufferSize)
             {
@@ -594,6 +643,7 @@ namespace tl
                         }
                         else if (1 == decoding)
                         {
+                            out = true;
                             break;
                         }
                     }
@@ -608,6 +658,7 @@ namespace tl
                 }
                 //std::cout << "video buffer size: " << _buffer.size() << std::endl;
             }
+            return out;
         }
 
         bool ReadVideo::isBufferEmpty() const
@@ -624,11 +675,6 @@ namespace tl
                 _buffer.pop_front();
             }
             return out;
-        }
-
-        bool ReadVideo::isEOF() const
-        {
-            return _eof;
         }
 
         int ReadVideo::_decode(const otime::RationalTime& currentTime)

@@ -6,6 +6,7 @@
 
 #include <tlCore/Assert.h>
 #include <tlCore/String.h>
+#include <tlCore/StringFormat.h>
 
 #include <iostream>
 #include <sstream>
@@ -28,8 +29,8 @@ namespace tl
         void StringTest::run()
         {
             _split();
-            _case();
-            _util();
+            _format();
+            _compare();
             _convert();
             _escape();
         }
@@ -107,22 +108,12 @@ namespace tl
             }
         }
 
-        void StringTest::_case()
+        void StringTest::_format()
         {
             {
                 TLRENDER_ASSERT("ABC" == toUpper("abc"));
                 TLRENDER_ASSERT("abc" == toLower("ABC"));
             }
-            {
-                TLRENDER_ASSERT(compare("abc", "ABC", Compare::CaseInsensitive));
-            }
-            {
-                TLRENDER_ASSERT(contains("abc", "C", Compare::CaseInsensitive));
-            }
-        }
-
-        void StringTest::_util()
-        {
             {
                 std::string s = "abc";
                 removeTrailingNewlines(s);
@@ -141,10 +132,31 @@ namespace tl
                 const std::string s = "abc\n";
                 TLRENDER_ASSERT(removeTrailingNewlines(s) == "abc");
             }
+            {
+                TLRENDER_ASSERT("abc" == elide("abc", 3));
+                TLRENDER_ASSERT("abc" == elide("abc", 4));
+                TLRENDER_ASSERT("ab..." == elide("abc", 2));
+                TLRENDER_ASSERT("..." == elide("abc", 0));
+            }
+        }
+
+        void StringTest::_compare()
+        {
+            {
+                TLRENDER_ASSERT(!compare("abc", "ABC"));
+                TLRENDER_ASSERT(compare("abc", "ABC", Compare::CaseInsensitive));
+            }
+            {
+                TLRENDER_ASSERT(!contains("abc", "C"));
+                TLRENDER_ASSERT(contains("abc", "C", Compare::CaseInsensitive));
+            }
         }
 
         void StringTest::_convert()
         {
+            {
+                _print(string::Format("{0}/{1}").arg(getLabel(true)).arg(getLabel(false)));
+            }
             {
                 int value = 0;
                 char buf[] = "1234";

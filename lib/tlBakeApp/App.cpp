@@ -6,9 +6,11 @@
 
 #include <tlTimeline/GLRender.h>
 
-#include <tlGL/Util.h>
+#include <tlIO/System.h>
 
-#include <tlIO/IOSystem.h>
+#include <tlGL/GL.h>
+#include <tlGL/GLFWWindow.h>
+#include <tlGL/Util.h>
 
 #include <tlCore/File.h>
 #include <tlCore/Math.h>
@@ -16,58 +18,15 @@
 #include <tlCore/StringFormat.h>
 #include <tlCore/Time.h>
 
-#if defined(TLRENDER_GL_DEBUG)
-#include <tlGladDebug/gl.h>
-#else // TLRENDER_GL_DEBUG
-#include <tlGlad/gl.h>
-#endif // TLRENDER_GL_DEBUG
-
-#define GLFW_INCLUDE_NONE
-#include <GLFW/glfw3.h>
-
 namespace tl
 {
     namespace bake
     {
-        namespace
-        {
-#if defined(TLRENDER_GL_DEBUG)
-            void APIENTRY glDebugOutput(
-                GLenum         source,
-                GLenum         type,
-                GLuint         id,
-                GLenum         severity,
-                GLsizei        length,
-                const GLchar * message,
-                const void *   userParam)
-            {
-                switch (severity)
-                {
-                case GL_DEBUG_SEVERITY_HIGH:
-                    std::cerr << "HIGH: " << message << std::endl;
-                    break;
-                case GL_DEBUG_SEVERITY_MEDIUM:
-                    std::cerr << "MEDIUM: " << message << std::endl;
-                    break;
-                case GL_DEBUG_SEVERITY_LOW:
-                    std::cerr << "LOW: " << message << std::endl;
-                    break;
-                    //case GL_DEBUG_SEVERITY_NOTIFICATION:
-                    //    std::cerr << "NOTIFICATION: " << message << std::endl;
-                    //    break;
-                default: break;
-                }
-            }
-#endif // TLRENDER_GL_DEBUG
-        }
-
         void App::_init(
-            int argc,
-            char* argv[],
+            const std::vector<std::string>& argv,
             const std::shared_ptr<system::Context>& context)
         {
             IApp::_init(
-                argc,
                 argv,
                 context,
                 "tlbake",
@@ -87,7 +46,7 @@ namespace tl
                         _options.inOutRange,
                         { "-inOutRange" },
                         "Set the in/out points range."),
-                    app::CmdLineValueOption<image::Size>::create(
+                    app::CmdLineValueOption<math::Size2i>::create(
                         _options.renderSize,
                         { "-renderSize", "-rs" },
                         "Render size."),
@@ -160,7 +119,7 @@ namespace tl
                         string::Format("{0}").arg(_options.ffmpegThreadCount)),
 #endif // TLRENDER_FFMPEG
 #if defined(TLRENDER_USD)
-                    app::CmdLineValueOption<size_t>::create(
+                    app::CmdLineValueOption<int>::create(
                         _options.usdRenderWidth,
                         { "-usdRenderWidth" },
                         "USD render width.",
@@ -173,14 +132,19 @@ namespace tl
                     app::CmdLineValueOption<usd::DrawMode>::create(
                         _options.usdDrawMode,
                         { "-usdDrawMode" },
-                        "USD render draw mode.",
+                        "USD draw mode.",
                         string::Format("{0}").arg(_options.usdDrawMode),
                         string::join(usd::getDrawModeLabels(), ", ")),
                     app::CmdLineValueOption<bool>::create(
                         _options.usdEnableLighting,
                         { "-usdEnableLighting" },
-                        "USD render enable lighting setting.",
+                        "USD enable lighting.",
                         string::Format("{0}").arg(_options.usdEnableLighting)),
+                    app::CmdLineValueOption<bool>::create(
+                        _options.usdSRGB,
+                        { "-usdSRGB" },
+                        "USD enable sRGB color space.",
+                        string::Format("{0}").arg(_options.usdSRGB)),
                     app::CmdLineValueOption<size_t>::create(
                         _options.usdStageCache,
                         { "-usdStageCache" },
@@ -193,228 +157,197 @@ namespace tl
                         string::Format("{0}").arg(_options.usdDiskCache)),
 #endif // TLRENDER_USD
                 });
-
-            // Set I/O options.
-            io::Options ioOptions;
-            {
-                std::stringstream ss;
-                ss << _options.sequenceDefaultSpeed;
-                ioOptions["SequenceIO/DefaultSpeed"] = ss.str();
-            }
-            {
-                std::stringstream ss;
-                ss << _options.sequenceThreadCount;
-                ioOptions["SequenceIO/ThreadCount"] = ss.str();
-            }
-#if defined(TLRENDER_EXR)
-            {
-                std::stringstream ss;
-                ss << _options.exrCompression;
-                ioOptions["OpenEXR/Compression"] = ss.str();
-            }
-            {
-                std::stringstream ss;
-                ss << _options.exrDWACompressionLevel;
-                ioOptions["OpenEXR/DWACompressionLevel"] = ss.str();
-            }
-#endif // TLRENDER_EXR
-#if defined(TLRENDER_FFMPEG)
-            if (!_options.ffmpegWriteProfile.empty())
-            {
-                ioOptions["FFmpeg/WriteProfile"] = _options.ffmpegWriteProfile;
-            }
-            {
-                std::stringstream ss;
-                ss << _options.ffmpegThreadCount;
-                ioOptions["FFmpeg/ThreadCount"] = ss.str();
-            }
-#endif // TLRENDER_FFMPEG
-#if defined(TLRENDER_USD)
-            {
-                std::stringstream ss;
-                ss << _options.usdRenderWidth;
-                ioOptions["USD/renderWidth"] = ss.str();
-            }
-            {
-                std::stringstream ss;
-                ss << _options.usdComplexity;
-                ioOptions["USD/complexity"] = ss.str();
-            }
-            {
-                std::stringstream ss;
-                ss << _options.usdDrawMode;
-                ioOptions["USD/drawMode"] = ss.str();
-            }
-            {
-                std::stringstream ss;
-                ss << _options.usdEnableLighting;
-                ioOptions["USD/enableLighting"] = ss.str();
-            }
-            {
-                std::stringstream ss;
-                ss << _options.usdStageCache;
-                ioOptions["USD/stageCacheCount"] = ss.str();
-            }
-            {
-                std::stringstream ss;
-                ss << _options.usdDiskCache * memory::gigabyte;
-                ioOptions["USD/diskCacheByteCount"] = ss.str();
-            }
-#endif // TLRENDER_USD
-            auto ioSystem = context->getSystem<io::System>();
-            ioSystem->setOptions(ioOptions);
         }
 
         App::App()
         {}
 
         App::~App()
-        {
-            _timeline.reset();
-            _buffer.reset();
-            _render.reset();
-            if (_glfwWindow)
-            {
-                glfwDestroyWindow(_glfwWindow);
-            }
-        }
+        {}
 
         std::shared_ptr<App> App::create(
-            int argc,
-            char* argv[],
+            const std::vector<std::string>& argv,
             const std::shared_ptr<system::Context>& context)
         {
             auto out = std::shared_ptr<App>(new App);
-            out->_init(argc, argv, context);
+            out->_init(argv, context);
             return out;
         }
 
-        void App::run()
+        int App::run()
         {
-            if (_exit != 0)
+            if (0 == _exit)
             {
-                return;
+                _startTime = std::chrono::steady_clock::now();
+
+                // Create the window.
+                _window = gl::GLFWWindow::create(
+                    "test-patterns",
+                    math::Size2i(1, 1),
+                    _context,
+                    static_cast<int>(gl::GLFWWindowOptions::MakeCurrent));
+
+                // Read the timeline.
+                timeline::Options options;
+                options.ioOptions = _getIOOptions();
+                _timeline = timeline::Timeline::create(_input, _context, options);
+                _timeRange = _timeline->getTimeRange();
+                _print(string::Format("Timeline range: {0}-{1}").
+                    arg(_timeRange.start_time().value()).
+                    arg(_timeRange.end_time_inclusive().value()));
+                _print(string::Format("Timeline speed: {0}").arg(_timeRange.duration().rate()));
+
+                // Time range.
+                if (time::isValid(_options.inOutRange))
+                {
+                    _timeRange = _options.inOutRange;
+                }
+                _print(string::Format("In/out range: {0}-{1}").
+                    arg(_timeRange.start_time().value()).
+                    arg(_timeRange.end_time_inclusive().value()));
+                _inputTime = _timeRange.start_time();
+                _outputTime = otime::RationalTime(0.0, _timeRange.duration().rate());
+
+                // Render information.
+                const auto& info = _timeline->getIOInfo();
+                if (info.video.empty())
+                {
+                    throw std::runtime_error("No video information");
+                }
+                _renderSize = _options.renderSize.isValid() ?
+                    _options.renderSize :
+                    math::Size2i(info.video[0].size.w, info.video[0].size.h);
+                _print(string::Format("Render size: {0}").arg(_renderSize));
+
+                // Create the renderer.
+                _render = timeline::GLRender::create(_context);
+                gl::OffscreenBufferOptions offscreenBufferOptions;
+                offscreenBufferOptions.colorType = gl::offscreenColorDefault;
+                _buffer = gl::OffscreenBuffer::create(_renderSize, offscreenBufferOptions);
+
+                // Create the writer.
+                _writerPlugin = _context->getSystem<io::System>()->getPlugin(file::Path(_output));
+                if (!_writerPlugin)
+                {
+                    throw std::runtime_error(string::Format("{0}: Cannot open").arg(_output));
+                }
+                io::Info ioInfo;
+                _outputInfo.size.w = _renderSize.w;
+                _outputInfo.size.h = _renderSize.h;
+                _outputInfo.pixelType = _options.outputPixelType != image::PixelType::None ?
+                    _options.outputPixelType :
+                    info.video[0].pixelType;
+                _outputInfo = _writerPlugin->getWriteInfo(_outputInfo);
+                if (image::PixelType::None == _outputInfo.pixelType)
+                {
+                    _outputInfo.pixelType = image::PixelType::RGB_U8;
+                }
+                _print(string::Format("Output info: {0} {1}").
+                    arg(_outputInfo.size).
+                    arg(_outputInfo.pixelType));
+                _outputImage = image::Image::create(_outputInfo);
+                ioInfo.video.push_back(_outputInfo);
+                ioInfo.videoTime = _timeRange;
+                _writer = _writerPlugin->write(file::Path(_output), ioInfo);
+                if (!_writer)
+                {
+                    throw std::runtime_error(string::Format("{0}: Cannot open").arg(_output));
+                }
+
+                // Start the main loop.
+                gl::OffscreenBufferBinding binding(_buffer);
+                while (_running)
+                {
+                    _tick();
+                }
+
+                const auto now = std::chrono::steady_clock::now();
+                const std::chrono::duration<float> diff = now - _startTime;
+                _print(string::Format("Seconds elapsed: {0}").arg(diff.count()));
+                _print(string::Format("Average FPS: {0}").arg(_timeRange.duration().value() / diff.count()));
             }
 
-            _startTime = std::chrono::steady_clock::now();
+            return _exit;
+        }
 
-            // Create the window.
-            glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-            glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
-            glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
-            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-            glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-            glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_FALSE);
-#if defined(TLRENDER_GL_DEBUG)
-            glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
-#endif // TLRENDER_GL_DEBUG
-            _glfwWindow = glfwCreateWindow(1, 1, "tlbake", NULL, NULL);
-            if (!_glfwWindow)
+        io::Options App::_getIOOptions() const
+        {
+            io::Options out;
             {
-                throw std::runtime_error("Cannot create window");
+                std::stringstream ss;
+                ss << _options.sequenceDefaultSpeed;
+                out["SequenceIO/DefaultSpeed"] = ss.str();
             }
-            glfwMakeContextCurrent(_glfwWindow);
-            if (!gladLoaderLoadGL())
             {
-                throw std::runtime_error("Cannot initialize GLAD");
-            }
-#if defined(TLRENDER_GL_DEBUG)
-            GLint flags = 0;
-            glGetIntegerv(GL_CONTEXT_FLAGS, &flags);
-            if (flags & static_cast<GLint>(GL_CONTEXT_FLAG_DEBUG_BIT))
-            {
-                glEnable(GL_DEBUG_OUTPUT);
-                glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-                glDebugMessageCallback(glDebugOutput, _context.get());
-                glDebugMessageControl(
-                    static_cast<GLenum>(GL_DONT_CARE),
-                    static_cast<GLenum>(GL_DONT_CARE),
-                    static_cast<GLenum>(GL_DONT_CARE),
-                    0,
-                    nullptr,
-                    GL_TRUE);
-            }
-#endif // TLRENDER_GL_DEBUG
-            const int glMajor = glfwGetWindowAttrib(_glfwWindow, GLFW_CONTEXT_VERSION_MAJOR);
-            const int glMinor = glfwGetWindowAttrib(_glfwWindow, GLFW_CONTEXT_VERSION_MINOR);
-            const int glRevision = glfwGetWindowAttrib(_glfwWindow, GLFW_CONTEXT_REVISION);
-            _log(string::Format("OpenGL version: {0}.{1}.{2}").arg(glMajor).arg(glMinor).arg(glRevision));
-
-            // Read the timeline.
-            _timeline = timeline::Timeline::create(_input, _context);
-            _timeRange = _timeline->getTimeRange();
-            _print(string::Format("Timeline range: {0}-{1}").
-                arg(_timeRange.start_time().value()).
-                arg(_timeRange.end_time_inclusive().value()));
-            _print(string::Format("Timeline speed: {0}").arg(_timeRange.duration().rate()));
-
-            // Time range.
-            if (time::isValid(_options.inOutRange))
-            {
-                _timeRange = _options.inOutRange;
-            }
-            _print(string::Format("In/out range: {0}-{1}").
-                arg(_timeRange.start_time().value()).
-                arg(_timeRange.end_time_inclusive().value()));
-            _inputTime = _timeRange.start_time();
-            _outputTime = otime::RationalTime(0.0, _timeRange.duration().rate());
-
-            // Render information.
-            const auto& info = _timeline->getIOInfo();
-            if (info.video.empty())
-            {
-                throw std::runtime_error("No video information");
-            }
-            _renderSize = _options.renderSize.isValid() ?
-                _options.renderSize :
-                info.video[0].size;
-            _print(string::Format("Render size: {0}").arg(_renderSize));
-
-            // Create the renderer.
-            _render = timeline::GLRender::create(_context);
-            gl::OffscreenBufferOptions offscreenBufferOptions;
-            offscreenBufferOptions.colorType = image::PixelType::RGBA_F32;
-            _buffer = gl::OffscreenBuffer::create(_renderSize, offscreenBufferOptions);
-
-            // Create the writer.
-            _writerPlugin = _context->getSystem<io::System>()->getPlugin(file::Path(_output));
-            if (!_writerPlugin)
-            {
-                throw std::runtime_error(string::Format("{0}: Cannot open").arg(_output));
-            }
-            io::Info ioInfo;
-            _outputInfo.size = _renderSize;
-            _outputInfo.pixelType = _options.outputPixelType != image::PixelType::None ?
-                _options.outputPixelType :
-                info.video[0].pixelType;
-            _outputInfo = _writerPlugin->getWriteInfo(_outputInfo);
-            if (image::PixelType::None == _outputInfo.pixelType)
-            {
-                _outputInfo.pixelType = image::PixelType::RGB_U8;
-            }
-            _print(string::Format("Output info: {0} {1}").
-                arg(_outputInfo.size).
-                arg(_outputInfo.pixelType));
-            _outputImage = image::Image::create(_outputInfo);
-            ioInfo.video.push_back(_outputInfo);
-            ioInfo.videoTime = _timeRange;
-            _writer = _writerPlugin->write(file::Path(_output), ioInfo);
-            if (!_writer)
-            {
-                throw std::runtime_error(string::Format("{0}: Cannot open").arg(_output));
+                std::stringstream ss;
+                ss << _options.sequenceThreadCount;
+                out["SequenceIO/ThreadCount"] = ss.str();
             }
 
-            // Start the main loop.
-            gl::OffscreenBufferBinding binding(_buffer);
-            while (_running)
+#if defined(TLRENDER_EXR)
             {
-                _tick();
+                std::stringstream ss;
+                ss << _options.exrCompression;
+                out["OpenEXR/Compression"] = ss.str();
             }
+            {
+                std::stringstream ss;
+                ss << _options.exrDWACompressionLevel;
+                out["OpenEXR/DWACompressionLevel"] = ss.str();
+            }
+#endif // TLRENDER_EXR
 
-            const auto now = std::chrono::steady_clock::now();
-            const std::chrono::duration<float> diff = now - _startTime;
-            _print(string::Format("Seconds elapsed: {0}").arg(diff.count()));
-            _print(string::Format("Average FPS: {0}").arg(_timeRange.duration().value() / diff.count()));
+#if defined(TLRENDER_FFMPEG)
+            if (!_options.ffmpegWriteProfile.empty())
+            {
+                out["FFmpeg/WriteProfile"] = _options.ffmpegWriteProfile;
+            }
+            {
+                std::stringstream ss;
+                ss << _options.ffmpegThreadCount;
+                out["FFmpeg/ThreadCount"] = ss.str();
+            }
+#endif // TLRENDER_FFMPEG
+
+#if defined(TLRENDER_USD)
+            {
+                std::stringstream ss;
+                ss << _options.usdRenderWidth;
+                out["USD/renderWidth"] = ss.str();
+            }
+            {
+                std::stringstream ss;
+                ss << _options.usdComplexity;
+                out["USD/complexity"] = ss.str();
+            }
+            {
+                std::stringstream ss;
+                ss << _options.usdDrawMode;
+                out["USD/drawMode"] = ss.str();
+            }
+            {
+                std::stringstream ss;
+                ss << _options.usdEnableLighting;
+                out["USD/enableLighting"] = ss.str();
+            }
+            {
+                std::stringstream ss;
+                ss << _options.usdSRGB;
+                out["USD/sRGB"] = ss.str();
+            }
+            {
+                std::stringstream ss;
+                ss << _options.usdStageCache;
+                out["USD/stageCacheCount"] = ss.str();
+            }
+            {
+                std::stringstream ss;
+                ss << _options.usdDiskCache * memory::gigabyte;
+                out["USD/diskCacheByteCount"] = ss.str();
+            }
+#endif // TLRENDER_USD
+
+            return out;
         }
 
         void App::_tick()
@@ -436,7 +369,9 @@ namespace tl
 
             // Write the frame.
             glPixelStorei(GL_PACK_ALIGNMENT, _outputInfo.layout.alignment);
+#if defined(TLRENDER_API_GL_4_1)
             glPixelStorei(GL_PACK_SWAP_BYTES, _outputInfo.layout.endian != memory::getEndian());
+#endif // TLRENDER_API_GL_4_1
             const GLenum format = gl::getReadPixelsFormat(_outputInfo.pixelType);
             const GLenum type = gl::getReadPixelsType(_outputInfo.pixelType);
             if (GL_NONE == format || GL_NONE == type)

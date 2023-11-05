@@ -9,8 +9,6 @@
 #include <tlCore/LogSystem.h>
 #include <tlCore/StringFormat.h>
 
-#include <fseq.h>
-
 #include <cstring>
 #include <sstream>
 
@@ -22,10 +20,10 @@ namespace tl
             const file::Path& path,
             const std::vector<file::MemoryRead>& memory,
             const Options& options,
+            const std::shared_ptr<io::Cache>& cache,
             const std::weak_ptr<log::System>& logSystem)
         {
-            IRead::_init(path, memory, options, logSystem);
-
+            IRead::_init(path, memory, options, cache, logSystem);
             TLRENDER_P();
 
             const std::string& number = path.getNumber();
@@ -39,33 +37,9 @@ namespace tl
                 }
                 else
                 {
-                    std::string directory = path.getDirectory();
-                    if (directory.empty())
-                    {
-                        directory = ".";
-                    }
-                    const std::string& baseName = path.getBaseName();
-                    const std::string& extension = path.getExtension();
-                    FSeqDirOptions dirOptions;
-                    fseqDirOptionsInit(&dirOptions);
-                    dirOptions.sequence = FSEQ_TRUE;
-                    FSeqBool error = FSEQ_FALSE;
-                    auto dirList = fseqDirList(directory.c_str(), &dirOptions, &error);
-                    if (FSEQ_FALSE == error)
-                    {
-                        for (auto entry = dirList; entry; entry = entry->next)
-                        {
-                            if (strlen(entry->fileName.number) > 0 &&
-                                0 == strcmp(entry->fileName.base, baseName.c_str()) &&
-                                0 == strcmp(entry->fileName.extension, extension.c_str()))
-                            {
-                                _startFrame = entry->frameMin;
-                                _endFrame = entry->frameMax;
-                                break;
-                            }
-                        }
-                    }
-                    fseqDirListDel(dirList);
+                    const math::IntRange& sequence = path.getSequence();
+                    _startFrame = sequence.getMin();
+                    _endFrame = sequence.getMax();
                 }
             }
 
@@ -152,12 +126,13 @@ namespace tl
 
         std::future<VideoData> ISequenceRead::readVideo(
             const otime::RationalTime& time,
-            uint16_t layer)
+            const Options& options)
         {
             TLRENDER_P();
             auto request = std::make_shared<Private::VideoRequest>();
+            request->fileName = _path.get();
             request->time = time;
-            request->layer = layer;
+            request->options = merge(options, _options);
             auto future = request->promise.get_future();
             bool valid = false;
             {
@@ -238,45 +213,60 @@ namespace tl
                     auto request = videoRequests.front();
                     videoRequests.pop_front();
 
-                    //std::cout << "request: " << request.time << std::endl;
-                    bool seq = false;
-                    if (!_path.getNumber().empty())
+                    VideoData videoData;
+                    const std::string cacheKey = Cache::getVideoKey(
+                        request->fileName,
+                        request->time,
+                        request->options);
+                    if (_cache && _cache->getVideo(cacheKey, videoData))
                     {
-                        seq = true;
-                        request->fileName = _path.get(static_cast<int>(request->time.value()));
+                        //std::cout << "cache: " << request->fileName << " " <<
+                        //    request->time << std::endl;
+                        request->promise.set_value(videoData);
                     }
                     else
                     {
-                        request->fileName = _path.get();
-                    }
-                    const std::string fileName = request->fileName;
-                    const otime::RationalTime time = request->time;
-                    const uint16_t layer = request->layer;
-                    request->future = std::async(
-                        std::launch::async,
-                        [this, seq, fileName, time, layer]
+                        //std::cout << "request: " << request->fileName << " " <<
+                        //    request->time << std::endl;
+                        bool seq = false;
+                        if (!_path.getNumber().empty())
                         {
-                            VideoData out;
-                            try
+                            seq = true;
+                            request->fileName = _path.get(static_cast<int>(request->time.value()));
+                        }
+                        else
+                        {
+                            request->fileName = _path.get();
+                        }
+                        const std::string fileName = request->fileName;
+                        const otime::RationalTime time = request->time;
+                        const Options options = request->options;
+                        request->future = std::async(
+                            std::launch::async,
+                            [this, seq, fileName, time, options]
                             {
-                                const int64_t frame = time.value();
-                                if (!seq || (seq && frame >= _startFrame && frame <= _endFrame))
+                                VideoData out;
+                                try
                                 {
-                                    const int64_t memoryIndex = seq ? (frame - _startFrame) : 0;
-                                    out = _readVideo(
-                                        fileName,
-                                        memoryIndex >= 0 && memoryIndex < _memory.size() ? &_memory[memoryIndex] : nullptr,
-                                        time,
-                                        layer);
+                                    const int64_t frame = time.value();
+                                    if (!seq || (seq && frame >= _startFrame && frame <= _endFrame))
+                                    {
+                                        const int64_t memoryIndex = seq ? (frame - _startFrame) : 0;
+                                        out = _readVideo(
+                                            fileName,
+                                            memoryIndex >= 0 && memoryIndex < _memory.size() ? &_memory[memoryIndex] : nullptr,
+                                            time,
+                                            options);
+                                    }
                                 }
-                            }
-                            catch (const std::exception&)
-                            {
-                                //! \todo How should this be handled?
-                            }
-                            return out;
-                        });
-                    p.thread.videoRequestsInProgress.push_back(request);
+                                catch (const std::exception&)
+                                {
+                                    //! \todo How should this be handled?
+                                }
+                                return out;
+                            });
+                        p.thread.videoRequestsInProgress.push_back(request);
+                    }
                 }
 
                 // Check for finished video requests.
@@ -291,8 +281,18 @@ namespace tl
                         (*requestIt)->future.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
                     {
                         //std::cout << "finished: " << requestIt->time << std::endl;
-                        auto data = (*requestIt)->future.get();
-                        (*requestIt)->promise.set_value(data);
+                        auto videoData = (*requestIt)->future.get();
+                        (*requestIt)->promise.set_value(videoData);
+                        
+                        if (_cache)
+                        {
+                            const std::string cacheKey = Cache::getVideoKey(
+                                _path.get(),
+                                (*requestIt)->time,
+                                (*requestIt)->options);
+                            _cache->addVideo(cacheKey, videoData);
+                        }
+
                         requestIt = p.thread.videoRequestsInProgress.erase(requestIt);
                         continue;
                     }

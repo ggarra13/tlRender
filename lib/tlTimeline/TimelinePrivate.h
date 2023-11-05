@@ -32,18 +32,17 @@ namespace tl
                 const otio::Clip*,
                 const io::Options&);
             std::future<io::VideoData> readVideo(
-                const otio::Track*,
                 const otio::Clip*,
                 const otime::RationalTime&,
-                uint16_t videoLayer);
+                const io::Options&);
             std::future<io::AudioData> readAudio(
-                const otio::Track*,
                 const otio::Clip*,
-                const otime::TimeRange&);
+                const otime::TimeRange&,
+                const io::Options&);
 
-            void trimAudio(
+            std::shared_ptr<audio::Audio> padAudioToOneSecond(
                 const std::shared_ptr<audio::Audio>&,
-                int64_t seconds,
+                double seconds,
                 const otime::TimeRange&);
 
             std::weak_ptr<system::Context> context;
@@ -72,7 +71,7 @@ namespace tl
                 VideoRequest(VideoRequest&&) = default;
 
                 otime::RationalTime time = time::invalidTime;
-                uint16_t videoLayer = 0;
+                io::Options options;
                 std::promise<VideoData> promise;
 
                 std::vector<VideoLayerData> layerData;
@@ -83,7 +82,7 @@ namespace tl
                 AudioLayerData() {};
                 AudioLayerData(AudioLayerData&&) = default;
 
-                int64_t seconds = -1;
+                double seconds = -1.0;
                 otime::TimeRange timeRange;
                 std::future<io::AudioData> audio;
             };
@@ -92,7 +91,8 @@ namespace tl
                 AudioRequest() {};
                 AudioRequest(AudioRequest&&) = default;
 
-                int64_t seconds = -1;
+                double seconds = -1.0;
+                io::Options options;
                 std::promise<AudioData> promise;
 
                 std::vector<AudioLayerData> layerData;

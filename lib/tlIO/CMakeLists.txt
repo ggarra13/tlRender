@@ -1,21 +1,23 @@
 set(HEADERS
-    stb_image.h
-    stb_image_write.h
+    Cache.h
     Cineon.h
     DPX.h
     IO.h
     IOInline.h
-    IOSystem.h
-    IOSystemInline.h
     Init.h
     PPM.h
-    SequenceIO.h
+    Plugin.h
+    PluginInline.h
     SGI.h
-    STB.h)
+    SequenceIO.h
+    STB.h
+    System.h
+    SystemInline.h)
 set(HEADERS_PRIVATE
     SequenceIOReadPrivate.h)
 
 set(SOURCE
+    Cache.cpp
     CineonRead.cpp
     CineonWrite.cpp
     Cineon.cpp
@@ -23,26 +25,27 @@ set(SOURCE
     DPXWrite.cpp
     DPX.cpp
     IO.cpp
-    IOSystem.cpp
     Init.cpp
     PPM.cpp
     PPMRead.cpp
     PPMWrite.cpp
-    SequenceIORead.cpp
-    SequenceIOWrite.cpp
+    Plugin.cpp
     SGI.cpp
     SGIRead.cpp
     SGIWrite.cpp
     STB.cpp
     STBRead.cpp
-    STBWrite.cpp)
+    STBWrite.cpp
+    SequenceIORead.cpp
+    SequenceIOWrite.cpp
+    System.cpp)
 
 set(LIBRARIES)
 set(LIBRARIES_PRIVATE)
 if(TLRENDER_JPEG)
     list(APPEND HEADERS_PRIVATE JPEG.h)
     list(APPEND SOURCE JPEG.cpp JPEGRead.cpp JPEGWrite.cpp)
-    list(APPEND LIBRARIES_PRIVATE JPEG)
+    list(APPEND LIBRARIES_PRIVATE libjpeg-turbo::turbojpeg-static)
 endif()
 if(TLRENDER_TIFF)
     list(APPEND HEADERS_PRIVATE TIFF.h)
@@ -59,10 +62,9 @@ if(TLRENDER_PNG)
     list(APPEND LIBRARIES_PRIVATE PNG)
 endif()
 if(TLRENDER_EXR)
-    # \todo Make this library private.
-    list(APPEND HEADERS OpenEXR.h)
+    list(APPEND HEADERS_PRIVATE OpenEXR.h)
     list(APPEND SOURCE OpenEXR.cpp OpenEXRRead.cpp OpenEXRWrite.cpp)
-    list(APPEND LIBRARIES OpenEXR::OpenEXR)
+    list(APPEND LIBRARIES_PRIVATE OpenEXR::OpenEXR)
 endif()
 if(TLRENDER_FFMPEG)
     list(APPEND HEADERS_PRIVATE FFmpeg.h FFmpegReadPrivate.h)
@@ -74,6 +76,19 @@ if(TLRENDER_USD)
     list(APPEND HEADERS_PRIVATE USD.h USDPrivate.h)
     list(APPEND SOURCE USD.cpp USDRead.cpp USDRender.cpp)
     list(APPEND LIBRARIES_PRIVATE tf usd usdGeom usdImagingGL usdAppUtils hd)
+    if(NOT WIN32)
+	set_source_files_properties(USD.cpp
+	    PROPERTIES COMPILE_FLAGS -std=c++14)
+	set_source_files_properties(USDRead.cpp
+	    PROPERTIES COMPILE_FLAGS -std=c++14)
+	set_source_files_properties(USDRender.cpp
+	    PROPERTIES COMPILE_FLAGS -std=c++14)
+    endif()
+endif()
+if(TLRENDER_RAW)
+    list(APPEND HEADERS_PRIVATE RAW.h)
+    list(APPEND SOURCE RAW.cpp RAWRead.cpp)
+    list(APPEND LIBRARIES_PRIVATE LibRaw)
 endif()
 list(APPEND LIBRARIES tlGL)
 

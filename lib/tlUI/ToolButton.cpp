@@ -20,7 +20,7 @@ namespace tl
                 image::FontInfo fontInfo;
                 image::FontMetrics fontMetrics;
                 bool textInit = true;
-                math::Vector2i textSize;
+                math::Size2i textSize;
             };
             SizeData size;
 
@@ -100,7 +100,7 @@ namespace tl
             p.size.spacing = event.style->getSizeRole(SizeRole::SpacingSmall, event.displayScale);
             p.size.border = event.style->getSizeRole(SizeRole::Border, event.displayScale);
 
-            _sizeHint = math::Vector2i();
+            _sizeHint = math::Size2i();
             if (!_text.empty())
             {
                 p.size.fontMetrics = event.getFontMetrics(_fontRole);
@@ -112,40 +112,37 @@ namespace tl
                     p.size.textSize = event.fontSystem->getSize(_text, fontInfo);
                     p.draw.glyphs.clear();
                 }
-                _sizeHint.x = p.size.textSize.x + p.size.margin * 2;
-                _sizeHint.y = p.size.fontMetrics.lineHeight;
+                _sizeHint.w = p.size.textSize.w + p.size.margin * 2;
+                _sizeHint.h = p.size.fontMetrics.lineHeight;
                 if (_icon.empty())
                 {
-                    const int max = std::max(_sizeHint.x, _sizeHint.y);
-                    _sizeHint.x = max;
-                    _sizeHint.y = _sizeHint.y;
+                    const int max = std::max(_sizeHint.w, _sizeHint.h);
+                    _sizeHint.w = max;
+                    _sizeHint.h = _sizeHint.h;
                 }
             }
             if (_iconImage)
             {
-                _sizeHint.x += _iconImage->getWidth();
+                _sizeHint.w += _iconImage->getWidth();
                 if (!_text.empty())
                 {
-                    _sizeHint.x += p.size.spacing;
+                    _sizeHint.w += p.size.spacing;
                 }
-                _sizeHint.y = std::max(
-                    _sizeHint.y,
+                _sizeHint.h = std::max(
+                    _sizeHint.h,
                     static_cast<int>(_iconImage->getHeight()));
             }
-            _sizeHint.x +=
+            _sizeHint.w +=
                 p.size.margin * 2 +
                 p.size.border * 4;
-            _sizeHint.y +=
+            _sizeHint.h +=
                 p.size.margin * 2 +
                 p.size.border * 4;
         }
 
-        void ToolButton::clipEvent(
-            const math::Box2i& clipRect,
-            bool clipped,
-            const ClipEvent& event)
+        void ToolButton::clipEvent(const math::Box2i& clipRect, bool clipped)
         {
-            IButton::clipEvent(clipRect, clipped, event);
+            IButton::clipEvent(clipRect, clipped);
             TLRENDER_P();
             if (clipped)
             {
@@ -180,13 +177,13 @@ namespace tl
                     event.style->getColorRole(colorRole));
             }
 
-            if (_pressed && _geometry.contains(_cursorPos))
+            if (_mouse.press && _geometry.contains(_mouse.pos))
             {
                 event.render->drawRect(
                     g2,
                     event.style->getColorRole(ColorRole::Pressed));
             }
-            else if (_inside)
+            else if (_mouse.inside)
             {
                 event.render->drawRect(
                     g2,
@@ -219,10 +216,10 @@ namespace tl
                 }
                 const int x2 = !_icon.empty() ?
                     (x + p.size.margin) :
-                    (g3.x() + g3.w() / 2 - p.size.textSize.x / 2);
+                    (g3.x() + g3.w() / 2 - p.size.textSize.w / 2);
                 const math::Vector2i pos(
                     x2,
-                    g3.y() + g3.h() / 2 - p.size.textSize.y / 2 +
+                    g3.y() + g3.h() / 2 - p.size.textSize.h / 2 +
                     p.size.fontMetrics.ascender);
                 event.render->drawText(
                     p.draw.glyphs,

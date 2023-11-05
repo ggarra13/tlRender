@@ -28,8 +28,8 @@ namespace tl
                 int margin = 0;
                 image::FontInfo fontInfo;
                 image::FontMetrics fontMetrics;
-                math::Vector2i textSize;
-                math::Vector2i formatSize;
+                math::Size2i textSize;
+                math::Size2i formatSize;
             };
             SizeData size;
 
@@ -136,20 +136,17 @@ namespace tl
             p.size.textSize = event.fontSystem->getSize(p.text, fontInfo);
             p.size.formatSize = event.fontSystem->getSize(p.format, fontInfo);
 
-            _sizeHint.x =
-                std::max(p.size.textSize.x, p.size.formatSize.x) +
+            _sizeHint.w =
+                std::max(p.size.textSize.w, p.size.formatSize.w) +
                 p.size.margin * 2;
-            _sizeHint.y =
+            _sizeHint.h =
                 p.size.fontMetrics.lineHeight +
                 p.size.margin * 2;
         }
 
-        void TimeLabel::clipEvent(
-            const math::Box2i& clipRect,
-            bool clipped,
-            const ClipEvent& event)
+        void TimeLabel::clipEvent(const math::Box2i& clipRect, bool clipped)
         {
-            IWidget::clipEvent(clipRect, clipped, event);
+            IWidget::clipEvent(clipRect, clipped);
             TLRENDER_P();
             if (clipped)
             {

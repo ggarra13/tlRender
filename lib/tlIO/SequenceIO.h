@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include <tlIO/IO.h>
+#include <tlIO/Plugin.h>
 
 namespace tl
 {
@@ -27,6 +27,7 @@ namespace tl
                 const file::Path&,
                 const std::vector<file::MemoryRead>&,
                 const Options&,
+                const std::shared_ptr<io::Cache>&,
                 const std::weak_ptr<log::System>&);
 
             ISequenceRead();
@@ -35,7 +36,9 @@ namespace tl
             virtual ~ISequenceRead();
 
             std::future<Info> getInfo() override;
-            std::future<VideoData> readVideo(const otime::RationalTime&, uint16_t layer = 0) override;
+            std::future<VideoData> readVideo(
+                const otime::RationalTime&,
+                const Options& = Options()) override;
             void cancelRequests() override;
 
         protected:
@@ -46,7 +49,7 @@ namespace tl
                 const std::string& fileName,
                 const file::MemoryRead*,
                 const otime::RationalTime&,
-                uint16_t layer) = 0;
+                const Options&) = 0;
 
             //! \bug This must be called in the sub-class destructor.
             void _finish();
@@ -80,13 +83,15 @@ namespace tl
 
             void writeVideo(
                 const otime::RationalTime&,
-                const std::shared_ptr<image::Image>&) override;
+                const std::shared_ptr<image::Image>&,
+                const Options& = Options()) override;
 
         protected:
             virtual void _writeVideo(
                 const std::string& fileName,
                 const otime::RationalTime&,
-                const std::shared_ptr<image::Image>&) = 0;
+                const std::shared_ptr<image::Image>&,
+                const Options&) = 0;
 
         private:
             TLRENDER_PRIVATE();

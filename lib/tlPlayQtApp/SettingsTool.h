@@ -14,15 +14,13 @@ namespace tl
 {
     namespace play_qt
     {
-        class SettingsObject;
-
         //! Cache settings widget.
         class CacheSettingsWidget : public QWidget
         {
             Q_OBJECT
 
         public:
-            CacheSettingsWidget(SettingsObject*, QWidget* parent = nullptr);
+            CacheSettingsWidget(App*, QWidget* parent = nullptr);
 
             virtual ~CacheSettingsWidget();
 
@@ -36,7 +34,7 @@ namespace tl
             Q_OBJECT
 
         public:
-            FileSequenceSettingsWidget(SettingsObject*, QWidget* parent = nullptr);
+            FileSequenceSettingsWidget(App*, QWidget* parent = nullptr);
 
             virtual ~FileSequenceSettingsWidget();
 
@@ -44,13 +42,45 @@ namespace tl
             TLRENDER_PRIVATE();
         };
 
+#if defined(TLRENDER_FFMPEG)
+        //! FFmpeg settings widget.
+        class FFmpegSettingsWidget : public QWidget
+        {
+            Q_OBJECT
+
+        public:
+            FFmpegSettingsWidget(App*, QWidget* parent = nullptr);
+
+            virtual ~FFmpegSettingsWidget();
+
+        private:
+            TLRENDER_PRIVATE();
+        };
+#endif // TLRENDER_FFMPEG
+
+#if defined(TLRENDER_USD)
+        //! USD settings widget.
+        class USDSettingsWidget : public QWidget
+        {
+            Q_OBJECT
+
+        public:
+            USDSettingsWidget(App*, QWidget* parent = nullptr);
+
+            virtual ~USDSettingsWidget();
+
+        private:
+            TLRENDER_PRIVATE();
+        };
+#endif // TLRENDER_USD
+
         //! File browser settings widget.
         class FileBrowserSettingsWidget : public QWidget
         {
             Q_OBJECT
 
         public:
-            FileBrowserSettingsWidget(SettingsObject*, QWidget* parent = nullptr);
+            FileBrowserSettingsWidget(App*, QWidget* parent = nullptr);
 
             virtual ~FileBrowserSettingsWidget();
 
@@ -64,7 +94,7 @@ namespace tl
             Q_OBJECT
 
         public:
-            PerformanceSettingsWidget(SettingsObject*, QWidget* parent = nullptr);
+            PerformanceSettingsWidget(App*, QWidget* parent = nullptr);
 
             virtual ~PerformanceSettingsWidget();
 
@@ -78,7 +108,7 @@ namespace tl
             Q_OBJECT
 
         public:
-            MiscSettingsWidget(SettingsObject*, QWidget* parent = nullptr);
+            MiscSettingsWidget(App*, QWidget* parent = nullptr);
 
             virtual ~MiscSettingsWidget();
 
@@ -101,9 +131,7 @@ namespace tl
             Q_OBJECT
 
         public:
-            SettingsDockWidget(
-                SettingsTool*,
-                QWidget* parent = nullptr);
+            SettingsDockWidget(SettingsTool*, QWidget* parent = nullptr);
         };
     }
 }

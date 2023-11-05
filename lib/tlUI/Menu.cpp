@@ -45,10 +45,7 @@ namespace tl
                     bool,
                     const TickEvent&) override;
                 void sizeHintEvent(const SizeHintEvent&) override;
-                void clipEvent(
-                    const math::Box2i&,
-                    bool,
-                    const ClipEvent&) override;
+                void clipEvent(const math::Box2i&, bool) override;
                 void drawEvent(
                     const math::Box2i&,
                     const DrawEvent&) override;
@@ -79,8 +76,8 @@ namespace tl
                     int border = 0;
                     image::FontInfo fontInfo;
                     image::FontMetrics fontMetrics;
-                    math::Vector2i textSize;
-                    math::Vector2i shortcutSize;
+                    math::Size2i textSize;
+                    math::Size2i shortcutSize;
                 };
                 SizeData _size;
 
@@ -231,59 +228,52 @@ namespace tl
                 auto fontInfo = event.style->getFontRole(_fontRole, event.displayScale);
                 _size.fontInfo = fontInfo;
 
-                _sizeHint = math::Vector2i();
+                _sizeHint = math::Size2i();
                 if (_iconImage)
                 {
-                    _sizeHint.x = _iconImage->getWidth() + _size.spacing;
-                    _sizeHint.y = _iconImage->getHeight();
+                    _sizeHint.w = _iconImage->getWidth() + _size.spacing;
+                    _sizeHint.h = _iconImage->getHeight();
                 }
                 else if (_checked && _checkedIcon.image)
                 {
-                    _sizeHint.x = _checkedIcon.image->getWidth() + _size.spacing;
-                    _sizeHint.y = _checkedIcon.image->getHeight();
+                    _sizeHint.w = _checkedIcon.image->getWidth() + _size.spacing;
+                    _sizeHint.h = _checkedIcon.image->getHeight();
                 }
                 else if (!_checked && _uncheckedIcon.image)
                 {
-                    _sizeHint.x = _uncheckedIcon.image->getWidth() + _size.spacing;
-                    _sizeHint.y = _uncheckedIcon.image->getHeight();
+                    _sizeHint.w = _uncheckedIcon.image->getWidth() + _size.spacing;
+                    _sizeHint.h = _uncheckedIcon.image->getHeight();
                 }
                 if (!_text.empty())
                 {
                     _size.textSize = event.fontSystem->getSize(_text, fontInfo);
 
-                    _sizeHint.x += _size.textSize.x + _size.margin * 2;
-                    _sizeHint.y = std::max(
-                        _sizeHint.y,
-                        static_cast<int>(_size.fontMetrics.lineHeight));
+                    _sizeHint.w += _size.textSize.w + _size.margin * 2;
+                    _sizeHint.h = std::max(_sizeHint.h, _size.fontMetrics.lineHeight);
                 }
                 if (!_shortcutText.empty())
                 {
                     _size.shortcutSize = event.fontSystem->getSize(_shortcutText, fontInfo);
 
-                    _sizeHint.x += _size.spacing * 4 + _size.shortcutSize.x;
-                    _sizeHint.y = std::max(_sizeHint.y, _size.shortcutSize.y);
+                    _sizeHint.w += _size.spacing * 4 + _size.shortcutSize.w;
+                    _sizeHint.h = std::max(_sizeHint.h, _size.shortcutSize.h);
                 }
                 if (_subMenuIcon.image)
                 {
-                    _sizeHint.x += _size.spacing + _subMenuIcon.image->getWidth();
-                    _sizeHint.y = std::max(
-                        _sizeHint.y,
-                        static_cast<int>(_subMenuIcon.image->getHeight()));
+                    _sizeHint.w += _size.spacing + _subMenuIcon.image->getWidth();
+                    _sizeHint.h = std::max(_sizeHint.h, _subMenuIcon.image->getHeight());
                 }
-                _sizeHint.x +=
+                _sizeHint.w +=
                     _size.margin * 2 +
                     _size.border * 4;
-                _sizeHint.y +=
+                _sizeHint.h +=
                     _size.margin * 2 +
                     _size.border * 4;
             }
 
-            void MenuButton::clipEvent(
-                const math::Box2i& clipRect,
-                bool clipped,
-                const ClipEvent& event)
+            void MenuButton::clipEvent(const math::Box2i& clipRect, bool clipped)
             {
-                IWidget::clipEvent(clipRect, clipped, event);
+                IWidget::clipEvent(clipRect, clipped);
                 if (clipped)
                 {
                     _draw.textGlyphs.clear();
@@ -318,13 +308,13 @@ namespace tl
                 }
                 
                 // Draw the pressed and hover states.
-                if (_pressed && _geometry.contains(_cursorPos))
+                if (_mouse.press && _geometry.contains(_mouse.pos))
                 {
                     event.render->drawRect(
                         g,
                         event.style->getColorRole(ColorRole::Pressed));
                 }
-                else if (_inside)
+                else if (_mouse.inside)
                 {
                     event.render->drawRect(
                         g,
@@ -398,7 +388,7 @@ namespace tl
                     }
                     const math::Vector2i pos(
                         x + _size.margin,
-                        g2.y() + g2.h() / 2 - _size.textSize.y / 2 +
+                        g2.y() + g2.h() / 2 - _size.textSize.h / 2 +
                         _size.fontMetrics.ascender);
                     event.render->drawText(
                         _draw.textGlyphs,
@@ -406,7 +396,7 @@ namespace tl
                         event.style->getColorRole(enabled ?
                             ColorRole::Text :
                             ColorRole::TextDisabled));
-                    x += _size.margin + _size.textSize.x;
+                    x += _size.margin + _size.textSize.w;
                 }
 
                 // Draw the shortcut.
@@ -417,8 +407,8 @@ namespace tl
                         _draw.shortcutGlyphs = event.fontSystem->getGlyphs(_shortcutText, _size.fontInfo);
                     }
                     const math::Vector2i pos(
-                        g2.max.x - _size.margin - _size.shortcutSize.x,
-                        g2.y() + g2.h() / 2 - _size.shortcutSize.y / 2 +
+                        g2.max.x - _size.margin - _size.shortcutSize.w,
+                        g2.y() + g2.h() / 2 - _size.shortcutSize.h / 2 +
                         _size.fontMetrics.ascender);
                     event.render->drawText(
                         _draw.shortcutGlyphs,

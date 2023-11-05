@@ -73,45 +73,6 @@ namespace tl
                 return memory->end - memory->start;
             }
 
-            void readPalette(
-                uint8_t*  in,
-                int       size,
-                int       bytes,
-                uint16_t* red,
-                uint16_t* green,
-                uint16_t* blue)
-            {
-                switch (bytes)
-                {
-                case 1:
-                {
-                    const uint8_t* inP = in + size - 1;
-                    uint8_t* outP = in + (size_t(size) - 1) * 3;
-                    for (int x = 0; x < size; ++x, outP -= 3)
-                    {
-                        const uint8_t index = *inP--;
-                        outP[0] = static_cast<uint8_t>(red[index]);
-                        outP[1] = static_cast<uint8_t>(green[index]);
-                        outP[2] = static_cast<uint8_t>(blue[index]);
-                    }
-                }
-                break;
-                case 2:
-                {
-                    const uint16_t* inP = reinterpret_cast<const uint16_t*>(in) + size - 1;
-                    uint16_t* outP = reinterpret_cast<uint16_t*>(in) + (size_t(size) - 1) * 3;
-                    for (int x = 0; x < size; ++x, outP -= 3)
-                    {
-                        const uint16_t index = *inP--;
-                        outP[0] = red[index];
-                        outP[1] = green[index];
-                        outP[2] = blue[index];
-                    }
-                }
-                break;
-                }
-            }
-
             class File
             {
             public:
@@ -170,8 +131,6 @@ namespace tl
                     TIFFGetFieldDefaulted(_tiff.p, TIFFTAG_ORIENTATION, &tiffOrient);
                     TIFFGetFieldDefaulted(_tiff.p, TIFFTAG_COMPRESSION, &tiffCompression);
                     TIFFGetFieldDefaulted(_tiff.p, TIFFTAG_PLANARCONFIG, &tiffPlanarConfig);
-                    TIFFGetFieldDefaulted(_tiff.p, TIFFTAG_COLORMAP, &_colormap[0], &_colormap[1], &_colormap[2]);
-                    _palette = PHOTOMETRIC_PALETTE == tiffPhotometric;
                     _planar = PLANARCONFIG_SEPARATE == tiffPlanarConfig;
                     _samples = tiffSamples;
                     _sampleDepth = tiffSampleDepth;
@@ -180,9 +139,6 @@ namespace tl
                     image::PixelType pixelType = image::PixelType::None;
                     switch (tiffPhotometric)
                     {
-                    case PHOTOMETRIC_PALETTE:
-                        pixelType = image::PixelType::RGB_U8;
-                        break;
                     case PHOTOMETRIC_MINISWHITE:
                     case PHOTOMETRIC_MINISBLACK:
                     case PHOTOMETRIC_RGB:
@@ -316,19 +272,6 @@ namespace tl
                         }
                     }
 
-                    if (_palette)
-                    {
-                        uint8_t* p = out.image->getData();
-                        for (uint16_t y = 0; y < info.size.h; ++y, p += _scanlineSize)
-                        {
-                            readPalette(
-                                p,
-                                info.size.w,
-                                static_cast<int>(image::getChannelCount(info.pixelType)),
-                                _colormap[0], _colormap[1], _colormap[2]);
-                        }
-                    }
-
                     return out;
                 }
 
@@ -347,8 +290,6 @@ namespace tl
 
                 TIFFData  _tiff;
                 Memory    _memory;
-                bool      _palette = false;
-                uint16_t* _colormap[3] = { nullptr, nullptr, nullptr };
                 bool      _planar = false;
                 size_t    _samples = 0;
                 size_t    _sampleDepth = 0;
@@ -361,9 +302,10 @@ namespace tl
             const file::Path& path,
             const std::vector<file::MemoryRead>& memory,
             const io::Options& options,
+            const std::shared_ptr<io::Cache>& cache,
             const std::weak_ptr<log::System>& logSystem)
         {
-            ISequenceRead::_init(path, memory, options, logSystem);
+            ISequenceRead::_init(path, memory, options, cache, logSystem);
         }
 
         Read::Read()
@@ -377,10 +319,11 @@ namespace tl
         std::shared_ptr<Read> Read::create(
             const file::Path& path,
             const io::Options& options,
+            const std::shared_ptr<io::Cache>& cache,
             const std::weak_ptr<log::System>& logSystem)
         {
             auto out = std::shared_ptr<Read>(new Read);
-            out->_init(path, {}, options, logSystem);
+            out->_init(path, {}, options, cache, logSystem);
             return out;
         }
 
@@ -388,10 +331,11 @@ namespace tl
             const file::Path& path,
             const std::vector<file::MemoryRead>& memory,
             const io::Options& options,
+            const std::shared_ptr<io::Cache>& cache,
             const std::weak_ptr<log::System>& logSystem)
         {
             auto out = std::shared_ptr<Read>(new Read);
-            out->_init(path, memory, options, logSystem);
+            out->_init(path, memory, options, cache, logSystem);
             return out;
         }
 
@@ -410,7 +354,7 @@ namespace tl
             const std::string& fileName,
             const file::MemoryRead* memory,
             const otime::RationalTime& time,
-            uint16_t layer)
+            const io::Options&)
         {
             return File(fileName, memory).read(fileName, time);
         }

@@ -180,6 +180,7 @@ namespace tl
                 const file::Path&,
                 const std::vector<file::MemoryRead>&,
                 const io::Options&,
+                const std::shared_ptr<io::Cache>&,
                 const std::weak_ptr<log::System>&);
 
             Read();
@@ -191,6 +192,7 @@ namespace tl
             static std::shared_ptr<Read> create(
                 const file::Path&,
                 const io::Options&,
+                const std::shared_ptr<io::Cache>&,
                 const std::weak_ptr<log::System>&);
 
             //! Create a new reader.
@@ -198,6 +200,7 @@ namespace tl
                 const file::Path&,
                 const std::vector<file::MemoryRead>&,
                 const io::Options&,
+                const std::shared_ptr<io::Cache>&,
                 const std::weak_ptr<log::System>&);
 
         protected:
@@ -208,7 +211,7 @@ namespace tl
                 const std::string& fileName,
                 const file::MemoryRead*,
                 const otime::RationalTime&,
-                uint16_t layer) override;
+                const io::Options&) override;
         };
 
         //! Cineon writer.
@@ -237,28 +240,33 @@ namespace tl
             void _writeVideo(
                 const std::string& fileName,
                 const otime::RationalTime&,
-                const std::shared_ptr<image::Image>&) override;
+                const std::shared_ptr<image::Image>&,
+                const io::Options&) override;
         };
 
         //! Cineon plugin.
         class Plugin : public io::IPlugin
         {
         protected:
-            void _init(const std::weak_ptr<log::System>&);
+            void _init(
+                const std::shared_ptr<io::Cache>&,
+                const std::weak_ptr<log::System>&);
 
             Plugin();
 
         public:
             //! Create a new plugin.
-            static std::shared_ptr<Plugin> create(const std::weak_ptr<log::System>&);
+            static std::shared_ptr<Plugin> create(
+                const std::shared_ptr<io::Cache>&,
+                const std::weak_ptr<log::System>&);
 
             std::shared_ptr<io::IRead> read(
                 const file::Path&,
-                const io::Options & = io::Options()) override;
+                const io::Options& = io::Options()) override;
             std::shared_ptr<io::IRead> read(
                 const file::Path&,
                 const std::vector<file::MemoryRead>&,
-                const io::Options & = io::Options()) override;
+                const io::Options& = io::Options()) override;
             image::Info getWriteInfo(
                 const image::Info&,
                 const io::Options& = io::Options()) const override;

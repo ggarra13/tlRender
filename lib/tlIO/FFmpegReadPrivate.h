@@ -65,12 +65,10 @@ namespace tl
 
             void start();
             void seek(const otime::RationalTime&);
-            void process(const otime::RationalTime& currentTime);
+            bool process(const otime::RationalTime& currentTime);
 
             bool isBufferEmpty() const;
             std::shared_ptr<image::Image> popBuffer();
-
-            bool isEOF() const;
 
         private:
             int _decode(const otime::RationalTime& currentTime);
@@ -117,14 +115,12 @@ namespace tl
 
             void start();
             void seek(const otime::RationalTime&);
-            void process(
+            bool process(
                 const otime::RationalTime& currentTime,
                 size_t sampleCount);
 
             size_t getBufferSize() const;
             void bufferCopy(uint8_t*, size_t sampleCount);
-
-            bool isEOF() const;
 
         private:
             int _decode(const otime::RationalTime& currentTime);
@@ -164,13 +160,14 @@ namespace tl
             struct VideoRequest
             {
                 otime::RationalTime time = time::invalidTime;
+                io::Options options;
                 std::promise<io::VideoData> promise;
             };
             struct VideoMutex
             {
                 std::list<std::shared_ptr<InfoRequest> > infoRequests;
                 std::list<std::shared_ptr<VideoRequest> > videoRequests;
-                std::shared_ptr<VideoRequest> videoRequest;
+                //std::shared_ptr<VideoRequest> videoRequest;
                 bool stopped = false;
                 std::mutex mutex;
             };
@@ -188,12 +185,13 @@ namespace tl
             struct AudioRequest
             {
                 otime::TimeRange timeRange = time::invalidTimeRange;
+                io::Options options;
                 std::promise<io::AudioData> promise;
             };
             struct AudioMutex
             {
                 std::list<std::shared_ptr<AudioRequest> > requests;
-                std::shared_ptr<AudioRequest> currentRequest;
+                //std::shared_ptr<AudioRequest> currentRequest;
                 bool stopped = false;
                 std::mutex mutex;
             };
@@ -201,7 +199,6 @@ namespace tl
             struct AudioThread
             {
                 otime::RationalTime currentTime = time::invalidTime;
-                size_t requestSampleCount = 0;
                 std::chrono::steady_clock::time_point logTimer;
                 std::condition_variable cv;
                 std::thread thread;

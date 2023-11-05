@@ -4,8 +4,8 @@
 
 #include <tlIOTest/STBTest.h>
 
-#include <tlIO/IOSystem.h>
 #include <tlIO/STB.h>
+#include <tlIO/System.h>
 
 #include <tlCore/Assert.h>
 
@@ -54,14 +54,21 @@ namespace tl
             {
                 std::vector<uint8_t> memoryData;
                 std::vector<file::MemoryRead> memory;
+                std::shared_ptr<io::IRead> read;
                 if (memoryIO)
                 {
                     auto fileIO = file::FileIO::create(path.get(), file::Mode::Read);
                     memoryData.resize(fileIO->getSize());
                     fileIO->read(memoryData.data(), memoryData.size());
                     memory.push_back(file::MemoryRead(memoryData.data(), memoryData.size()));
+                    read = plugin->read(path, memory);
                 }
-                auto read = plugin->read(path, memory);
+                else
+                {
+                    read = plugin->read(path);
+                }
+                const auto ioInfo = read->getInfo().get();
+                TLRENDER_ASSERT(!ioInfo.video.empty());
                 const auto videoData = read->readVideo(otime::RationalTime(0.0, 24.0)).get();
                 TLRENDER_ASSERT(videoData.image);
                 TLRENDER_ASSERT(videoData.image->getSize() == image->getSize());
@@ -100,7 +107,8 @@ namespace tl
 
         void STBTest::_io()
         {
-            auto plugin = _context->getSystem<System>()->getPlugin<stb::Plugin>();
+            auto system = _context->getSystem<System>();
+            auto plugin = system->getPlugin<stb::Plugin>();
 
             const std::vector<std::string> fileNames =
             {
@@ -115,7 +123,7 @@ namespace tl
             const std::vector<image::Size> sizes =
             {
                 image::Size(16, 16),
-                image::Size(2, 2),
+                image::Size(1, 1),
                 image::Size(0, 0)
             };
 
@@ -143,7 +151,9 @@ namespace tl
                                 {
                                     write(plugin, image, path, imageInfo);
                                     read(plugin, image, path, memoryIO);
+                                    system->getCache()->clear();
                                     readError(plugin, image, path, memoryIO);
+                                    system->getCache()->clear();
                                 }
                                 catch (const std::exception& e)
                                 {

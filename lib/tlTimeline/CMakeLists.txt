@@ -1,12 +1,15 @@
 set(HEADERS
     Audio.h
     AudioInline.h
+    BackgroundOptions.h
+    BackgroundOptionsInline.h
     ColorConfigOptions.h
     ColorConfigOptionsInline.h
     CompareOptions.h
     CompareOptionsInline.h
     DisplayOptions.h
     DisplayOptionsInline.h
+    Edit.h
     IRender.h
     ImageOptions.h
     ImageOptionsInline.h
@@ -38,9 +41,11 @@ list(APPEND PRIVATE_HEADERS
     GLRenderPrivate.h)
 
 set(SOURCE
+    BackgroundOptions.cpp
     ColorConfigOptions.cpp
     CompareOptions.cpp
     DisplayOptions.cpp
+    Edit.cpp
     IRender.cpp
     ImageOptions.cpp
     Init.cpp
@@ -60,8 +65,12 @@ set(SOURCE
 list(APPEND SOURCE
     GLRender.cpp
     GLRenderPrims.cpp
-    GLRenderShaders.cpp
     GLRenderVideo.cpp)
+if("${TLRENDER_API}" STREQUAL "GL_4_1" OR "${TLRENDER_API}" STREQUAL "GL_4_1_Debug")
+    list(APPEND SOURCE GLRenderShaders_GL_4_1.cpp)
+elseif("${TLRENDER_API}" STREQUAL "GLES_2")
+    list(APPEND SOURCE GLRenderShaders_GLES_2.cpp)
+endif()
 
 add_library(tlTimeline ${HEADERS} ${PRIVATE_HEADERS} ${SOURCE})
 target_link_libraries(tlTimeline tlIO)

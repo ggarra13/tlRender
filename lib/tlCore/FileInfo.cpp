@@ -2,12 +2,10 @@
 // Copyright (c) 2021-2023 Darby Johnston
 // All rights reserved.
 
-#include <tlCore/FileInfo.h>
+#include <tlCore/FileInfoPrivate.h>
 
 #include <tlCore/Error.h>
 #include <tlCore/String.h>
-
-#include <fseq.h>
 
 #include <algorithm>
 #include <array>
@@ -33,6 +31,24 @@ namespace tl
             _stat(&error);
         }
 
+        void FileInfo::sequence(const FileInfo& value)
+        {
+            if (!_path.getNumber().empty() &&
+                !value._path.getNumber().empty() &&
+                (_path.getPadding() == value._path.getPadding() ||
+                 _path.getPadding() == value._path.getNumber().size()))
+            {
+                math::IntRange sequence = _path.getSequence();
+                const math::IntRange& otherSequence = value._path.getSequence();
+                sequence.expand(otherSequence.getMin());
+                sequence.expand(otherSequence.getMax());
+                _path.setSequence(sequence);
+                _size += value._size;
+                _permissions = std::min(_permissions, value._permissions);
+                _time = std::max(_time, value._time);
+            }
+        }
+
         TLRENDER_ENUM_IMPL(
             ListSort,
             "Name",
@@ -50,6 +66,7 @@ namespace tl
                 dotAndDotDotDirs == other.dotAndDotDotDirs &&
                 dotFiles == other.dotFiles &&
                 sequence == other.sequence &&
+                sequenceExtensions == other.sequenceExtensions &&
                 negativeNumbers == other.negativeNumbers &&
                 maxNumberDigits == other.maxNumberDigits;
         }
@@ -59,35 +76,86 @@ namespace tl
             return !(*this == other);
         }
 
-        std::vector<FileInfo> list(const std::string& path, const ListOptions& options)
+        bool listFilter(const std::string& fileName, const ListOptions& options)
         {
-            std::vector<FileInfo> out;
-
-            FSeqDirOptions dirOptions;
-            fseqDirOptionsInit(&dirOptions);
-            dirOptions.dotAndDotDotDirs = options.dotAndDotDotDirs;
-            dirOptions.dotFiles = options.dotFiles;
-            dirOptions.sequence = options.sequence;
-            dirOptions.fileNameOptions.negativeNumbers = options.negativeNumbers;
-            dirOptions.fileNameOptions.maxNumberDigits = options.maxNumberDigits;
-
-            FSeqBool error = FSEQ_FALSE;
-            auto dirList = fseqDirList(path.c_str(), &dirOptions, &error);
-            if (FSEQ_FALSE == error)
+            bool out = false;
+            if (!options.dotAndDotDotDirs &&
+                1 == fileName.size() &&
+                '.' == fileName[0])
             {
-                const std::string directory = appendSeparator(path);
-                for (auto entry = dirList; entry; entry = entry->next)
+                out = true;
+            }
+            else if (!options.dotAndDotDotDirs &&
+                2 == fileName.size() &&
+                '.' == fileName[0] &&
+                '.' == fileName[1])
+            {
+                out = true;
+            }
+            else if (!options.dotFiles &&
+                fileName.size() > 0 &&
+                '.' == fileName[0])
+            {
+                out = true;
+            }
+            return out;
+        }
+        
+        void listSequence(
+            const std::string& path,
+            const std::string& fileName,
+            std::vector<FileInfo>& out,
+            const ListOptions& options)
+        {
+            PathOptions pathOptions;
+            pathOptions.maxNumberDigits =
+                options.sequence ?
+                options.maxNumberDigits :
+                0;
+            const Path p(path, fileName, pathOptions);
+            const FileInfo f(p);
+            bool sequence = false;
+            if (options.sequence &&
+                !p.getNumber().empty() &&
+                f.getType() != Type::Directory)
+            {
+                bool sequenceExtension = true;
+                if (!options.sequenceExtensions.empty())
                 {
-                    out.push_back(FileInfo(Path(
-                        directory,
-                        entry->fileName.base,
-                        entry->fileName.number,
-                        entry->framePadding,
-                        entry->fileName.extension)));
+                    sequenceExtension = std::find(
+                        options.sequenceExtensions.begin(),
+                        options.sequenceExtensions.end(),
+                        string::toLower(p.getExtension())) !=
+                        options.sequenceExtensions.end();
+                }
+                if (sequenceExtension)
+                {
+                    for (auto& i : out)
+                    {
+                        if (i.getPath().sequence(p))
+                        {
+                            sequence = true;
+                            i.sequence(f);
+                            break;
+                        }
+                    }
                 }
             }
-            fseqDirListDel(dirList);
+            if (!sequence)
+            {
+                out.push_back(f);
+            }
+        }
+        
+        void list(
+            const std::string& path,
+            std::vector<FileInfo>& out,
+            const ListOptions& options)
+        {
+            out.clear();
 
+            _list(path, out, options);
+            
             std::function<int(const FileInfo& a, const FileInfo& b)> sort;
             switch (options.sort)
             {
@@ -115,6 +183,7 @@ namespace tl
                     return a.getTime() < b.getTime();
                 };
                 break;
+            default: break;
             }
             if (sort)
             {
@@ -135,39 +204,10 @@ namespace tl
                     [](const FileInfo& a, const FileInfo& b)
                     {
                         return
-                            static_cast<size_t>(a.getType()) >
-                            static_cast<size_t>(b.getType());
+                        static_cast<size_t>(a.getType()) >
+                    static_cast<size_t>(b.getType());
                     });
             }
-
-            return out;
-        }
-
-        void to_json(nlohmann::json& json, const ListOptions& value)
-        {
-            json = nlohmann::json
-            {
-                { "sort", value.sort },
-                { "reverseSort", value.reverseSort },
-                { "sortDirectoriesFirst", value.sortDirectoriesFirst },
-                { "dotAndDotDotDirs", value.dotAndDotDotDirs },
-                { "dotFiles", value.dotFiles },
-                { "sequence", value.sequence },
-                { "negativeNumbers", value.negativeNumbers },
-                { "maxNumberDigits", value.maxNumberDigits }
-            };
-        }
-
-        void from_json(const nlohmann::json& json, ListOptions& value)
-        {
-            json.at("sort").get_to(value.sort);
-            json.at("reverseSort").get_to(value.reverseSort);
-            json.at("sortDirectoriesFirst").get_to(value.sortDirectoriesFirst);
-            json.at("dotAndDotDotDirs").get_to(value.dotAndDotDotDirs);
-            json.at("dotFiles").get_to(value.dotFiles);
-            json.at("sequence").get_to(value.sequence);
-            json.at("negativeNumbers").get_to(value.negativeNumbers);
-            json.at("maxNumberDigits").get_to(value.maxNumberDigits);
         }
     }
 }

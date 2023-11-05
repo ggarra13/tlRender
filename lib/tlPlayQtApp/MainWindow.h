@@ -10,6 +10,12 @@
 
 namespace tl
 {
+    namespace qtwidget
+    {
+        class TimelineWidget;
+        class TimelineViewport;
+    }
+
     namespace play_qt
     {
         class App;
@@ -24,8 +30,11 @@ namespace tl
 
             virtual ~MainWindow();
 
-            //! Set the timeline players.
-            void setTimelinePlayers(const QVector<QSharedPointer<qt::TimelinePlayer> >&);
+            //! Get the timeline widget;
+            qtwidget::TimelineWidget* timelineWidget() const;
+
+            //! Get the timeline viewport;
+            qtwidget::TimelineViewport* timelineViewport() const;
 
         protected:
             void closeEvent(QCloseEvent*) override;
@@ -43,7 +52,7 @@ namespace tl
             void _volumeCallback(int);
 
         private:
-            void _timelinePlayersUpdate();
+            void _playersUpdate(const QVector<QSharedPointer<qt::TimelinePlayer> >&);
             void _widgetUpdate();
 
             TLRENDER_PRIVATE();

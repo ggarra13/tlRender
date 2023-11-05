@@ -4,9 +4,8 @@
 
 #pragma once
 
-#include <tlTimelineUI/IOManager.h>
-
 #include <tlUI/IWidget.h>
+#include <tlUI/ThumbnailSystem.h>
 
 #include <tlTimeline/TimeUnits.h>
 #include <tlTimeline/Timeline.h>
@@ -17,14 +16,18 @@ namespace tl
 {
     namespace timelineui
     {
+        class IItem;
+
         //! Item data.
         struct ItemData
         {
             float speed = 0.0;
             std::string directory;
             timeline::Options options;
-            std::shared_ptr<IOManager> ioManager;
             std::shared_ptr<timeline::ITimeUnitsModel> timeUnitsModel;
+            std::map<std::string, std::shared_ptr<io::Info> > info;
+            std::map<std::string, std::shared_ptr<image::Image> > thumbnails;
+            std::map<std::string, std::shared_ptr<geom::TriangleMesh2> > waveforms;
         };
 
         //! In/out points display options.
@@ -51,6 +54,7 @@ namespace tl
         //! Item options.
         struct ItemOptions
         {
+            bool editAssociatedClips = true;
             InOutDisplay inOutDisplay = InOutDisplay::InsideRange;
             CacheDisplay cacheDisplay = CacheDisplay::VideoAndAudio;
             float clipRectScale = 2.F;
@@ -59,7 +63,7 @@ namespace tl
             int waveformWidth = 200;
             int waveformHeight = 50;
             WaveformPrim waveformPrim = WaveformPrim::Mesh;
-            float thumbnailFade = .5F;
+            float thumbnailFade = .2F;
             bool showTransitions = false;
             bool showMarkers = false;
             std::string regularFont = "NotoSans-Regular";
@@ -84,13 +88,31 @@ namespace tl
         //! Convert a named marker color.
         image::Color4f getMarkerColor(const std::string&);
 
+        //! Drag and drop data.
+        class DragAndDropData : public ui::DragAndDropData
+        {
+        public:
+            DragAndDropData(const std::shared_ptr<IItem>&);
+
+            virtual ~DragAndDropData();
+
+            const std::shared_ptr<IItem>& getItem() const;
+
+        private:
+            std::shared_ptr<IItem> _item;
+        };
+
         //! Base class for items.
         class IItem : public ui::IWidget
         {
         protected:
             void _init(
-                const std::string& name,
-                const ItemData&,
+                const std::string& objectName,
+                const otime::TimeRange& timeRange,
+                const otime::TimeRange& trimmedRange,
+                double scale,
+                const ItemOptions&,
+                const std::shared_ptr<ItemData>&,
                 const std::shared_ptr<system::Context>&,
                 const std::shared_ptr<IWidget>& parent = nullptr);
 
@@ -98,9 +120,21 @@ namespace tl
 
         public:
             virtual ~IItem();
+            
+            //! Get the item time range.
+            const otime::TimeRange& getTimeRange() const;
 
+            //! Set the item scale.
             virtual void setScale(double);
+
+            //! Set the item options.
             virtual void setOptions(const ItemOptions&);
+
+            //! Get the selection color role.
+            ui::ColorRole getSelectRole() const;
+
+            //! Set the selection color role.
+            void setSelectRole(ui::ColorRole);
 
         protected:
             static math::Box2i _getClipRect(
@@ -109,11 +143,16 @@ namespace tl
 
             std::string _getDurationLabel(const otime::RationalTime&);
 
+            otime::RationalTime _posToTime(float) const;
+            int _timeToPos(const otime::RationalTime&) const;
+
             virtual void _timeUnitsUpdate();
 
-            ItemData _data;
+            otime::TimeRange _timeRange = time::invalidTimeRange;
+            otime::TimeRange _trimmedRange = time::invalidTimeRange;
             double _scale = 500.0;
             ItemOptions _options;
+            std::shared_ptr<ItemData> _data;
 
         private:
             TLRENDER_PRIVATE();

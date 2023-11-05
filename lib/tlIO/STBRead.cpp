@@ -4,7 +4,6 @@
 
 #define STBI_NO_JPEG
 #define STBI_NO_PNG
-#define STBI_NO_HDR
 #define STBI_NO_PNM
 #define STBI_WINDOWS_UTF8
 #define STB_IMAGE_IMPLEMENTATION
@@ -26,50 +25,55 @@ namespace tl
             public:
                 File(const std::string& fileName, const file::MemoryRead* memory)
                 {
-                        int res = 0, w = 0, h = 0, n = 0, bits = 8;
+                    int res = 0, w = 0, h = 0, n = 0, bits = 8;
 
-                        _memory = memory;
+                    _memory = memory;
                         
-                        if (memory)
+                    if (memory)
+                    {
+                        res = stbi_info_from_memory(memory->p, memory->size, &w,
+                                                    &h, &n);
+                        if (res == 0)
+                            throw std::runtime_error(
+                                string::Format("{0}: {1}")
+                                    .arg(fileName)
+                                    .arg("Corrupted image type"));
+                            
+                        _info.size.w = w;
+                        _info.size.h = h;
+                            
+                        res = stbi_is_16_bit_from_memory(memory->p, memory->size);
+                        if (res) bits = 16;
+                            
+                        _info.pixelType = image::getIntType(n, bits);
+                            
+                        if (image::PixelType::None == _info.pixelType)
                         {
-                            res = stbi_info_from_memory(memory->p, memory->size, &w,
-                                                        &h, &n);
-                            if (res == 0)
-                                throw std::runtime_error(
-                                    string::Format("{0}: {1}")
-                                        .arg(fileName)
-                                        .arg("Corrupted image type"));
-                            
-                            _info.size.w = w;
-                            _info.size.h = h;
-                            
-                            res = stbi_is_16_bit_from_memory(memory->p, memory->size);
-                            if (res) bits = 16;
-                            
-                            _info.pixelType = image::getIntType(n, bits);
-                            
-                            if (image::PixelType::None == _info.pixelType)
-                            {
-                                throw std::runtime_error(
-                                    string::Format("{0}: {1}")
-                                        .arg(fileName)
-                                        .arg("Unsupported image type"));
-                            }
-                            _info.layout.endian = memory::Endian::MSB;
+                            throw std::runtime_error(
+                                string::Format("{0}: {1}")
+                                    .arg(fileName)
+                                    .arg("Unsupported image type"));
+                        }
+                        _info.layout.endian = memory::Endian::MSB;
+                    }
+                    else
+                    {
+                        res = stbi_info(fileName.c_str(), &w, &h, &n);
+                        if (res == 0)
+                            throw std::runtime_error(
+                                string::Format("{0}: {1}")
+                                .arg(fileName)
+                                .arg("Corrupted image type"));
+                        
+                        _info.size.w = w;
+                        _info.size.h = h;
+
+                        if (stbi_is_hdr(fileName.c_str()))
+                        {
+                            _info.pixelType = image::PixelType::RGB_F32;
                         }
                         else
                         {
-
-                            res = stbi_info(fileName.c_str(), &w, &h, &n);
-                            if (res == 0)
-                                throw std::runtime_error(
-                                    string::Format("{0}: {1}")
-                                        .arg(fileName)
-                                        .arg("Corrupted image type"));
-
-                            _info.size.w = w;
-                            _info.size.h = h;
-                    
                             res = stbi_is_16_bit(fileName.c_str());
                             if (res) bits = 16;
                     
@@ -78,11 +82,12 @@ namespace tl
                             {
                                 throw std::runtime_error(
                                     string::Format("{0}: {1}")
-                                        .arg(fileName)
-                                        .arg("Unsupported image type"));
+                                    .arg(fileName)
+                                    .arg("Unsupported image type"));
                             }
                             _info.layout.endian = memory::Endian::MSB;
                         }
+                    }
                 }
 
                 const image::Info& getInfo() const
@@ -98,8 +103,7 @@ namespace tl
                     out.time = time;
                     out.image = image::Image::create(_info);
 
-                    const int channels = static_cast<int>(
-                        image::getChannelCount(_info.pixelType));
+                    const int channels = image::getChannelCount(_info.pixelType);
                     const size_t bytes = image::getBitDepth(_info.pixelType) / 8;
                     
                     stbi_set_flip_vertically_on_load(1);
@@ -116,6 +120,10 @@ namespace tl
                             data = reinterpret_cast<stbi_uc*>(
                                 stbi_load_16_from_memory(_memory->p, _memory->size,
                                                          &x, &y, &n, 0));
+                        else
+                            data = reinterpret_cast<stbi_uc*>(
+                                stbi_loadf_from_memory(
+                                    _memory->p, _memory->size, &x, &y, &n, 0));
                     }
                     else
                     {
@@ -124,6 +132,9 @@ namespace tl
                         else if (bytes == 2)
                             data = reinterpret_cast<stbi_uc*>(
                                 stbi_load_16(fileName.c_str(), &x, &y, &n, 0));
+                        else
+                            data = reinterpret_cast<stbi_uc*>(
+                                stbi_loadf(fileName.c_str(), &x, &y, &n, 0));
                     }
                                                        
                     memcpy(
@@ -145,9 +156,10 @@ namespace tl
             const file::Path& path,
             const std::vector<file::MemoryRead>& memory,
             const io::Options& options,
+            const std::shared_ptr<io::Cache>& cache,
             const std::weak_ptr<log::System>& logSystem)
         {
-            ISequenceRead::_init(path, memory, options, logSystem);
+            ISequenceRead::_init(path, memory, options, cache, logSystem);
         }
 
         Read::Read()
@@ -161,10 +173,11 @@ namespace tl
         std::shared_ptr<Read> Read::create(
             const file::Path& path,
             const io::Options& options,
+            const std::shared_ptr<io::Cache>& cache,
             const std::weak_ptr<log::System>& logSystem)
         {
             auto out = std::shared_ptr<Read>(new Read);
-            out->_init(path, {}, options, logSystem);
+            out->_init(path, {}, options, cache, logSystem);
             return out;
         }
 
@@ -172,10 +185,11 @@ namespace tl
             const file::Path& path,
             const std::vector<file::MemoryRead>& memory,
             const io::Options& options,
+            const std::shared_ptr<io::Cache>& cache,
             const std::weak_ptr<log::System>& logSystem)
         {
             auto out = std::shared_ptr<Read>(new Read);
-            out->_init(path, memory, options, logSystem);
+            out->_init(path, memory, options, cache, logSystem);
             return out;
         }
 
@@ -195,7 +209,7 @@ namespace tl
             const std::string& fileName,
             const file::MemoryRead* memory,
             const otime::RationalTime& time,
-            uint16_t layer)
+            const io::Options&)
         {
             return File(fileName, memory).read(fileName, time);
         }

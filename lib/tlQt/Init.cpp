@@ -7,8 +7,6 @@
 #include <tlQt/MetaTypes.h>
 #include <tlQt/TimeObject.h>
 
-#include <tlTimeline/Init.h>
-
 #include <tlDevice/Init.h>
 
 #include <tlCore/Context.h>
@@ -24,7 +22,6 @@ namespace tl
             DefaultSurfaceFormat defaultSurfaceFormat,
             const std::shared_ptr<system::Context>& context)
         {
-            timeline::init(context);
             device::init(context);
             if (!context->getSystem<System>())
             {
@@ -78,6 +75,8 @@ namespace tl
             qRegisterMetaType<image::PixelType>("tl::image::PixelType");
             qRegisterMetaType<image::Size>("tl::image::Size");
             qRegisterMetaType<image::VideoLevels>("tl::image::VideoLevels");
+
+            qRegisterMetaType<math::Size2i>("tl::math::Size2i");
 
             qRegisterMetaType<memory::Endian>("tl::memory::Endian");
 #if (QT_VERSION < QT_VERSION_CHECK(6, 0, 0))

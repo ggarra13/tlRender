@@ -25,11 +25,11 @@ set(HEADERS
     RenderMenu.h
     SeparateAudioDialog.h
     SpeedPopup.h
-    Settings.h
-    SettingsInline.h
     SettingsTool.h
     Style.h
     SystemLogTool.h
+    TimelineActions.h
+    TimelineMenu.h
     Tools.h
     ToolsActions.h
     ToolsMenu.h
@@ -38,12 +38,14 @@ set(HEADERS
     ViewActions.h
     ViewMenu.h
     ViewToolBar.h
+    ViewTool.h
     WindowActions.h
     WindowMenu.h
     WindowToolBar.h)
 set(HEADERS_PRIVATE
     ColorToolPrivate.h
-    SeparateAudioPrivate.h)
+    SeparateAudioPrivate.h
+    ViewToolPrivate.h)
 
 set(SOURCE
     App.cpp
@@ -73,10 +75,11 @@ set(SOURCE
     SeparateAudioDialog.cpp
     SeparateAudioWidget.cpp
     SpeedPopup.cpp
-    Settings.cpp
     SettingsTool.cpp
     Style.cpp
     SystemLogTool.cpp
+    TimelineActions.cpp
+    TimelineMenu.cpp
     Tools.cpp
     ToolsActions.cpp
     ToolsMenu.cpp
@@ -85,6 +88,7 @@ set(SOURCE
     ViewActions.cpp
     ViewMenu.cpp
     ViewToolBar.cpp
+    ViewTool.cpp
     WindowActions.cpp
     WindowMenu.cpp
     WindowToolBar.cpp)

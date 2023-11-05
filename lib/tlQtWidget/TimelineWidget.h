@@ -37,7 +37,10 @@ namespace tl
             //! Set the timeline player.
             void setPlayer(const std::shared_ptr<timeline::Player>&);
 
-            //! Get whether the to frame the view.
+            //! Get whether the timeline is editable.
+            bool isEditable() const;
+
+            //! Get whether the view is framed automatically.
             bool hasFrameView() const;
 
             //! Get whether the scroll bars are visible.
@@ -55,9 +58,13 @@ namespace tl
             //! Get the item options.
             const timelineui::ItemOptions& itemOptions() const;
 
-        public Q_SLOTS:
+            QSize minimumSizeHint() const override;
 
-            //! Set whether the to frame the view.
+        public Q_SLOTS:
+            //! Set whether the timeline is editable.
+            void setEditable(bool);
+
+            //! Set whether the view is framed automatically.
             void setFrameView(bool);
 
             //! Set whether the scroll bars are visible.
@@ -76,6 +83,9 @@ namespace tl
             void setItemOptions(const timelineui::ItemOptions&);
 
         Q_SIGNALS:
+            //! This signal is emitted when the editable timeline is changed.
+            void editableChanged(bool);
+
             //! This signal is emitted when the frame view is changed.
             void frameViewChanged(bool);
 
@@ -101,6 +111,8 @@ namespace tl
             bool event(QEvent*) override;
 
         private:
+            std::shared_ptr<gl::OffscreenBuffer> _capture(const math::Box2i&);
+
             int _toUI(int) const;
             math::Vector2i _toUI(const math::Vector2i&) const;
             int _fromUI(int) const;

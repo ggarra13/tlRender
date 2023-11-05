@@ -4,14 +4,20 @@
 
 #pragma once
 
-#include <tlTimeline/Timeline.h>
+#include <tlTimeline/Player.h>
 
 #include <opentimelineio/mediaReference.h>
+#include <opentimelineio/timeline.h>
 
 namespace tl
 {
     namespace timeline
     {
+        //! Get the timeline file extensions.
+        std::vector<std::string> getExtensions(
+            int types,
+            const std::shared_ptr<system::Context>&);
+
         //! Convert frames to ranges.
         std::vector<otime::TimeRange> toRanges(std::vector<otime::RationalTime>);
 
@@ -21,10 +27,23 @@ namespace tl
             const otime::TimeRange&,
             bool* looped = nullptr);
 
-        //! Loop a range.
-        std::vector<otime::TimeRange> loop(
+        //! Cache direction.
+        enum class CacheDirection
+        {
+            Forward,
+            Reverse,
+
+            Count,
+            First = Forward
+        };
+        TLRENDER_ENUM(FileSequenceAudio);
+        TLRENDER_ENUM_SERIALIZE(FileSequenceAudio);
+
+        //! Loop the cache time range.
+        std::vector<otime::TimeRange> loopCache(
             const otime::TimeRange&,
-            const otime::TimeRange&);
+            const otime::TimeRange&,
+            CacheDirection);
 
         //! Get the root (highest parent).
         const otio::Composable* getRoot(const otio::Composable*);
@@ -41,9 +60,9 @@ namespace tl
         //! Get the time range of a timeline.
         otime::TimeRange getTimeRange(const otio::Timeline*);
 
-        //! Get a list of files to open from the given path.
+        //! Get a list of paths to open from the given path.
         std::vector<file::Path> getPaths(
-            const std::string&,
+            const file::Path&,
             const file::PathOptions&,
             const std::shared_ptr<system::Context>&);
 
@@ -66,19 +85,44 @@ namespace tl
         std::vector<file::MemoryRead> getMemoryRead(
             const otio::MediaReference*);
 
+        //! Convert to memory references.
+        enum class ToMemoryReference
+        {
+            Shared,
+            Raw,
+
+            Count,
+            First = Shared
+        };
+        TLRENDER_ENUM(ToMemoryReference);
+        TLRENDER_ENUM_SERIALIZE(ToMemoryReference);
+
+        //! Convert media references to memory references for testing.
+        void toMemoryReferences(
+            otio::Timeline*,
+            const std::string& directory,
+            ToMemoryReference,
+            const file::PathOptions& = file::PathOptions());
+
         //! Transform track time to video media time.
         otime::RationalTime toVideoMediaTime(
             const otime::RationalTime&,
-            const otio::Track*,
-            const otio::Clip*,
-            const io::Info&);
+            const otime::TimeRange& trimmedRangeInParent,
+            const otime::TimeRange& trimmedRange,
+            double rate);
 
         //! Transform track time to audio media time.
         otime::TimeRange toAudioMediaTime(
             const otime::TimeRange&,
-            const otio::Track*,
-            const otio::Clip*,
-            const io::Info&);
+            const otime::TimeRange& trimmedRangeInParent,
+            const otime::TimeRange& trimmedRange,
+            double sampleRate);
+
+        //! Write a timeline to an .otioz file.
+        bool writeOTIOZ(
+            const std::string& fileName,
+            const otio::SerializableObject::Retainer<otio::Timeline>&,
+            const std::string& directory = std::string());
     }
 }
 

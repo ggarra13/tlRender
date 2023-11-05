@@ -17,16 +17,21 @@ namespace tl
         bool ItemOptions::operator == (const ItemOptions& other) const
         {
             return
+                editAssociatedClips == other.editAssociatedClips &&
                 inOutDisplay == other.inOutDisplay &&
                 cacheDisplay == other.cacheDisplay &&
                 clipRectScale == other.clipRectScale &&
                 thumbnails == other.thumbnails &&
                 thumbnailHeight == other.thumbnailHeight &&
+                waveformWidth == other.waveformWidth &&
                 waveformHeight == other.waveformHeight &&
                 waveformPrim == other.waveformPrim &&
                 thumbnailFade == other.thumbnailFade &&
                 showTransitions == other.showTransitions &&
-                showMarkers == other.showMarkers;
+                showMarkers == other.showMarkers &&
+                regularFont == other.regularFont &&
+                monoFont == other.monoFont &&
+                fontSize == other.fontSize;
         }
 
         bool ItemOptions::operator != (const ItemOptions& other) const
@@ -80,24 +85,46 @@ namespace tl
             return i != colors.end() ? i->second : image::Color4f();
         }
 
+        DragAndDropData::DragAndDropData(
+            const std::shared_ptr<IItem>& item) :
+            _item(item)
+        {}
+
+        DragAndDropData::~DragAndDropData()
+        {}
+
+        const std::shared_ptr<IItem>& DragAndDropData::getItem() const
+        {
+            return _item;
+        }
+
         struct IItem::Private
         {
+            ui::ColorRole selectRole = ui::ColorRole::None;
             std::shared_ptr<observer::ValueObserver<bool> > timeUnitsObserver;
         };
 
         void IItem::_init(
-            const std::string& name,
-            const ItemData& data,
+            const std::string& objectName,
+            const otime::TimeRange& timeRange,
+            const otime::TimeRange& trimmedRange,
+            double scale,
+            const ItemOptions& options,
+            const std::shared_ptr<ItemData>& data,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
         {
-            IWidget::_init(name, context, parent);
+            IWidget::_init(objectName, context, parent);
             TLRENDER_P();
 
+            _timeRange = timeRange;
+            _trimmedRange = trimmedRange;
+            _scale = scale;
+            _options = options;
             _data = data;
 
             p.timeUnitsObserver = observer::ValueObserver<bool>::create(
-                data.timeUnitsModel->observeTimeUnitsChanged(),
+                data->timeUnitsModel->observeTimeUnitsChanged(),
                 [this](bool)
                 {
                     _timeUnitsUpdate();
@@ -110,6 +137,11 @@ namespace tl
 
         IItem::~IItem()
         {}
+
+        const otime::TimeRange& IItem::getTimeRange() const
+        {
+            return _timeRange;
+        }
 
         void IItem::setScale(double value)
         {
@@ -129,6 +161,20 @@ namespace tl
             _updates |= ui::Update::Draw;
         }
 
+        ui::ColorRole IItem::getSelectRole() const
+        {
+            return _p->selectRole;
+        }
+
+        void IItem::setSelectRole(ui::ColorRole value)
+        {
+            TLRENDER_P();
+            if (value == p.selectRole)
+                return;
+            p.selectRole = value;
+            _updates |= ui::Update::Draw;
+        }
+
         math::Box2i IItem::_getClipRect(
             const math::Box2i& value,
             double scale)
@@ -144,9 +190,35 @@ namespace tl
 
         std::string IItem::_getDurationLabel(const otime::RationalTime& value)
         {
-            const otime::RationalTime rescaled = value.rescaled_to(_data.speed);
+            const otime::RationalTime rescaled = value.rescaled_to(_data->speed);
             return string::Format("{0}").
-                arg(_data.timeUnitsModel->getLabel(rescaled));
+                arg(_data->timeUnitsModel->getLabel(rescaled));
+        }
+
+        otime::RationalTime IItem::_posToTime(float value) const
+        {
+            otime::RationalTime out = time::invalidTime;
+            if (_geometry.w() > 0)
+            {
+                const double normalized =
+                    (value - _geometry.min.x) / static_cast<double>(_geometry.w());
+                out = time::round(
+                    _timeRange.start_time() +
+                    otime::RationalTime(
+                        _timeRange.duration().value() * normalized,
+                        _timeRange.duration().rate()));
+                out = math::clamp(
+                    out,
+                    _timeRange.start_time(),
+                    _timeRange.end_time_inclusive());
+            }
+            return out;
+        }
+
+        int IItem::_timeToPos(const otime::RationalTime& value) const
+        {
+            const otime::RationalTime t = value - _timeRange.start_time();
+            return _geometry.min.x + t.rescaled_to(1.0).value() * _scale;
         }
 
         void IItem::_timeUnitsUpdate()

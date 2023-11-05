@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include <tlIO/IO.h>
+#include <tlIO/Plugin.h>
 
 namespace tl
 {
@@ -24,26 +24,12 @@ namespace tl
             GeomOnly,
             GeomFlat,
             GeomSmooth,
-            
+
             Count,
             First = Points
         };
         TLRENDER_ENUM(DrawMode);
         TLRENDER_ENUM_SERIALIZE(DrawMode);
-        
-        //! USD renderer options.
-        struct RenderOptions
-        {
-            size_t   renderWidth        = 1920;
-            float    complexity         = 1.F;
-            DrawMode drawMode           = DrawMode::ShadedSmooth;
-            bool     enableLighting     = true;
-            size_t   stageCacheCount    = 10;
-            size_t   diskCacheByteCount = 0;
-            
-            bool operator == (const RenderOptions&) const;
-            bool operator != (const RenderOptions&) const;
-        };
         
         //! USD reader.
         class Read : public io::IRead
@@ -55,6 +41,7 @@ namespace tl
                 const file::Path&,
                 const std::vector<file::MemoryRead>&,
                 const io::Options&,
+                const std::shared_ptr<io::Cache>&,
                 const std::weak_ptr<log::System>&);
 
             Read();
@@ -68,10 +55,13 @@ namespace tl
                 const std::shared_ptr<Render>&,
                 const file::Path&,
                 const io::Options&,
+                const std::shared_ptr<io::Cache>&,
                 const std::weak_ptr<log::System>&);
 
             std::future<io::Info> getInfo() override;
-            std::future<io::VideoData> readVideo(const otime::RationalTime&, uint16_t layer = 0) override;
+            std::future<io::VideoData> readVideo(
+                const otime::RationalTime&,
+                const io::Options&) override;
             void cancelRequests() override;
 
         private:
@@ -82,15 +72,18 @@ namespace tl
         class Plugin : public io::IPlugin
         {
         protected:
-            void _init(const std::weak_ptr<log::System>&);
+            void _init(
+                const std::shared_ptr<io::Cache>&,
+                const std::weak_ptr<log::System>&);
             
             Plugin();
 
         public:
             //! Create a new plugin.
-            static std::shared_ptr<Plugin> create(const std::weak_ptr<log::System>&);
+            static std::shared_ptr<Plugin> create(
+                const std::shared_ptr<io::Cache>&,
+                const std::weak_ptr<log::System>&);
             
-            void setOptions(const io::Options&) override;
             std::shared_ptr<io::IRead> read(
                 const file::Path&,
                 const io::Options& = io::Options()) override;

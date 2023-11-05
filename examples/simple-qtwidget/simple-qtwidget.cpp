@@ -30,24 +30,29 @@ int main(int argc, char* argv[])
         return 1;
     }
 
-    int r = 0;
+    int r = 1;
     try
     {
         // Create the Qt application.
         QApplication app(argc, argv);
 
         // Create the context object.
-        auto contextObject = new tl::qt::ContextObject(context);
+        QScopedPointer<tl::qt::ContextObject> contextObject(
+            new tl::qt::ContextObject(context));
+
+        // Create the timeline.
+        auto timeline = tl::timeline::Timeline::create(argv[1], context);
 
         // Create the timeline player.
-        auto timeline = tl::timeline::Timeline::create(argv[1], context);
-        auto player = tl::timeline::Player::create(timeline, context);
         QSharedPointer<tl::qt::TimelinePlayer> timelinePlayer(
-            new tl::qt::TimelinePlayer(player, context));
+            new tl::qt::TimelinePlayer(
+                tl::timeline::Player::create(timeline, context),
+                context));
 
         // Create the timeline viewport.
         auto timelineViewport = new tl::qtwidget::TimelineViewport(context);
         timelineViewport->setTimelinePlayers({ timelinePlayer });
+        timelineViewport->setAttribute(Qt::WA_DeleteOnClose);
         timelineViewport->show();
 
         // Start playback.
@@ -59,7 +64,6 @@ int main(int argc, char* argv[])
     catch (const std::exception& e)
     {
         std::cerr << "ERROR: " << e.what() << std::endl;
-        r = 1;
     }
     return r;
 }

@@ -7,6 +7,8 @@
 #include <tlUI/ButtonGroup.h>
 #include <tlUI/RowLayout.h>
 
+#include <tlIO/System.h>
+
 #include <tlCore/String.h>
 
 namespace tl
@@ -18,6 +20,7 @@ namespace tl
             std::string path;
             FileBrowserOptions options;
             std::vector<file::FileInfo> fileInfos;
+            std::shared_ptr<ThumbnailGenerator> thumbnailGenerator;
             std::vector<std::shared_ptr<Button> > buttons;
             std::map<std::shared_ptr<Button>, size_t> buttonToIndex;
             std::shared_ptr<ButtonGroup> buttonGroup;
@@ -39,8 +42,8 @@ namespace tl
             TLRENDER_P();
 
             setBackgroundRole(ColorRole::Base);
-
-            p.options.list.sequence = false;
+            
+            p.thumbnailGenerator = ThumbnailGenerator::create(context);
 
             p.buttonGroup = ButtonGroup::create(ButtonGroupType::Click, context);
 
@@ -97,6 +100,11 @@ namespace tl
             _directoryUpdate();
         }
 
+        void DirectoryWidget::reload()
+        {
+            _directoryUpdate();
+        }
+
         void DirectoryWidget::setCallback(const std::function<void(const file::FileInfo&)>& value)
         {
             _p->callback = value;
@@ -108,7 +116,6 @@ namespace tl
             if (value == p.options)
                 return;
             p.options = value;
-            p.options.list.sequence = false;
             _directoryUpdate();
         }
 
@@ -189,7 +196,7 @@ namespace tl
             _sizeHint = p.layout->getSizeHint();
             for (size_t i = 0; i < columns.size(); ++i)
             {
-                _sizeHint.x += columns[i];
+                _sizeHint.w += columns[i];
             }
         }
 
@@ -203,9 +210,16 @@ namespace tl
             p.buttons.clear();
             p.buttonToIndex.clear();
             p.buttonGroup->clearButtons();
-            p.fileInfos = file::list(p.path, p.options.list);
             if (auto context = _context.lock())
             {
+                file::ListOptions listOptions;
+                listOptions.sort = p.options.sort;
+                listOptions.reverseSort = p.options.reverseSort;
+                listOptions.sequence = p.options.sequence;
+                auto ioSystem = context->getSystem<io::System>();
+                listOptions.sequenceExtensions = ioSystem->getExtensions(
+                    static_cast<int>(io::FileType::Sequence));
+                file::list(p.path, p.fileInfos, listOptions);
                 for (size_t i = 0; i < p.fileInfos.size(); ++i)
                 {
                     const file::FileInfo& fileInfo = p.fileInfos[i];
@@ -228,7 +242,11 @@ namespace tl
                     }
                     if (keep)
                     {
-                        auto button = Button::create(fileInfo, context);
+                        auto button = Button::create(
+                            fileInfo,
+                            p.options,
+                            p.thumbnailGenerator,
+                            context);
                         button->setParent(p.layout);
                         p.buttons.push_back(button);
                         p.buttonToIndex[button] = i;

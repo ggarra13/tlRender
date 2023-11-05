@@ -36,6 +36,19 @@ namespace tl
             "ProRes_4444",
             "ProRes_XQ");
         TLRENDER_ENUM_SERIALIZE_IMPL(Profile);
+    
+        TLRENDER_ENUM_IMPL(
+            AudioCodec,
+            "None",
+            "AAC",
+            "AC3",
+            "True_HD",
+            "MP2",
+            "MP3",
+            "OPUS",
+            "VORBIS",
+            "PCM_S16LE");
+        TLRENDER_ENUM_SERIALIZE_IMPL(AudioCodec);
 
         AVRational swap(AVRational value)
         {
@@ -170,24 +183,42 @@ namespace tl
 
         std::weak_ptr<log::System> Plugin::_logSystemWeak;
 
-        void Plugin::_init(const std::weak_ptr<log::System>& logSystem)
+        void Plugin::_init(
+            const std::shared_ptr<io::Cache>& cache,
+            const std::weak_ptr<log::System>& logSystem)
         {
             IPlugin::_init(
                 "FFmpeg",
                 {
-                    { ".mov", io::FileType::Movie },
+                    // Video Formats
+                    { ".avi", io::FileType::Movie },
+                    { ".divx", io::FileType::Movie },
+                    { ".dv", io::FileType::Movie },
+                    { ".flv", io::FileType::Movie },
                     { ".m4v", io::FileType::Movie },
-                    { ".mp4", io::FileType::Movie },
-                    { ".y4m", io::FileType::Movie },
                     { ".mkv", io::FileType::Movie },
+                    { ".mov", io::FileType::Movie },
+                    { ".mp4", io::FileType::Movie },
+                    { ".mpg", io::FileType::Movie },
+                    { ".mpeg", io::FileType::Movie },
+                    { ".mpeg2", io::FileType::Movie },
+                    { ".mpeg3", io::FileType::Movie },
+                    { ".mpeg4", io::FileType::Movie },
                     { ".mxf", io::FileType::Movie },
+                    { ".vp9", io::FileType::Movie },
+                    { ".y4m", io::FileType::Movie },
                     { ".webm", io::FileType::Movie },
                     { ".wmv", io::FileType::Movie },
-                    { ".avi", io::FileType::Movie },
-                    { ".wav", io::FileType::Audio },
+
+                    // Audio Formats
+                    { ".aiff", io::FileType::Audio },
                     { ".mp3", io::FileType::Audio },
-                    { ".aiff", io::FileType::Audio }
+                    { ".ogg", io::FileType::Audio },
+                    { ".opus", io::FileType::Audio },
+                    { ".vorbis", io::FileType::Audio },
+                    { ".wav", io::FileType::Audio }
                 },
+                cache,
                 logSystem);
 
             _logSystemWeak = logSystem;
@@ -212,10 +243,12 @@ namespace tl
         Plugin::Plugin()
         {}
 
-        std::shared_ptr<Plugin> Plugin::create(const std::weak_ptr<log::System>& logSystem)
+        std::shared_ptr<Plugin> Plugin::create(
+            const std::shared_ptr<io::Cache>& cache,
+            const std::weak_ptr<log::System>& logSystem)
         {
             auto out = std::shared_ptr<Plugin>(new Plugin);
-            out->_init(logSystem);
+            out->_init(cache, logSystem);
             return out;
         }
 
@@ -223,7 +256,7 @@ namespace tl
             const file::Path& path,
             const io::Options& options)
         {
-            return Read::create(path, io::merge(options, _options), _logSystem);
+            return Read::create(path, options, _cache, _logSystem);
         }
 
         std::shared_ptr<io::IRead> Plugin::read(
@@ -231,7 +264,7 @@ namespace tl
             const std::vector<file::MemoryRead>& memory,
             const io::Options& options)
         {
-            return Read::create(path, memory, io::merge(options, _options), _logSystem);
+            return Read::create(path, memory, options, _cache, _logSystem);
         }
 
         image::Info Plugin::getWriteInfo(
@@ -260,11 +293,12 @@ namespace tl
             const io::Info& info,
             const io::Options& options)
         {
-            if (info.video.empty() || (!info.video.empty() && !_isWriteCompatible(info.video[0], options)))
+            if (!info.video.empty() &&
+                !_isWriteCompatible(info.video[0], options))
                 throw std::runtime_error(string::Format("{0}: {1}").
                     arg(path.get()).
                     arg("Unsupported video"));
-            return Write::create(path, info, io::merge(options, _options), _logSystem);
+            return Write::create(path, info, options, _logSystem);
         }
 
         void Plugin::_logCallback(void*, int level, const char* fmt, va_list vl)

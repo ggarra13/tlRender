@@ -7,21 +7,39 @@
 #include <tlTimeline/ImageOptions.h>
 
 #include <tlCore/Image.h>
+#include <tlCore/Size.h>
 
 namespace tl
 {
     namespace gl
     {
+        //! Default offscreen buffer color type.
+#if defined(TLRENDER_API_GL_4_1)
+        const image::PixelType offscreenColorDefault = image::PixelType::RGBA_F32;
+#elif defined(TLRENDER_API_GLES_2)
+        const image::PixelType offscreenColorDefault = image::PixelType::RGBA_U8;
+#endif // TLRENDER_API_GL_4_1
+
         //! Offscreen buffer depth size.
         enum class OffscreenDepth
         {
             None,
+            _16,
             _24,
             _32,
 
             Count,
             First = None
         };
+        TLRENDER_ENUM(OffscreenDepth);
+        TLRENDER_ENUM_SERIALIZE(OffscreenDepth);
+
+        //! Default offscreen buffer color type.
+#if defined(TLRENDER_API_GL_4_1)
+        const OffscreenDepth offscreenDepthDefault = OffscreenDepth::_16;
+#elif defined(TLRENDER_API_GLES_2)
+        const OffscreenDepth offscreenDepthDefault = OffscreenDepth::_24;
+#endif // TLRENDER_API_GL_4_1
 
         //! Offscreen buffer stencil size.
         enum class OffscreenStencil
@@ -32,6 +50,8 @@ namespace tl
             Count,
             First = None
         };
+        TLRENDER_ENUM(OffscreenStencil);
+        TLRENDER_ENUM_SERIALIZE(OffscreenStencil);
 
         //! Offscreen buffer multisampling.
         enum class OffscreenSampling
@@ -45,6 +65,8 @@ namespace tl
             Count,
             First = None
         };
+        TLRENDER_ENUM(OffscreenSampling);
+        TLRENDER_ENUM_SERIALIZE(OffscreenSampling);
 
         //! Offscreen buffer options.
         struct OffscreenBufferOptions
@@ -58,7 +80,7 @@ namespace tl
             bool operator == (const OffscreenBufferOptions&) const;
             bool operator != (const OffscreenBufferOptions&) const;
         };
-
+        
         //! Offscreen buffer.
         class OffscreenBuffer : public std::enable_shared_from_this<OffscreenBuffer>
         {
@@ -66,7 +88,7 @@ namespace tl
 
         protected:
             void _init(
-                const image::Size&,
+                const math::Size2i&,
                 const OffscreenBufferOptions&);
 
             OffscreenBuffer();
@@ -76,17 +98,17 @@ namespace tl
 
             //! Create a new offscreen buffer.
             static std::shared_ptr<OffscreenBuffer> create(
-                const image::Size&,
+                const math::Size2i&,
                 const OffscreenBufferOptions&);
 
             //! Get the offscreen buffer size.
-            const image::Size& getSize() const;
+            const math::Size2i& getSize() const;
 
             //! Get the offscreen buffer width.
-            image::SizeType getWidth() const;
+            int getWidth() const;
 
             //! Get the offscreen buffer height.
-            image::SizeType getHeight() const;
+            int getHeight() const;
 
             //! Get the options.
             const OffscreenBufferOptions& getOptions() const;
@@ -107,7 +129,7 @@ namespace tl
         //! Check whether the offscreen buffer should be created or re-created.
         bool doCreate(
             const std::shared_ptr<OffscreenBuffer>&,
-            const image::Size&,
+            const math::Size2i&,
             const OffscreenBufferOptions&);
 
         //! Offscreen buffer binding.

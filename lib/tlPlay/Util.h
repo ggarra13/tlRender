@@ -11,14 +11,18 @@ namespace tl
     //! Common functionality for the "tlplay-gl" and "tlplay-qt" applications.
     namespace play
     {
-        //! Get the path to the application directory. The directory is
-        //! automatically created if it does not exist.
-        std::string appDirPath(const std::string& appName);
+        //! Get the path to the application documents directory. The directory
+        //! is automatically created if it does not exist.
+        std::string appDocsPath();
 
         //! Get the log file name.
-        std::string logFileName(const std::string& appDirPath);
+        std::string logFileName(
+            const std::string& appName,
+            const std::string& appDirPath);
 
         //! Get the settings file name.
-        std::string settingsName(const std::string& appDirPath);
+        std::string settingsName(
+            const std::string& appName,
+            const std::string& appDirPath);
     }
 }

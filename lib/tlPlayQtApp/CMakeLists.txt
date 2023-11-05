@@ -5,31 +5,27 @@ set(HEADERS
     ColorConfigModel.h
     ColorTool.h
     CompareActions.h
-    CompareTool.h
     DevicesModel.h
     DevicesTool.h
     DockTitleBar.h
     FileActions.h
-    FilesAModel.h
-    FilesBModel.h
     FilesTool.h
-    FilesView.h
-    IFilesTableModel.h
+    FrameActions.h
     IToolWidget.h
     InfoTool.h
     InfoModel.h
     MainWindow.h
-    MemoryTimeline.h
     MessagesTool.h
     OpenSeparateAudioDialog.h
     PlaybackActions.h
     RenderActions.h
     SecondaryWindow.h
-    SettingsObject.h
     SettingsTool.h
     SystemLogTool.h
+    TimelineActions.h
     ToolActions.h
     ViewActions.h
+    ViewTool.h
     WindowActions.h)
 
 set(SOURCE
@@ -39,31 +35,27 @@ set(SOURCE
     ColorConfigModel.cpp
     ColorTool.cpp
     CompareActions.cpp
-    CompareTool.cpp
     DevicesModel.cpp
     DevicesTool.cpp
     DockTitleBar.cpp
     FileActions.cpp
-    FilesAModel.cpp
-    FilesBModel.cpp
     FilesTool.cpp
-    FilesView.cpp
-    IFilesTableModel.cpp
+    FrameActions.cpp
     IToolWidget.cpp
     InfoTool.cpp
     InfoModel.cpp
     MainWindow.cpp
-    MemoryTimeline.cpp
     MessagesTool.cpp
     OpenSeparateAudioDialog.cpp
     PlaybackActions.cpp
     RenderActions.cpp
     SecondaryWindow.cpp
-    SettingsObject.cpp
     SettingsTool.cpp
     SystemLogTool.cpp
+    TimelineActions.cpp
     ToolActions.cpp
     ViewActions.cpp
+    ViewTool.cpp
     WindowActions.cpp)
 
 if(TLRENDER_QT6)

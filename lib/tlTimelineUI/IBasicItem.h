@@ -17,12 +17,13 @@ namespace tl
         {
         protected:
             void _init(
-                const otime::TimeRange&,
                 const std::string& label,
                 ui::ColorRole,
-                const std::vector<Marker>&,
-                const std::string& name,
-                const ItemData&,
+                const std::string& objectName,
+                const otio::SerializableObject::Retainer<otio::Item>&,
+                double scale,
+                const ItemOptions&,
+                const std::shared_ptr<ItemData>&,
                 const std::shared_ptr<system::Context>&,
                 const std::shared_ptr<IWidget>& parent = nullptr);
 
@@ -32,13 +33,8 @@ namespace tl
             virtual ~IBasicItem() = 0;
 
             void sizeHintEvent(const ui::SizeHintEvent&) override;
-            void clipEvent(
-                const math::Box2i&,
-                bool,
-                const ui::ClipEvent&) override;
-            void drawEvent(
-                const math::Box2i&,
-                const ui::DrawEvent&) override;
+            void clipEvent(const math::Box2i&, bool) override;
+            void drawEvent(const math::Box2i&, const ui::DrawEvent&) override;
 
         protected:
             int _getMargin() const;

@@ -6,6 +6,8 @@
 
 #include <tlTimelineUI/TimelineItem.h>
 
+#include <vector>
+
 namespace tl
 {
     namespace timelineui
@@ -36,6 +38,15 @@ namespace tl
 
             //! Set the timeline player.
             void setPlayer(const std::shared_ptr<timeline::Player>&);
+
+            //! Get whether the timeline is editable.
+            bool isEditable() const;
+
+            //! Observe whether the timeline is editable.
+            std::shared_ptr<observer::IValue<bool> > observeEditable() const;
+
+            //! Set whether the timeline is editable.
+            void setEditable(bool);
 
             //! Set the view zoom.
             void setViewZoom(double);
@@ -93,24 +104,34 @@ namespace tl
             //! Set the item options.
             void setItemOptions(const ItemOptions&);
 
+            //! Get timeline item geometry. 
+            const math::Box2i& getTimelineItemGeometry() const;
+
+            //! Get timeline scale.
+            double getScale() const;
+
+            //! Return whether a clip is getting dragged.
+            bool isDragging() const;
+            
+            //! Sets a callback for moving items.
+            void setMoveCallback(const std::function<void(const std::vector<timeline::MoveData>&)>&);
+            
             void setGeometry(const math::Box2i&) override;
-            void setVisible(bool) override;
-            void setEnabled(bool) override;
-            void sizeHintEvent(const ui::SizeHintEvent&) override;
-            void clipEvent(
-                const math::Box2i&,
+            void tickEvent(
                 bool,
-                const ui::ClipEvent&) override;
+                bool,
+                const ui::TickEvent&) override;
+            void sizeHintEvent(const ui::SizeHintEvent&) override;
             void mouseMoveEvent(ui::MouseMoveEvent&) override;
             void mousePressEvent(ui::MouseClickEvent&) override;
             void mouseReleaseEvent(ui::MouseClickEvent&) override;
             void scrollEvent(ui::ScrollEvent&) override;
             void keyPressEvent(ui::KeyEvent&) override;
             void keyReleaseEvent(ui::KeyEvent&) override;
-
-            const math::Box2i& getTimelineItemGeometry() const;
-            double getScale() const;
             
+        protected:
+            void _releaseMouse() override;
+
         private:
             void _setViewZoom(
                 double zoomNew,
@@ -120,14 +141,13 @@ namespace tl
 
             double _getTimelineScale() const;
 
+            void _setItemScale();
             void _setItemScale(
                 const std::shared_ptr<IWidget>&,
                 double);
             void _setItemOptions(
                 const std::shared_ptr<IWidget>&,
                 const ItemOptions&);
-
-            void _resetMouse();
 
             void _timelineUpdate();
 

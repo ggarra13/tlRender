@@ -8,29 +8,29 @@ namespace tl
 {
     namespace image
     {
-        constexpr Size::Size() noexcept
+        constexpr Size::Size()
         {}
 
         constexpr Size::Size(
-            SizeType w,
-            SizeType h,
-            float pixelAspectRatio) noexcept :
+            int w,
+            int h,
+            float pixelAspectRatio) :
             w(w),
             h(h),
             pixelAspectRatio(pixelAspectRatio)
         {}
 
-        constexpr bool Size::isValid() const noexcept
+        constexpr bool Size::isValid() const
         {
             return w > 0 && h > 0;
         }
 
-        constexpr float Size::getAspect() const noexcept
+        constexpr float Size::getAspect() const
         {
             return h > 0 ? (w / static_cast<float>(h) * pixelAspectRatio) : 0;
         }
 
-        constexpr bool Size::operator == (const Size& other) const noexcept
+        constexpr bool Size::operator == (const Size& other) const
         {
             return
                 w == other.w &&
@@ -38,21 +38,21 @@ namespace tl
                 pixelAspectRatio == other.pixelAspectRatio;
         }
 
-        constexpr bool Size::operator != (const Size& other) const noexcept
+        constexpr bool Size::operator != (const Size& other) const
         {
             return !(*this == other);
         }
 
-        inline bool Size::operator < (const Size& other) const noexcept
+        inline bool Size::operator < (const Size& other) const
         {
-            const int widthScaled = static_cast<int>(static_cast<int>(w) * pixelAspectRatio);
-            const int otherWidthScaled = static_cast<int>(static_cast<int>(other.w) * other.pixelAspectRatio);
+            const int widthScaled = static_cast<int>(w * pixelAspectRatio);
+            const int otherWidthScaled = static_cast<int>(other.w * other.pixelAspectRatio);
             return
                 std::tie(widthScaled, h) <
                 std::tie(otherWidthScaled, other.h);
         }
 
-        constexpr bool U10_MSB::operator == (const U10_MSB& value) const noexcept
+        constexpr bool U10_MSB::operator == (const U10_MSB& value) const
         {
             return
                 value.r == r &&
@@ -60,12 +60,12 @@ namespace tl
                 value.b == b;
         }
 
-        constexpr bool U10_MSB::operator != (const U10_MSB& value) const noexcept
+        constexpr bool U10_MSB::operator != (const U10_MSB& value) const
         {
             return !(*this == value);
         }
 
-        constexpr bool U10_LSB::operator == (const U10_LSB& value) const noexcept
+        constexpr bool U10_LSB::operator == (const U10_LSB& value) const
         {
             return
                 value.r == r &&
@@ -73,39 +73,39 @@ namespace tl
                 value.b == b;
         }
 
-        constexpr bool U10_LSB::operator != (const U10_LSB& value) const noexcept
+        constexpr bool U10_LSB::operator != (const U10_LSB& value) const
         {
             return !(*this == value);
         }
 
-        constexpr Mirror::Mirror() noexcept
+        constexpr Mirror::Mirror()
         {}
 
-        constexpr Mirror::Mirror(bool x, bool y) noexcept :
+        constexpr Mirror::Mirror(bool x, bool y) :
             x(x),
             y(y)
         {}
 
-        constexpr bool Mirror::operator == (const Mirror& other) const noexcept
+        constexpr bool Mirror::operator == (const Mirror& other) const
         {
             return other.x == x && other.y == y;
         }
 
-        constexpr bool Mirror::operator != (const Mirror& other) const noexcept
+        constexpr bool Mirror::operator != (const Mirror& other) const
         {
             return !(other == *this);
         }
 
-        inline Layout::Layout() noexcept
+        inline Layout::Layout()
         {}
 
-        inline Layout::Layout(const Mirror& mirror, uint8_t alignment, memory::Endian endian) noexcept :
+        inline Layout::Layout(const Mirror& mirror, int alignment, memory::Endian endian) :
             mirror(mirror),
             alignment(alignment),
             endian(endian)
         {}
 
-        inline bool Layout::operator == (const Layout & other) const noexcept
+        constexpr bool Layout::operator == (const Layout & other) const
         {
             return
                 other.mirror == mirror &&
@@ -113,7 +113,7 @@ namespace tl
                 other.endian == endian;
         }
 
-        inline bool Layout::operator != (const Layout & other) const noexcept
+        constexpr bool Layout::operator != (const Layout & other) const
         {
             return !(other == *this);
         }
@@ -126,7 +126,7 @@ namespace tl
             pixelType(pixelType)
         {}
 
-        inline Info::Info(SizeType w, SizeType h, PixelType pixelType) :
+        inline Info::Info(int w, int h, PixelType pixelType) :
             size(w, h),
             pixelType(pixelType)
         {}
@@ -161,12 +161,12 @@ namespace tl
             return _info.size;
         }
 
-        inline SizeType Image::getWidth() const
+        inline int Image::getWidth() const
         {
             return _info.size.w;
         }
 
-        inline SizeType Image::getHeight() const
+        inline int Image::getHeight() const
         {
             return _info.size.h;
         }
@@ -198,12 +198,12 @@ namespace tl
 
         inline const uint8_t* Image::getData() const
         {
-            return _data;
+            return _data.data();
         }
 
         inline uint8_t* Image::getData()
         {
-            return _data;
+            return _data.data();
         }
     }
 }

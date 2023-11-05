@@ -1,36 +1,30 @@
 set(HEADERS
     AudioClipItem.h
-    AudioGapItem.h
+    GapItem.h
     IBasicItem.h
     IItem.h
-    IOManager.h
     Init.h
     TimelineItem.h
     TimelineViewport.h
     TimelineWidget.h
-    TrackItem.h
     TransitionItem.h
-    VideoClipItem.h
-    VideoGapItem.h)
+    VideoClipItem.h)
 set(HEADERS_PRIVATE)
 
 set(SOURCE
     AudioClipItem.cpp
-    AudioGapItem.cpp
+    GapItem.cpp
     IBasicItem.cpp
     IItem.cpp
-    IOManager.cpp
     Init.cpp
     TimelineItem.cpp
     TimelineViewport.cpp
     TimelineWidget.cpp
-    TrackItem.cpp
     TransitionItem.cpp
-    VideoClipItem.cpp
-    VideoGapItem.cpp)
+    VideoClipItem.cpp)
 
 add_library(tlTimelineUI ${HEADERS} ${HEADERS_PRIVATE} ${SOURCE})
-target_link_libraries(tlTimelineUI PUBLIC tlUI tlTimeline PRIVATE ${LIBRARIES_PRIVATE})
+target_link_libraries(tlTimelineUI PUBLIC tlUI PRIVATE ${LIBRARIES_PRIVATE})
 set_target_properties(tlTimelineUI PROPERTIES FOLDER lib)
 set_target_properties(tlTimelineUI PROPERTIES PUBLIC_HEADER "${HEADERS}")
 

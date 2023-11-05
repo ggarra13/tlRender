@@ -16,8 +16,27 @@ namespace tl
     {
         struct Button::Private
         {
+            file::FileInfo fileInfo;
+            FileBrowserOptions options;
+            std::shared_ptr<ThumbnailGenerator> thumbnailGenerator;
             std::vector<std::string> labels;
             std::vector<int> columns;
+            
+            std::weak_ptr<ThumbnailSystem> thumbnailSystem;
+            struct InfoData
+            {
+                bool init = true;
+                InfoRequest request;
+                std::unique_ptr<io::Info> info;
+            };
+            InfoData info;
+            struct ThumbnailData
+            {
+                bool init = true;
+                ThumbnailRequest request;
+                std::shared_ptr<image::Image> image;
+            };
+            ThumbnailData thumbnail;
 
             struct SizeData
             {
@@ -40,29 +59,55 @@ namespace tl
 
         void Button::_init(
             const file::FileInfo& fileInfo,
+            const FileBrowserOptions& options,
+            const std::shared_ptr<ThumbnailGenerator>& thumbnailGenerator,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
         {
             IButton::_init("tl::ui::ListButton", context, parent);
             TLRENDER_P();
 
+            setButtonRole(ColorRole::None);
             setAcceptsKeyFocus(true);
 
-            p.labels.push_back(fileInfo.getPath().get(-1, false));
+            p.fileInfo = fileInfo;
+            p.options = options;
+            p.thumbnailGenerator = thumbnailGenerator;
 
+            // Icon.
             switch (fileInfo.getType())
             {
             case file::Type::File:
                 setIcon("File");
-                p.labels.push_back(fileInfo.getPath().getExtension());
                 break;
             case file::Type::Directory:
                 setIcon("Directory");
+                break;
+            default: break;
+            }
+
+            // File name.
+            p.labels.push_back(fileInfo.getPath().get(-1, false));
+
+            // File sequence.
+            if (fileInfo.getPath().isSequence())
+            {
+                p.labels.push_back(fileInfo.getPath().getSequenceString());
+            }
+
+            // File extension.
+            switch (fileInfo.getType())
+            {
+            case file::Type::File:
+                p.labels.push_back(fileInfo.getPath().getExtension());
+                break;
+            case file::Type::Directory:
                 p.labels.push_back(std::string());
                 break;
             default: break;
             }
 
+            // File size.
             std::string label;
             const uint64_t size = fileInfo.getSize();
             if (size < memory::megabyte)
@@ -82,13 +127,12 @@ namespace tl
             }
             p.labels.push_back(label);
 
+            // File last modification time.
             const std::time_t time = fileInfo.getTime();
             std::tm* localtime = std::localtime(&time);
             char buffer[32];
             std::strftime(buffer, 32, "%a %d/%m/%Y %H:%M:%S", localtime);
             p.labels.push_back(buffer);
-
-            setButtonRole(ColorRole::None);
         }
 
         Button::Button() :
@@ -96,15 +140,27 @@ namespace tl
         {}
 
         Button::~Button()
-        {}
+        {
+            TLRENDER_P();
+            if (p.info.request.future.valid())
+            {
+                p.thumbnailGenerator->cancelRequests({ p.info.request.id });
+            }
+            if (p.thumbnail.request.future.valid())
+            {
+                p.thumbnailGenerator->cancelRequests({ p.thumbnail.request.id });
+            }
+        }
 
         std::shared_ptr<Button> Button::create(
             const file::FileInfo& fileInfo,
+            const FileBrowserOptions& options,
+            const std::shared_ptr<ThumbnailGenerator>& thumbnailGenerator,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
         {
             auto out = std::shared_ptr<Button>(new Button);
-            out->_init(fileInfo, context, parent);
+            out->_init(fileInfo, options, thumbnailGenerator, context, parent);
             return out;
         }
 
@@ -118,6 +174,29 @@ namespace tl
             _p->columns = value;
         }
 
+        void Button::tickEvent(
+            bool parentsVisible,
+            bool parentsEnabled,
+            const TickEvent& event)
+        {
+            IButton::tickEvent(parentsVisible, parentsEnabled, event);
+            TLRENDER_P();
+            if (p.info.request.future.valid() &&
+                p.info.request.future.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+            {
+                p.info.info = std::make_unique<io::Info>(p.info.request.future.get());
+                _updates |= ui::Update::Size;
+                _updates |= ui::Update::Draw;
+            }
+            if (p.thumbnail.request.future.valid() &&
+                p.thumbnail.request.future.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
+            {
+                p.thumbnail.image = p.thumbnail.request.future.get();
+                _updates |= ui::Update::Size;
+                _updates |= ui::Update::Draw;
+            }
+        }
+
         void Button::sizeHintEvent(const SizeHintEvent& event)
         {
             IButton::sizeHintEvent(event);
@@ -127,7 +206,7 @@ namespace tl
             p.size.spacing = event.style->getSizeRole(SizeRole::Spacing, event.displayScale);
             p.size.border = event.style->getSizeRole(SizeRole::Border, event.displayScale);
 
-            _sizeHint = math::Vector2i();
+            _sizeHint = math::Size2i();
             if (!p.labels.empty())
             {
                 p.size.fontMetrics = event.getFontMetrics(_fontRole);
@@ -140,40 +219,70 @@ namespace tl
                     for (const auto& label : p.labels)
                     {
                         p.size.textWidths.push_back(
-                            event.fontSystem->getSize(label, fontInfo).x);
+                            event.fontSystem->getSize(label, fontInfo).w);
                     }
                     p.draw.glyphs.clear();
                 }
-                _sizeHint.y = p.size.fontMetrics.lineHeight;
+                _sizeHint.h = p.size.fontMetrics.lineHeight;
             }
-            if (_iconImage)
+            if (p.thumbnail.image)
             {
-                _sizeHint.x += _iconImage->getWidth();
+                _sizeHint.w += p.thumbnail.image->getWidth();
+                _sizeHint.h = std::max(_sizeHint.h, p.thumbnail.image->getHeight());
+            }
+            else if (_iconImage)
+            {
+                _sizeHint.w += _iconImage->getWidth();
                 if (!p.labels.empty())
                 {
-                    _sizeHint.x += p.size.spacing;
+                    _sizeHint.w += p.size.spacing;
                 }
-                _sizeHint.y = std::max(
-                    _sizeHint.y,
-                    static_cast<int>(_iconImage->getHeight()));
+                _sizeHint.h = std::max(_sizeHint.h, _iconImage->getHeight());
             }
-            _sizeHint.x +=
+            _sizeHint.w +=
                 p.size.margin * 2 +
                 p.size.border * 4;
-            _sizeHint.y +=
+            _sizeHint.h +=
                 p.size.margin * 2 +
                 p.size.border * 4;
         }
 
-        void Button::clipEvent(
-            const math::Box2i& clipRect,
-            bool clipped,
-            const ClipEvent& event)
+        void Button::clipEvent(const math::Box2i& clipRect, bool clipped)
         {
-            IWidget::clipEvent(clipRect, clipped, event);
+            IWidget::clipEvent(clipRect, clipped);
             TLRENDER_P();
-            if (clipped)
+            if (!clipped)
             {
+                if (p.options.thumbnails)
+                {
+                    if (p.info.init)
+                    {
+                        p.info.init = false;
+                        p.info.request = p.thumbnailGenerator->getInfo(p.fileInfo.getPath());
+                    }
+                    if (p.thumbnail.init)
+                    {
+                        p.thumbnail.init = false;
+                        p.thumbnail.request = p.thumbnailGenerator->getThumbnail(
+                            p.fileInfo.getPath(),
+                            p.options.thumbnailHeight);
+                    }
+                }
+            }
+            else
+            {
+                if (p.info.request.future.valid())
+                {
+                    p.thumbnailGenerator->cancelRequests({ p.info.request.id });
+                    p.info.init = true;
+                    p.info.request.future = std::future<io::Info>();
+                }
+                if (p.thumbnail.request.future.valid())
+                {
+                    p.thumbnailGenerator->cancelRequests({ p.thumbnail.request.id });
+                    p.thumbnail.init = true;
+                    p.thumbnail.request.future = std::future<std::shared_ptr<image::Image> >();
+                }
                 p.draw.glyphs.clear();
             }
         }
@@ -209,36 +318,51 @@ namespace tl
             }
 
             // Draw the pressed and hover states.
-            if (_pressed && _geometry.contains(_cursorPos))
+            if (_mouse.press && _geometry.contains(_mouse.pos))
             {
                 event.render->drawRect(
                     g,
                     event.style->getColorRole(ColorRole::Pressed));
             }
-            else if (_inside)
+            else if (_mouse.inside)
             {
                 event.render->drawRect(
                     g,
                     event.style->getColorRole(ColorRole::Hover));
             }
 
-            // Draw the icon.
+            // Draw the thumbnail or icon.
             const math::Box2i g2 = g.margin(-p.size.border * 2);
             int x = g2.x() + p.size.margin;
-            if (_iconImage)
+            if (p.thumbnail.image)
             {
-                const image::Size& iconSize = _iconImage->getSize();
+                const image::Size& size = p.thumbnail.image->getSize();
+                event.render->drawImage(
+                    p.thumbnail.image,
+                    math::Box2i(
+                        x,
+                        g2.y() + g2.h() / 2 - size.h / 2,
+                        size.w,
+                        size.h),
+                    event.style->getColorRole(enabled ?
+                        ColorRole::Text :
+                        ColorRole::TextDisabled));
+                x += size.w + p.size.spacing;
+            }
+            else if (_iconImage)
+            {
+                const image::Size& size = _iconImage->getSize();
                 event.render->drawImage(
                     _iconImage,
                     math::Box2i(
                         x,
-                        g2.y() + g2.h() / 2 - iconSize.h / 2,
-                        iconSize.w,
-                        iconSize.h),
+                        g2.y() + g2.h() / 2 - size.h / 2,
+                        size.w,
+                        size.h),
                     event.style->getColorRole(enabled ?
                         ColorRole::Text :
                         ColorRole::TextDisabled));
-                x += iconSize.w + p.size.spacing;
+                x += size.w + p.size.spacing;
             }
 
             // Draw the text.

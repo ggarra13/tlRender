@@ -4,6 +4,9 @@ set(HEADERS
     Bellows.h
     CheckBox.h
     ComboBox.h
+    ColorPopup.h
+    ColorSwatch.h
+    ColorWidget.h
     Divider.h
     DoubleEdit.h
     DoubleEditSlider.h
@@ -29,6 +32,7 @@ set(HEADERS
     IWidget.h
     IWidgetInline.h
     IWidgetOptions.h
+    IWidgetPopup.h
     IconLibrary.h
     Icon.h
     IncButtons.h
@@ -42,8 +46,11 @@ set(HEADERS
     LineEdit.h
     ListButton.h
     ListWidget.h
+    MDICanvas.h
+    MDIWidget.h
     Menu.h
     MenuBar.h
+    MessageDialog.h
     PieChart.h
     PushButton.h
     RecentFilesModel.h
@@ -58,6 +65,7 @@ set(HEADERS
     Style.h
     StyleInline.h
     TabBar.h
+    ThumbnailSystem.h
     TimeEdit.h
     TimeLabel.h
     ToolButton.h
@@ -71,6 +79,9 @@ set(SOURCE
     Bellows.cpp
     CheckBox.cpp
     ComboBox.cpp
+    ColorPopup.cpp
+    ColorSwatch.cpp
+    ColorWidget.cpp
     Divider.cpp
     DoubleEdit.cpp
     DoubleEditSlider.cpp
@@ -100,6 +111,7 @@ set(SOURCE
     IPopup.cpp
     IWidget.cpp
     IWidgetOptions.cpp
+    IWidgetPopup.cpp
     IconLibrary.cpp
     Icon.cpp
     IncButtons.cpp
@@ -113,8 +125,11 @@ set(SOURCE
     LineEdit.cpp
     ListButton.cpp
     ListWidget.cpp
+    MDICanvas.cpp
+    MDIWidget.cpp
     Menu.cpp
     MenuBar.cpp
+    MessageDialog.cpp
     PieChart.cpp
     PushButton.cpp
     RecentFilesModel.cpp
@@ -128,6 +143,7 @@ set(SOURCE
     StackLayout.cpp
     Style.cpp
     TabBar.cpp
+    ThumbnailSystem.cpp
     TimeEdit.cpp
     TimeLabel.cpp
     ToolButton.cpp
@@ -139,7 +155,7 @@ if(TLRENDER_NFD)
 endif()
 
 add_library(tlUI ${HEADERS} ${HEADERS_PRIVATE} ${SOURCE})
-target_link_libraries(tlUI PUBLIC tlIO PRIVATE ${LIBRARIES_PRIVATE})
+target_link_libraries(tlUI PUBLIC tlTimeline PRIVATE ${LIBRARIES_PRIVATE})
 set_target_properties(tlUI PROPERTIES FOLDER lib)
 set_target_properties(tlUI PROPERTIES PUBLIC_HEADER "${HEADERS}")
 

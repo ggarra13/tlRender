@@ -5,7 +5,6 @@
 #include <tlPlayGLApp/AudioPopup.h>
 
 #include <tlPlayGLApp/App.h>
-#include <tlPlayGLApp/Settings.h>
 
 #include <tlPlay/AudioModel.h>
 
@@ -34,7 +33,7 @@ namespace tl
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
         {
-            IMenuPopup::_init(
+            IWidgetPopup::_init(
                 "tl::play_gl::AudioPopup",
                 context,
                 parent);
@@ -88,7 +87,7 @@ namespace tl
                 app->getAudioModel()->observeVolume(),
                 [this](float value)
                 {
-                    _p->volumeSlider->setValue(value * 100.F);
+                    _p->volumeSlider->setValue(std::roundf(value * 100.F));
                 });
         }
 

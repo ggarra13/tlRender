@@ -38,7 +38,9 @@ namespace tl
     {
         struct Render::Private
         {
+            std::shared_ptr<io::Cache> cache;
             std::weak_ptr<log::System> logSystem;
+
             GLFWwindow* glfwWindow = nullptr;
             
             struct InfoRequest
@@ -53,12 +55,12 @@ namespace tl
                 int64_t id = -1;
                 file::Path path;
                 otime::RationalTime time = time::invalidTime;
+                io::Options options;
                 std::promise<io::VideoData> promise;
             };
             
             struct Mutex
             {
-                RenderOptions renderOptions;
                 std::list<std::shared_ptr<InfoRequest> > infoRequests;
                 std::list<std::shared_ptr<Request> > requests;
                 bool stopped = false;
@@ -70,17 +72,6 @@ namespace tl
             {
                 UsdStageRefPtr stage;
                 std::shared_ptr<UsdImagingGLEngine> engine;
-            };
-            
-            struct DiskCacheKey
-            {
-                std::string fileName;
-                otime::RationalTime time = time::invalidTime;
-                
-                bool operator < (const DiskCacheKey& other) const
-                {
-                    return std::tie(fileName, time) < std::tie(other.fileName, other.time);
-                }
             };
             
             struct DiskCacheItem
@@ -96,7 +87,7 @@ namespace tl
             struct Thread
             {
                 memory::LRUCache<std::string, StageCacheItem> stageCache;
-                memory::LRUCache<DiskCacheKey, std::shared_ptr<DiskCacheItem> > diskCache;
+                memory::LRUCache<std::string, std::shared_ptr<DiskCacheItem> > diskCache;
                 std::string tempDir;
                 std::chrono::steady_clock::time_point logTimer;
                 std::condition_variable cv;
@@ -106,9 +97,13 @@ namespace tl
             Thread thread;
         };
         
-        void Render::_init(const std::weak_ptr<log::System>& logSystem)
+        void Render::_init(
+            const std::shared_ptr<io::Cache>& cache,
+            const std::weak_ptr<log::System>& logSystem)
         {
             TLRENDER_P();
+
+            p.cache = cache;
             p.logSystem = logSystem;
 
 #if defined(__APPLE__)
@@ -136,29 +131,12 @@ namespace tl
                 [this]
                 {
                     TLRENDER_P();
-                    try
-                    {
-                        glfwMakeContextCurrent(p.glfwWindow);
-                        _run();
-                        p.thread.stageCache.clear();
-                        p.thread.diskCache.clear();
-                    }
-                    catch (const std::exception& e)
-                    {
-                        //std::cout << e.what() << std::endl;
-                        if (auto logSystem = p.logSystem.lock())
-                        {
-                            const std::string id = string::Format("tl::usd::Render ({0}: {1})").
-                                arg(__FILE__).
-                                arg(__LINE__);
-                            logSystem->print(id, e.what(), log::Type::Error);
-                        }
-                    }
-                    {
-                        std::unique_lock<std::mutex> lock(p.mutex.mutex);
-                        p.mutex.stopped = true;
-                    }
-                    cancelRequests();
+                    glfwMakeContextCurrent(p.glfwWindow);
+                    _run();
+                    p.thread.stageCache.clear();
+                    p.thread.diskCache.clear();
+                    glfwMakeContextCurrent(nullptr);
+                    _finish();
                 });
             
             if (auto logSystem = p.logSystem.lock())
@@ -195,18 +173,13 @@ namespace tl
             }
         }
 
-        std::shared_ptr<Render> Render::create(const std::weak_ptr<log::System>& logSystem)
+        std::shared_ptr<Render> Render::create(
+            const std::shared_ptr<io::Cache>& cache,
+            const std::weak_ptr<log::System>& logSystem)
         {
             auto out = std::shared_ptr<Render>(new Render);
-            out->_init(logSystem);
+            out->_init(cache, logSystem);
             return out;
-        }
-        
-        void Render::setRenderOptions(const RenderOptions& value)
-        {
-            TLRENDER_P();
-            std::unique_lock<std::mutex> lock(p.mutex.mutex);
-            p.mutex.renderOptions = value;
         }
         
         std::future<io::Info> Render::getInfo(int64_t id, const file::Path& path)
@@ -240,13 +213,14 @@ namespace tl
             int64_t id,
             const file::Path& path,
             const otime::RationalTime& time,
-            uint16_t layer)
+            const io::Options& options)
         {
             TLRENDER_P();
             auto request = std::make_shared<Private::Request>();
             request->id = id;
             request->path = path;
             request->time = time;
+            request->options = options;
             auto future = request->promise.get_future();
             bool valid = false;
             {
@@ -311,27 +285,7 @@ namespace tl
                 request->promise.set_value(io::VideoData());
             }
         }
-        
-        void Render::cancelRequests()
-        {
-            TLRENDER_P();
-            std::list<std::shared_ptr<Private::InfoRequest> > infoRequests;
-            std::list<std::shared_ptr<Private::Request> > requests;
-            {
-                std::unique_lock<std::mutex> lock(p.mutex.mutex);
-                infoRequests = std::move(p.mutex.infoRequests);
-                requests = std::move(p.mutex.requests);
-            }
-            for (auto& request : infoRequests)
-            {
-                request->promise.set_value(io::Info());
-            }
-            for (auto& request : requests)
-            {
-                request->promise.set_value(io::VideoData());
-            }
-        }
-                
+                        
         namespace
         {
             UsdGeomCamera getCamera(
@@ -471,7 +425,9 @@ namespace tl
 
             const TfTokenVector purposes({ UsdGeomTokens->default_, UsdGeomTokens->proxy });
 
-            RenderOptions renderOptions;
+            size_t stageCacheCount = 10;
+            size_t diskCacheByteCount = 0;
+            int renderWidth = 1920;
             while (p.thread.running)
             {
                 // Check requests.
@@ -482,15 +438,13 @@ namespace tl
                     if (p.thread.cv.wait_for(
                         lock,
                         std::chrono::milliseconds(5),
-                        [this, &renderOptions]
+                        [this]
                         {
                             return
-                                _p->mutex.renderOptions != renderOptions ||
                                 !_p->mutex.infoRequests.empty() ||
                                 !_p->mutex.requests.empty();
                         }))
                     {
-                        renderOptions = p.mutex.renderOptions;
                         if (!p.mutex.infoRequests.empty())
                         {
                             infoRequest = p.mutex.infoRequests.front();
@@ -505,9 +459,24 @@ namespace tl
                 }
 
                 // Set options.
-                p.thread.stageCache.setMax(renderOptions.stageCacheCount);
-                p.thread.diskCache.setMax(renderOptions.diskCacheByteCount);
-                if (renderOptions.diskCacheByteCount > 0 &&
+                io::Options ioOptions;
+                if (request)
+                {
+                    ioOptions = request->options;
+                }
+                auto i = ioOptions.find("USD/stageCacheCount");
+                if (i != ioOptions.end())
+                {
+                    stageCacheCount = std::atoll(i->second.c_str());
+                }
+                i = ioOptions.find("USD/diskCacheByteCount");
+                if (i != ioOptions.end())
+                {
+                    diskCacheByteCount = std::atoll(i->second.c_str());
+                }
+                p.thread.stageCache.setMax(stageCacheCount);
+                p.thread.diskCache.setMax(diskCacheByteCount);
+                if (diskCacheByteCount > 0 &&
                     p.thread.tempDir.empty())
                 {
                     p.thread.tempDir = file::createTempDir();
@@ -520,16 +489,21 @@ namespace tl
                                 "    Temp directory: {0}\n"
                                 "    Disk cache: {1}GB").
                             arg(p.thread.tempDir).
-                            arg(renderOptions.diskCacheByteCount / memory::gigabyte));
+                            arg(diskCacheByteCount / memory::gigabyte));
                     }
                 }
-                else if (0 == renderOptions.diskCacheByteCount &&
+                else if (0 == diskCacheByteCount &&
                     !p.thread.tempDir.empty())
                 {
                     p.thread.tempDir = std::string();
                 }
 
                 // Handle information requests.
+                i = ioOptions.find("USD/renderWidth");
+                if (i != ioOptions.end())
+                {
+                    renderWidth = std::atoi(i->second.c_str());
+                }
                 if (infoRequest)
                 {
                     const std::string fileName = infoRequest->path.get();
@@ -563,8 +537,8 @@ namespace tl
                             aspectRatio = 1.F;
                         }
                         info.video.push_back(image::Info(
-                            renderOptions.renderWidth,
-                            renderOptions.renderWidth / aspectRatio,
+                            renderWidth,
+                            renderWidth / aspectRatio,
                             image::PixelType::RGBA_F16));
                         info.videoTime = otime::TimeRange::range_from_start_end_time_inclusive(
                             otime::RationalTime(startTimeCode, timeCodesPerSecond),
@@ -573,29 +547,79 @@ namespace tl
                     }
                     infoRequest->promise.set_value(info);
                 }
-                
+
+                // Check the I/O cache.
+                io::VideoData videoData;
+                if (request && p.cache)
+                {
+                    const std::string cacheKey = io::Cache::getVideoKey(
+                        request->path.get(),
+                        request->time,
+                        ioOptions);
+                    if (p.cache->getVideo(cacheKey, videoData))
+                    {
+                        request->promise.set_value(videoData);
+                        request.reset();
+                    }
+                }
+
+                // Check the disk cache.
+                if (request)
+                {
+                    const std::string fileName = request->path.get();
+                    std::shared_ptr<Private::DiskCacheItem> diskCacheItem;
+                    if (diskCacheByteCount > 0 &&
+                        p.thread.diskCache.get(io::Cache::getVideoKey(fileName, request->time, ioOptions), diskCacheItem))
+                    {
+                        std::shared_ptr<image::Image> image;
+                        try
+                        {
+                            //std::cout << "read temp file: " << diskCacheItem->fileName << std::endl;
+                            auto fileIO = file::FileIO::create(diskCacheItem->fileName, file::Mode::Read);
+                            uint16_t w = 0;
+                            uint16_t h = 0;
+                            fileIO->readU16(&w);
+                            fileIO->readU16(&h);
+                            uint32_t pixelType = 0;
+                            fileIO->readU32(&pixelType);
+                            image = image::Image::create(w, h, static_cast<image::PixelType>(pixelType));
+                            fileIO->read(image->getData(), image->getDataByteCount());
+                        }
+                        catch (const std::exception& e)
+                        {
+                            //std::cout << e.what() << std::endl;
+                            if (auto logSystem = p.logSystem.lock())
+                            {
+                                const std::string id = string::Format("tl::usd::Render ({0}: {1})").
+                                    arg(__FILE__).
+                                    arg(__LINE__);
+                                logSystem->print(id, e.what(), log::Type::Error);
+                            }
+                        }
+
+                        videoData.time = request->time;
+                        videoData.image = image;
+                        request->promise.set_value(videoData);
+
+                        if (p.cache)
+                        {
+                            const std::string cacheKey = io::Cache::getVideoKey(
+                                fileName,
+                                request->time,
+                                ioOptions);
+                            p.cache->addVideo(cacheKey, videoData);
+                        }
+
+                        request.reset();
+                    }
+                }
+
                 // Handle requests.
                 if (request)
                 {
-                    // Check the disk cache for a previously rendered frame.
                     const std::string fileName = request->path.get();
                     std::shared_ptr<image::Image> image;
-                    std::shared_ptr<Private::DiskCacheItem> diskCacheItem;
-                    if (renderOptions.diskCacheByteCount > 0 &&
-                        p.thread.diskCache.get(Private::DiskCacheKey({ fileName, request->time }), diskCacheItem))
-                    {
-                        //std::cout << "read temp file: " << diskCacheItem->fileName << std::endl;
-                        auto fileIO = file::FileIO::create(diskCacheItem->fileName, file::Mode::Read);
-                        uint16_t w = 0;
-                        uint16_t h = 0;
-                        fileIO->readU16(&w);
-                        fileIO->readU16(&h);
-                        uint32_t pixelType = 0;
-                        fileIO->readU32(&pixelType);
-                        image = image::Image::create(w, h, static_cast<image::PixelType>(pixelType));
-                        fileIO->read(image->getData(), image->getDataByteCount());
-                    }
-                    else
+                    try
                     {
                         // Check the stage cache for a previously opened stage.
                         Private::StageCacheItem stageCacheItem;
@@ -609,7 +633,39 @@ namespace tl
                             const double timeCode = request->time.rescaled_to(
                                 stageCacheItem.stage->GetTimeCodesPerSecond()).value();
                             //std::cout << fileName << " timeCode: " << timeCode << std::endl;
-                            
+
+                            // Get options.
+                            i = ioOptions.find("USD/renderWidth");
+                            if (i != ioOptions.end())
+                            {
+                                renderWidth = std::atoi(i->second.c_str());
+                            }
+                            float complexity = 1.F;
+                            i = ioOptions.find("USD/complexity");
+                            if (i != ioOptions.end())
+                            {
+                                complexity = std::atof(i->second.c_str());
+                            }
+                            DrawMode drawMode = DrawMode::ShadedSmooth;
+                            i = ioOptions.find("USD/drawMode");
+                            if (i != ioOptions.end())
+                            {
+                                std::stringstream ss(i->second);
+                                ss >> drawMode;
+                            }
+                            bool enableLighting = true;
+                            i = ioOptions.find("USD/enableLighting");
+                            if (i != ioOptions.end())
+                            {
+                                enableLighting = std::atoi(i->second.c_str());
+                            }
+                            bool sRGB = true;
+                            i = ioOptions.find("USD/sRGB");
+                            if (i != ioOptions.end())
+                            {
+                                sRGB = std::atoi(i->second.c_str());
+                            }
+
                             // Setup the camera.
                             GfCamera gfCamera;
                             auto camera = getCamera(stageCacheItem.stage);
@@ -631,11 +687,11 @@ namespace tl
                             {
                                 aspectRatio = 1.F;
                             }
-                            const size_t renderHeight = renderOptions.renderWidth / aspectRatio;
+                            const size_t renderHeight = renderWidth / aspectRatio;
                             stageCacheItem.engine->SetRenderViewport(GfVec4d(
                                 0.0,
                                 0.0,
-                                static_cast<double>(renderOptions.renderWidth),
+                                static_cast<double>(renderWidth),
                                 static_cast<double>(renderHeight)));
 
                             //for (const auto& token : stageCacheItem.engine->GetRendererAovs())
@@ -661,10 +717,13 @@ namespace tl
                             // Render the frame.
                             UsdImagingGLRenderParams renderParams;
                             renderParams.frame = timeCode;
-                            renderParams.complexity = renderOptions.complexity;
-                            renderParams.drawMode = toUSD(renderOptions.drawMode);
-                            renderParams.enableLighting = renderOptions.enableLighting;
-                            renderParams.colorCorrectionMode = HdxColorCorrectionTokens->sRGB;
+                            renderParams.complexity = complexity;
+                            renderParams.drawMode = toUSD(drawMode);
+                            renderParams.enableLighting = enableLighting;
+                            renderParams.clearColor = GfVec4f(0.F, 0.F, 0.F, 0.F);
+                            renderParams.colorCorrectionMode = sRGB ?
+                                HdxColorCorrectionTokens->sRGB :
+                                HdxColorCorrectionTokens->disabled;
                             const UsdPrim& pseudoRoot = stageCacheItem.stage->GetPseudoRoot();
                             unsigned int sleepTime = 10;
                             while (true)
@@ -697,7 +756,7 @@ namespace tl
                                     {
                                     case HioFormat::HioFormatFloat16Vec4:
                                         image = image::Image::create(
-                                            renderOptions.renderWidth,
+                                            renderWidth,
                                             renderHeight,
                                             image::PixelType::RGBA_F16);
                                         memcpy(image->getData(), mappedColorTextureBuffer.get(), image->getDataByteCount());
@@ -717,7 +776,7 @@ namespace tl
                                     {
                                     case HioFormat::HioFormatFloat16Vec4:
                                         image = image::Image::create(
-                                            renderOptions.renderWidth,
+                                            renderWidth,
                                             renderHeight,
                                             image::PixelType::RGBA_F16);
                                         memcpy(image->getData(), colorRenderBuffer->Map(), image->getDataByteCount());
@@ -728,7 +787,7 @@ namespace tl
                             }
 
                             // Add the rendered frame to the disk cache.
-                            if (renderOptions.diskCacheByteCount > 0 && image)
+                            if (diskCacheByteCount > 0 && image)
                             {
                                 auto diskCacheItem = std::make_shared<Private::DiskCacheItem>();
                                 diskCacheItem->fileName = string::Format("{0}/{1}.img").
@@ -741,15 +800,37 @@ namespace tl
                                 tempFile->writeU32(static_cast<uint32_t>(image->getPixelType()));
                                 const size_t byteCount = image->getDataByteCount();
                                 tempFile->write(image->getData(), byteCount);
-                                p.thread.diskCache.add({ fileName, request->time }, diskCacheItem, byteCount);
+                                p.thread.diskCache.add(
+                                    io::Cache::getVideoKey(fileName, request->time, ioOptions),
+                                    diskCacheItem,
+                                    byteCount);
                             }
                         }
                     }
-                    
-                    io::VideoData data;
-                    data.time = request->time;
-                    data.image = image;
-                    request->promise.set_value(data);
+                    catch (const std::exception& e)
+                    {
+                        //std::cout << e.what() << std::endl;
+                        if (auto logSystem = p.logSystem.lock())
+                        {
+                            const std::string id = string::Format("tl::usd::Render ({0}: {1})").
+                                arg(__FILE__).
+                                arg(__LINE__);
+                            logSystem->print(id, e.what(), log::Type::Error);
+                        }
+                    }
+
+                    videoData.time = request->time;
+                    videoData.image = image;
+                    request->promise.set_value(videoData);
+
+                    if (p.cache)
+                    {
+                        const std::string cacheKey = io::Cache::getVideoKey(
+                            fileName,
+                            request->time,
+                            ioOptions);
+                        p.cache->addVideo(cacheKey, videoData);
+                    }
                 }
 
                 // Logging.
@@ -781,6 +862,27 @@ namespace tl
                         }
                     }
                 }
+            }
+        }
+
+        void Render::_finish()
+        {
+            TLRENDER_P();
+            std::list<std::shared_ptr<Private::InfoRequest> > infoRequests;
+            std::list<std::shared_ptr<Private::Request> > requests;
+            {
+                std::unique_lock<std::mutex> lock(p.mutex.mutex);
+                p.mutex.stopped = true;
+                infoRequests = std::move(p.mutex.infoRequests);
+                requests = std::move(p.mutex.requests);
+            }
+            for (auto& request : infoRequests)
+            {
+                request->promise.set_value(io::Info());
+            }
+            for (auto& request : requests)
+            {
+                request->promise.set_value(io::VideoData());
             }
         }
     }

@@ -23,7 +23,7 @@ namespace tl
                 image::FontInfo fontInfo;
                 image::FontMetrics fontMetrics;
                 bool textInit = true;
-                math::Vector2i textSize;
+                math::Size2i textSize;
             };
             SizeData size;
 
@@ -114,7 +114,7 @@ namespace tl
             p.size.spacing = event.style->getSizeRole(SizeRole::SpacingSmall, event.displayScale);
             p.size.border = event.style->getSizeRole(SizeRole::Border, event.displayScale);
 
-            _sizeHint = math::Vector2i();
+            _sizeHint = math::Size2i();
             if (!_text.empty())
             {
                 p.size.fontMetrics = event.getFontMetrics(_fontRole);
@@ -126,39 +126,36 @@ namespace tl
                     p.size.textSize = event.fontSystem->getSize(_text, fontInfo);
                     p.draw.glyphs.clear();
                 }
-                _sizeHint.x = p.size.textSize.x + p.size.margin2 * 2;
-                _sizeHint.y = p.size.fontMetrics.lineHeight + p.size.margin * 2;
+                _sizeHint.w = p.size.textSize.w + p.size.margin2 * 2;
+                _sizeHint.h = p.size.fontMetrics.lineHeight + p.size.margin * 2;
             }
             if (_iconImage || _checkedIconImage)
             {
                 if (!_text.empty())
                 {
-                    _sizeHint.x += p.size.spacing;
+                    _sizeHint.w += p.size.spacing;
                 }
                 math::Vector2i size;
                 if (_iconImage)
                 {
-                    size.x = std::max(size.x, static_cast<int>(_iconImage->getWidth()));
-                    size.y = std::max(size.y, static_cast<int>(_iconImage->getHeight()));
+                    size.x = std::max(size.x, _iconImage->getWidth());
+                    size.y = std::max(size.y, _iconImage->getHeight());
                 }
                 if (_checkedIconImage)
                 {
-                    size.x = std::max(size.x, static_cast<int>(_checkedIconImage->getWidth()));
-                    size.y = std::max(size.y, static_cast<int>(_checkedIconImage->getHeight()));
+                    size.x = std::max(size.x, _checkedIconImage->getWidth());
+                    size.y = std::max(size.y, _checkedIconImage->getHeight());
                 }
-                _sizeHint.x += size.x;
-                _sizeHint.y = std::max(_sizeHint.y, size.y);
+                _sizeHint.w += size.x;
+                _sizeHint.h = std::max(_sizeHint.h, size.y);
             }
-            _sizeHint.x += p.size.border * 4;
-            _sizeHint.y += p.size.border * 4;
+            _sizeHint.w += p.size.border * 4;
+            _sizeHint.h += p.size.border * 4;
         }
 
-        void ListButton::clipEvent(
-            const math::Box2i& clipRect,
-            bool clipped,
-            const ClipEvent& event)
+        void ListButton::clipEvent(const math::Box2i& clipRect, bool clipped)
         {
-            IWidget::clipEvent(clipRect, clipped, event);
+            IWidget::clipEvent(clipRect, clipped);
             TLRENDER_P();
             if (clipped)
             {
@@ -186,13 +183,13 @@ namespace tl
             }
 
             // Draw the pressed and hover states.
-            if (_pressed && _geometry.contains(_cursorPos))
+            if (_mouse.press && _geometry.contains(_mouse.pos))
             {
                 event.render->drawRect(
                     g,
                     event.style->getColorRole(ColorRole::Pressed));
             }
-            else if (_inside)
+            else if (_mouse.inside)
             {
                 event.render->drawRect(
                     g,
@@ -251,7 +248,7 @@ namespace tl
                 }
                 const math::Vector2i pos(
                     x + p.size.margin2,
-                    g2.y() + g2.h() / 2 - p.size.textSize.y / 2 +
+                    g2.y() + g2.h() / 2 - p.size.textSize.h / 2 +
                     p.size.fontMetrics.ascender);
                 event.render->drawText(
                     p.draw.glyphs,

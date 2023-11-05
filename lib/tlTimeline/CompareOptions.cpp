@@ -41,10 +41,6 @@ namespace tl
                 {
                     size = sizes[0];
                 }
-                if (count > 1)
-                {
-                    size = std::max(size, sizes[1]);
-                }
                 if (count > 0)
                 {
                     out.push_back(math::Box2i(
@@ -69,10 +65,6 @@ namespace tl
                 if (count > 0)
                 {
                     size = sizes[0];
-                }
-                if (count > 1)
-                {
-                    size = std::max(size, sizes[1]);
                 }
                 if (count > 0)
                 {
@@ -139,7 +131,7 @@ namespace tl
                 }
                 break;
             default:
-                for (size_t i = 0; i < count; ++i)
+                for (size_t i = 0; i < std::min(count, static_cast<size_t>(2)); ++i)
                 {
                     out.push_back(math::Box2i(
                         0,
@@ -152,9 +144,9 @@ namespace tl
             return out;
         }
 
-        image::Size getRenderSize(CompareMode mode, const std::vector<image::Size>& sizes)
+        math::Size2i getRenderSize(CompareMode mode, const std::vector<image::Size>& sizes)
         {
-            image::Size out;
+            math::Size2i out;
             math::Box2i box;
             const auto boxes = getBoxes(mode, sizes);
             if (!boxes.empty())

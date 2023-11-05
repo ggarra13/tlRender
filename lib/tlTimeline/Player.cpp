@@ -97,7 +97,7 @@ namespace tl
                 playerOptions.currentTime :
                 p.timeline->getTimeRange().start_time());
             p.inOutRange = observer::Value<otime::TimeRange>::create(p.timeline->getTimeRange());
-            p.videoLayer = observer::Value<size_t>::create();
+            p.ioOptions = observer::Value<io::Options>::create();
             p.currentVideoData = observer::Value<VideoData>::create();
             p.volume = observer::Value<float>::create(1.F);
             p.mute = observer::Value<bool>::create(false);
@@ -123,6 +123,23 @@ namespace tl
             p.mutex.cacheOptions = p.cacheOptions->get();
             p.mutex.cacheInfo = p.cacheInfo->get();
             p.audioMutex.speed = p.speed->get();
+            p.audioMutex.defaultSpeed = p.speed->get();
+#if defined(TLRENDER_AUDIO)
+            try
+            {
+                p.thread.rtAudio.reset(new RtAudio);
+            }
+            catch (const std::exception& e)
+            {
+                if (auto context = getContext().lock())
+                {
+                    std::stringstream ss;
+                    ss << "Cannot create RtAudio instance: " << e.what();
+                    context->log("tl::timeline::Player", ss.str(), log::Type::Error);
+                }
+            }
+#endif
+            p.log(context);
             p.thread.running = true;
             p.thread.thread = std::thread(
                 [this]
@@ -134,7 +151,7 @@ namespace tl
 #if defined(TLRENDER_AUDIO)
                         // Initialize audio.
                         auto audioSystem = context->getSystem<audio::System>();
-                        if (!audioSystem->getDevices().empty())
+                        if (p.thread.rtAudio && !audioSystem->getDevices().empty())
                         {
                             p.audioThread.info = audioSystem->getDefaultOutputInfo();
                             if (p.audioThread.info.channelCount > 0 &&
@@ -143,7 +160,6 @@ namespace tl
                             {
                                 try
                                 {
-                                    p.thread.rtAudio.reset(new RtAudio);
                                     RtAudio::StreamParameters rtParameters;
                                     auto audioSystem = context->getSystem<audio::System>();
                                     rtParameters.deviceId = audioSystem->getDefaultOutputDevice();
@@ -165,7 +181,7 @@ namespace tl
                                 {
                                     std::stringstream ss;
                                     ss << "Cannot open audio stream: " << e.what();
-                                    context->log("tl::timline::Player", ss.str(), log::Type::Error);
+                                    context->log("tl::timeline::Player", ss.str(), log::Type::Error);
                                 }
                             }
                         }
@@ -174,14 +190,13 @@ namespace tl
 
                     p.thread.cacheTimer = std::chrono::steady_clock::now();
                     p.thread.logTimer = std::chrono::steady_clock::now();
-
                     while (p.thread.running)
                     {
                         // Get mutex protected values.
                         Playback playback = Playback::Stop;
                         otime::RationalTime currentTime = time::invalidTime;
                         otime::TimeRange inOutRange = time::invalidTimeRange;
-                        size_t videoLayer = 0;
+                        io::Options ioOptions;
                         double audioOffset = 0.0;
                         bool clearRequests = false;
                         bool clearCache = false;
@@ -192,7 +207,7 @@ namespace tl
                             playback = p.mutex.playback;
                             currentTime = p.mutex.currentTime;
                             inOutRange = p.mutex.inOutRange;
-                            videoLayer = p.mutex.videoLayer;
+                            ioOptions = p.mutex.ioOptions;
                             audioOffset = p.mutex.audioOffset;
                             clearRequests = p.mutex.clearRequests;
                             p.mutex.clearRequests = false;
@@ -228,15 +243,15 @@ namespace tl
                         p.cacheUpdate(
                             currentTime,
                             inOutRange,
-                            videoLayer,
+                            ioOptions,
                             audioOffset,
                             cacheDirection,
                             cacheOptions);
-                        
+
                         // Update the current video data.
+                        const auto& timeRange = p.timeline->getTimeRange();
                         if (!p.ioInfo.video.empty())
                         {
-                            const auto& timeRange = p.timeline->getTimeRange();
                             const auto i = p.thread.videoDataCache.find(currentTime);
                             if (i != p.thread.videoDataCache.end())
                             {
@@ -276,7 +291,8 @@ namespace tl
                         {
                             std::vector<AudioData> audioDataList;
                             {
-                                const int64_t seconds = time::floor(currentTime.rescaled_to(1.0)).value();
+                                const int64_t seconds = currentTime.rescaled_to(1.0).value() -
+                                    timeRange.start_time().rescaled_to(1.0).value();
                                 std::unique_lock<std::mutex> lock(p.audioMutex.mutex);
                                 for (int64_t s : { seconds - 1, seconds, seconds + 1 })
                                 {
@@ -318,6 +334,11 @@ namespace tl
         Player::~Player()
         {
             TLRENDER_P();
+            p.thread.running = false;
+            if (p.thread.thread.joinable())
+            {
+                p.thread.thread.join();
+            }
 #if defined(TLRENDER_AUDIO)
             if (p.thread.rtAudio && p.thread.rtAudio->isStreamOpen())
             {
@@ -332,11 +353,6 @@ namespace tl
                 }
             }
 #endif // TLRENDER_AUDIO
-            p.thread.running = false;
-            if (p.thread.thread.joinable())
-            {
-                p.thread.thread.join();
-            }
         }
 
         std::shared_ptr<Player> Player::create(
@@ -736,23 +752,23 @@ namespace tl
                 p.timeline->getTimeRange().end_time_inclusive()));
         }
 
-        size_t Player::getVideoLayer() const
+        const io::Options& Player::getIOOptions() const
         {
-            return _p->videoLayer->get();
+            return _p->ioOptions->get();
         }
 
-        std::shared_ptr<observer::IValue<size_t> > Player::observeVideoLayer() const
+        std::shared_ptr<observer::IValue<io::Options> > Player::observeIOOptions() const
         {
-            return _p->videoLayer;
+            return _p->ioOptions;
         }
 
-        void Player::setVideoLayer(size_t layer)
+        void Player::setIOOptions(const io::Options& value)
         {
             TLRENDER_P();
-            if (p.videoLayer->setIfChanged(layer))
+            if (p.ioOptions->setIfChanged(value))
             {
                 std::unique_lock<std::mutex> lock(p.mutex.mutex);
-                p.mutex.videoLayer = layer;
+                p.mutex.ioOptions = value;
                 p.mutex.clearRequests = true;
                 p.mutex.clearCache = true;
             }
@@ -799,7 +815,7 @@ namespace tl
             if (p.mute->setIfChanged(value))
             {
                 std::unique_lock<std::mutex> lock(p.audioMutex.mutex);
-                p.audioMutex.mute = value;
+                //p.audioMutex.mute = value;
             }
         }
 
@@ -924,7 +940,6 @@ namespace tl
                 currentAudioData = p.mutex.currentAudioData;
                 cacheInfo = p.mutex.cacheInfo;
             }
-            
             p.currentVideoData->setIfChanged(currentVideoData);
             p.currentAudioData->setIfChanged(currentAudioData);
             p.cacheInfo->setIfChanged(cacheInfo);

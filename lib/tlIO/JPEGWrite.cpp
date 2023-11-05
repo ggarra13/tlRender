@@ -185,7 +185,7 @@ namespace tl
         {
             ISequenceWrite::_init(path, info, options, logSystem);
 
-            auto option = options.find("jpeg/Quality");
+            auto option = options.find("JPEG/Quality");
             if (option != options.end())
             {
                 std::stringstream ss(option->second);
@@ -213,7 +213,8 @@ namespace tl
         void Write::_writeVideo(
             const std::string& fileName,
             const otime::RationalTime&,
-            const std::shared_ptr<image::Image>& image)
+            const std::shared_ptr<image::Image>& image,
+            const io::Options&)
         {
             const auto f = File(fileName, image, _quality);
         }

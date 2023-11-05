@@ -13,6 +13,11 @@
 
 namespace tl
 {
+    namespace gl
+    {
+        class OffscreenBuffer;
+    }
+
     namespace ui
     {
         class IWidget;
@@ -31,15 +36,15 @@ namespace tl
         {
             TickEvent();
             TickEvent(
-                const std::shared_ptr<Style>&               style,
-                const std::shared_ptr<IconLibrary>&         iconLibrary,
+                const std::shared_ptr<Style>&             style,
+                const std::shared_ptr<IconLibrary>&       iconLibrary,
                 const std::shared_ptr<image::FontSystem>& fontSystem,
-                float                                       displayScale);
+                float                                     displayScale);
 
-            std::shared_ptr<Style>               style;
-            std::shared_ptr<IconLibrary>         iconLibrary;
+            std::shared_ptr<Style>             style;
+            std::shared_ptr<IconLibrary>       iconLibrary;
             std::shared_ptr<image::FontSystem> fontSystem;
-            float                                displayScale = 1.F;
+            float                              displayScale = 1.F;
         };
 
         //! Size hint event.
@@ -47,35 +52,16 @@ namespace tl
         {
             SizeHintEvent();
             SizeHintEvent(
-                const std::shared_ptr<Style>&               style,
-                const std::shared_ptr<IconLibrary>&         iconLibrary,
+                const std::shared_ptr<Style>&             style,
+                const std::shared_ptr<IconLibrary>&       iconLibrary,
                 const std::shared_ptr<image::FontSystem>& fontSystem,
-                float                                       displayScale);
+                float                                     displayScale);
 
-            std::shared_ptr<Style>                   style;
-            std::shared_ptr<IconLibrary>             iconLibrary;
+            std::shared_ptr<Style>                 style;
+            std::shared_ptr<IconLibrary>           iconLibrary;
             std::shared_ptr<image::FontSystem>     fontSystem;
             std::map<FontRole, image::FontMetrics> fontMetrics;
-            float                                    displayScale = 1.F;
-
-            image::FontMetrics getFontMetrics(FontRole) const;
-        };
-
-        //! Clip event.
-        struct ClipEvent
-        {
-            ClipEvent();
-            ClipEvent(
-                const std::shared_ptr<Style>&               style,
-                const std::shared_ptr<IconLibrary>&         iconLibrary,
-                const std::shared_ptr<image::FontSystem>& fontSystem,
-                float                                       displayScale);
-
-            std::shared_ptr<Style>                   style;
-            std::shared_ptr<IconLibrary>             iconLibrary;
-            std::shared_ptr<image::FontSystem>     fontSystem;
-            std::map<FontRole, image::FontMetrics> fontMetrics;
-            float                                    displayScale = 1.F;
+            float                                  displayScale = 1.F;
 
             image::FontMetrics getFontMetrics(FontRole) const;
         };
@@ -85,18 +71,18 @@ namespace tl
         {
             DrawEvent();
             DrawEvent(
-                const std::shared_ptr<Style>&               style,
-                const std::shared_ptr<IconLibrary>&         iconLibrary,
-                const std::shared_ptr<timeline::IRender>&   render,
+                const std::shared_ptr<Style>&             style,
+                const std::shared_ptr<IconLibrary>&       iconLibrary,
+                const std::shared_ptr<timeline::IRender>& render,
                 const std::shared_ptr<image::FontSystem>& fontSystem,
-                float                                       displayScale);
+                float                                     displayScale);
 
-            std::shared_ptr<Style>                   style;
-            std::shared_ptr<IconLibrary>             iconLibrary;
-            std::shared_ptr<timeline::IRender>       render;
+            std::shared_ptr<Style>                 style;
+            std::shared_ptr<IconLibrary>           iconLibrary;
+            std::shared_ptr<timeline::IRender>     render;
             std::shared_ptr<image::FontSystem>     fontSystem;
             std::map<FontRole, image::FontMetrics> fontMetrics;
-            float                                    displayScale = 1.F;
+            float                                  displayScale = 1.F;
 
             image::FontMetrics getFontMetrics(FontRole) const;
         };
@@ -116,12 +102,12 @@ namespace tl
                 const math::Vector2i& pos,
                 const math::Vector2i& prev);
 
-            math::Vector2i                   pos;
-            math::Vector2i                   prev;
-            bool                             accept = false;
-            std::shared_ptr<DragAndDropData> dndData;
-            std::shared_ptr<image::Image>  dndCursor;
-            math::Vector2i                   dndCursorHotspot;
+            math::Vector2i                       pos;
+            math::Vector2i                       prev;
+            bool                                 accept = false;
+            std::shared_ptr<DragAndDropData>     dndData;
+            std::shared_ptr<gl::OffscreenBuffer> dndCursor;
+            math::Vector2i                       dndCursorHotspot;
         };
 
         //! Keyboard modifiers.
@@ -164,15 +150,13 @@ namespace tl
         {
             ScrollEvent();
             ScrollEvent(
+                const math::Vector2f& value,
                 int                   modifiers,
-                const math::Vector2i& pos,
-                float                 dx,
-                float                 dy);
+                const math::Vector2i& pos);
 
+            math::Vector2f value;
             int            modifiers = 0;
             math::Vector2i pos;
-            float          dx        = 0.F;
-            float          dy        = 0.F;
             bool           accept    = false;
         };
 

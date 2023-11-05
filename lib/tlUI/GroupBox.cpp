@@ -22,7 +22,7 @@ namespace tl
                 int border = 0;
                 image::FontInfo fontInfo;
                 image::FontMetrics fontMetrics;
-                math::Vector2i textSize;
+                math::Size2i textSize;
             };
             SizeData size;
 
@@ -116,25 +116,22 @@ namespace tl
             p.size.fontInfo = fontInfo;
             p.size.textSize = event.fontSystem->getSize(p.text, fontInfo);
 
-            _sizeHint = math::Vector2i();
+            _sizeHint = math::Size2i();
             for (const auto& child : _children)
             {
-                const math::Vector2i& sizeHint = child->getSizeHint();
-                _sizeHint.x = std::max(_sizeHint.x, sizeHint.x);
-                _sizeHint.y = std::max(_sizeHint.y, sizeHint.y);
+                const math::Size2i& sizeHint = child->getSizeHint();
+                _sizeHint.w = std::max(_sizeHint.w, sizeHint.w);
+                _sizeHint.h = std::max(_sizeHint.h, sizeHint.h);
             }
-            _sizeHint.x += p.size.margin * 2 + p.size.border * 2;
-            _sizeHint.y += p.size.margin * 2 + p.size.border * 2;
-            _sizeHint.x = std::max(_sizeHint.x, p.size.textSize.x);
-            _sizeHint.y += p.size.fontMetrics.lineHeight + p.size.spacing;
+            _sizeHint.w += p.size.margin * 2 + p.size.border * 2;
+            _sizeHint.h += p.size.margin * 2 + p.size.border * 2;
+            _sizeHint.w = std::max(_sizeHint.w, p.size.textSize.w);
+            _sizeHint.h += p.size.fontMetrics.lineHeight + p.size.spacing;
         }
 
-        void GroupBox::clipEvent(
-            const math::Box2i& clipRect,
-            bool clipped,
-            const ClipEvent& event)
+        void GroupBox::clipEvent(const math::Box2i& clipRect, bool clipped)
         {
-            IWidget::clipEvent(clipRect, clipped, event);
+            IWidget::clipEvent(clipRect, clipped);
             TLRENDER_P();
             if (clipped)
             {

@@ -9,7 +9,7 @@
 #include <tlUI/FileBrowser.h>
 #include <tlUI/RecentFilesModel.h>
 
-#include <tlIO/IOSystem.h>
+#include <tlIO/System.h>
 
 namespace tl
 {
@@ -252,11 +252,7 @@ namespace tl
                             {
                                 if (auto app = _p->app.lock())
                                 {
-                                    app->open(path.get());
-                                }
-                                if (_p->recentFilesModel)
-                                {
-                                    _p->recentFilesModel->addRecent(path);
+                                    app->open(path);
                                 }
                                 close();
                             });

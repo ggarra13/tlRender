@@ -6,6 +6,7 @@
 
 #include <tlUI/IWidget.h>
 
+#include <tlTimeline/BackgroundOptions.h>
 #include <tlTimeline/Player.h>
 
 namespace tl
@@ -31,6 +32,9 @@ namespace tl
             static std::shared_ptr<TimelineViewport> create(
                 const std::shared_ptr<system::Context>&,
                 const std::shared_ptr<IWidget>& parent = nullptr);
+
+            //! Set the background options.
+            void setBackgroundOptions(const timeline::BackgroundOptions&);
 
             //! Set the color configuration options.
             void setColorConfigOptions(const timeline::ColorConfigOptions&);
@@ -87,17 +91,9 @@ namespace tl
             void setViewPosAndZoomCallback(
                 const std::function<void(const math::Vector2i&, double)>&);
 
-            void setVisible(bool) override;
-            void setEnabled(bool) override;
             void setGeometry(const math::Box2i&) override;
             void sizeHintEvent(const ui::SizeHintEvent&) override;
-            void clipEvent(
-                const math::Box2i&,
-                bool,
-                const ui::ClipEvent&) override;
-            void drawEvent(
-                const math::Box2i&,
-                const ui::DrawEvent&) override;
+            void drawEvent(const math::Box2i&, const ui::DrawEvent&) override;
             void mouseMoveEvent(ui::MouseMoveEvent&) override;
             void mousePressEvent(ui::MouseClickEvent&) override;
             void mouseReleaseEvent(ui::MouseClickEvent&) override;
@@ -105,12 +101,13 @@ namespace tl
             void keyPressEvent(ui::KeyEvent&) override;
             void keyReleaseEvent(ui::KeyEvent&) override;
 
+        protected:
+            void _releaseMouse() override;
+
         private:
-            image::Size _renderSize() const;
+            math::Size2i _renderSize() const;
             math::Vector2i _viewportCenter() const;
             void _frameView();
-
-            void _resetMouse();
 
             void _videoDataCallback(const timeline::VideoData&, size_t);
 

@@ -4,14 +4,12 @@
 
 #include <tlGL/Mesh.h>
 
+#include <tlGL/GL.h>
+
+#include <tlCore/Error.h>
 #include <tlCore/Math.h>
 #include <tlCore/Mesh.h>
-
-#if defined(TLRENDER_GL_DEBUG)
-#include <tlGladDebug/gl.h>
-#else // TLRENDER_GL_DEBUG
-#include <tlGlad/gl.h>
-#endif // TLRENDER_GL_DEBUG
+#include <tlCore/String.h>
 
 #include <array>
 
@@ -19,6 +17,20 @@ namespace tl
 {
     namespace gl
     {
+        TLRENDER_ENUM_IMPL(
+            VBOType,
+            "Pos2_F32",
+            "Pos2_F32_UV_U16",
+            "Pos2_F32_Color_F32",
+            "Pos3_F32",
+            "Pos3_F32_UV_U16",
+            "Pos3_F32_UV_U16_Normal_U10",
+            "Pos3_F32_UV_U16_Normal_U10_Color_U8",
+            "Pos3_F32_UV_F32_Normal_F32",
+            "Pos3_F32_UV_F32_Normal_F32_Color_F32",
+            "Pos3_F32_Color_U8");
+        TLRENDER_ENUM_SERIALIZE_IMPL(VBOType);
+
         namespace
         {
             struct PackedNormal
@@ -445,8 +457,13 @@ namespace tl
         {
             TLRENDER_P();
 
+#if defined(TLRENDER_API_GL_4_1)
             glGenVertexArrays(1, &p.vao);
             glBindVertexArray(p.vao);
+#elif defined(TLRENDER_API_GLES_2)
+            glGenVertexArraysOES(1, &p.vao);
+            glBindVertexArrayOES(p.vao);
+#endif // TLRENDER_API_GL_4_1
             glBindBuffer(GL_ARRAY_BUFFER, vbo);
             const std::size_t byteCount = getByteCount(type);
             switch (type)
@@ -514,7 +531,11 @@ namespace tl
             TLRENDER_P();
             if (p.vao)
             {
+#if defined(TLRENDER_API_GL_4_1)
                 glDeleteVertexArrays(1, &p.vao);
+#elif defined(TLRENDER_API_GLES_2)
+                glDeleteVertexArraysOES(1, &p.vao);
+#endif // TLRENDER_API_GL_4_1
                 p.vao = 0;
             }
         }
@@ -533,7 +554,11 @@ namespace tl
 
         void VAO::bind()
         {
+#if defined(TLRENDER_API_GL_4_1)
             glBindVertexArray(_p->vao);
+#elif defined(TLRENDER_API_GLES_2)
+            glBindVertexArrayOES(_p->vao);
+#endif // TLRENDER_API_GL_4_1
         }
 
         void VAO::draw(unsigned int mode, std::size_t offset, std::size_t size)

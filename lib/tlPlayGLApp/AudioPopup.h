@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include <tlUI/IMenuPopup.h>
+#include <tlUI/IWidgetPopup.h>
 
 namespace tl
 {
@@ -13,7 +13,7 @@ namespace tl
         class App;
 
         //! Audio popup.
-        class AudioPopup : public ui::IMenuPopup
+        class AudioPopup : public ui::IWidgetPopup
         {
             TLRENDER_NON_COPYABLE(AudioPopup);
 

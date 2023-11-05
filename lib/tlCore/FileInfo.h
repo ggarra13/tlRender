@@ -6,9 +6,8 @@
 
 #include <tlCore/Path.h>
 
-#include <nlohmann/json.hpp>
-
 #include <iostream>
+#include <set>
 
 namespace tl
 {
@@ -42,19 +41,22 @@ namespace tl
             explicit FileInfo(const Path&);
 
             //! Get the path.
-            const Path& getPath() const noexcept;
+            const Path& getPath() const;
 
             //! Get the file type.
-            Type getType() const noexcept;
+            Type getType() const;
 
             //! Get the file size.
-            uint64_t getSize() const noexcept;
+            uint64_t getSize() const;
 
             //! Get the file permissions.
-            int getPermissions() const noexcept;
+            int getPermissions() const;
 
-            //! Get the file last modification time.
-            time_t getTime() const noexcept;
+            //! Get the last modification time.
+            time_t getTime() const;
+
+            //! Expand the sequence.
+            void sequence(const FileInfo&);
 
         private:
             bool _stat(std::string* error);
@@ -84,32 +86,25 @@ namespace tl
         //! Directory list options.
         struct ListOptions
         {
-            ListSort sort                 = ListSort::Name;
-            bool     reverseSort          = false;
-            bool     sortDirectoriesFirst = true;
-            bool     dotAndDotDotDirs     = false;
-            bool     dotFiles             = false;
-            bool     sequence             = true;
-            bool     negativeNumbers      = false;
-            size_t   maxNumberDigits      = 9;
+            ListSort              sort                 = ListSort::Name;
+            bool                  reverseSort          = false;
+            bool                  sortDirectoriesFirst = true;
+            bool                  dotAndDotDotDirs     = false;
+            bool                  dotFiles             = false;
+            bool                  sequence             = true;
+            std::set<std::string> sequenceExtensions;
+            bool                  negativeNumbers      = false;
+            size_t                maxNumberDigits      = 9;
 
             bool operator == (const ListOptions&) const;
             bool operator != (const ListOptions&) const;
         };
 
         //! Get the contents of the given directory.
-        std::vector<FileInfo> list(
+        void list(
             const std::string&,
-            const ListOptions & = ListOptions());
-
-        //! \name Serialize
-        ///@{
-
-        void to_json(nlohmann::json&, const ListOptions&);
-
-        void from_json(const nlohmann::json&, ListOptions&);
-
-        ///@}
+            std::vector<FileInfo>&,
+            const ListOptions& = ListOptions());
     }
 }
 

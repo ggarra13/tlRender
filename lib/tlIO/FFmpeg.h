@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include <tlIO/IO.h>
+#include <tlIO/Plugin.h>
 
 #include <tlCore/HDR.h>
 
@@ -12,6 +12,9 @@ extern "C"
 {
 #include <libavformat/avformat.h>
 #include <libswscale/swscale.h>
+
+struct AVCodecContext;
+struct AVStream;
 }
 
 namespace tl
@@ -36,6 +39,25 @@ namespace tl
         TLRENDER_ENUM(Profile);
         TLRENDER_ENUM_SERIALIZE(Profile);
 
+        //! Audio Codecs.
+        enum class AudioCodec
+        {
+            None,
+            AAC,
+            AC3,
+            True_HD,
+            MP2,
+            MP3,
+            OPUS,
+            VORBIS,
+            PCM_S16LE,
+
+            Count
+        };
+        TLRENDER_ENUM(AudioCodec);
+        TLRENDER_ENUM_SERIALIZE(AudioCodec);
+
+        
         //! Number of threads.
         const size_t threadCount = 0;
 
@@ -77,6 +99,7 @@ namespace tl
                 const file::Path&,
                 const std::vector<file::MemoryRead>&,
                 const io::Options&,
+                const std::shared_ptr<io::Cache>&,
                 const std::weak_ptr<log::System>&);
 
             Read();
@@ -88,6 +111,7 @@ namespace tl
             static std::shared_ptr<Read> create(
                 const file::Path&,
                 const io::Options&,
+                const std::shared_ptr<io::Cache>&,
                 const std::weak_ptr<log::System>&);
 
             //! Create a new reader.
@@ -95,11 +119,16 @@ namespace tl
                 const file::Path&,
                 const std::vector<file::MemoryRead>&,
                 const io::Options&,
+                const std::shared_ptr<io::Cache>&,
                 const std::weak_ptr<log::System>&);
 
             std::future<io::Info> getInfo() override;
-            std::future<io::VideoData> readVideo(const otime::RationalTime&, uint16_t layer = 0) override;
-            std::future<io::AudioData> readAudio(const otime::TimeRange&) override;
+            std::future<io::VideoData> readVideo(
+                const otime::RationalTime&,
+                const io::Options& = io::Options()) override;
+            std::future<io::AudioData> readAudio(
+                const otime::TimeRange&,
+                const io::Options& = io::Options()) override;
             void cancelRequests() override;
 
         private:
@@ -135,10 +164,18 @@ namespace tl
 
             void writeVideo(
                 const otime::RationalTime&,
-                const std::shared_ptr<image::Image>&) override;
+                const std::shared_ptr<image::Image>&,
+                const io::Options& = io::Options()) override;
+            
+            void writeAudio(
+                const otime::TimeRange&,
+                const std::shared_ptr<audio::Audio>&,
+                const io::Options& = io::Options()) override;
 
         private:
-            void _encodeVideo(AVFrame*);
+            void _encode(AVCodecContext*, const AVStream*,
+                         const AVFrame*, AVPacket*);
+            void _flushAudio();
 
             TLRENDER_PRIVATE();
         };
@@ -147,13 +184,17 @@ namespace tl
         class Plugin : public io::IPlugin
         {
         protected:
-            void _init(const std::weak_ptr<log::System>&);
+            void _init(
+                const std::shared_ptr<io::Cache>&,
+                const std::weak_ptr<log::System>&);
 
             Plugin();
 
         public:
             //! Create a new plugin.
-            static std::shared_ptr<Plugin> create(const std::weak_ptr<log::System>&);
+            static std::shared_ptr<Plugin> create(
+                const std::shared_ptr<io::Cache>&,
+                const std::weak_ptr<log::System>&);
 
             std::shared_ptr<io::IRead> read(
                 const file::Path&,
