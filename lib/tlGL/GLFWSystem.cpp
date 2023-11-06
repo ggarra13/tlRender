@@ -44,6 +44,25 @@ namespace tl
             int glfwRevision = 0;
             glfwGetVersion(&glfwMajor, &glfwMinor, &glfwRevision);
             _log(string::Format("GLFW version: {0}.{1}.{2}").arg(glfwMajor).arg(glfwMinor).arg(glfwRevision));
+            
+#ifdef __linux__
+            char* platform = getenv("FLTK_BACKEND");
+            if (!platform)
+                platform = getenv("XDG_SESSION_TYPE");
+                      
+            int platform_hint = GLFW_PLATFORM_X11;
+            if (platform && strcmp(platform, "wayland") == 0)
+            {
+                std::cerr << "Switching to wayland" << std::endl; 
+                platform_hint = GLFW_PLATFORM_WAYLAND;
+            }
+               
+            if (glfwPlatformSupported(platform_hint) == GLFW_TRUE)
+                glfwWindowHint(GLFW_PLATFORM, platform_hint);
+            else
+                std::cerr << "Platform not supported" << std::endl; 
+#endif  // __linux__
+            
             if (!glfwInit())
             {
                 //! \todo Only log the error for now so that non-OpenGL
