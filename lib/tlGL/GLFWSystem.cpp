@@ -24,7 +24,7 @@ namespace tl
         {
             void glfwErrorCallback(int, const char* description)
             {
-                std::cerr << "GLFW ERROR!: " << description << std::endl;
+                std::cerr << "GLFW ERROR: " << description << std::endl;
             }
         }
         
@@ -54,14 +54,11 @@ namespace tl
             int platform_hint = GLFW_PLATFORM_X11;
             if (platform && strcmp(platform, "wayland") == 0)
             {
-                std::cerr << "Switching to wayland" << std::endl; 
                 platform_hint = GLFW_PLATFORM_WAYLAND;
             }
                
             if (glfwPlatformSupported(platform_hint) == GLFW_TRUE)
-                glfwWindowHint(GLFW_PLATFORM, platform_hint);
-            else
-                std::cerr << "Platform not supported" << std::endl; 
+                glfwInitHint(GLFW_PLATFORM, platform_hint);
 #endif  // __linux__
             
             if (!glfwInit())
@@ -72,8 +69,6 @@ namespace tl
                 auto logSystem = context->getSystem<log::System>();
                 logSystem->print("tl::gl::GLFWSystem", "Cannot initialize GLFW", log::Type::Error);
             }
-            
-            std::cerr << "GLFWSystem inited" << std::endl; 
             
             p.glfwInit = true;
         }
