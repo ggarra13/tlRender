@@ -109,6 +109,7 @@ namespace tl
             int platform_hint = GLFW_PLATFORM_X11;
             if (platform && strcmp(platform, "wayland") == 0)
             {
+                std::cerr << "Switching to wayland" << std::endl; 
                 platform_hint = GLFW_PLATFORM_WAYLAND;
             }
                
