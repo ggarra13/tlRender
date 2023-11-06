@@ -18,7 +18,7 @@ sudo apt-get install xorg-dev libglu1-mesa-dev mesa-common-dev mesa-utils xvfb
 xvfb-run glxinfo
 
 # Install Wayland support
-sudi apt-get install libwayland-dev wayland-protocols libdbus-1-dev libxkbcommon-dev libegl-dev libgtk-3-dev
+sudo apt-get install libwayland-dev wayland-protocols libdbus-1-dev libxkbcommon-dev libegl-dev libgtk-3-dev
 
 # Install ALSA and PulseAudio support
 if [[ $TLRENDER_AUDIO = "ON" ]]

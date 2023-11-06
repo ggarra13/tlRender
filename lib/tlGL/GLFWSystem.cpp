@@ -24,7 +24,7 @@ namespace tl
         {
             void glfwErrorCallback(int, const char* description)
             {
-                std::cerr << "GLFW ERROR: " << description << std::endl;
+                std::cerr << "GLFW ERROR!: " << description << std::endl;
             }
         }
         
@@ -72,6 +72,9 @@ namespace tl
                 auto logSystem = context->getSystem<log::System>();
                 logSystem->print("tl::gl::GLFWSystem", "Cannot initialize GLFW", log::Type::Error);
             }
+            
+            std::cerr << "GLFWSystem inited" << std::endl; 
+            
             p.glfwInit = true;
         }
         
