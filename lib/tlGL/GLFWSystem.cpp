@@ -47,7 +47,9 @@ namespace tl
             _log(string::Format("GLFW version: {0}.{1}.{2}").arg(glfwMajor).arg(glfwMinor).arg(glfwRevision));
             
 #ifdef __linux__
-            char* platform = getenv("FLTK_BACKEND");
+            char* platform = getenv("GLFW_PLATFORM");
+            if (!platform)
+                platform = getenv("FLTK_BACKEND");
             if (!platform)
                 platform = getenv("XDG_SESSION_TYPE");
                       
@@ -59,8 +61,7 @@ namespace tl
                
             if (glfwPlatformSupported(platform_hint) == GLFW_TRUE)
                 glfwInitHint(GLFW_PLATFORM, platform_hint);
-#endif  // __linux__
-            
+#endif  // __linux__            
             if (!glfwInit())
             {
                 //! \todo Only log the error for now so that non-OpenGL
@@ -68,8 +69,7 @@ namespace tl
                 //throw std::runtime_error("Cannot initialize GLFW");
                 auto logSystem = context->getSystem<log::System>();
                 logSystem->print("tl::gl::GLFWSystem", "Cannot initialize GLFW", log::Type::Error);
-            }
-            
+            }            
             p.glfwInit = true;
         }
         
