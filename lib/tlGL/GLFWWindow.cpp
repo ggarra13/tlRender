@@ -115,6 +115,8 @@ namespace tl
                
             if (glfwPlatformSupported(platform_hint) == GLFW_TRUE)
                 glfwWindowHint(GLFW_PLATFORM, platform_hint);
+            else
+                std::cerr << "Platform not supported" << std::endl; 
 #endif  // __linux__
             
             glfwWindowHint(GLFW_VISIBLE,
