@@ -1,4 +1,4 @@
-..include(ExternalProject)
+include(ExternalProject)
 
 set(glfw3_GIT_REPOSITORY "https://github.com/glfw/glfw.git")
 #set(glfw3_GIT_TAG "3.3.8")
