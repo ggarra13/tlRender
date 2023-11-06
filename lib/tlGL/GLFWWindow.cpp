@@ -95,7 +95,12 @@ namespace tl
             glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
             glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #elif defined(TLRENDER_API_GLES_2)
-
+            glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_ANY_PROFILE);
+#endif // TLRENDER_API_GL_4_1
+            
 #ifdef __linux__
             char* platform = getenv("FLTK_BACKEND");
             if (!platform)
@@ -109,12 +114,8 @@ namespace tl
                
             if (glfwPlatformSupported(platform_hint) == GLFW_TRUE)
                 glfwWindowHint(GLFW_PLATFORM, platform_hint);
-#endif
-            glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
-            glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
-            glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
-            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_ANY_PROFILE);
-#endif // TLRENDER_API_GL_4_1
+#endif  // __linux__
+            
             glfwWindowHint(GLFW_VISIBLE,
                 options & static_cast<int>(GLFWWindowOptions::Visible));
             glfwWindowHint(GLFW_DOUBLEBUFFER,
