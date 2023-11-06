@@ -95,6 +95,21 @@ namespace tl
             glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
             glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #elif defined(TLRENDER_API_GLES_2)
+
+#ifdef __linux__
+            char* platform = getenv("FLTK_BACKEND");
+            if (!platform)
+                platform = getenv("XDG_SESSION_TYPE");
+                      
+            int platform_hint = GLFW_PLATFORM_X11;
+            if (platform && strcmp(platform, "wayland") == 0)
+            {
+                platform_hint = GLFW_PLATFORM_WAYLAND;
+            }
+               
+            if (glfwPlatformSupported(platform_hint) == GLFW_TRUE)
+                glfwWindowHint(GLFW_PLATFORM, platform_hint);
+#endif
             glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
             glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
             glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
