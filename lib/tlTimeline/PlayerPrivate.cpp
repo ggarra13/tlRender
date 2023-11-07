@@ -12,6 +12,14 @@ namespace tl
 {
     namespace timeline
     {
+        namespace
+        {
+            float transitionValue(double frame, double in, double out)
+            {
+                return (frame - in) / (out - in);
+            }
+        }
+        
         otime::RationalTime Player::Private::loopPlayback(const otime::RationalTime& time)
         {
             otime::RationalTime out = time;
@@ -587,7 +595,8 @@ namespace tl
                                 audioData = j->second;
                             }
                         }
-                        
+
+                        float volumeMultiplier = 1.0;  // should be a std::vector
                         std::vector<std::shared_ptr<audio::Audio> > audios;
                         std::vector<const uint8_t*> audioDataP;
                         const size_t dataOffset = offset * p->ioInfo.audio.getByteCount();
@@ -596,6 +605,42 @@ namespace tl
                             if (layer.audio && layer.audio->getInfo() == p->ioInfo.audio)
                             {
                                 auto audio = layer.audio;
+                                const auto rate = timeOffset.rate();
+                                const auto sample = seconds * rate + offset;
+                                const auto range = otime::TimeRange(
+                                    otime::RationalTime(seconds, 1.0)
+                                        .rescaled_to(rate),
+                                    otime::RationalTime(1.0, 1.0).rescaled_to(
+                                        rate));
+                                if (layer.outTransition)
+                                {
+                                    const auto  inOffset = layer.outTransition->in_offset().value();
+                                    const auto outOffset = layer.outTransition->out_offset().value();
+                                    if (sample > range.end_time_inclusive().value() - inOffset )
+                                    {
+                                        volumeMultiplier = transitionValue(sample,
+                                                                           range.end_time_inclusive().value() - inOffset,
+                                                                           range.end_time_inclusive().value() + outOffset);
+                                        volumeMultiplier = std::max(0.F, volumeMultiplier);
+                                        std::cerr << "FADE OUT volumeMultiplier=" << volumeMultiplier << std::endl;
+                                    }
+                                }
+                                if (layer.inTransition)
+                                {
+                                    const auto  inOffset = layer.inTransition->in_offset().value();
+                                    const auto outOffset = layer.inTransition->out_offset().value();
+                                    if (sample < audioData.seconds * rate + outOffset)
+                                    {
+                                        volumeMultiplier = transitionValue(sample,
+                                                                           range.start_time().value() - inOffset,
+                                                                           range.start_time().value() + outOffset);
+                                        volumeMultiplier = std::max(0.F, volumeMultiplier);
+                                        std::cerr << "FADE IN volumeMultiplier=" << volumeMultiplier << std::endl;
+                                    }
+                                }
+                                
+
+                                
                                 if (backwards)
                                 {
                                     auto tmp = audio::Audio::create(p->ioInfo.audio, infoSampleRate);
@@ -639,7 +684,7 @@ namespace tl
                             audioDataP.data(),
                             audioDataP.size(),
                             tmp->getData(),
-                            volume,
+                            volume * volumeMultiplier,
                             size,
                             p->ioInfo.audio.channelCount,
                             p->ioInfo.audio.dataType);

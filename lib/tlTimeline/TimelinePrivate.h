@@ -85,6 +85,8 @@ namespace tl
                 double seconds = -1.0;
                 otime::TimeRange timeRange;
                 std::future<io::AudioData> audio;
+                otio::Transition* inTransition = nullptr;
+                otio::Transition* outTransition = nullptr;
             };
             struct AudioRequest
             {

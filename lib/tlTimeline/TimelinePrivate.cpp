@@ -271,7 +271,25 @@ namespace tl
                                         audioData.timeRange = otime::TimeRange(
                                             otime::RationalTime(start, 1.0),
                                             otime::RationalTime(end - start, 1.0));
+
+                                        std::cerr << "readAudio=" << audioData.timeRange << std::endl;
                                         audioData.audio = readAudio(otioClip, audioData.timeRange, request->options);
+
+                                        otio::ErrorStatus errorStatus;
+                                        const auto neighbors = otioTrack->neighbors_of(otioClip, &errorStatus);
+                                        if (auto otioTransition = dynamic_cast<otio::Transition*>(neighbors.second.value))
+                                        {
+                                            audioData.outTransition = otioTransition;
+                                            std::cerr << "\thas out transition"
+                                                      << std::endl;
+                                        }
+                                        if (auto otioTransition = dynamic_cast<otio::Transition*>(neighbors.first.value))
+                                        {
+                                            audioData.inTransition = otioTransition;
+                                            std::cerr << "\thas in transition"
+                                                      << std::endl;
+                                        }
+                                    
                                         request->layerData.push_back(std::move(audioData));
                                     }
                                 }
@@ -363,6 +381,8 @@ namespace tl
                                 if (audioData.audio)
                                 {
                                     layer.audio = padAudioToOneSecond(audioData.audio, j.seconds, j.timeRange);
+                                    layer.inTransition = j.inTransition;
+                                    layer.outTransition = j.outTransition;
                                 }
                             }
                             data.layers.push_back(layer);
@@ -432,6 +452,8 @@ namespace tl
                         if (i.audio.valid())
                         {
                             layer.audio = i.audio.get().audio;
+                            layer.inTransition = i.inTransition;
+                            layer.outTransition = i.outTransition;
                         }
                         data.layers.push_back(layer);
                     }
