@@ -6,6 +6,5 @@ checked:
 - OpenEXR v2 multipart (~/Pictures/openexr-images/Beachball/multipart.0001.exr)
 - Zip OpenEXR compression (try saving an OpenEXR with two Zip compressions).
 - RAW Reader.
-- Reload Cache works.
 - USD Settings work.
 - Playlist editing for images and movies.
