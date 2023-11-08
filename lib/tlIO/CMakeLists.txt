@@ -77,12 +77,12 @@ if(TLRENDER_USD)
     list(APPEND SOURCE USD.cpp USDRead.cpp USDRender.cpp)
     list(APPEND LIBRARIES_PRIVATE tf usd usdGeom usdImagingGL usdAppUtils hd)
     if(NOT WIN32)
-	set_source_files_properties(USD.cpp
-	    PROPERTIES COMPILE_FLAGS -std=c++14)
-	set_source_files_properties(USDRead.cpp
-	    PROPERTIES COMPILE_FLAGS -std=c++14)
-	set_source_files_properties(USDRender.cpp
-	    PROPERTIES COMPILE_FLAGS -std=c++14)
+	# set_source_files_properties(USD.cpp
+	#     PROPERTIES COMPILE_FLAGS -std=c++14)
+	# set_source_files_properties(USDRead.cpp
+	#     PROPERTIES COMPILE_FLAGS -std=c++14)
+	# set_source_files_properties(USDRender.cpp
+	#     PROPERTIES COMPILE_FLAGS -std=c++14)
     endif()
 endif()
 if(TLRENDER_RAW)

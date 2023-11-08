@@ -1,16 +1,12 @@
 include(ExternalProject)
 
-if(WIN32)
-    # Build FFmpeg with MSYS2 on Windows.
-    find_package(Msys REQUIRED)
-endif()
 
 set(FFmpeg_DEPS)
 if(TLRENDER_NET)
     list(APPEND FFmpeg_DEPS OpenSSL)
 endif()
 if(WIN32)
-     # Compiled with MSYS script.
+     # Compiled with MSYS script as a pre-flight step.
 else()
     set(FFmpeg_CFLAGS)
     set(FFmpeg_CXXFLAGS)
