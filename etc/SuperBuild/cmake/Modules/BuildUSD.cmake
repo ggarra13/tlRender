@@ -18,6 +18,9 @@ endif()
 
 set(USD_DEPS ${PYTHON_DEP})
 
+set(USD_GIT_REPOSITORY https://github.com/PixarAnimationStudios/OpenUSD.git)
+set(USD_GIT_TAG v23.11)
+
 set(USD_ARGS)
 if(CMAKE_OSX_ARCHITECTURES)
     list(APPEND USD_ARGS --build-target ${CMAKE_OSX_ARCHITECTURES})
@@ -42,17 +45,16 @@ if(WIN32)
     set(USD_INSTALL_COMMAND
         ${CMAKE_COMMAND} -E copy_directory ${CMAKE_INSTALL_PREFIX}/lib/usd  ${CMAKE_INSTALL_PREFIX}/bin/usd
         COMMAND copy "${cmake_install}\\lib\\*.dll" "${cmake_install}\\bin")
+
 endif()
 
 ExternalProject_Add(
     USD
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/USD
     DEPENDS ${USD_DEPS}
-    URL https://github.com/PixarAnimationStudios/OpenUSD/archive/refs/tags/v23.08.tar.gz
+    GIT_REPOSITORY ${USD_GIT_REPOSITORY}
+    GIT_TAG ${USD_GIT_TAG}
     CONFIGURE_COMMAND ""
-    PATCH_COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        ${CMAKE_CURRENT_SOURCE_DIR}/USD-patch/build_usd.py
-        ${CMAKE_CURRENT_BINARY_DIR}/USD/src/USD/build_scripts/build_usd.py
-    BUILD_COMMAND ${PYTHON_EXECUTABLE} build_scripts/build_usd.py ${USD_ARGS} ${CMAKE_INSTALL_PREFIX}
+    BUILD_COMMAND ${TLRENDER_USD_PYTHON} build_scripts/build_usd.py ${USD_ARGS} ${CMAKE_INSTALL_PREFIX}
     BUILD_IN_SOURCE 1
     INSTALL_COMMAND "${USD_INSTALL_COMMAND}")

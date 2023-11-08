@@ -71,9 +71,12 @@ namespace tl
 
                 struct SizeData
                 {
+                    int sizeInit = true;
                     int margin = 0;
                     int spacing = 0;
                     int border = 0;
+
+                    bool textInit = true;
                     image::FontInfo fontInfo;
                     image::FontMetrics fontMetrics;
                     math::Size2i textSize;
@@ -126,7 +129,7 @@ namespace tl
                 _shortcut = key;
                 _shortcutModifiers = modifiers;
                 _shortcutText = getLabel(_shortcut, _shortcutModifiers);
-                _draw.shortcutGlyphs.clear();
+                _size.textInit = true;
                 _updates |= Update::Size;
                 _updates |= Update::Draw;
             }
@@ -144,7 +147,9 @@ namespace tl
                 IButton::setText(value);
                 if (changed)
                 {
-                    _draw.textGlyphs.clear();
+                    _size.textInit = true;
+                    _updates |= Update::Size;
+                    _updates |= Update::Draw;
                 }
             }
 
@@ -154,8 +159,9 @@ namespace tl
                 IButton::setFontRole(value);
                 if (changed)
                 {
-                    _draw.textGlyphs.clear();
-                    _draw.shortcutGlyphs.clear();
+                    _size.textInit = true;
+                    _updates |= Update::Size;
+                    _updates |= Update::Draw;
                 }
             }
 
@@ -165,9 +171,9 @@ namespace tl
                 const TickEvent& event)
             {
                 IButton::tickEvent(parentsVisible, parentsEnabled, event);
-                if (event.displayScale != _iconScale)
+                if (_displayScale != _iconScale)
                 {
-                    _iconScale = event.displayScale;
+                    _iconScale = _displayScale;
                     _checkedIcon.init = true;
                     _checkedIcon.future = std::future<std::shared_ptr<image::Image> >();
                     _checkedIcon.image.reset();
@@ -181,7 +187,7 @@ namespace tl
                 if (!_checkedIcon.name.empty() && _checkedIcon.init)
                 {
                     _checkedIcon.init = false;
-                    _checkedIcon.future = event.iconLibrary->request(_checkedIcon.name, event.displayScale);
+                    _checkedIcon.future = event.iconLibrary->request(_checkedIcon.name, _displayScale);
                 }
                 if (_checkedIcon.future.valid() &&
                     _checkedIcon.future.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
@@ -193,7 +199,7 @@ namespace tl
                 if (!_uncheckedIcon.name.empty() && _uncheckedIcon.init)
                 {
                     _uncheckedIcon.init = false;
-                    _uncheckedIcon.future = event.iconLibrary->request(_uncheckedIcon.name, event.displayScale);
+                    _uncheckedIcon.future = event.iconLibrary->request(_uncheckedIcon.name, _displayScale);
                 }
                 if (_uncheckedIcon.future.valid() &&
                     _uncheckedIcon.future.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
@@ -205,7 +211,7 @@ namespace tl
                 if (!_subMenuIcon.name.empty() && _subMenuIcon.init)
                 {
                     _subMenuIcon.init = false;
-                    _subMenuIcon.future = event.iconLibrary->request(_subMenuIcon.name, event.displayScale);
+                    _subMenuIcon.future = event.iconLibrary->request(_subMenuIcon.name, _displayScale);
                 }
                 if (_subMenuIcon.future.valid() &&
                     _subMenuIcon.future.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
@@ -218,15 +224,26 @@ namespace tl
 
             void MenuButton::sizeHintEvent(const SizeHintEvent& event)
             {
+                const bool displayScaleChanged = event.displayScale != _displayScale;
                 IButton::sizeHintEvent(event);
 
-                _size.margin = event.style->getSizeRole(SizeRole::MarginInside, event.displayScale);
-                _size.spacing = event.style->getSizeRole(SizeRole::SpacingSmall, event.displayScale);
-                _size.border = event.style->getSizeRole(SizeRole::Border, event.displayScale);
-
-                _size.fontMetrics = event.getFontMetrics(_fontRole);
-                auto fontInfo = event.style->getFontRole(_fontRole, event.displayScale);
-                _size.fontInfo = fontInfo;
+                if (displayScaleChanged || _size.sizeInit)
+                {
+                    _size.margin = event.style->getSizeRole(SizeRole::MarginInside, _displayScale);
+                    _size.spacing = event.style->getSizeRole(SizeRole::SpacingSmall, _displayScale);
+                    _size.border = event.style->getSizeRole(SizeRole::Border, _displayScale);
+                }
+                if (displayScaleChanged || _size.textInit || _size.sizeInit)
+                {
+                    _size.fontInfo = event.style->getFontRole(_fontRole, _displayScale);
+                    _size.fontMetrics = event.fontSystem->getMetrics(_size.fontInfo);
+                    _size.textSize = event.fontSystem->getSize(_text, _size.fontInfo);
+                    _size.shortcutSize = event.fontSystem->getSize(_shortcutText, _size.fontInfo);
+                    _draw.textGlyphs.clear();
+                    _draw.shortcutGlyphs.clear();
+                }
+                _size.sizeInit = false;
+                _size.textInit = false;
 
                 _sizeHint = math::Size2i();
                 if (_iconImage)
@@ -246,15 +263,11 @@ namespace tl
                 }
                 if (!_text.empty())
                 {
-                    _size.textSize = event.fontSystem->getSize(_text, fontInfo);
-
                     _sizeHint.w += _size.textSize.w + _size.margin * 2;
                     _sizeHint.h = std::max(_sizeHint.h, _size.fontMetrics.lineHeight);
                 }
                 if (!_shortcutText.empty())
                 {
-                    _size.shortcutSize = event.fontSystem->getSize(_shortcutText, fontInfo);
-
                     _sizeHint.w += _size.spacing * 4 + _size.shortcutSize.w;
                     _sizeHint.h = std::max(_sizeHint.h, _size.shortcutSize.h);
                 }

@@ -173,6 +173,16 @@ namespace tl
             _updates |= Update::Draw;
         }
 
+        void IWidget::setAlign(HAlign hAlign, VAlign vAlign)
+        {
+            if (hAlign == _hAlign && vAlign == _vAlign)
+                return;
+            _hAlign = hAlign;
+            _vAlign = vAlign;
+            _updates |= Update::Size;
+            _updates |= Update::Draw;
+        }
+
         void IWidget::setGeometry(const math::Box2i& value)
         {
             if (value == _geometry)
@@ -259,8 +269,9 @@ namespace tl
             _parentsEnabled = parentsEnabled;
         }
 
-        void IWidget::sizeHintEvent(const SizeHintEvent&)
+        void IWidget::sizeHintEvent(const SizeHintEvent& event)
         {
+            _displayScale = event.displayScale;
             _updates &= ~static_cast<int>(Update::Size);
         }
 
