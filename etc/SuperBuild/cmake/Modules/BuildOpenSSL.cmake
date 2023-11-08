@@ -10,15 +10,18 @@ set(OpenSSL_GIT_REPOSITORY "https://github.com/openssl/openssl.git")
 set(OpenSSL_GIT_TAG "openssl-3.1.4")
 
 if(WIN32)
-    set(OpenSSL_CONFIGURE
-        perl Configure VC-WIN64A
-        --prefix=${CMAKE_INSTALL_PREFIX}
-        --openssldir=${CMAKE_INSTALL_PREFIX}
-        no-external-tests
-        no-tests
-        no-unit-test)
-    set(OpenSSL_BUILD nmake install)
-    set(OpenSSL_INSTALL nmake install)
+    #
+    # We build with MSys
+    #
+    # set(OpenSSL_CONFIGURE
+    #     perl Configure VC-WIN64A
+    #     --prefix=${CMAKE_INSTALL_PREFIX}
+    #     --openssldir=${CMAKE_INSTALL_PREFIX}
+    #     no-external-tests
+    #     no-tests
+    #     no-unit-test)
+    # set(OpenSSL_BUILD nmake install)
+    # set(OpenSSL_INSTALL nmake install)
 else()
     set(OpenSSL_CONFIGURE
         ./Configure
