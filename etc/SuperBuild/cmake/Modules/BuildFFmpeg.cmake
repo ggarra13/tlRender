@@ -2,9 +2,6 @@ include(ExternalProject)
 
 
 set(FFmpeg_DEPS)
-if(TLRENDER_NET)
-    list(APPEND FFmpeg_DEPS OpenSSL)
-endif()
 if(WIN32)
      # Compiled with MSYS script as a pre-flight step.
 else()
@@ -12,6 +9,10 @@ else()
     set(FFmpeg_CXXFLAGS)
     set(FFmpeg_OBJCFLAGS)
     set(FFmpeg_LDFLAGS)
+    
+    if(TLRENDER_NET)
+	list(APPEND FFmpeg_DEPS OpenSSL)
+    endif()
 
     if(TLRENDER_VPX)
 	list(APPEND FFmpeg_LDFLAGS

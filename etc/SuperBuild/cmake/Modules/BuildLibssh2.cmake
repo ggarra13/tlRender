@@ -12,7 +12,7 @@ set(Libssh2_ARGS
 ExternalProject_Add(
     Libssh2
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/Libssh2
-    DEPENDS OpenSSL ZLIB
+    DEPENDS ${OpenSSL} ZLIB
     GIT_REPOSITORY ${Libssh2_GIT_REPOSITORY}
     GIT_TAG ${Libssh2_GIT_TAG}
     PATCH_COMMAND ${CMAKE_COMMAND} -E copy_if_different
