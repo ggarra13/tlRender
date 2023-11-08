@@ -242,9 +242,9 @@ namespace tl
                     {
                         for (const auto& otioChild : otioTrack->children())
                         {
-                            if (auto otioClip = dynamic_cast<otio::Clip*>(otioChild.value))
+                            if (auto otioItem = dynamic_cast<otio::Item*>(otioChild.value))
                             {
-                                const auto rangeOptional = otioClip->trimmed_range_in_parent();
+                                const auto rangeOptional = otioItem->trimmed_range_in_parent();
                                 if (rangeOptional.has_value())
                                 {
                                     const otime::TimeRange clipTimeRange(
@@ -272,22 +272,79 @@ namespace tl
                                             otime::RationalTime(start, 1.0),
                                             otime::RationalTime(end - start, 1.0));
 
-                                        std::cerr << "readAudio=" << audioData.timeRange << std::endl;
-                                        audioData.audio = readAudio(otioClip, audioData.timeRange, request->options);
-
-                                        otio::ErrorStatus errorStatus;
-                                        const auto neighbors = otioTrack->neighbors_of(otioClip, &errorStatus);
-                                        if (auto otioTransition = dynamic_cast<otio::Transition*>(neighbors.second.value))
+                                        if (auto otioClip = dynamic_cast<otio::Clip*>(otioItem))
                                         {
-                                            audioData.outTransition = otioTransition;
-                                            std::cerr << "\thas out transition"
-                                                      << std::endl;
+                                            audioData.audio = readAudio(otioClip, audioData.timeRange, request->options);
                                         }
+                                        else
+                                        {
+                                            std::cerr << "**** DID NOT READ AUDIO AT " << audioData.timeRange << std::endl;
+                                        }
+                                        
+                                        otio::ErrorStatus errorStatus;
+                                        const auto neighbors = otioTrack->neighbors_of(otioItem, &errorStatus);
+
+                                        
+                                        // if (auto otioTransition = dynamic_cast<otio::Transition*>(neighbors.second.value))
+                                        // {
+                                        //     audioData.clipTimeRange = clipTimeRange;
+                                            
+                                        //     const auto inOffset = otioTransition->in_offset().rescaled_to(1.0);
+                                        //     const auto outOffset = otioTransition->out_offset().rescaled_to(1.0);
+                                        //     auto transitionRange = otime::TimeRange(clipTimeRange.end_time_inclusive() - inOffset,
+                                        //                                             inOffset + outOffset);
+                                        //     // std::cerr << "\t  clipTimeRange=" << clipTimeRange << std::endl; 
+                                        //     // std::cerr << "\t      timeRange=" << audioData.timeRange << std::endl;
+                                        //     // std::cerr << "\ttransitionRange=" << transitionRange << std::endl;
+                                        //     // std::cerr << "\tclipTimeRange end=" << clipTimeRange.end_time_inclusive() << std::endl; 
+                                        //     // std::cerr << "\tin_offset=" << inOffset << std::endl; 
+                                        //     // std::cerr << "\ttimeRange END=" << audioData.timeRange.end_time_inclusive()
+                                        //     //           << "  transition END= " << transitionRange.end_time_inclusive()
+                                        //     //           << std::endl;
+                                        //     if (audioData.timeRange.finishes(transitionRange))
+                                        //     {
+                                        //         audioData.outTransition = otioTransition;
+                                                
+                                        //         const auto transitionNeighbors = otioTrack->neighbors_of(otioTransition, &errorStatus);
+                                        //         if (const auto otioClipB = dynamic_cast<otio::Clip*>(transitionNeighbors.second.value))
+                                        //         {
+                                        //             audioData.audio = readAudio(otioClipB, audioData.timeRange, request->options);
+                                        //         }
+                                        //     }
+                                        //     else
+                                        //     {
+                                        //         std::cerr << "\t\tdoes not have out transition"
+                                        //                   << std::endl;
+                                        //     }
+                                        // }
+                                        
                                         if (auto otioTransition = dynamic_cast<otio::Transition*>(neighbors.first.value))
                                         {
-                                            audioData.inTransition = otioTransition;
-                                            std::cerr << "\thas in transition"
-                                                      << std::endl;
+                                            audioData.clipTimeRange = clipTimeRange;
+                                            const auto outOffset = otioTransition->out_offset().rescaled_to(1.0);
+                                            const auto inOffset = otioTransition->in_offset().rescaled_to(1.0);
+                                            auto transitionRange = otime::TimeRange(clipTimeRange.start_time() - inOffset,
+                                                                                    outOffset + inOffset);
+                                            // std::cerr << "\tclipTimeRange=" << clipTimeRange << std::endl; 
+                                            // std::cerr << "\tclipTimeRange end=" << clipTimeRange.end_time_inclusive() << std::endl; 
+                                            // std::cerr << "\tout_offset=" << outOffset << std::endl; 
+                                            // std::cerr << "\ttimeRange=" << audioData.timeRange << " transitionRange=" << transitionRange << std::endl; 
+                                            if (audioData.timeRange.intersects(transitionRange))
+                                            {
+                                                audioData.inTransition = otioTransition;
+                                                std::cerr << "\thas in transition"
+                                                          << std::endl;
+                                                const auto transitionNeighbors = otioTrack->neighbors_of(otioTransition, &errorStatus);
+                                                if (const auto otioClipB = dynamic_cast<otio::Clip*>(transitionNeighbors.first.value))
+                                                {
+                                                    audioData.audio = readAudio(otioClipB, audioData.timeRange, request->options);
+                                                }
+                                            }
+                                            else
+                                            {
+                                                std::cerr << "\tdoes not have in transition"
+                                                          << std::endl;
+                                            }
                                         }
                                     
                                         request->layerData.push_back(std::move(audioData));
@@ -381,6 +438,7 @@ namespace tl
                                 if (audioData.audio)
                                 {
                                     layer.audio = padAudioToOneSecond(audioData.audio, j.seconds, j.timeRange);
+                                    layer.clipTimeRange = j.clipTimeRange;
                                     layer.inTransition = j.inTransition;
                                     layer.outTransition = j.outTransition;
                                 }

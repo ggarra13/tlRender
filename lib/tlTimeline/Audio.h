@@ -17,6 +17,7 @@ namespace tl
         {
             std::shared_ptr<audio::Audio> audio;
 
+            otime::TimeRange  clipTimeRange;
             otio::Transition* inTransition = nullptr;
             otio::Transition* outTransition = nullptr;
             

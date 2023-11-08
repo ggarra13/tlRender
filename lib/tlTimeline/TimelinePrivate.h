@@ -84,6 +84,7 @@ namespace tl
 
                 double seconds = -1.0;
                 otime::TimeRange timeRange;
+                otime::TimeRange clipTimeRange;
                 std::future<io::AudioData> audio;
                 otio::Transition* inTransition = nullptr;
                 otio::Transition* outTransition = nullptr;

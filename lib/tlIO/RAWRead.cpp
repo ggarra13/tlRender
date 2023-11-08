@@ -311,8 +311,10 @@ namespace tl
                     int ret;
                     if (_memory)
                     {
-                        ret = _processor->open_buffer(_memory->p,
-                                                      _memory->size);
+                        ret = _processor->open_buffer(
+                            reinterpret_cast<void*>(
+                                const_cast<uint8_t*>(_memory->p)),
+                            _memory->size);
                         LIBRAW_ERROR(open_buffer, ret);
                     }
                     else
