@@ -24,7 +24,7 @@ set(TLRENDER_FFMPEG_MINIMAL FALSE CACHE BOOL "Enable a minimal set of FFmpeg cod
 set(TLRENDER_VPX FALSE CACHE BOOL "Enable support for VPX codec through FFmpeg")
 set(TLRENDER_X264 FALSE CACHE BOOL "Enable support for x264 saving codec through FFmpeg")
 set(TLRENDER_YASM FALSE CACHE BOOL "Enable compiling YASM")
-set(TLRENDER_GL TRUE CACHE BOOL "Enable support for OpenGL"
+set(TLRENDER_GL TRUE CACHE BOOL "Enable support for OpenGL")
 set(TLRENDER_USD FALSE CACHE BOOL "Enable support for USD")
 set(TLRENDER_RAW TRUE CACHE BOOL "Enable support for LibRaw")
 set(TLRENDER_USD_PYTHON python3 CACHE STRING "Python executable for building USD")
