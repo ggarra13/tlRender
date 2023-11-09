@@ -140,6 +140,7 @@ namespace tl
                     _print(string::Format("Timeline: {0}").arg(path.get()));
                     auto timeline = Timeline::create(path.get(), _context);
                     auto player = Player::create(timeline, _context);
+                    TLRENDER_ASSERT(player->getTimeline());
                     _player(player);
                 }
                 catch (const std::exception& e)
@@ -410,8 +411,8 @@ namespace tl
                         diff = t2 - t;
                     } while (diff.count() < 1.F);
 
-                    player->setPlayback(Playback::Reverse);
                     player->seek(timeRange.end_time_inclusive());
+                    player->setPlayback(Playback::Reverse);
                     t = std::chrono::steady_clock::now();
                     do
                     {
@@ -422,6 +423,7 @@ namespace tl
                     } while (diff.count() < 1.F);
 
                     player->seek(timeRange.start_time());
+                    player->setSpeed(doubleSpeed);
                     t = std::chrono::steady_clock::now();
                     do
                     {
@@ -430,6 +432,7 @@ namespace tl
                         const auto t2 = std::chrono::steady_clock::now();
                         diff = t2 - t;
                     } while (diff.count() < 1.F);
+                    player->setSpeed(defaultSpeed);
                 }
                 player->setPlayback(Playback::Stop);
                 player->clearCache();
@@ -447,6 +450,7 @@ namespace tl
             auto timeline2 = Timeline::create(path2, _context);
             auto player2 = Player::create(timeline2, _context);
             player2->setExternalTime(player);
+            player2->setExternalTime(player);
 
             player->setPlayback(Playback::Forward);
             for (size_t i = 0; i < timeRange.duration().rate(); ++i)
@@ -454,6 +458,8 @@ namespace tl
                 player->tick();
                 time::sleep(std::chrono::milliseconds(1));
             }
+
+            player2->setExternalTime(nullptr);
         }
     }
 }
