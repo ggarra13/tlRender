@@ -192,6 +192,7 @@ namespace tl
             size_t          inCount,
             uint8_t*        out,
             float           volume,
+            const std::vector<float>& volumeScale,
             size_t          sampleCount,
             size_t          channelCount,
             DataType        dataType);

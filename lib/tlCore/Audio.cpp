@@ -142,6 +142,7 @@ namespace tl
                 size_t inCount,
                 uint8_t* out,
                 float volume,
+                const std::vector<float>& volumeScale,
                 size_t size)
             {
                 const T** const inP = reinterpret_cast<const T**>(in);
@@ -153,7 +154,7 @@ namespace tl
                     TI v = 0;
                     for (size_t j = 0; j < inCount; ++j)
                     {
-                        v += math::clamp(static_cast<TI>(inP[j][i] * volume), min, max);
+                        v += math::clamp(static_cast<TI>(inP[j][i] * volume * volumeScale[j]), min, max);
                     }
                     outP[i] = math::clamp(v, min, max);
                 }
@@ -165,6 +166,7 @@ namespace tl
                 size_t inCount,
                 uint8_t* out,
                 float volume,
+                const std::vector<float>& volumeScale,
                 size_t size)
             {
                 const T** const inP = reinterpret_cast<const T**>(in);
@@ -174,7 +176,7 @@ namespace tl
                     T v = static_cast<T>(0);
                     for (size_t j = 0; j < inCount; ++j)
                     {
-                        v += inP[j][i] * volume;
+                        v += inP[j][i] * volume * volumeScale[j];
                     }
                     outP[i] = v;
                 }
@@ -237,6 +239,7 @@ namespace tl
             size_t inCount,
             uint8_t* out,
             float volume,
+            const std::vector<float>& volumeScale,
             size_t sampleCount,
             size_t channelCount,
             DataType type)
@@ -245,19 +248,19 @@ namespace tl
             switch (type)
             {
             case DataType::S8:
-                mixI<int8_t, int16_t>(in, inCount, out, volume, size);
+                mixI<int8_t, int16_t>(in, inCount, out, volume, volumeScale, size);
                 break;
             case DataType::S16:
-                mixI<int16_t, int32_t>(in, inCount, out, volume, size);
+                mixI<int16_t, int32_t>(in, inCount, out, volume, volumeScale, size);
                 break;
             case DataType::S32:
-                mixI<int32_t, int64_t>(in, inCount, out, volume, size);
+                mixI<int32_t, int64_t>(in, inCount, out, volume, volumeScale, size);
                 break;
             case DataType::F32:
-                mixF<float>(in, inCount, out, volume, size);
+                mixF<float>(in, inCount, out, volume, volumeScale, size);
                 break;
             case DataType::F64:
-                mixF<double>(in, inCount, out, volume, size);
+                mixF<double>(in, inCount, out, volume, volumeScale, size);
                 break;
             default: break;
             }

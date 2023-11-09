@@ -14,9 +14,9 @@ namespace tl
     {
         namespace
         {
-            float transitionValue(double frame, double in, double out)
+            inline float fadeValue(double sample, double in, double out)
             {
-                return (frame - in) / (out - in);
+                return (sample - in) / (out - in);
             }
         }
         
@@ -596,55 +596,73 @@ namespace tl
                             }
                         }
 
-                        float volumeMultiplier = 1.0;  // should be a std::vector
+                        std::vector<float> volumeScale;
+                        volumeScale.reserve(audioData.layers.size());
                         std::vector<std::shared_ptr<audio::Audio> > audios;
                         std::vector<const uint8_t*> audioDataP;
                         const size_t dataOffset = offset * p->ioInfo.audio.getByteCount();
                         const auto rate = timeOffset.rate();
                         const auto sample = seconds * rate + offset;
+                        const auto currentTime = otime::RationalTime(sample, rate).rescaled_to(1.0);
                         for (const auto& layer : audioData.layers)
                         {
-                            const auto& clipTimeRange = layer.clipTimeRange;
-                            const auto& range = otime::TimeRange(clipTimeRange.start_time().rescaled_to(rate),
-                                                                 clipTimeRange.duration().rescaled_to(rate));
-                                
+                            float volumeMultiplier = 1.F;
                             if (layer.audio && layer.audio->getInfo() == p->ioInfo.audio)
                             {
                                 auto audio = layer.audio;
-                                if (layer.outTransition)
-                                {
-                                    const auto  inOffset = layer.outTransition->in_offset().value();
-                                    const auto outOffset = layer.outTransition->out_offset().value();
-                                    const auto fadeOutBegin = range.end_time_inclusive().value() - inOffset;
-                                    if (sample > fadeOutBegin)
-                                    {
-                                        volumeMultiplier = 1.F - transitionValue(sample,
-                                                                                 range.end_time_inclusive().value() - inOffset,
-                                                                                 range.end_time_inclusive().value() + outOffset);
-                                        volumeMultiplier = std::max(0.F, volumeMultiplier);
-                                        std::cerr << "sample=" << sample << " > " << fadeOutBegin << " range="
-                                                  << range << " FADE OUT volumeMultiplier=" << volumeMultiplier << std::endl;
-                                    }
-                                }
-
                                 
                                 if (layer.inTransition)
                                 {
+                                    const auto& clipTimeRange = layer.clipTimeRange;
+                                    const auto& range = otime::TimeRange(clipTimeRange.start_time().rescaled_to(rate),
+                                                                         clipTimeRange.duration().rescaled_to(rate));
                                     const auto  inOffset = layer.inTransition->in_offset().value();
                                     const auto outOffset = layer.inTransition->out_offset().value();
-                                    const auto fadeInEnd = range.start_time().value() + outOffset;
-                                    if (sample < fadeInEnd)
+                                    const auto fadeInBegin = range.start_time().value() - inOffset;
+                                    const auto fadeInEnd   = range.start_time().value() + outOffset;
+                                    if (sample > fadeInBegin)
                                     {
-                                        volumeMultiplier = transitionValue(sample,
-                                                                           range.start_time().value() - inOffset,
-                                                                           range.start_time().value() + outOffset);
-                                        volumeMultiplier = std::max(0.F, volumeMultiplier);
-                                        std::cerr << "sample=" << sample << " < " << fadeInEnd << " range="
-                                                  << range << " FADE IN volumeMultiplier=" << volumeMultiplier << std::endl;
+                                        if (sample < fadeInEnd)
+                                        {
+                                            volumeMultiplier = fadeValue(sample,
+                                                                         range.start_time().value() - inOffset - 1.0,
+                                                                         range.start_time().value() + outOffset);
+                                            volumeMultiplier = std::min(1.F, volumeMultiplier);
+                                            // std::cerr << currentTime << " layer=" << layerCount << " " << " FADE IN  ";
+                                        }
+                                    }
+                                    else
+                                    {
+                                        volumeMultiplier = 0.F;
                                     }
                                 }
                                 
-
+                                if (layer.outTransition)
+                                {
+                                    const auto& clipTimeRange = layer.clipTimeRange;
+                                    const auto& range = otime::TimeRange(clipTimeRange.start_time().rescaled_to(rate),
+                                                                         clipTimeRange.duration().rescaled_to(rate));
+                            
+                                    const auto  inOffset = layer.outTransition->in_offset().value();
+                                    const auto outOffset = layer.outTransition->out_offset().value();
+                                    const auto fadeOutBegin = range.end_time_inclusive().value() - inOffset;
+                                    const auto fadeOutEnd   = range.end_time_inclusive().value() + outOffset;
+                                    if (sample > fadeOutBegin)
+                                    {
+                                        if (sample < fadeOutEnd)
+                                        {
+                                            volumeMultiplier = 1.F - fadeValue(sample,
+                                                                               range.end_time_inclusive().value() - inOffset,
+                                                                               range.end_time_inclusive().value() + outOffset + 1.0);
+                                        }
+                                        else
+                                        {
+                                            volumeMultiplier = 0.F;
+                                        }
+                                        // std::cerr << currentTime << " layer=" << layerCount << " " << " FADE OUT ";
+                                    }
+                                }
+                                
                                 
                                 if (backwards)
                                 {
@@ -656,10 +674,13 @@ namespace tl
                                     audios.push_back(audio);
                                 }
                                 audioDataP.push_back(audio->getData() + dataOffset);
+                                // std::cerr << "volume=" << volumeMultiplier << std::endl;
+                                volumeScale.push_back(volumeMultiplier);
                             }
                         }
                         if (audioDataP.empty())
                         {
+                            volumeScale.push_back(0.F);
                             audioDataP.push_back(
                                 p->audioThread.silence->getData() + dataOffset);
                         }
@@ -689,7 +710,8 @@ namespace tl
                             audioDataP.data(),
                             audioDataP.size(),
                             tmp->getData(),
-                            volume * volumeMultiplier,
+                            volume,
+                            volumeScale,
                             size,
                             p->ioInfo.audio.channelCount,
                             p->ioInfo.audio.dataType);
