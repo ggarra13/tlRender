@@ -146,7 +146,7 @@ namespace tl
                     std::numeric_limits<T>::max() + std::numeric_limits<T>::min(),
                     std::numeric_limits<T>::max() + std::numeric_limits<T>::min()
                 };
-                std::vector<float> volumeScale(2);
+                std::vector<float> volumeScale;
                 volumeScale.push_back(1.F);
                 volumeScale.push_back(1.F);
                 std::vector<T> result(in0.size(), 0);
@@ -196,7 +196,7 @@ namespace tl
                     0,
                     0
                 };
-                std::vector<float> volumeScale(2);
+                std::vector<float> volumeScale;
                 volumeScale.push_back(1.F);
                 volumeScale.push_back(1.F);
                 std::vector<T> result(in0.size(), 0);
