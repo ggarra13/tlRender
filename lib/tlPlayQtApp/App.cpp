@@ -146,6 +146,11 @@ namespace tl
             return _p->filesModel;
         }
 
+        const QVector<QSharedPointer<qt::TimelinePlayer> >& App::players() const
+        {
+            return _p->players;
+        }
+
         const std::shared_ptr<ui::RecentFilesModel>& App::recentFilesModel() const
         {
             return _p->recentFilesModel;
@@ -387,6 +392,13 @@ namespace tl
             p.settings->setDefaultValue("FileSequence/AudioDirectory", std::string());
             p.settings->setDefaultValue("FileSequence/MaxDigits", 9);
             p.settings->setDefaultValue("SequenceIO/ThreadCount", 16);
+            DevicesModelData devicesModelData;
+            p.settings->setDefaultValue("Devices/DeviceIndex", devicesModelData.deviceIndex);
+            p.settings->setDefaultValue("Devices/DisplayModeIndex", devicesModelData.displayModeIndex);
+            p.settings->setDefaultValue("Devices/PixelTypeIndex", devicesModelData.pixelTypeIndex);
+            p.settings->setDefaultValue("Devices/DeviceEnabled", devicesModelData.deviceEnabled);
+            p.settings->setDefaultValue("Devices/HDRMode", devicesModelData.hdrMode);
+            p.settings->setDefaultValue("Devices/HDRData", devicesModelData.hdrData);
 #if defined(TLRENDER_FFMPEG)
             p.settings->setDefaultValue("FFmpeg/YUVToRGBConversion", false);
             p.settings->setDefaultValue("FFmpeg/ThreadCount", 0);
@@ -453,7 +465,7 @@ namespace tl
                 {
                     std::cout << "output device frame rate: " << value << std::endl;
                 });*/
-            p.devicesModel = DevicesModel::create(p.settings, _context);
+            p.devicesModel = DevicesModel::create(_context);
 
             p.audioModel = play::AudioModel::create(p.settings, _context);
         }
@@ -518,16 +530,24 @@ namespace tl
                 p.devicesModel->observeData(),
                 [this](const DevicesModelData& value)
                 {
+                    TLRENDER_P();
                     const device::PixelType pixelType = value.pixelTypeIndex >= 0 &&
                         value.pixelTypeIndex < value.pixelTypes.size() ?
                         value.pixelTypes[value.pixelTypeIndex] :
                         device::PixelType::None;
-                    _p->outputDevice->setDevice(
+                    p.outputDevice->setDevice(
                         value.deviceIndex - 1,
                         value.displayModeIndex - 1,
                         pixelType);
-                    _p->outputDevice->setDeviceEnabled(value.deviceEnabled);
-                    _p->outputDevice->setHDR(value.hdrMode, value.hdrData);
+                    p.outputDevice->setDeviceEnabled(value.deviceEnabled);
+                    p.outputDevice->setHDR(value.hdrMode, value.hdrData);
+
+                    p.settings->setValue("Devices/DeviceIndex", value.deviceIndex);
+                    p.settings->setValue("Devices/DisplayModeIndex", value.displayModeIndex);
+                    p.settings->setValue("Devices/PixelTypeIndex", value.pixelTypeIndex);
+                    p.settings->setValue("Devices/DeviceEnabled", value.deviceEnabled);
+                    p.settings->setValue("Devices/HDRMode", value.hdrMode);
+                    p.settings->setValue("Devices/HDRData", value.hdrData);
                 });
 
             p.volumeObserver = observer::ValueObserver<float>::create(

@@ -9,7 +9,6 @@
 #
 # * FFmpeg::avcodec
 # * FFmpeg::avdevice
-# * FFmpeg::avfilter
 # * FFmpeg::avformat
 # * FFmpeg::avutil
 # * FFmpeg::swresample
@@ -19,16 +18,12 @@
 #
 # * FFmpeg
 
-find_package(ZLIB REQUIRED)
-
 find_path(FFmpeg_INCLUDE_DIR NAMES libavcodec/avcodec.h)
 set(FFmpeg_INCLUDE_DIRS
-    ${FFmpeg_INCLUDE_DIR}
-    ${ZLIB_INCLUDE_DIRS})
+    ${FFmpeg_INCLUDE_DIR})
 
 find_library(FFmpeg_avcodec_LIBRARY NAMES avcodec)
 find_library(FFmpeg_avdevice_LIBRARY NAMES avdevice)
-find_library(FFmpeg_avfilter_LIBRARY NAMES avfilter)
 find_library(FFmpeg_avformat_LIBRARY NAMES avformat)
 find_library(FFmpeg_avutil_LIBRARY NAMES avutil)
 find_library(FFmpeg_swresample_LIBRARY NAMES swresample)
@@ -38,10 +33,13 @@ set(FFmpeg_LIBRARIES
     ${FFmpeg_avcodec_LIBRARY}
     ${FFmpeg_swscale_LIBRARY}
     ${FFmpeg_avutil_LIBRARY}
-    ${FFmpeg_avfilter_LIBRARY}
     ${FFmpeg_swresample_LIBRARY}
-    ${FFmpeg_avdevice_LIBRARY}
-    ${ZLIB_LIBRARIES})
+    ${FFmpeg_avdevice_LIBRARY})
+if(TLRENDER_NET)
+    find_package(OpenSSL REQUIRED)
+    list(APPEND FFmpeg_INCLUDE_DIRS ${OPENSSL_INCLUDE_DIR})
+    list(APPEND FFmpeg_LIBRARIES ${OPENSSL_LIBRARIES})
+endif()
 if(APPLE)
     list(APPEND FFmpeg_LIBRARIES
         "-framework Security"
@@ -60,7 +58,6 @@ find_package_handle_standard_args(
         FFmpeg_INCLUDE_DIR
         FFmpeg_avcodec_LIBRARY
         FFmpeg_avdevice_LIBRARY
-        FFmpeg_avfilter_LIBRARY
         FFmpeg_avformat_LIBRARY
         FFmpeg_avutil_LIBRARY
         FFmpeg_swresample_LIBRARY
@@ -69,18 +66,22 @@ mark_as_advanced(
     FFmpeg_INCLUDE_DIR
     FFmpeg_avcodec_LIBRARY
     FFmpeg_avdevice_LIBRARY
-    FFmpeg_avfilter_LIBRARY
     FFmpeg_avformat_LIBRARY
     FFmpeg_avutil_LIBRARY
     FFmpeg_swresample_LIBRARY
     FFmpeg_swscale_LIBRARY)
 
 if(FFmpeg_FOUND AND NOT TARGET FFmpeg::avutil)
+    set(FFmpeg_avutil_INTERFACE_LINK_LIBRARIES)
+    if(TLRENDER_NET)
+        list(APPEND FFmpeg_avutil_INTERFACE_LINK_LIBRARIES OpenSSL)
+    endif()
     add_library(FFmpeg::avutil UNKNOWN IMPORTED)
     set_target_properties(FFmpeg::avutil PROPERTIES
         IMPORTED_LOCATION "${FFmpeg_avutil_LIBRARY}"
         INTERFACE_COMPILE_DEFINITIONS FFmpeg_FOUND
-        INTERFACE_INCLUDE_DIRECTORIES "${FFmpeg_INCLUDE_DIR}")
+        INTERFACE_INCLUDE_DIRECTORIES "${FFmpeg_INCLUDE_DIR}"
+        INTERFACE_LINK_LIBRARIES "${FFmpeg_avutil_INTERFACE_LINK_LIBRARIES}")
 endif()
 if(FFmpeg_FOUND AND NOT TARGET FFmpeg::swresample)
     add_library(FFmpeg::swresample UNKNOWN IMPORTED)
@@ -98,17 +99,11 @@ if(FFmpeg_FOUND AND NOT TARGET FFmpeg::avcodec)
     add_library(FFmpeg::avcodec UNKNOWN IMPORTED)
     set_target_properties(FFmpeg::avcodec PROPERTIES
         IMPORTED_LOCATION "${FFmpeg_avcodec_LIBRARY}"
-        INTERFACE_LINK_LIBRARIES "FFmpeg::swresample;FFmpeg::avutil;ZLIB")
-endif()
-if(FFmpeg_FOUND AND NOT TARGET FFmpeg::avfilter)
-    add_library(FFmpeg::avfilter UNKNOWN IMPORTED)
-    set_target_properties(FFmpeg::avfilter PROPERTIES
-        IMPORTED_LOCATION "${FFmpeg_avfilter_LIBRARY}"
-        INTERFACE_LINK_LIBRARIES "FFmpeg::avcodec;FFmpeg::avformat;FFmpeg::swscale;FFmpeg::swresample;FFmpeg::avutil")
+        INTERFACE_LINK_LIBRARIES "FFmpeg::swresample;FFmpeg::avutil")
 endif()
 if(FFmpeg_FOUND AND NOT TARGET FFmpeg::avformat)
     add_library(FFmpeg::avformat UNKNOWN IMPORTED)
-    set(FFmpeg_avformat_LINK_LIBRARIES FFmpeg::avcodec FFmpeg::swresample FFmpeg::avutil ZLIB)
+    set(FFmpeg_avformat_LINK_LIBRARIES FFmpeg::avcodec FFmpeg::swresample FFmpeg::avutil)
     if(${CMAKE_HOST_SYSTEM_PROCESSOR} MATCHES "arm" AND NOT APPLE)
        list(APPEND FFmpeg_avformat_LINK_LIBRARIES atomic)
     endif()
@@ -120,13 +115,12 @@ if(FFmpeg_FOUND AND NOT TARGET FFmpeg::avdevice)
     add_library(FFmpeg::avdevice UNKNOWN IMPORTED)
     set_target_properties(FFmpeg::avdevice PROPERTIES
         IMPORTED_LOCATION "${FFmpeg_avdevice_LIBRARY}"
-        INTERFACE_LINK_LIBRARIES "FFmpeg::avformat;FFmpeg::avfilter;FFmpeg::avcodec;FFmpeg::swscale;FFmpeg::swresample;FFmpeg::avutil")
+        INTERFACE_LINK_LIBRARIES "FFmpeg::avformat;FFmpeg::avcodec;FFmpeg::swscale;FFmpeg::swresample;FFmpeg::avutil")
 endif()
 if(FFmpeg_FOUND AND NOT TARGET FFmpeg)
     add_library(FFmpeg INTERFACE)
     target_link_libraries(FFmpeg INTERFACE FFmpeg::avcodec)
     target_link_libraries(FFmpeg INTERFACE FFmpeg::avdevice)
-    target_link_libraries(FFmpeg INTERFACE FFmpeg::avfilter)
     target_link_libraries(FFmpeg INTERFACE FFmpeg::avformat)
     target_link_libraries(FFmpeg INTERFACE FFmpeg::avutil)
     target_link_libraries(FFmpeg INTERFACE FFmpeg::swresample)

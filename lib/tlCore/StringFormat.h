@@ -2,6 +2,7 @@
 // Copyright (c) 2021-2023 Darby Johnston
 // All rights reserved.
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
