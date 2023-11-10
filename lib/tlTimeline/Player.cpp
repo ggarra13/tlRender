@@ -815,7 +815,7 @@ namespace tl
             if (p.mute->setIfChanged(value))
             {
                 std::unique_lock<std::mutex> lock(p.audioMutex.mutex);
-                //p.audioMutex.mute = value;
+                p.audioMutex.mute = value;
             }
         }
 
