@@ -76,13 +76,13 @@ if(TLRENDER_USD)
     list(APPEND HEADERS_PRIVATE USD.h USDPrivate.h)
     list(APPEND SOURCE USD.cpp USDRead.cpp USDRender.cpp)
     list(APPEND LIBRARIES_PRIVATE tf usd usdGeom usdImagingGL usdAppUtils hd)
-    if(NOT WIN32)
+    if(APPLE)
 	# set_source_files_properties(USD.cpp
 	#     PROPERTIES COMPILE_FLAGS -std=c++14)
 	# set_source_files_properties(USDRead.cpp
 	#     PROPERTIES COMPILE_FLAGS -std=c++14)
-	# set_source_files_properties(USDRender.cpp
-	#     PROPERTIES COMPILE_FLAGS -std=c++14)
+	set_source_files_properties(USDRender.cpp
+	    PROPERTIES COMPILE_FLAGS -D_LIBCPP_ENABLE_CXX17_REMOVED_UNARY_BINARY_FUNCTION)
     endif()
 endif()
 if(TLRENDER_RAW)
