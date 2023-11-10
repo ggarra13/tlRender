@@ -24,6 +24,19 @@ if(WIN32)
     #     no-unit-test)
     # set(OpenSSL_BUILD nmake install)
     # set(OpenSSL_INSTALL nmake install)
+elseif(APPLE)
+    set(OpenSSL_CONFIGURE
+        ./Configure
+        --prefix=${CMAKE_INSTALL_PREFIX}
+        --openssldir=${CMAKE_INSTALL_PREFIX}
+        no-external-tests
+        no-tests
+        no-unit-test)
+    if(CMAKE_OSX_DEPLOYMENT_TARGET)
+        list(APPEND OpenSSL_CONFIGURE -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET})
+    endif()
+    set(OpenSSL_BUILD make)
+    set(OpenSSL_INSTALL make install)
 else()
     set(OpenSSL_CONFIGURE
         ./Configure
@@ -32,9 +45,12 @@ else()
         no-external-tests
         no-tests
         no-unit-test)
-    set(OpenSSL_BUILD make install)
+    set(OpenSSL_BUILD make)
     set(OpenSSL_INSTALL make install)
 
+endif()
+
+if(NOT WIN32)
     ExternalProject_Add(
 	OpenSSL
 	PREFIX ${CMAKE_CURRENT_BINARY_DIR}/OpenSSL
@@ -48,4 +64,3 @@ else()
 
     set(OpenSSL OpenSSL)
 endif()
-
