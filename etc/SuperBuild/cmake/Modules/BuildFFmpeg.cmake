@@ -320,7 +320,7 @@ else()
 	--x86asmexe=${CMAKE_INSTALL_PREFIX}/bin/nasm)
     if(TLRENDER_NET)
 	list(APPEND FFmpeg_CONFIGURE_ARGS
-            --enable-openssl)
+            --enable-openssl --enable-version3)
     endif()
 
     if(TLRENDER_VPX)
