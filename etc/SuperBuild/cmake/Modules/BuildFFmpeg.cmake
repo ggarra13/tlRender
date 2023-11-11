@@ -322,6 +322,15 @@ else()
 	list(APPEND FFmpeg_CONFIGURE_ARGS
             --enable-openssl)
     endif()
+
+    if(TLRENDER_VPX)
+	list(APPEND FFmpeg_CONFIGURE_ARGS
+	    --enable-libvpx)
+    endif()
+    if(TLRENDER_X264)
+	list(APPEND FFmpeg_CONFIGURE_ARGS
+	    --enable-libx264 --enable-gpl)
+    endif()
     if(FFmpeg_SHARED_LIBS)
 	list(APPEND FFmpeg_CONFIGURE_ARGS
             --disable-static
