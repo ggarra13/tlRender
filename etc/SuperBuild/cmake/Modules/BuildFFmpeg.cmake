@@ -320,7 +320,7 @@ else()
 	--x86asmexe=${CMAKE_INSTALL_PREFIX}/bin/nasm)
     if(TLRENDER_NET)
 	list(APPEND FFmpeg_CONFIGURE_ARGS
-            --enable-openssl --enable-version3)
+            --enable-openssl)
     endif()
 
     if(TLRENDER_VPX)
@@ -330,6 +330,10 @@ else()
     if(TLRENDER_X264)
 	list(APPEND FFmpeg_CONFIGURE_ARGS
 	    --enable-libx264 --enable-gpl)
+	if(TLRENDER_NET)
+	    list(APPEND FFmpeg_CONFIGURE_ARGS
+		--enable-version3)
+	endif()
     endif()
     if(FFmpeg_SHARED_LIBS)
 	list(APPEND FFmpeg_CONFIGURE_ARGS
