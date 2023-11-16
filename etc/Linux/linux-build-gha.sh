@@ -19,6 +19,8 @@ xvfb-run glxinfo
 
 if [[ $TLRENDER_X11 = "ON" ]]
 then
+    sudo apt-get install xorg-dev
+fi
 
 # Install Wayland support
 if [[ $TLRENDER_WAYLAND = "ON" ]]
