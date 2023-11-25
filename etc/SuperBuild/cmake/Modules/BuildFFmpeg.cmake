@@ -4,8 +4,6 @@ include(ExternalProject)
 set(FFmpeg_DEPS)
 if(WIN32)
      # Compiled with MSYS script as a pre-flight step.
-elseif(APPLE)
-    list(APPEND FFmpeg_LDFLAGS "--extra-ldflags=-L${CMAKE_INSTALL_PREFIX}/lib")
 else()
     set(FFmpeg_CFLAGS)
     set(FFmpeg_CXXFLAGS)
