@@ -44,7 +44,7 @@ else()
     endif()
 
     
-    set(YASM_BIN_PATH $ENV{PATH})
+    set(YASM_BIN_PATH "$ENV{PATH}")
     
     ExternalProject_Add(
         VPX
@@ -52,8 +52,8 @@ else()
         DEPENDS ${TLRENDER_YASM_DEP} NASM
         GIT_REPOSITORY "https://github.com/webmproject/libvpx.git"
         GIT_TAG ${VPX_TAG}
-	CONFIGURE_COMMAND PATH='${YASM_BIN_PATH}' ./configure ${VPX_CONFIGURE_ARGS}
-	BUILD_COMMAND PATH='${YASM_BIN_PATH}' make
+	CONFIGURE_COMMAND PATH=${YASM_BIN_PATH} ./configure ${VPX_CONFIGURE_ARGS}
+	BUILD_COMMAND PATH=${YASM_BIN_PATH} make
         BUILD_IN_SOURCE 1
     )
 
