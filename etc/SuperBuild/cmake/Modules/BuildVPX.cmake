@@ -36,12 +36,15 @@ else()
         --extra-cxxflags=${VPX_CXX_FLAGS}
     )
 
+
     if(TLRENDER_YASM)
 	list(APPEND VPX_CONFIGURE_ARGS --as=yasm)
     else()
 	list(APPEND VPX_CONFIGURE_ARGS --as=nasm)
     endif()
 
+    message( STATUS "VPX ARGS= ${VPX_CONFIGURE_ARGS}" )
+    
     set( YASM_BIN_PATH $ENV{PATH} )
     
     ExternalProject_Add(
@@ -53,6 +56,8 @@ else()
 	CONFIGURE_COMMAND sh -c "PATH='${YASM_BIN_PATH}' ./configure ${VPX_CONFIGURE_ARGS}"
 	BUILD_COMMAND sh -c "PATH='${YASM_BIN_PATH}' make"
         BUILD_IN_SOURCE 1
+	LOG_CONFIGURE 1
+	LOG_BUILD 1
     )
 
 endif()
