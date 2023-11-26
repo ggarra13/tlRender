@@ -43,9 +43,12 @@ else()
 	list(APPEND VPX_CONFIGURE_ARGS --as=nasm)
     endif()
 
-    message( STATUS "VPX ARGS= ${VPX_CONFIGURE_ARGS}" )
+
+    # Join the list into a single string
+    string(JOIN " " VPX_ARGS_STRING "${VPX_CONFIGURE_ARGS}")
+
     
-    set( YASM_BIN_PATH $ENV{PATH} )
+    set(YASM_BIN_PATH $ENV{PATH})
     
     ExternalProject_Add(
         VPX
@@ -53,11 +56,9 @@ else()
         DEPENDS ${TLRENDER_YASM_DEP} NASM
         GIT_REPOSITORY "https://github.com/webmproject/libvpx.git"
         GIT_TAG ${VPX_TAG}
-	CONFIGURE_COMMAND sh -c "PATH='${YASM_BIN_PATH}' ./configure ${VPX_CONFIGURE_ARGS}"
+	CONFIGURE_COMMAND sh -c "PATH='${YASM_BIN_PATH}' ./configure ${VPX_ARGS_STRING}"
 	BUILD_COMMAND sh -c "PATH='${YASM_BIN_PATH}' make"
         BUILD_IN_SOURCE 1
-	LOG_CONFIGURE 1
-	LOG_BUILD 1
     )
 
 endif()
