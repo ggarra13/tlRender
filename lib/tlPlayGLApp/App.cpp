@@ -5,6 +5,7 @@
 #include <tlPlayGLApp/App.h>
 
 #include <tlPlayGLApp/MainWindow.h>
+#include <tlPlayGLApp/SecondaryWindow.h>
 #include <tlPlayGLApp/SeparateAudioDialog.h>
 #include <tlPlayGLApp/Style.h>
 #include <tlPlayGLApp/Tools.h>
@@ -17,7 +18,6 @@
 #include <tlPlay/ViewportModel.h>
 #include <tlPlay/Util.h>
 
-#include <tlUI/EventLoop.h>
 #include <tlUI/FileBrowser.h>
 #include <tlUI/RecentFilesModel.h>
 
@@ -52,7 +52,9 @@ namespace tl
             std::shared_ptr<play::AudioModel> audioModel;
             std::shared_ptr<ToolsModel> toolsModel;
 
+            std::shared_ptr<observer::Value<bool> > secondaryWindowActive;
             std::shared_ptr<MainWindow> mainWindow;
+            std::shared_ptr<SecondaryWindow> secondaryWindow;
             std::shared_ptr<SeparateAudioDialog> separateAudioDialog;
 
             std::shared_ptr<observer::ValueObserver<std::string> > settingsObserver;
@@ -61,8 +63,8 @@ namespace tl
             std::shared_ptr<observer::ListObserver<int> > layersObserver;
             std::shared_ptr<observer::ValueObserver<size_t> > recentFilesMaxObserver;
             std::shared_ptr<observer::ListObserver<file::Path> > recentFilesObserver;
-            std::shared_ptr<observer::ValueObserver<timeline::ColorConfigOptions> > colorConfigOptionsObserver;
-            std::shared_ptr<observer::ValueObserver<timeline::LUTOptions> > lutOptionsObserver;
+            std::shared_ptr<observer::ValueObserver<bool> > mainWindowObserver;
+            std::shared_ptr<observer::ValueObserver<bool> > secondaryWindowObserver;
             std::shared_ptr<observer::ValueObserver<float> > volumeObserver;
             std::shared_ptr<observer::ValueObserver<bool> > muteObserver;
             std::shared_ptr<observer::ValueObserver<double> > syncOffsetObserver;
@@ -96,7 +98,7 @@ namespace tl
             _modelsInit();
             _observersInit();
             _inputFilesInit();
-            _mainWindowInit();
+            _windowsInit();
         }
 
         App::App() :
@@ -128,7 +130,7 @@ namespace tl
             TLRENDER_P();
             auto fileBrowserSystem = _context->getSystem<ui::FileBrowserSystem>();
             fileBrowserSystem->open(
-                getEventLoop(),
+                p.mainWindow,
                 [this](const file::FileInfo& value)
                 {
                     open(value.getPath());
@@ -139,7 +141,7 @@ namespace tl
         {
             TLRENDER_P();
             p.separateAudioDialog = SeparateAudioDialog::create(_context);
-            p.separateAudioDialog->open(getEventLoop());
+            p.separateAudioDialog->open(p.mainWindow);
             p.separateAudioDialog->setCallback(
                 [this](const file::Path& value, const file::Path& audio)
                 {
@@ -211,11 +213,59 @@ namespace tl
             return _p->mainWindow;
         }
 
-        void App::_drop(const std::vector<std::string>& value)
+        std::shared_ptr<observer::IValue<bool> > App::observeSecondaryWindow() const
         {
-            for (const auto& i : value)
+            return _p->secondaryWindowActive;
+        }
+
+        void App::setSecondaryWindow(bool value)
+        {
+            TLRENDER_P();
+            if (p.secondaryWindowActive->setIfChanged(value))
             {
-                open(file::Path(i));
+                if (value)
+                {
+                    std::vector<int> screens;
+                    for (int i = 0; i < getScreenCount(); ++i)
+                    {
+                        screens.push_back(i);
+                    }
+                    auto i = std::find(
+                        screens.begin(),
+                        screens.end(),
+                        p.mainWindow->getScreen());
+                    if (i != screens.end())
+                    {
+                        screens.erase(i);
+                    }
+                    if (!screens.empty())
+                    {
+                        p.secondaryWindow = SecondaryWindow::create(
+                            std::dynamic_pointer_cast<App>(shared_from_this()),
+                            _context);
+                        addWindow(p.secondaryWindow);
+                        p.secondaryWindow->setFullScreen(true, screens.front());
+                        p.secondaryWindow->show();
+
+                        p.secondaryWindowObserver = observer::ValueObserver<bool>::create(
+                            p.secondaryWindow->observeClose(),
+                            [this](bool value)
+                            {
+                                if (value)
+                                {
+                                    _p->secondaryWindowActive->setIfChanged(false);
+                                    _p->secondaryWindow.reset();
+                                    _p->secondaryWindowObserver.reset();
+                                }
+                            });
+                    }
+                }
+                else
+                {
+                    removeWindow(p.secondaryWindow);
+                    p.secondaryWindow.reset();
+                    p.secondaryWindowObserver.reset();
+                }
             }
         }
 
@@ -258,7 +308,7 @@ namespace tl
                 p.options.resetSettings,
                 _context);
             p.settings->setDefaultValue("Files/RecentMax", 10);
-            p.settings->setDefaultValue("Window/Size", _options.windowSize);
+            p.settings->setDefaultValue("Window/Size", math::Size2i(1920, 1080));
             p.settings->setDefaultValue("Cache/Size", 1);
             p.settings->setDefaultValue("Cache/ReadAhead", 2.0);
             p.settings->setDefaultValue("Cache/ReadBehind", 0.5);
@@ -303,7 +353,7 @@ namespace tl
             p.viewportModel = play::ViewportModel::create(p.settings, _context);
 
             p.colorModel = play::ColorModel::create(_context);
-            p.colorModel->setColorConfigOptions(p.options.colorConfigOptions);
+            p.colorModel->setOCIOOptions(p.options.ocioOptions);
             p.colorModel->setLUTOptions(p.options.lutOptions);
 
             if (auto audioSystem = _context->getSystem<audio::System>())
@@ -374,19 +424,6 @@ namespace tl
                     _p->settings->setValue("Files/Recent", fileNames);
                 });
 
-            p.colorConfigOptionsObserver = observer::ValueObserver<timeline::ColorConfigOptions>::create(
-                p.colorModel->observeColorConfigOptions(),
-                [this](const timeline::ColorConfigOptions& value)
-                {
-                    _setColorConfigOptions(value);
-                });
-            p.lutOptionsObserver = observer::ValueObserver<timeline::LUTOptions>::create(
-                p.colorModel->observeLUTOptions(),
-                [this](const timeline::LUTOptions& value)
-                {
-                    _setLUTOptions(value);
-                });
-
             p.volumeObserver = observer::ValueObserver<float>::create(
                 p.audioModel->observeVolume(),
                 [this](float)
@@ -447,14 +484,34 @@ namespace tl
             }
         }
 
-        void App::_mainWindowInit()
+        void App::_windowsInit()
         {
             TLRENDER_P();
-            setWindowSize(p.settings->getValue<math::Size2i>("Window/Size"));
+
+            p.secondaryWindowActive = observer::Value<bool>::create(false);
+
             p.mainWindow = MainWindow::create(
                 std::dynamic_pointer_cast<App>(shared_from_this()),
                 _context);
-            getEventLoop()->addWidget(p.mainWindow);
+            addWindow(p.mainWindow);
+            p.mainWindow->setWindowSize(
+                _options.windowSize.isValid() ?
+                _options.windowSize :
+                p.settings->getValue<math::Size2i>("Window/Size"));
+            p.mainWindow->setFullScreen(_options.fullscreen);
+            p.mainWindow->show();
+
+            p.mainWindowObserver = observer::ValueObserver<bool>::create(
+                p.mainWindow->observeClose(),
+                [this](bool value)
+                {
+                    if (value)
+                    {
+                        removeWindow(_p->secondaryWindow);
+                        _p->secondaryWindow.reset();
+                        _p->secondaryWindowObserver.reset();
+                    }
+                });
         }
 
         io::Options App::_getIOOptions() const

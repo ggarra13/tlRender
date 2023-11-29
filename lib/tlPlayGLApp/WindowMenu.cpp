@@ -18,6 +18,7 @@ namespace tl
 
             std::shared_ptr<observer::ValueObserver<bool> > fullScreenObserver;
             std::shared_ptr<observer::ValueObserver<bool> > floatOnTopObserver;
+            std::shared_ptr<observer::ValueObserver<bool> > secondaryObserver;
             std::shared_ptr<observer::ValueObserver<WindowOptions> > optionsObserver;
         };
 
@@ -34,24 +35,24 @@ namespace tl
             p.actions = actions;
 
             p.resizeMenu = addSubMenu("Resize");
-            auto appWeak = std::weak_ptr<App>(app);
+            auto mainWindowWeak = std::weak_ptr<MainWindow>(mainWindow);
             auto action = std::make_shared<ui::Action>(
                 "1280x720",
-                [this, appWeak]
+                [mainWindowWeak]
                 {
-                    if (auto app = appWeak.lock())
+                    if (auto mainWindow = mainWindowWeak.lock())
                     {
-                        app->setWindowSize(math::Size2i(1280, 720));
+                        mainWindow->setWindowSize(math::Size2i(1280, 720));
                     }
                 });
             p.resizeMenu->addItem(action);
             action = std::make_shared<ui::Action>(
                 "1920x1080",
-                [this, appWeak]
+                [mainWindowWeak]
                 {
-                    if (auto app = appWeak.lock())
+                    if (auto mainWindow = mainWindowWeak.lock())
                     {
-                        app->setWindowSize(math::Size2i(1920, 1080));
+                        mainWindow->setWindowSize(math::Size2i(1920, 1080));
                     }
                 });
             p.resizeMenu->addItem(action);
@@ -61,9 +62,6 @@ namespace tl
             addItem(p.actions["FloatOnTop"]);
             addDivider();
             addItem(p.actions["Secondary"]);
-            setItemEnabled(p.actions["Secondary"], false);
-            addItem(p.actions["SecondaryFloatOnTop"]);
-            setItemEnabled(p.actions["SecondaryFloatOnTop"], false);
             addDivider();
             addItem(p.actions["FileToolBar"]);
             addItem(p.actions["CompareToolBar"]);
@@ -75,17 +73,24 @@ namespace tl
             addItem(p.actions["StatusToolBar"]);
 
             p.fullScreenObserver = observer::ValueObserver<bool>::create(
-                app->observeFullScreen(),
+                mainWindow->observeFullScreen(),
                 [this](bool value)
                 {
                     setItemChecked(_p->actions["FullScreen"], value);
                 });
 
             p.floatOnTopObserver = observer::ValueObserver<bool>::create(
-                app->observeFloatOnTop(),
+                mainWindow->observeFloatOnTop(),
                 [this](bool value)
                 {
                     setItemChecked(_p->actions["FloatOnTop"], value);
+                });
+
+            p.secondaryObserver = observer::ValueObserver<bool>::create(
+                app->observeSecondaryWindow(),
+                [this](bool value)
+                {
+                    setItemChecked(_p->actions["Secondary"], value);
                 });
 
             p.optionsObserver = observer::ValueObserver<WindowOptions>::create(

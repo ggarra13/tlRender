@@ -209,6 +209,11 @@ namespace tl
             glfwShowWindow(_p->glfwWindow);
         }
 
+        void GLFWWindow::hide()
+        {
+            glfwHideWindow(_p->glfwWindow);
+        }
+
         void GLFWWindow::makeCurrent()
         {
             TLRENDER_P();
@@ -247,12 +252,63 @@ namespace tl
             return glfwWindowShouldClose(_p->glfwWindow);
         }
 
+        int GLFWWindow::getScreen() const
+        {
+            TLRENDER_P();
+
+            math::Vector2i windowPos;
+            math::Size2i windowSize;
+            glfwGetWindowPos(p.glfwWindow, &windowPos.x, &windowPos.y);
+            glfwGetWindowSize(_p->glfwWindow, &windowSize.w, &windowSize.h);
+            const math::Box2i windowBox(windowPos, windowSize);
+
+            struct MonitorData
+            {
+                int index = 0;
+                int width = 0;
+                int height = 0;
+                int refreshRate = 0;
+                math::Box2i intersect;
+            };
+            std::vector<MonitorData> monitorData;
+            int glfwMonitorsCount = 0;
+            GLFWmonitor** glfwMonitors = glfwGetMonitors(&glfwMonitorsCount);
+            for (int i = 0; i < glfwMonitorsCount; ++i)
+            {
+                math::Vector2i monitorPos;
+                glfwGetMonitorPos(glfwMonitors[i], &monitorPos.x, &monitorPos.y);
+                const GLFWvidmode* glfwVidmode = glfwGetVideoMode(glfwMonitors[i]);
+                const math::Box2i monitorBox(
+                    monitorPos.x,
+                    monitorPos.y,
+                    glfwVidmode->width,
+                    glfwVidmode->height);
+                monitorData.push_back(
+                    {
+                        i,
+                        glfwVidmode->width,
+                        glfwVidmode->height,
+                        glfwVidmode->refreshRate,
+                        windowBox.intersect(monitorBox)
+                    });
+            }
+            std::sort(
+                monitorData.begin(),
+                monitorData.end(),
+                [](const MonitorData& a, const MonitorData& b)
+                {
+                    return a.intersect.getSize() > b.intersect.getSize();
+                });
+
+            return !monitorData.empty() ? monitorData.front().index : -1;
+        }
+
         bool GLFWWindow::isFullScreen() const
         {
             return _p->fullScreen;
         }
 
-        void GLFWWindow::setFullScreen(bool value)
+        void GLFWWindow::setFullScreen(bool value, int screen)
         {
             TLRENDER_P();
             if (value == p.fullScreen)
@@ -260,22 +316,32 @@ namespace tl
             p.fullScreen = value;
             if (p.fullScreen)
             {
-                glfwGetWindowSize(_p->glfwWindow, &p.restoreSize.w, &p.restoreSize.h);
-                GLFWmonitor* glfwMonitor = glfwGetPrimaryMonitor();
-                const GLFWvidmode* glfwVidmode = glfwGetVideoMode(glfwMonitor);
-                glfwGetWindowPos(p.glfwWindow, &p.pos.x, &p.pos.y);
-                glfwSetWindowMonitor(
-                    p.glfwWindow,
-                    glfwMonitor,
-                    0,
-                    0,
-                    glfwVidmode->width,
-                    glfwVidmode->height,
-                    glfwVidmode->refreshRate);
+                math::Vector2i windowPos;
+                math::Size2i windowSize;
+                glfwGetWindowPos(p.glfwWindow, &windowPos.x, &windowPos.y);
+                glfwGetWindowSize(_p->glfwWindow, &windowSize.w, &windowSize.h);
+                const math::Box2i windowBox(windowPos, windowSize);
+                p.pos = windowPos;
+                p.restoreSize = windowSize;
+
+                int glfwMonitorsCount = 0;
+                GLFWmonitor** glfwMonitors = glfwGetMonitors(&glfwMonitorsCount);
+                const int monitor = screen < 0 ? getScreen() : screen;
+                if (monitor >= 0 && monitor < glfwMonitorsCount)
+                {
+                    const GLFWvidmode* glfwVidmode = glfwGetVideoMode(glfwMonitors[monitor]);
+                    glfwSetWindowMonitor(
+                        p.glfwWindow,
+                        glfwMonitors[monitor],
+                        0,
+                        0,
+                        glfwVidmode->width,
+                        glfwVidmode->height,
+                        glfwVidmode->refreshRate);
+                }
             }
             else
             {
-                GLFWmonitor* glfwMonitor = glfwGetPrimaryMonitor();
                 glfwSetWindowMonitor(
                     p.glfwWindow,
                     NULL,

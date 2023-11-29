@@ -13,7 +13,7 @@ namespace tl
 {
     namespace ui
     {
-        class EventLoop;
+        class IWindow;
 
         //! Base class for widgets.
         class IWidget : public std::enable_shared_from_this<IWidget>
@@ -65,14 +65,8 @@ namespace tl
             //! Move the child widget to the back of the drawing order.
             void moveToBack(const std::shared_ptr<IWidget>&);
 
-            //! Get the top level widget.
-            std::shared_ptr<IWidget> getTopLevel();
-
-            //! Set the event loop.
-            void setEventLoop(const std::shared_ptr<EventLoop>&);
-
-            //! Get the event loop.
-            const std::weak_ptr<EventLoop>& getEventLoop();
+            //! Get the window.
+            std::shared_ptr<IWindow> getWindow();
 
             ///@}
 
@@ -131,6 +125,12 @@ namespace tl
 
             //! Set whether the widget is visible.
             virtual void setVisible(bool);
+
+            //! Show the widget.
+            void show();
+
+            //! Hide the widget.
+            void hide();
 
             //! Is the widget clipped?
             bool isClipped() const;
@@ -273,7 +273,6 @@ namespace tl
             float _displayScale = 1.F;
             int _updates = 0;
             std::weak_ptr<IWidget> _parent;
-            std::weak_ptr<EventLoop> _eventLoop;
             std::list<std::shared_ptr<IWidget> > _children;
             math::Size2i _sizeHint;
             Stretch _hStretch = Stretch::Fixed;

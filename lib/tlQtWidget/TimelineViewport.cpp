@@ -28,7 +28,7 @@ namespace tl
         {
             std::weak_ptr<system::Context> context;
             timeline::BackgroundOptions backgroundOptions;
-            timeline::ColorConfigOptions colorConfigOptions;
+            timeline::OCIOOptions ocioOptions;
             timeline::LUTOptions lutOptions;
             std::vector<timeline::ImageOptions> imageOptions;
             std::vector<timeline::DisplayOptions> displayOptions;
@@ -78,7 +78,9 @@ namespace tl
         }
 
         TimelineViewport::~TimelineViewport()
-        {}
+        {
+            makeCurrent();
+        }
 
         void TimelineViewport::setBackgroundOptions(const timeline::BackgroundOptions& value)
         {
@@ -89,12 +91,12 @@ namespace tl
             update();
         }
 
-        void TimelineViewport::setColorConfigOptions(const timeline::ColorConfigOptions& value)
+        void TimelineViewport::setOCIOOptions(const timeline::OCIOOptions& value)
         {
             TLRENDER_P();
-            if (value == p.colorConfigOptions)
+            if (value == p.ocioOptions)
                 return;
-            p.colorConfigOptions = value;
+            p.ocioOptions = value;
             update();
         }
 
@@ -375,10 +377,9 @@ namespace tl
                 if (p.buffer)
                 {
                     gl::OffscreenBufferBinding binding(p.buffer);
-                    p.render->begin(
-                        viewportSize,
-                        p.colorConfigOptions,
-                        p.lutOptions);
+                    p.render->begin(viewportSize);
+                    p.render->setOCIOOptions(p.ocioOptions);
+                    p.render->setLUTOptions(p.lutOptions);
                     switch (p.backgroundOptions.type)
                     {
                     case timeline::Background::Solid:

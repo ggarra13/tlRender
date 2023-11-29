@@ -5,7 +5,7 @@
 #include <tlUI/IDialog.h>
 
 #include <tlUI/DrawUtil.h>
-#include <tlUI/EventLoop.h>
+#include <tlUI/IWindow.h>
 
 namespace tl
 {
@@ -41,11 +41,12 @@ namespace tl
         IDialog::~IDialog()
         {}
 
-        void IDialog::open(const std::shared_ptr<EventLoop>& eventLoop)
+        void IDialog::open(const std::shared_ptr<IWindow>& window)
         {
             TLRENDER_P();
             p.open = true;
-            eventLoop->addWidget(shared_from_this());
+            setParent(window);
+            takeKeyFocus();
         }
 
         bool IDialog::isOpen() const
@@ -57,10 +58,7 @@ namespace tl
         {
             TLRENDER_P();
             p.open = false;
-            if (auto eventLoop = getEventLoop().lock())
-            {
-                eventLoop->removeWidget(shared_from_this());
-            }
+            setParent(nullptr);
             if (p.closeCallback)
             {
                 p.closeCallback();

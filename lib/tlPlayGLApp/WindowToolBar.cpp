@@ -5,6 +5,7 @@
 #include <tlPlayGLApp/WindowToolBar.h>
 
 #include <tlPlayGLApp/App.h>
+#include <tlPlayGLApp/MainWindow.h>
 
 #include <tlUI/RowLayout.h>
 #include <tlUI/ToolButton.h>
@@ -24,10 +25,12 @@ namespace tl
 
             std::shared_ptr<observer::ListObserver<std::shared_ptr<timeline::Player> > > playerObserver;
             std::shared_ptr<observer::ValueObserver<bool> > fullScreenObserver;
+            std::shared_ptr<observer::ValueObserver<bool> > secondaryObserver;
         };
 
         void WindowToolBar::_init(
             const std::map<std::string, std::shared_ptr<ui::Action> >& actions,
+            const std::shared_ptr<MainWindow>& mainWindow,
             const std::shared_ptr<App>& app,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
@@ -50,20 +53,28 @@ namespace tl
             p.buttons["Secondary"]->setIcon(p.actions["Secondary"]->icon);
             p.buttons["Secondary"]->setCheckable(p.actions["Secondary"]->checkable);
             p.buttons["Secondary"]->setToolTip(p.actions["Secondary"]->toolTip);
-            p.buttons["Secondary"]->setEnabled(false);
 
             p.layout = ui::HorizontalLayout::create(context, shared_from_this());
             p.layout->setSpacingRole(ui::SizeRole::None);
             p.buttons["FullScreen"]->setParent(p.layout);
             p.buttons["Secondary"]->setParent(p.layout);
 
-            auto appWeak = std::weak_ptr<App>(app);
+            auto mainWindowWeak = std::weak_ptr<MainWindow>(mainWindow);
             p.buttons["FullScreen"]->setCheckedCallback(
+                [mainWindowWeak](bool value)
+                {
+                    if (auto mainWindow = mainWindowWeak.lock())
+                    {
+                        mainWindow->setFullScreen(value);
+                    }
+                });
+            auto appWeak = std::weak_ptr<App>(app);
+            p.buttons["Secondary"]->setCheckedCallback(
                 [appWeak](bool value)
                 {
                     if (auto app = appWeak.lock())
                     {
-                        app->setFullScreen(value);
+                        app->setSecondaryWindow(value);
                     }
                 });
 
@@ -75,10 +86,17 @@ namespace tl
                 });
 
             p.fullScreenObserver = observer::ValueObserver<bool>::create(
-                app->observeFullScreen(),
+                mainWindow->observeFullScreen(),
                 [this](bool value)
                 {
                     _p->buttons["FullScreen"]->setChecked(value);
+                });
+
+            p.secondaryObserver = observer::ValueObserver<bool>::create(
+                app->observeSecondaryWindow(),
+                [this](bool value)
+                {
+                    _p->buttons["Secondary"]->setChecked(value);
                 });
         }
 
@@ -91,12 +109,13 @@ namespace tl
 
         std::shared_ptr<WindowToolBar> WindowToolBar::create(
             const std::map<std::string, std::shared_ptr<ui::Action> >& actions,
+            const std::shared_ptr<MainWindow>& mainWindow,
             const std::shared_ptr<App>& app,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
         {
             auto out = std::shared_ptr<WindowToolBar>(new WindowToolBar);
-            out->_init(actions, app, context, parent);
+            out->_init(actions, mainWindow, app, context, parent);
             return out;
         }
 

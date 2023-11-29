@@ -31,11 +31,11 @@ namespace tl
                 "WindowFullScreen",
                 ui::Key::U,
                 0,
-                [this, appWeak](bool value)
+                [appWeak](bool value)
                 {
                     if (auto app = appWeak.lock())
                     {
-                        app->setFullScreen(value);
+                        app->getMainWindow()->setFullScreen(value);
                     }
                 });
             p.actions["FullScreen"]->toolTip = string::Format(
@@ -48,19 +48,25 @@ namespace tl
 
             p.actions["FloatOnTop"] = std::make_shared<ui::Action>(
                 "Float On Top",
-                [this, appWeak](bool value)
+                [appWeak](bool value)
                 {
                     if (auto app = appWeak.lock())
                     {
-                        app->setFloatOnTop(value);
+                        app->getMainWindow()->setFloatOnTop(value);
                     }
                 });
 
             p.actions["Secondary"] = std::make_shared<ui::Action>(
                 "Secondary",
                 "WindowSecondary",
-                [this](bool value)
+                ui::Key::Y,
+                0,
+                [appWeak](bool value)
                 {
+                    if (auto app = appWeak.lock())
+                    {
+                        app->setSecondaryWindow(value);
+                    }
                 });
             p.actions["Secondary"]->toolTip = string::Format(
                 "Toggle the secondary window\n"
@@ -69,12 +75,6 @@ namespace tl
                 arg(ui::getLabel(
                     p.actions["Secondary"]->shortcut,
                     p.actions["Secondary"]->shortcutModifiers));
-
-            p.actions["SecondaryFloatOnTop"] = std::make_shared<ui::Action>(
-                "Secondary Float On Top",
-                [this](bool value)
-                {
-                });
 
             auto mainWindowWeak = std::weak_ptr<MainWindow>(mainWindow);
             p.actions["FileToolBar"] = std::make_shared<ui::Action>(

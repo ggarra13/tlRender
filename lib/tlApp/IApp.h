@@ -66,6 +66,8 @@ namespace tl
             const std::vector<std::string> getUnusedArgs() const;
             
         protected:
+            const std::string& _getCmdLineName() const;
+
             void _log(const std::string&, log::Type = log::Type::Message);
 
             void _print(const std::string&);

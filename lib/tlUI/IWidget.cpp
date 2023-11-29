@@ -4,7 +4,7 @@
 
 #include <tlUI/IWidget.h>
 
-#include <tlUI/EventLoop.h>
+#include <tlUI/IWindow.h>
 
 namespace tl
 {
@@ -105,7 +105,7 @@ namespace tl
             }
         }
 
-        std::shared_ptr<IWidget> IWidget::getTopLevel()
+        std::shared_ptr<IWindow> IWidget::getWindow()
         {
             std::shared_ptr<IWidget> out = shared_from_this();
             auto parent = out->_parent.lock();
@@ -114,12 +114,7 @@ namespace tl
                 out = parent;
                 parent = parent->_parent.lock();
             }
-            return out;
-        }
-
-        void IWidget::setEventLoop(const std::shared_ptr<EventLoop>& value)
-        {
-            _eventLoop = value;
+            return std::dynamic_pointer_cast<IWindow>(out);
         }
 
         void IWidget::setHStretch(Stretch value)
@@ -206,6 +201,16 @@ namespace tl
             _updates |= Update::Draw;
         }
 
+        void IWidget::show()
+        {
+            setVisible(true);
+        }
+
+        void IWidget::hide()
+        {
+            setVisible(false);
+        }
+
         math::Box2i IWidget::getChildrenClipRect() const
         {
             return _geometry;
@@ -232,9 +237,9 @@ namespace tl
 
         void IWidget::takeKeyFocus()
         {
-            if (auto eventLoop = getEventLoop().lock())
+            if (auto window = getWindow())
             {
-                eventLoop->setKeyFocus(shared_from_this());
+                window->setKeyFocus(shared_from_this());
             }
         }
 
@@ -242,9 +247,9 @@ namespace tl
         {
             if (_keyFocus)
             {
-                if (auto eventLoop = getEventLoop().lock())
+                if (auto window = getWindow())
                 {
-                    eventLoop->setKeyFocus(nullptr);
+                    window->setKeyFocus(nullptr);
                 }
             }
         }
