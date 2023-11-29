@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <nlohmann/json.hpp>
+
 #include <string>
 
 namespace tl
@@ -23,6 +25,10 @@ namespace tl
             bool operator == (const OCIOOptions&) const;
             bool operator != (const OCIOOptions&) const;
         };
+
+        void to_json(nlohmann::json&, const OCIOOptions&);
+
+        void from_json(const nlohmann::json&, OCIOOptions&);
     }
 }
 
