@@ -5,7 +5,6 @@
 #include <tlUI/MenuBar.h>
 
 #include <tlUI/DrawUtil.h>
-#include <tlUI/EventLoop.h>
 #include <tlUI/ListButton.h>
 #include <tlUI/RowLayout.h>
 
@@ -75,11 +74,8 @@ namespace tl
                             if (openMenu && menu != openMenu)
                             {
                                 openMenu->close();
-                                if (auto eventLoop = getEventLoop().lock())
-                                {
-                                    button->takeKeyFocus();
-                                    menu->open(eventLoop, button->getGeometry());
-                                }
+                                button->takeKeyFocus();
+                                menu->open(getWindow(), button->getGeometry());
                             }
                         }
                     });
@@ -88,15 +84,17 @@ namespace tl
                     {
                         if (!menu->isOpen())
                         {
-                            if (auto eventLoop = getEventLoop().lock())
-                            {
-                                menu->open(eventLoop, button->getGeometry());
-                            }
+                            menu->open(getWindow(), button->getGeometry());
                         }
                         else
                         {
                             menu->close();
                         }
+                    });
+                menu->setCloseCallback(
+                    [button]
+                    {
+                        button->takeKeyFocus();
                     });
                 _updates |= Update::Size;
                 _updates |= Update::Draw;

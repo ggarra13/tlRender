@@ -2,30 +2,25 @@
 // Copyright (c) 2021-2023 Darby Johnston
 // All rights reserved.
 
-#include <tlPlayQtApp/SecondaryWindow.h>
+#include <tlPlayGLApp/SecondaryWindow.h>
 
-#include <tlPlayQtApp/App.h>
+#include <tlPlayGLApp/App.h>
 
 #include <tlPlay/ColorModel.h>
 #include <tlPlay/FilesModel.h>
-#include <tlPlay/Settings.h>
 #include <tlPlay/ViewportModel.h>
 
-#include <tlQtWidget/TimelineViewport.h>
-
-#include <QBoxLayout>
-#include <QKeyEvent>
+#include <tlTimelineUI/TimelineViewport.h>
 
 namespace tl
 {
-    namespace play_qt
+    namespace play_gl
     {
         struct SecondaryWindow::Private
         {
-            App* app = nullptr;
+            std::shared_ptr<timelineui::TimelineViewport> viewport;
 
-            qtwidget::TimelineViewport* viewport = nullptr;
-
+            std::shared_ptr<observer::ListObserver<std::shared_ptr<timeline::Player> > > playersObserver;
             std::shared_ptr<observer::ValueObserver<timeline::BackgroundOptions> > backgroundOptionsObserver;
             std::shared_ptr<observer::ValueObserver<timeline::OCIOOptions> > ocioOptionsObserver;
             std::shared_ptr<observer::ValueObserver<timeline::LUTOptions> > lutOptionsObserver;
@@ -34,95 +29,88 @@ namespace tl
             std::shared_ptr<observer::ValueObserver<timeline::CompareOptions> > compareOptionsObserver;
         };
 
-        SecondaryWindow::SecondaryWindow(
-            App* app,
-            QWidget* parent) :
-            QWidget(parent),
-            _p(new  Private)
+        void SecondaryWindow::_init(
+            const std::shared_ptr<App>& app,
+            const std::shared_ptr<system::Context>& context)
         {
+            Window::_init("tlplay-gl 2", context);
             TLRENDER_P();
 
-            setAttribute(Qt::WA_DeleteOnClose);
+            p.viewport = timelineui::TimelineViewport::create(context);
+            p.viewport->setParent(shared_from_this());
 
-            p.app = app;
-
-            p.viewport = new qtwidget::TimelineViewport(app->getContext());
-
-            auto layout = new QVBoxLayout;
-            layout->setContentsMargins(0, 0, 0, 0);
-            layout->addWidget(p.viewport);
-            setLayout(layout);
-
-            auto settings = app->settings();
-            std::string geometry;
-            settings->setDefaultValue("SecondaryWindow/Size", math::Size2i(1920, 1080));
-
-            const math::Size2i size = settings->getValue<math::Size2i>("SecondaryWindow/Size");
-            resize(size.w, size.h);
-
-            p.viewport->setTimelinePlayers(app->activePlayers());
-
-            connect(
-                app,
-                &App::activePlayersChanged,
-                [this](const QVector<QSharedPointer<qt::TimelinePlayer> >& value)
+            p.playersObserver = observer::ListObserver<std::shared_ptr<timeline::Player> >::create(
+                app->observeActivePlayers(),
+                [this](const std::vector<std::shared_ptr<timeline::Player> >& value)
                 {
-                    _p->viewport->setTimelinePlayers(value);
+                    _p->viewport->setPlayers(value);
                 });
 
             p.backgroundOptionsObserver = observer::ValueObserver<timeline::BackgroundOptions>::create(
-                app->viewportModel()->observeBackgroundOptions(),
+                app->getViewportModel()->observeBackgroundOptions(),
                 [this](const timeline::BackgroundOptions& value)
                 {
                     _p->viewport->setBackgroundOptions(value);
                 });
 
             p.ocioOptionsObserver = observer::ValueObserver<timeline::OCIOOptions>::create(
-                app->colorModel()->observeOCIOOptions(),
+                app->getColorModel()->observeOCIOOptions(),
                 [this](const timeline::OCIOOptions& value)
                 {
                     _p->viewport->setOCIOOptions(value);
                 });
 
             p.lutOptionsObserver = observer::ValueObserver<timeline::LUTOptions>::create(
-                app->colorModel()->observeLUTOptions(),
+                app->getColorModel()->observeLUTOptions(),
                 [this](const timeline::LUTOptions& value)
                 {
                     _p->viewport->setLUTOptions(value);
                 });
 
             p.imageOptionsObserver = observer::ValueObserver<timeline::ImageOptions>::create(
-                app->colorModel()->observeImageOptions(),
+                app->getColorModel()->observeImageOptions(),
                 [this](const timeline::ImageOptions& value)
                 {
                     _p->viewport->setImageOptions({ value });
                 });
 
             p.displayOptionsObserver = observer::ValueObserver<timeline::DisplayOptions>::create(
-                app->colorModel()->observeDisplayOptions(),
+                app->getColorModel()->observeDisplayOptions(),
                 [this](const timeline::DisplayOptions& value)
                 {
                     _p->viewport->setDisplayOptions({ value });
                 });
 
             p.compareOptionsObserver = observer::ValueObserver<timeline::CompareOptions>::create(
-                app->filesModel()->observeCompareOptions(),
+                app->getFilesModel()->observeCompareOptions(),
                 [this](const timeline::CompareOptions& value)
                 {
                     _p->viewport->setCompareOptions(value);
                 });
         }
 
+        SecondaryWindow::SecondaryWindow() :
+            _p(new Private)
+        {}
+
         SecondaryWindow::~SecondaryWindow()
         {
             TLRENDER_P();
-            const math::Size2i size(width(), height());
-            p.app->settings()->setValue("SecondaryWindow/Size", size);
+            _makeCurrent();
+            auto i = std::find(_children.begin(), _children.end(), p.viewport);
+            if (i != _children.end())
+            {
+                _children.erase(i);
+            }
         }
 
-        qtwidget::TimelineViewport* SecondaryWindow::viewport() const
+        std::shared_ptr<SecondaryWindow> SecondaryWindow::create(
+            const std::shared_ptr<App>& app,
+            const std::shared_ptr<system::Context>& context)
         {
-            return _p->viewport;
+            auto out = std::shared_ptr<SecondaryWindow>(new SecondaryWindow);
+            out->_init(app, context);
+            return out;
         }
     }
 }

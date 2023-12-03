@@ -119,6 +119,11 @@ namespace tl
         {
             return _unusedArgs;
         }
+        
+        const std::string& IApp::_getCmdLineName() const
+        {
+            return _p->cmdLine.name;
+        }
 
         void IApp::_log(const std::string& value, log::Type type)
         {

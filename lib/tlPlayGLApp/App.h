@@ -26,14 +26,14 @@ namespace tl
         class ViewportModel;
     }
 
-    //! "tlplay-gl" application.
+    //! tlplay-gl application.
     namespace play_gl
     {
         class MainWindow;
         class ToolsModel;
 
         //! Application.
-        class App : public gl::IApp
+        class App : public gl_app::IApp
         {
             TLRENDER_NON_COPYABLE(App);
 
@@ -87,8 +87,13 @@ namespace tl
             //! Get the main window.
             const std::shared_ptr<MainWindow>& getMainWindow() const;
 
+            //! Observe whether the secondary window is active.
+            std::shared_ptr<observer::IValue<bool> > observeSecondaryWindow() const;
+
+            //! Set whether the secondary window is active.
+            void setSecondaryWindow(bool);
+
         protected:
-            void _drop(const std::vector<std::string>&) override;
             void _tick() override;
 
         private:
@@ -97,7 +102,7 @@ namespace tl
             void _modelsInit();
             void _observersInit();
             void _inputFilesInit();
-            void _mainWindowInit();
+            void _windowsInit();
 
             io::Options _getIOOptions() const;
             std::vector<std::shared_ptr<timeline::Player> > _getActivePlayers() const;

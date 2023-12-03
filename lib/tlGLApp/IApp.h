@@ -4,19 +4,22 @@
 
 #include <tlApp/IApp.h>
 
-#include <tlUI/EventLoop.h>
-#include <tlUI/Style.h>
+#include <tlUI/Event.h>
 
-#include <tlCore/Image.h>
-#include <tlCore/ValueObserver.h>
-
-struct GLFWwindow;
+#include <tlCore/Size.h>
 
 namespace tl
 {
-    //! OpenGL application support.
-    namespace gl
+    namespace ui
     {
+        class Style;
+    }
+
+    //! OpenGL application support.
+    namespace gl_app
+    {
+        class Window;
+
         //! Application options.
         struct Options
         {
@@ -49,55 +52,31 @@ namespace tl
             //! Exit the application.
             void exit(int = 0);
 
-            //! Get the event loop.
-            const std::shared_ptr<ui::EventLoop> getEventLoop() const;
-
             //! Get the style.
             const std::shared_ptr<ui::Style> getStyle() const;
 
-            //! Get the window size.
-            math::Size2i getWindowSize() const;
+            //! Get the number of screens.
+            int getScreenCount() const;
 
-            //! Set the window size.
-            void setWindowSize(const math::Size2i&);
+            //! Add a window.
+            void addWindow(const std::shared_ptr<Window>&);
 
-            //! Get whether the window is in full screen mode.
-            bool isFullScreen() const;
-
-            //! Observe whether the window is in full screen mode.
-            std::shared_ptr<observer::IValue<bool> > observeFullScreen() const;
-
-            //! Set whether the window is in full screen mode.
-            void setFullScreen(bool);
-
-            //! Get whether the window is floating on top.
-            bool isFloatOnTop() const;
-
-            //! Observe whether the window is floating on top.
-            std::shared_ptr<observer::IValue<bool> > observeFloatOnTop() const;
-
-            //! Set whether the window is floating on top.
-            void setFloatOnTop(bool);
+            //! Remove a window.
+            void removeWindow(const std::shared_ptr<Window>&);
 
         protected:
-            void _setColorConfigOptions(const timeline::ColorConfigOptions&);
-            void _setLUTOptions(const timeline::LUTOptions&);
-
-            std::shared_ptr<OffscreenBuffer> _capture(const math::Box2i&);
-
-            virtual void _drop(const std::vector<std::string>&);
-
             virtual void _tick();
+            void _tickEvent(
+                const std::shared_ptr<ui::IWidget>&,
+                bool visible,
+                bool enabled,
+                const ui::TickEvent&);
 
             Options _options;
 
         private:
-            void _buttonCallback(int, int, int);
-            void _scrollCallback(const math::Vector2f&);
-            void _keyCallback(int, int, int, int);
-            void _charCallback(unsigned int);
-            void _dropCallback(int, const char**);
-            
+            void _removeWindow(const std::shared_ptr<Window>&);
+
             TLRENDER_PRIVATE();
         };
     }

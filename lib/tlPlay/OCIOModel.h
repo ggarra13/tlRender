@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include <tlTimeline/ColorConfigOptions.h>
+#include <tlTimeline/OCIOOptions.h>
 
 #include <tlCore/ValueObserver.h>
 
@@ -17,8 +17,8 @@ namespace tl
 
     namespace play
     {
-        //! Color configuration model data.
-        struct ColorConfigModelData
+        //! OpenColorIO model data.
+        struct OCIOModelData
         {
             bool enabled = false;
             std::string fileName;
@@ -28,32 +28,34 @@ namespace tl
             size_t displayIndex = 0;
             std::vector<std::string> views;
             size_t viewIndex = 0;
+            std::vector<std::string> looks;
+            size_t lookIndex = 0;
 
-            bool operator == (const ColorConfigModelData&) const;
-            bool operator != (const ColorConfigModelData&) const;
+            bool operator == (const OCIOModelData&) const;
+            bool operator != (const OCIOModelData&) const;
         };
 
-        //! Color configuration model.
-        class ColorConfigModel : public std::enable_shared_from_this<ColorConfigModel>
+        //! OpenColorIO model.
+        class OCIOModel : public std::enable_shared_from_this<OCIOModel>
         {
-            TLRENDER_NON_COPYABLE(ColorConfigModel);
+            TLRENDER_NON_COPYABLE(OCIOModel);
 
         protected:
             void _init(const std::shared_ptr<system::Context>&);
 
-            ColorConfigModel();
+            OCIOModel();
 
         public:
-            ~ColorConfigModel();
+            ~OCIOModel();
 
             //! Create a new model.
-            static std::shared_ptr<ColorConfigModel> create(const std::shared_ptr<system::Context>&);
+            static std::shared_ptr<OCIOModel> create(const std::shared_ptr<system::Context>&);
 
-            //! Observe the color configuration options.
-            std::shared_ptr<observer::IValue<timeline::ColorConfigOptions> > observeConfigOptions() const;
+            //! Observe the options.
+            std::shared_ptr<observer::IValue<timeline::OCIOOptions> > observeOptions() const;
 
-            //! Set the color configuration options.
-            void setConfigOptions(const timeline::ColorConfigOptions&);
+            //! Set the options.
+            void setOptions(const timeline::OCIOOptions&);
 
             //! Set whether the color configuration is enabled.
             void setEnabled(bool);
@@ -62,7 +64,7 @@ namespace tl
             void setConfig(const std::string& fileName);
 
             //! Observe the model data.
-            std::shared_ptr<observer::IValue<ColorConfigModelData> > observeData() const;
+            std::shared_ptr<observer::IValue<OCIOModelData> > observeData() const;
 
             //! Set the input index.
             void setInputIndex(size_t);
@@ -72,6 +74,9 @@ namespace tl
 
             //! Set the view index.
             void setViewIndex(size_t);
+
+            //! Set the look index.
+            void setLookIndex(size_t);
 
         private:
             void _configUpdate();

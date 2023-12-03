@@ -15,7 +15,6 @@ set(HEADERS
     DrawUtil.h
     DrivesModel.h
     Event.h
-    EventLoop.h
     FileBrowser.h
     FileEdit.h
     FloatEdit.h
@@ -33,6 +32,7 @@ set(HEADERS
     IWidgetInline.h
     IWidgetOptions.h
     IWidgetPopup.h
+    IWindow.h
     IconLibrary.h
     Icon.h
     IncButtons.h
@@ -90,7 +90,6 @@ set(SOURCE
     DrawUtil.cpp
     DrivesModel.cpp
     Event.cpp
-    EventLoop.cpp
     FileBrowser.cpp
     FileEdit.cpp
     FileBrowserButton.cpp
@@ -112,6 +111,7 @@ set(SOURCE
     IWidget.cpp
     IWidgetOptions.cpp
     IWidgetPopup.cpp
+    IWindow.cpp
     IconLibrary.cpp
     Icon.cpp
     IncButtons.cpp

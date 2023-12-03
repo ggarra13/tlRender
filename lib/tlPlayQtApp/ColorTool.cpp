@@ -5,8 +5,8 @@
 #include <tlPlayQtApp/ColorTool.h>
 
 #include <tlPlayQtApp/App.h>
-#include <tlPlayQtApp/ColorConfigModel.h>
 #include <tlPlayQtApp/DockTitleBar.h>
+#include <tlPlayQtApp/OCIOModel.h>
 
 #include <tlQtWidget/FileWidget.h>
 #include <tlQtWidget/FloatEditSlider.h>
@@ -31,19 +31,19 @@ namespace tl
 {
     namespace play_qt
     {
-        struct ConfigWidget::Private
+        struct OCIOWidget::Private
         {
-            std::shared_ptr<play::ColorConfigModel> colorConfigModel;
+            std::shared_ptr<play::OCIOModel> ocioModel;
 
             QCheckBox* enabledCheckBox = nullptr;
             qtwidget::FileWidget* fileWidget = nullptr;
 
-            std::shared_ptr<observer::ValueObserver<timeline::ColorConfigOptions> > configOptionsObserver;
-            std::shared_ptr<observer::ValueObserver<timeline::ColorConfigOptions> > configOptionsObserver2;
-            std::shared_ptr<observer::ValueObserver<play::ColorConfigModelData> > dataObserver;
+            std::shared_ptr<observer::ValueObserver<timeline::OCIOOptions> > optionsObserver;
+            std::shared_ptr<observer::ValueObserver<timeline::OCIOOptions> > optionsObserver2;
+            std::shared_ptr<observer::ValueObserver<play::OCIOModelData> > dataObserver;
         };
 
-        ConfigWidget::ConfigWidget(App* app, QWidget* parent) :
+        OCIOWidget::OCIOWidget(App* app, QWidget* parent) :
             QWidget(parent),
             _p(new Private)
         {
@@ -53,53 +53,67 @@ namespace tl
             setEnabled(false);
 #endif // TLRENDER_OCIO
 
-            p.colorConfigModel = play::ColorConfigModel::create(app->getContext());
+            p.ocioModel = play::OCIOModel::create(app->getContext());
 
             p.enabledCheckBox = new QCheckBox(tr("Enabled"));
 
-            auto inputListModel = new ColorInputListModel(p.colorConfigModel, this);
-            auto inputListProxyModel = new QSortFilterProxyModel(this);
-            inputListProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
-            inputListProxyModel->setFilterKeyColumn(-1);
-            inputListProxyModel->setSourceModel(inputListModel);
+            auto inputModel = new OCIOInputModel(p.ocioModel, this);
+            auto inputProxyModel = new QSortFilterProxyModel(this);
+            inputProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
+            inputProxyModel->setFilterKeyColumn(-1);
+            inputProxyModel->setSourceModel(inputModel);
 
-            auto displayListModel = new ColorDisplayListModel(p.colorConfigModel, this);
-            auto displayListProxyModel = new QSortFilterProxyModel(this);
-            displayListProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
-            displayListProxyModel->setFilterKeyColumn(-1);
-            displayListProxyModel->setSourceModel(displayListModel);
+            auto displayModel = new OCIODisplayModel(p.ocioModel, this);
+            auto displayProxyModel = new QSortFilterProxyModel(this);
+            displayProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
+            displayProxyModel->setFilterKeyColumn(-1);
+            displayProxyModel->setSourceModel(displayModel);
 
-            auto viewListModel = new ColorViewListModel(p.colorConfigModel, this);
-            auto viewListProxyModel = new QSortFilterProxyModel(this);
-            viewListProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
-            viewListProxyModel->setFilterKeyColumn(-1);
-            viewListProxyModel->setSourceModel(viewListModel);
+            auto viewModel = new OCIOViewModel(p.ocioModel, this);
+            auto viewProxyModel = new QSortFilterProxyModel(this);
+            viewProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
+            viewProxyModel->setFilterKeyColumn(-1);
+            viewProxyModel->setSourceModel(viewModel);
+
+            auto lookModel = new OCIOLookModel(p.ocioModel, this);
+            auto lookProxyModel = new QSortFilterProxyModel(this);
+            lookProxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
+            lookProxyModel->setFilterKeyColumn(-1);
+            lookProxyModel->setSourceModel(lookModel);
 
             p.fileWidget = new qtwidget::FileWidget(app->getContext());
 
-            auto inputListView = new QListView;
-            inputListView->setAlternatingRowColors(true);
-            inputListView->setSelectionMode(QAbstractItemView::NoSelection);
-            inputListView->setModel(inputListProxyModel);
+            auto inputView = new QListView;
+            inputView->setAlternatingRowColors(true);
+            inputView->setSelectionMode(QAbstractItemView::NoSelection);
+            inputView->setModel(inputProxyModel);
 
             auto inputSearchWidget = new qtwidget::SearchWidget;
             inputSearchWidget->setContentsMargins(2, 2, 2, 2);
 
-            auto displayListView = new QListView;
-            displayListView->setAlternatingRowColors(true);
-            displayListView->setSelectionMode(QAbstractItemView::NoSelection);
-            displayListView->setModel(displayListProxyModel);
+            auto displayView = new QListView;
+            displayView->setAlternatingRowColors(true);
+            displayView->setSelectionMode(QAbstractItemView::NoSelection);
+            displayView->setModel(displayProxyModel);
 
             auto displaySearchWidget = new qtwidget::SearchWidget;
             displaySearchWidget->setContentsMargins(2, 2, 2, 2);
 
-            auto viewListView = new QListView;
-            viewListView->setAlternatingRowColors(true);
-            viewListView->setSelectionMode(QAbstractItemView::NoSelection);
-            viewListView->setModel(viewListProxyModel);
+            auto viewView = new QListView;
+            viewView->setAlternatingRowColors(true);
+            viewView->setSelectionMode(QAbstractItemView::NoSelection);
+            viewView->setModel(viewProxyModel);
 
             auto viewSearchWidget = new qtwidget::SearchWidget;
             viewSearchWidget->setContentsMargins(2, 2, 2, 2);
+
+            auto lookView = new QListView;
+            lookView->setAlternatingRowColors(true);
+            lookView->setSelectionMode(QAbstractItemView::NoSelection);
+            lookView->setModel(lookProxyModel);
+
+            auto lookSearchWidget = new qtwidget::SearchWidget;
+            lookSearchWidget->setContentsMargins(2, 2, 2, 2);
 
             auto formLayout = new QFormLayout;
             formLayout->addRow(p.enabledCheckBox);
@@ -110,7 +124,7 @@ namespace tl
             auto layout = new QVBoxLayout;
             layout->setContentsMargins(0, 0, 0, 0);
             layout->setSpacing(0);
-            layout->addWidget(inputListView);
+            layout->addWidget(inputView);
             layout->addWidget(inputSearchWidget);
             widget->setLayout(layout);
             tabWidget->addTab(widget, tr("Input"));
@@ -118,7 +132,7 @@ namespace tl
             layout = new QVBoxLayout;
             layout->setContentsMargins(0, 0, 0, 0);
             layout->setSpacing(0);
-            layout->addWidget(displayListView);
+            layout->addWidget(displayView);
             layout->addWidget(displaySearchWidget);
             widget->setLayout(layout);
             tabWidget->addTab(widget, tr("Display"));
@@ -126,10 +140,18 @@ namespace tl
             layout = new QVBoxLayout;
             layout->setContentsMargins(0, 0, 0, 0);
             layout->setSpacing(0);
-            layout->addWidget(viewListView);
+            layout->addWidget(viewView);
             layout->addWidget(viewSearchWidget);
             widget->setLayout(layout);
             tabWidget->addTab(widget, tr("View"));
+            widget = new QWidget;
+            layout = new QVBoxLayout;
+            layout->setContentsMargins(0, 0, 0, 0);
+            layout->setSpacing(0);
+            layout->addWidget(lookView);
+            layout->addWidget(lookSearchWidget);
+            widget->setLayout(layout);
+            tabWidget->addTab(widget, tr("Look"));
 
             layout = new QVBoxLayout;
             layout->addLayout(formLayout);
@@ -141,7 +163,7 @@ namespace tl
                 &QCheckBox::toggled,
                 [this](bool value)
                 {
-                    _p->colorConfigModel->setEnabled(value);
+                    _p->ocioModel->setEnabled(value);
                 });
 
             connect(
@@ -149,80 +171,95 @@ namespace tl
                 &qtwidget::FileWidget::fileChanged,
                 [this](const QString& value)
                 {
-                    _p->colorConfigModel->setConfig(value.toUtf8().data());
+                    _p->ocioModel->setConfig(value.toUtf8().data());
                 });
 
             connect(
-                inputListView,
+                inputView,
                 &QAbstractItemView::activated,
-                [this, inputListProxyModel](const QModelIndex& index)
+                [this, inputProxyModel](const QModelIndex& index)
                 {
-                    auto sourceIndex = inputListProxyModel->mapToSource(index);
-                    _p->colorConfigModel->setInputIndex(sourceIndex.row());
+                    auto sourceIndex = inputProxyModel->mapToSource(index);
+                    _p->ocioModel->setInputIndex(sourceIndex.row());
                 });
 
             connect(
                 inputSearchWidget,
                 SIGNAL(searchChanged(const QString&)),
-                inputListProxyModel,
+                inputProxyModel,
                 SLOT(setFilterFixedString(const QString&)));
 
             connect(
-                displayListView,
+                displayView,
                 &QAbstractItemView::activated,
-                [this, displayListProxyModel](const QModelIndex& index)
+                [this, displayProxyModel](const QModelIndex& index)
                 {
-                    auto sourceIndex = displayListProxyModel->mapToSource(index);
-                    _p->colorConfigModel->setDisplayIndex(sourceIndex.row());
+                    auto sourceIndex = displayProxyModel->mapToSource(index);
+                    _p->ocioModel->setDisplayIndex(sourceIndex.row());
                 });
 
             connect(
                 displaySearchWidget,
                 SIGNAL(searchChanged(const QString&)),
-                displayListProxyModel,
+                displayProxyModel,
                 SLOT(setFilterFixedString(const QString&)));
 
             connect(
-                viewListView,
+                viewView,
                 &QAbstractItemView::activated,
-                [this, viewListProxyModel](const QModelIndex& index)
+                [this, viewProxyModel](const QModelIndex& index)
                 {
-                    auto sourceIndex = viewListProxyModel->mapToSource(index);
-                    _p->colorConfigModel->setViewIndex(sourceIndex.row());
+                    auto sourceIndex = viewProxyModel->mapToSource(index);
+                    _p->ocioModel->setViewIndex(sourceIndex.row());
                 });
 
             connect(
                 viewSearchWidget,
                 SIGNAL(searchChanged(const QString&)),
-                viewListProxyModel,
+                viewProxyModel,
                 SLOT(setFilterFixedString(const QString&)));
 
-            p.configOptionsObserver = observer::ValueObserver<timeline::ColorConfigOptions>::create(
-                p.colorConfigModel->observeConfigOptions(),
-                [app](const timeline::ColorConfigOptions& value)
+            connect(
+                lookView,
+                &QAbstractItemView::activated,
+                [this, lookProxyModel](const QModelIndex& index)
                 {
-                    app->colorModel()->setColorConfigOptions(value);
+                    auto sourceIndex = lookProxyModel->mapToSource(index);
+                    _p->ocioModel->setLookIndex(sourceIndex.row());
                 });
 
-            p.configOptionsObserver2 = observer::ValueObserver<timeline::ColorConfigOptions>::create(
-                app->colorModel()->observeColorConfigOptions(),
-                [this](const timeline::ColorConfigOptions& value)
+            connect(
+                lookSearchWidget,
+                SIGNAL(searchChanged(const QString&)),
+                lookProxyModel,
+                SLOT(setFilterFixedString(const QString&)));
+
+            p.optionsObserver = observer::ValueObserver<timeline::OCIOOptions>::create(
+                p.ocioModel->observeOptions(),
+                [app](const timeline::OCIOOptions& value)
                 {
-                    _p->colorConfigModel->setConfigOptions(value);
+                    app->colorModel()->setOCIOOptions(value);
                 });
 
-            p.dataObserver = observer::ValueObserver<play::ColorConfigModelData>::create(
-                p.colorConfigModel->observeData(),
-                [this](const play::ColorConfigModelData& value)
+            p.optionsObserver2 = observer::ValueObserver<timeline::OCIOOptions>::create(
+                app->colorModel()->observeOCIOOptions(),
+                [this](const timeline::OCIOOptions& value)
+                {
+                    _p->ocioModel->setOptions(value);
+                });
+
+            p.dataObserver = observer::ValueObserver<play::OCIOModelData>::create(
+                p.ocioModel->observeData(),
+                [this](const play::OCIOModelData& value)
                 {
                     _widgetUpdate(value);
                 });
         }
 
-        ConfigWidget::~ConfigWidget()
+        OCIOWidget::~OCIOWidget()
         {}
 
-        void ConfigWidget::_widgetUpdate(const play::ColorConfigModelData& value)
+        void OCIOWidget::_widgetUpdate(const play::OCIOModelData& value)
         {
             TLRENDER_P();
             {
@@ -337,7 +374,7 @@ namespace tl
             }
         }
 
-        struct ColorControlsWidget::Private
+        struct ColorWidget::Private
         {
             QCheckBox* enabledCheckBox = nullptr;
             qtwidget::FloatEditSlider* addSlider = nullptr;
@@ -350,7 +387,7 @@ namespace tl
             std::shared_ptr<observer::ValueObserver<timeline::DisplayOptions> > displayObserver;
         };
 
-        ColorControlsWidget::ColorControlsWidget(App* app, QWidget* parent) :
+        ColorWidget::ColorWidget(App* app, QWidget* parent) :
             QWidget(parent),
             _p(new Private)
         {
@@ -481,10 +518,10 @@ namespace tl
                 });
         }
 
-        ColorControlsWidget::~ColorControlsWidget()
+        ColorWidget::~ColorWidget()
         {}
 
-        void ColorControlsWidget::_widgetUpdate(const timeline::DisplayOptions& value)
+        void ColorWidget::_widgetUpdate(const timeline::DisplayOptions& value)
         {
             TLRENDER_P();
             {
@@ -871,9 +908,9 @@ namespace tl
 
         struct ColorTool::Private
         {
-            ConfigWidget* configWidget = nullptr;
+            OCIOWidget* ocioWidget = nullptr;
             LUTWidget* lutWidget = nullptr;
-            ColorControlsWidget* colorControlsWidget = nullptr;
+            ColorWidget* colorWidget = nullptr;
             LevelsWidget* levelsWidget = nullptr;
             EXRDisplayWidget* exrDisplayWidget = nullptr;
             SoftClipWidget* softClipWidget = nullptr;
@@ -885,16 +922,16 @@ namespace tl
         {
             TLRENDER_P();
 
-            p.configWidget = new ConfigWidget(app);
+            p.ocioWidget = new OCIOWidget(app);
             p.lutWidget = new LUTWidget(app);
-            p.colorControlsWidget = new ColorControlsWidget(app);
+            p.colorWidget = new ColorWidget(app);
             p.levelsWidget = new LevelsWidget(app);
             p.exrDisplayWidget = new EXRDisplayWidget(app);
             p.softClipWidget = new SoftClipWidget(app);
 
-            addBellows(tr("Configuration"), p.configWidget);
+            addBellows(tr("OCIO"), p.ocioWidget);
             addBellows(tr("LUT"), p.lutWidget);
-            addBellows(tr("Color Controls"), p.colorControlsWidget);
+            addBellows(tr("Color"), p.colorWidget);
             addBellows(tr("Levels"), p.levelsWidget);
             addBellows(tr("EXR Display"), p.exrDisplayWidget);
             addBellows(tr("Soft Clip"), p.softClipWidget);

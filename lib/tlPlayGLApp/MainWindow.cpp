@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
+// SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2021-2023 Darby Johnston
 // All rights reserved.
 
@@ -34,6 +35,7 @@
 #include <tlPlayGLApp/WindowMenu.h>
 #include <tlPlayGLApp/WindowToolBar.h>
 
+#include <tlPlay/AudioModel.h>
 #include <tlPlay/ColorModel.h>
 #include <tlPlay/Info.h>
 #include <tlPlay/Settings.h>
@@ -51,6 +53,7 @@
 #include <tlUI/Menu.h>
 #include <tlUI/MenuBar.h>
 #include <tlUI/RowLayout.h>
+#include <tlUI/Spacer.h>
 #include <tlUI/Splitter.h>
 #include <tlUI/TimeEdit.h>
 #include <tlUI/TimeLabel.h>
@@ -125,13 +128,14 @@ namespace tl
             std::shared_ptr<ui::ButtonGroup> playbackButtonGroup;
             std::shared_ptr<ui::ButtonGroup> frameButtonGroup;
             std::shared_ptr<ui::TimeEdit> currentTimeEdit;
+            std::shared_ptr<ui::TimeLabel> durationLabel;
+            std::shared_ptr<ui::ComboBox> timeUnitsComboBox;
             std::shared_ptr<ui::DoubleEdit> speedEdit;
             std::shared_ptr<ui::ToolButton> speedButton;
             std::shared_ptr<SpeedPopup> speedPopup;
-            std::shared_ptr<ui::TimeLabel> durationLabel;
-            std::shared_ptr<ui::ComboBox> timeUnitsComboBox;
             std::shared_ptr<ui::ToolButton> audioButton;
             std::shared_ptr<AudioPopup> audioPopup;
+            std::shared_ptr<ui::ToolButton> muteButton;
             std::shared_ptr<ui::Label> statusLabel;
             std::shared_ptr<time::Timer> statusTimer;
             std::shared_ptr<ui::Label> infoLabel;
@@ -148,21 +152,21 @@ namespace tl
             std::shared_ptr<observer::ValueObserver<double> > speedObserver2;
             std::shared_ptr<observer::ValueObserver<timeline::Playback> > playbackObserver;
             std::shared_ptr<observer::ValueObserver<otime::RationalTime> > currentTimeObserver;
-            std::shared_ptr<observer::ValueObserver<timeline::CompareOptions> > compareOptionsObserver;
             std::shared_ptr<observer::ValueObserver<timeline::BackgroundOptions> > backgroundOptionsObserver;
-            std::shared_ptr<observer::ValueObserver<timeline::ColorConfigOptions> > colorConfigOptionsObserver;
+            std::shared_ptr<observer::ValueObserver<timeline::OCIOOptions> > ocioOptionsObserver;
             std::shared_ptr<observer::ValueObserver<timeline::LUTOptions> > lutOptionsObserver;
             std::shared_ptr<observer::ValueObserver<timeline::ImageOptions> > imageOptionsObserver;
             std::shared_ptr<observer::ValueObserver<timeline::DisplayOptions> > displayOptionsObserver;
+            std::shared_ptr<observer::ValueObserver<timeline::CompareOptions> > compareOptionsObserver;
+            std::shared_ptr<observer::ValueObserver<bool> > muteObserver;
             std::shared_ptr<observer::ListObserver<log::Item> > logObserver;
         };
 
         void MainWindow::_init(
             const std::shared_ptr<App>& app,
-            const std::shared_ptr<system::Context>& context,
-            const std::shared_ptr<IWidget>& parent)
+            const std::shared_ptr<system::Context>& context)
         {
-            IWidget::_init("tl::play_gl::MainWindow", context, parent);
+            Window::_init("tlplay-gl", context);
             TLRENDER_P();
 
             setBackgroundRole(ui::ColorRole::Window);
@@ -221,10 +225,7 @@ namespace tl
                 app,
                 context);
             p.renderActions = RenderActions::create(app, context);
-            p.playbackActions = PlaybackActions::create(
-                std::dynamic_pointer_cast<MainWindow>(shared_from_this()),
-                app,
-                context);
+            p.playbackActions = PlaybackActions::create(app, context);
             p.frameActions = FrameActions::create(
                 std::dynamic_pointer_cast<MainWindow>(shared_from_this()),
                 app,
@@ -260,7 +261,6 @@ namespace tl
                 context);
             p.playbackMenu = PlaybackMenu::create(
                 p.playbackActions->getActions(),
-                std::dynamic_pointer_cast<MainWindow>(shared_from_this()),
                 app,
                 context);
             p.frameMenu = FrameMenu::create(
@@ -302,6 +302,7 @@ namespace tl
                 context);
             p.windowToolBar = WindowToolBar::create(
                 p.windowActions->getActions(),
+                std::dynamic_pointer_cast<MainWindow>(shared_from_this()),
                 app,
                 context);
             p.viewToolBar = ViewToolBar::create(
@@ -353,13 +354,8 @@ namespace tl
             p.currentTimeEdit = ui::TimeEdit::create(p.timeUnitsModel, context);
             p.currentTimeEdit->setToolTip("Current time");
 
-            p.speedEdit = ui::DoubleEdit::create(context, p.speedModel);
-            p.speedEdit->setToolTip("Current speed");
-            p.speedButton = ui::ToolButton::create("FPS", context);
-            p.speedButton->setIcon("MenuArrow");
-            p.speedButton->setToolTip("Speed menu");
-
             p.durationLabel = ui::TimeLabel::create(p.timeUnitsModel, context);
+            p.durationLabel->setFontRole(ui::FontRole::Mono);
             p.durationLabel->setMarginRole(ui::SizeRole::MarginInside);
             p.durationLabel->setToolTip("Duration");
 
@@ -369,9 +365,19 @@ namespace tl
                 static_cast<int>(p.timeUnitsModel->getTimeUnits()));
             p.timeUnitsComboBox->setToolTip("Time units");
 
+            p.speedEdit = ui::DoubleEdit::create(context, p.speedModel);
+            p.speedEdit->setToolTip("Current speed");
+            p.speedButton = ui::ToolButton::create("FPS", context);
+            p.speedButton->setIcon("MenuArrow");
+            p.speedButton->setToolTip("Speed menu");
+
             p.audioButton = ui::ToolButton::create(context);
             p.audioButton->setIcon("Volume");
             p.audioButton->setToolTip("Audio settings");
+            p.muteButton = ui::ToolButton::create(context);
+            p.muteButton->setCheckable(true);
+            p.muteButton->setIcon("Mute");
+            p.muteButton->setToolTip("Mute the audio");
 
             p.statusLabel = ui::Label::create(context);
             p.statusLabel->setHStretch(ui::Stretch::Expanding);
@@ -383,7 +389,7 @@ namespace tl
             p.infoLabel->setMarginRole(ui::SizeRole::MarginInside);
 
             p.toolsWidget = ToolsWidget::create(app, context);
-            p.toolsWidget->setVisible(false);
+            p.toolsWidget->hide();
 
             p.layout = ui::VerticalLayout::create(context, shared_from_this());
             p.layout->setSpacingRole(ui::SizeRole::None);
@@ -422,13 +428,17 @@ namespace tl
             frameNextButton->setParent(hLayout);
             timeEndButton->setParent(hLayout);
             p.currentTimeEdit->setParent(p.bottomLayout);
+            p.durationLabel->setParent(p.bottomLayout);
+            p.timeUnitsComboBox->setParent(p.bottomLayout);
             hLayout = ui::HorizontalLayout::create(context, p.bottomLayout);
             hLayout->setSpacingRole(ui::SizeRole::SpacingTool);
             p.speedEdit->setParent(hLayout);
             p.speedButton->setParent(hLayout);
-            p.durationLabel->setParent(p.bottomLayout);
-            p.timeUnitsComboBox->setParent(p.bottomLayout);
+            auto spacer = ui::Spacer::create(ui::Orientation::Horizontal, context);
+            spacer->setHStretch(ui::Stretch::Expanding);
+            spacer->setParent(p.bottomLayout);
             p.audioButton->setParent(p.bottomLayout);
+            p.muteButton->setParent(p.bottomLayout);
             p.dividers["Status"] = ui::Divider::create(ui::Orientation::Vertical, context, p.layout);
             p.statusLayout = ui::HorizontalLayout::create(context, p.layout);
             p.statusLayout->setSpacingRole(ui::SizeRole::None);
@@ -437,7 +447,6 @@ namespace tl
             p.infoLabel->setParent(p.statusLayout);
 
             _windowOptionsUpdate();
-            _viewportUpdate();
             _infoUpdate();
 
             auto appWeak = std::weak_ptr<App>(app);
@@ -511,12 +520,20 @@ namespace tl
                 {
                     _showAudioPopup();
                 });
+            p.muteButton->setCheckedCallback(
+                [appWeak](bool value)
+                {
+                    if (auto app = appWeak.lock())
+                    {
+                        app->getAudioModel()->setMute(value);
+                    }
+                });
 
             p.playersObserver = observer::ListObserver<std::shared_ptr<timeline::Player> >::create(
                 app->observeActivePlayers(),
                 [this](const std::vector<std::shared_ptr<timeline::Player> >& value)
                 {
-                    _setPlayers(value);
+                    _playersUpdate(value);
                 });
 
             p.speedObserver2 = observer::ValueObserver<double>::create(
@@ -529,46 +546,53 @@ namespace tl
                     }
                 });
 
-            p.compareOptionsObserver = observer::ValueObserver<timeline::CompareOptions>::create(
-                app->getFilesModel()->observeCompareOptions(),
-                [this](const timeline::CompareOptions&)
-                {
-                    _viewportUpdate();
-                });
-
             p.backgroundOptionsObserver = observer::ValueObserver<timeline::BackgroundOptions>::create(
                 app->getViewportModel()->observeBackgroundOptions(),
-                [this](const timeline::BackgroundOptions&)
+                [this](const timeline::BackgroundOptions& value)
                 {
-                    _viewportUpdate();
+                    _p->timelineViewport->setBackgroundOptions(value);
                 });
 
-            p.colorConfigOptionsObserver = observer::ValueObserver<timeline::ColorConfigOptions>::create(
-                app->getColorModel()->observeColorConfigOptions(),
-                [this](const timeline::ColorConfigOptions&)
+            p.ocioOptionsObserver = observer::ValueObserver<timeline::OCIOOptions>::create(
+                app->getColorModel()->observeOCIOOptions(),
+                [this](const timeline::OCIOOptions& value)
                 {
-                    _viewportUpdate();
+                    _p->timelineViewport->setOCIOOptions(value);
                 });
 
             p.lutOptionsObserver = observer::ValueObserver<timeline::LUTOptions>::create(
                 app->getColorModel()->observeLUTOptions(),
-                [this](const timeline::LUTOptions&)
+                [this](const timeline::LUTOptions& value)
                 {
-                    _viewportUpdate();
+                    _p->timelineViewport->setLUTOptions(value);
                 });
 
             p.imageOptionsObserver = observer::ValueObserver<timeline::ImageOptions>::create(
                 app->getColorModel()->observeImageOptions(),
-                [this](const timeline::ImageOptions&)
+                [this](const timeline::ImageOptions& value)
                 {
-                    _viewportUpdate();
+                    _p->timelineViewport->setImageOptions({ value });
                 });
 
             p.displayOptionsObserver = observer::ValueObserver<timeline::DisplayOptions>::create(
                 app->getColorModel()->observeDisplayOptions(),
-                [this](const timeline::DisplayOptions&)
+                [this](const timeline::DisplayOptions& value)
                 {
-                    _viewportUpdate();
+                    _p->timelineViewport->setDisplayOptions({ value });
+                });
+
+            p.compareOptionsObserver = observer::ValueObserver<timeline::CompareOptions>::create(
+                app->getFilesModel()->observeCompareOptions(),
+                [this](const timeline::CompareOptions& value)
+                {
+                    _p->timelineViewport->setCompareOptions(value);
+                });
+
+            p.muteObserver = observer::ValueObserver<bool>::create(
+                app->getAudioModel()->observeMute(),
+                [this](bool value)
+                {
+                    _p->muteButton->setChecked(value);
                 });
 
             p.logObserver = observer::ListObserver<log::Item>::create(
@@ -610,15 +634,17 @@ namespace tl
                 timelineItemOptions.showTransitions);
             p.settings->setValue("Timeline/Markers",
                 timelineItemOptions.showMarkers);
+            _makeCurrent();
+            p.timelineViewport->setParent(nullptr);
+            p.timelineWidget->setParent(nullptr);
         }
 
         std::shared_ptr<MainWindow> MainWindow::create(
             const std::shared_ptr<App>& app,
-            const std::shared_ptr<system::Context>& context,
-            const std::shared_ptr<IWidget>& parent)
+            const std::shared_ptr<system::Context>& context)
         {
             auto out = std::shared_ptr<MainWindow>(new MainWindow);
-            out->_init(app, context, parent);
+            out->_init(app, context);
             return out;
         }
 
@@ -657,7 +683,7 @@ namespace tl
 
         void MainWindow::setGeometry(const math::Box2i& value)
         {
-            IWidget::setGeometry(value);
+            Window::setGeometry(value);
             _p->layout->setGeometry(value);
         }
 
@@ -672,7 +698,19 @@ namespace tl
             event.accept = true;
         }
 
-        void MainWindow::_setPlayers(const std::vector<std::shared_ptr<timeline::Player> >& value)
+        void MainWindow::_drop(const std::vector<std::string>& value)
+        {
+            TLRENDER_P();
+            if (auto app = p.app.lock())
+            {
+                for (const auto& i : value)
+                {
+                    app->open(file::Path(i));
+                }
+            }
+        }
+
+        void MainWindow::_playersUpdate(const std::vector<std::shared_ptr<timeline::Player> >& value)
         {
             TLRENDER_P();
 
@@ -729,7 +767,7 @@ namespace tl
             TLRENDER_P();
             if (auto context = _context.lock())
             {
-                if (auto eventLoop = getEventLoop().lock())
+                if (auto window = std::dynamic_pointer_cast<IWindow>(shared_from_this()))
                 {
                     if (!p.speedPopup)
                     {
@@ -738,7 +776,7 @@ namespace tl
                             p.players[0]->getDefaultSpeed() :
                             0.0;
                         p.speedPopup = SpeedPopup::create(defaultSpeed, context);
-                        p.speedPopup->open(eventLoop, p.speedButton->getGeometry());
+                        p.speedPopup->open(window, p.speedButton->getGeometry());
                         auto weak = std::weak_ptr<MainWindow>(std::dynamic_pointer_cast<MainWindow>(shared_from_this()));
                         p.speedPopup->setCallback(
                             [weak](double value)
@@ -778,12 +816,12 @@ namespace tl
             {
                 if (auto app = p.app.lock())
                 {
-                    if (auto eventLoop = getEventLoop().lock())
+                    if (auto window = std::dynamic_pointer_cast<IWindow>(shared_from_this()))
                     {
                         if (!p.audioPopup)
                         {
                             p.audioPopup = AudioPopup::create(app, context);
-                            p.audioPopup->open(eventLoop, p.audioButton->getGeometry());
+                            p.audioPopup->open(window, p.audioButton->getGeometry());
                             auto weak = std::weak_ptr<MainWindow>(std::dynamic_pointer_cast<MainWindow>(shared_from_this()));
                             p.audioPopup->setCloseCallback(
                                 [weak]
@@ -840,27 +878,6 @@ namespace tl
 
             p.splitter->setSplit(windowOptions.splitter);
             p.splitter2->setSplit(windowOptions.splitter2);
-        }
-
-        void MainWindow::_viewportUpdate()
-        {
-            TLRENDER_P();
-            if (auto app = p.app.lock())
-            {
-                p.timelineViewport->setColorConfigOptions(
-                    app->getColorModel()->getColorConfigOptions());
-                p.timelineViewport->setLUTOptions(
-                    app->getColorModel()->getLUTOptions());
-                p.timelineViewport->setBackgroundOptions(
-                    app->getViewportModel()->getBackgroundOptions());
-                const auto& imageOptions = app->getColorModel()->getImageOptions();
-                p.timelineViewport->setImageOptions(
-                    { imageOptions });
-                p.timelineViewport->setDisplayOptions(
-                    { app->getColorModel()->getDisplayOptions() });
-                p.timelineViewport->setCompareOptions(
-                    app->getFilesModel()->getCompareOptions());
-            }
         }
 
         void MainWindow::_statusUpdate(const std::vector<log::Item>& value)

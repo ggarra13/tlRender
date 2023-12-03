@@ -2,7 +2,7 @@
 // Copyright (c) 2021-2023 Darby Johnston
 // All rights reserved.
 
-#include <tlPlayQtApp/ColorConfigModel.h>
+#include <tlPlayQtApp/OCIOModel.h>
 
 #include <QApplication>
 #include <QPalette>
@@ -11,24 +11,24 @@ namespace tl
 {
     namespace play_qt
     {
-        struct ColorInputListModel::Private
+        struct OCIOInputModel::Private
         {
             std::vector<std::string> inputs;
             size_t inputIndex = 0;
-            std::shared_ptr<observer::ValueObserver<play::ColorConfigModelData> > dataObserver;
+            std::shared_ptr<observer::ValueObserver<play::OCIOModelData> > dataObserver;
         };
 
-        ColorInputListModel::ColorInputListModel(
-            const std::shared_ptr<play::ColorConfigModel>& colorConfigModel,
+        OCIOInputModel::OCIOInputModel(
+            const std::shared_ptr<play::OCIOModel>& ocioModel,
             QObject* parent) :
             QAbstractListModel(parent),
             _p(new Private)
         {
             TLRENDER_P();
 
-            p.dataObserver = observer::ValueObserver<play::ColorConfigModelData>::create(
-                colorConfigModel->observeData(),
-                [this](const play::ColorConfigModelData& value)
+            p.dataObserver = observer::ValueObserver<play::OCIOModelData>::create(
+                ocioModel->observeData(),
+                [this](const play::OCIOModelData& value)
                 {
                     beginResetModel();
                     _p->inputs = value.inputs;
@@ -37,15 +37,15 @@ namespace tl
                 });
         }
 
-        ColorInputListModel::~ColorInputListModel()
+        OCIOInputModel::~OCIOInputModel()
         {}
 
-        int ColorInputListModel::rowCount(const QModelIndex& parent) const
+        int OCIOInputModel::rowCount(const QModelIndex& parent) const
         {
             return _p->inputs.size();
         }
 
-        QVariant ColorInputListModel::data(const QModelIndex& index, int role) const
+        QVariant OCIOInputModel::data(const QModelIndex& index, int role) const
         {
             TLRENDER_P();
             QVariant out;
@@ -80,24 +80,24 @@ namespace tl
             return out;
         }
 
-        struct ColorDisplayListModel::Private
+        struct OCIODisplayModel::Private
         {
             std::vector<std::string> displays;
             size_t displayIndex = 0;
-            std::shared_ptr<observer::ValueObserver<play::ColorConfigModelData> > dataObserver;
+            std::shared_ptr<observer::ValueObserver<play::OCIOModelData> > dataObserver;
         };
 
-        ColorDisplayListModel::ColorDisplayListModel(
-            const std::shared_ptr<play::ColorConfigModel>& colorConfigModel,
+        OCIODisplayModel::OCIODisplayModel(
+            const std::shared_ptr<play::OCIOModel>& ocioModel,
             QObject* parent) :
             QAbstractListModel(parent),
             _p(new Private)
         {
             TLRENDER_P();
 
-            p.dataObserver = observer::ValueObserver<play::ColorConfigModelData>::create(
-                colorConfigModel->observeData(),
-                [this](const play::ColorConfigModelData& value)
+            p.dataObserver = observer::ValueObserver<play::OCIOModelData>::create(
+                ocioModel->observeData(),
+                [this](const play::OCIOModelData& value)
                 {
                     beginResetModel();
                     _p->displays = value.displays;
@@ -106,15 +106,15 @@ namespace tl
                 });
         }
 
-        ColorDisplayListModel::~ColorDisplayListModel()
+        OCIODisplayModel::~OCIODisplayModel()
         {}
 
-        int ColorDisplayListModel::rowCount(const QModelIndex& parent) const
+        int OCIODisplayModel::rowCount(const QModelIndex& parent) const
         {
             return _p->displays.size();
         }
 
-        QVariant ColorDisplayListModel::data(const QModelIndex& index, int role) const
+        QVariant OCIODisplayModel::data(const QModelIndex& index, int role) const
         {
             TLRENDER_P();
             QVariant out;
@@ -149,24 +149,24 @@ namespace tl
             return out;
         }
 
-        struct ColorViewListModel::Private
+        struct OCIOViewModel::Private
         {
             std::vector<std::string> views;
             size_t viewIndex = 0;
-            std::shared_ptr<observer::ValueObserver<play::ColorConfigModelData> > dataObserver;
+            std::shared_ptr<observer::ValueObserver<play::OCIOModelData> > dataObserver;
         };
 
-        ColorViewListModel::ColorViewListModel(
-            const std::shared_ptr<play::ColorConfigModel>& colorConfigModel,
+        OCIOViewModel::OCIOViewModel(
+            const std::shared_ptr<play::OCIOModel>& ocioModel,
             QObject* parent) :
             QAbstractListModel(parent),
             _p(new Private)
         {
             TLRENDER_P();
 
-            p.dataObserver = observer::ValueObserver<play::ColorConfigModelData>::create(
-                colorConfigModel->observeData(),
-                [this](const play::ColorConfigModelData& value)
+            p.dataObserver = observer::ValueObserver<play::OCIOModelData>::create(
+                ocioModel->observeData(),
+                [this](const play::OCIOModelData& value)
                 {
                     beginResetModel();
                     _p->views = value.views;
@@ -175,15 +175,15 @@ namespace tl
                 });
         }
 
-        ColorViewListModel::~ColorViewListModel()
+        OCIOViewModel::~OCIOViewModel()
         {}
 
-        int ColorViewListModel::rowCount(const QModelIndex& parent) const
+        int OCIOViewModel::rowCount(const QModelIndex& parent) const
         {
             return _p->views.size();
         }
 
-        QVariant ColorViewListModel::data(const QModelIndex& index, int role) const
+        QVariant OCIOViewModel::data(const QModelIndex& index, int role) const
         {
             TLRENDER_P();
             QVariant out;
@@ -207,6 +207,75 @@ namespace tl
                     break;
                 case Qt::ForegroundRole:
                     if (index.row() == p.viewIndex)
+                    {
+                        out.setValue(
+                            QBrush(qApp->palette().color(QPalette::ColorRole::HighlightedText)));
+                    }
+                    break;
+                default: break;
+                }
+            }
+            return out;
+        }
+
+        struct OCIOLookModel::Private
+        {
+            std::vector<std::string> looks;
+            size_t lookIndex = 0;
+            std::shared_ptr<observer::ValueObserver<play::OCIOModelData> > dataObserver;
+        };
+
+        OCIOLookModel::OCIOLookModel(
+            const std::shared_ptr<play::OCIOModel>& ocioModel,
+            QObject* parent) :
+            QAbstractListModel(parent),
+            _p(new Private)
+        {
+            TLRENDER_P();
+
+            p.dataObserver = observer::ValueObserver<play::OCIOModelData>::create(
+                ocioModel->observeData(),
+                [this](const play::OCIOModelData& value)
+                {
+                    beginResetModel();
+                    _p->looks = value.looks;
+                    _p->lookIndex = value.lookIndex;
+                    endResetModel();
+                });
+        }
+
+        OCIOLookModel::~OCIOLookModel()
+        {}
+
+        int OCIOLookModel::rowCount(const QModelIndex& parent) const
+        {
+            return _p->looks.size();
+        }
+
+        QVariant OCIOLookModel::data(const QModelIndex& index, int role) const
+        {
+            TLRENDER_P();
+            QVariant out;
+            if (index.isValid() &&
+                index.row() >= 0 &&
+                index.row() < p.looks.size() &&
+                index.column() >= 0 &&
+                index.column() < 2)
+            {
+                switch (role)
+                {
+                case Qt::DisplayRole:
+                    out.setValue(QString::fromUtf8(p.looks[index.row()].c_str()));
+                    break;
+                case Qt::BackgroundRole:
+                    if (index.row() == p.lookIndex)
+                    {
+                        out.setValue(
+                            QBrush(qApp->palette().color(QPalette::ColorRole::Highlight)));
+                    }
+                    break;
+                case Qt::ForegroundRole:
+                    if (index.row() == p.lookIndex)
                     {
                         out.setValue(
                             QBrush(qApp->palette().color(QPalette::ColorRole::HighlightedText)));

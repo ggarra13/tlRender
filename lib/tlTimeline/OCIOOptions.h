@@ -12,8 +12,8 @@ namespace tl
 {
     namespace timeline
     {
-        //! Color configuration options.
-        struct ColorConfigOptions
+        //! OpenColorIO options.
+        struct OCIOOptions
         {
             bool        enabled  = false;
             std::string fileName;
@@ -22,14 +22,14 @@ namespace tl
             std::string view;
             std::string look;
 
-            bool operator == (const ColorConfigOptions&) const;
-            bool operator != (const ColorConfigOptions&) const;
+            bool operator == (const OCIOOptions&) const;
+            bool operator != (const OCIOOptions&) const;
         };
 
-        void to_json(nlohmann::json&, const ColorConfigOptions&);
+        void to_json(nlohmann::json&, const OCIOOptions&);
 
-        void from_json(const nlohmann::json&, ColorConfigOptions&);
+        void from_json(const nlohmann::json&, OCIOOptions&);
     }
 }
 
-#include <tlTimeline/ColorConfigOptionsInline.h>
+#include <tlTimeline/OCIOOptionsInline.h>

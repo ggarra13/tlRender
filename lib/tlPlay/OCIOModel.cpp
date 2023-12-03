@@ -2,7 +2,7 @@
 // Copyright (c) 2021-2023 Darby Johnston
 // All rights reserved.
 
-#include <tlPlay/ColorConfigModel.h>
+#include <tlPlay/OCIOModel.h>
 
 #include <tlCore/Context.h>
 #include <tlCore/OS.h>
@@ -19,7 +19,7 @@ namespace tl
 {
     namespace play
     {
-        bool ColorConfigModelData::operator == (const ColorConfigModelData& other) const
+        bool OCIOModelData::operator == (const OCIOModelData& other) const
         {
             return
                 enabled == other.enabled &&
@@ -29,32 +29,34 @@ namespace tl
                 displays == other.displays &&
                 displayIndex == other.displayIndex &&
                 views == other.views &&
-                viewIndex == other.viewIndex;
+                viewIndex == other.viewIndex &&
+                looks == other.looks &&
+                lookIndex == other.lookIndex;
         }
 
-        bool ColorConfigModelData::operator != (const ColorConfigModelData& other) const
+        bool OCIOModelData::operator != (const OCIOModelData& other) const
         {
             return !(*this == other);
         }
 
-        struct ColorConfigModel::Private
+        struct OCIOModel::Private
         {
             std::weak_ptr<system::Context> context;
 #if defined(TLRENDER_OCIO)
             OCIO_NAMESPACE::ConstConfigRcPtr ocioConfig;
 #endif // TLRENDER_OCIO
-            std::shared_ptr<observer::Value<timeline::ColorConfigOptions> > options;
-            std::shared_ptr<observer::Value<ColorConfigModelData> > data;
+            std::shared_ptr<observer::Value<timeline::OCIOOptions> > options;
+            std::shared_ptr<observer::Value<OCIOModelData> > data;
         };
 
-        void ColorConfigModel::_init(const std::shared_ptr<system::Context>& context)
+        void OCIOModel::_init(const std::shared_ptr<system::Context>& context)
         {
             TLRENDER_P();
 
             p.context = context;
 
-            p.options = observer::Value<timeline::ColorConfigOptions>::create();
-            p.data = observer::Value<ColorConfigModelData>::create();
+            p.options = observer::Value<timeline::OCIOOptions>::create();
+            p.data = observer::Value<OCIOModelData>::create();
 
 #if defined(TLRENDER_OCIO)
             std::string env;
@@ -66,7 +68,7 @@ namespace tl
                     p.ocioConfig = OCIO::Config::CreateFromEnv();
                     if (p.ocioConfig)
                     {
-                        timeline::ColorConfigOptions options;
+                        timeline::OCIOOptions options;
                         options.fileName = env;
                         const char* display = p.ocioConfig->getDefaultDisplay();
                         options.display = display;
@@ -86,26 +88,26 @@ namespace tl
 #endif // TLRENDER_OCIO
         }
 
-        ColorConfigModel::ColorConfigModel() :
+        OCIOModel::OCIOModel() :
             _p(new Private)
         {}
 
-        ColorConfigModel::~ColorConfigModel()
+        OCIOModel::~OCIOModel()
         {}
 
-        std::shared_ptr<ColorConfigModel> ColorConfigModel::create(const std::shared_ptr<system::Context>& context)
+        std::shared_ptr<OCIOModel> OCIOModel::create(const std::shared_ptr<system::Context>& context)
         {
-            auto out = std::shared_ptr<ColorConfigModel>(new ColorConfigModel);
+            auto out = std::shared_ptr<OCIOModel>(new OCIOModel);
             out->_init(context);
             return out;
         }
 
-        std::shared_ptr<observer::IValue<timeline::ColorConfigOptions> > ColorConfigModel::observeConfigOptions() const
+        std::shared_ptr<observer::IValue<timeline::OCIOOptions> > OCIOModel::observeOptions() const
         {
             return _p->options;
         }
 
-        void ColorConfigModel::setConfigOptions(const timeline::ColorConfigOptions& value)
+        void OCIOModel::setOptions(const timeline::OCIOOptions& value)
         {
             TLRENDER_P();
             const bool changed = value.fileName != p.options->get().fileName;
@@ -137,7 +139,7 @@ namespace tl
             }
         }
 
-        void ColorConfigModel::setEnabled(bool value)
+        void OCIOModel::setEnabled(bool value)
         {
             TLRENDER_P();
             auto options = p.options->get();
@@ -148,7 +150,7 @@ namespace tl
             }
         }
 
-        void ColorConfigModel::setConfig(const std::string& fileName)
+        void OCIOModel::setConfig(const std::string& fileName)
         {
             TLRENDER_P();
             const bool changed = fileName != p.options->get().fileName;
@@ -165,7 +167,7 @@ namespace tl
                 }
             }
 #endif // TLRENDER_OCIO
-            timeline::ColorConfigOptions options;
+            timeline::OCIOOptions options;
             options.enabled = true;
             options.fileName = fileName;
 #if defined(TLRENDER_OCIO)
@@ -182,12 +184,12 @@ namespace tl
             }
         }
 
-        std::shared_ptr<observer::IValue<ColorConfigModelData> > ColorConfigModel::observeData() const
+        std::shared_ptr<observer::IValue<OCIOModelData> > OCIOModel::observeData() const
         {
             return _p->data;
         }
 
-        void ColorConfigModel::setInputIndex(size_t value)
+        void OCIOModel::setInputIndex(size_t value)
         {
             TLRENDER_P();
             const auto& inputs = p.data->get().inputs;
@@ -203,7 +205,7 @@ namespace tl
             }
         }
 
-        void ColorConfigModel::setDisplayIndex(size_t value)
+        void OCIOModel::setDisplayIndex(size_t value)
         {
             TLRENDER_P();
             const auto& displays = p.data->get().displays;
@@ -219,7 +221,7 @@ namespace tl
             }
         }
 
-        void ColorConfigModel::setViewIndex(size_t value)
+        void OCIOModel::setViewIndex(size_t value)
         {
             TLRENDER_P();
             const auto& views = p.data->get().views;
@@ -235,10 +237,26 @@ namespace tl
             }
         }
 
-        void ColorConfigModel::_configUpdate()
+        void OCIOModel::setLookIndex(size_t value)
         {
             TLRENDER_P();
-            ColorConfigModelData data;
+            const auto& looks = p.data->get().looks;
+            if (value >= 0 && value < looks.size())
+            {
+                auto options = p.options->get();
+                options.enabled = true;
+                options.look = value > 0 ? looks[value] : std::string();
+                if (p.options->setIfChanged(options))
+                {
+                    _configUpdate();
+                }
+            }
+        }
+
+        void OCIOModel::_configUpdate()
+        {
+            TLRENDER_P();
+            OCIOModelData data;
             const auto& options = p.options->get();
             data.enabled = options.enabled;
             data.fileName = options.fileName;
@@ -277,6 +295,17 @@ namespace tl
                 if (j != data.views.end())
                 {
                     data.viewIndex = j - data.views.begin();
+                }
+
+                data.looks.push_back("None");
+                for (int i = 0; i < p.ocioConfig->getNumLooks(); ++i)
+                {
+                    data.looks.push_back(p.ocioConfig->getLookNameByIndex(i));
+                }
+                j = std::find(data.looks.begin(), data.looks.end(), options.look);
+                if (j != data.looks.end())
+                {
+                    data.lookIndex = j - data.looks.begin();
                 }
             }
 #endif // TLRENDER_OCIO

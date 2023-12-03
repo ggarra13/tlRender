@@ -6,6 +6,8 @@
 
 #include <tlTimelineUI/TimelineViewport.h>
 
+#include <tlGLApp/Window.h>
+
 #include <tlTimeline/Player.h>
 
 namespace tl
@@ -38,15 +40,14 @@ namespace tl
         };
 
         //! Main window.
-        class MainWindow : public ui::IWidget
+        class MainWindow : public gl_app::Window
         {
             TLRENDER_NON_COPYABLE(MainWindow);
 
         protected:
             void _init(
                 const std::shared_ptr<App>&,
-                const std::shared_ptr<system::Context>&,
-                const std::shared_ptr<IWidget>& parent);
+                const std::shared_ptr<system::Context>&);
 
             MainWindow();
 
@@ -56,8 +57,7 @@ namespace tl
             //! Create a new main window.
             static std::shared_ptr<MainWindow> create(
                 const std::shared_ptr<App>&,
-                const std::shared_ptr<system::Context>&,
-                const std::shared_ptr<IWidget>& parent = nullptr);
+                const std::shared_ptr<system::Context>&);
 
             //! Get the timeline viewport.
             const std::shared_ptr<timelineui::TimelineViewport>& getTimelineViewport() const;
@@ -81,12 +81,14 @@ namespace tl
             void keyPressEvent(ui::KeyEvent&) override;
             void keyReleaseEvent(ui::KeyEvent&) override;
 
+        protected:
+            void _drop(const std::vector<std::string>&) override;
+
         private:
-            void _setPlayers(const std::vector<std::shared_ptr<timeline::Player> >&);
+            void _playersUpdate(const std::vector<std::shared_ptr<timeline::Player> >&);
             void _showSpeedPopup();
             void _showAudioPopup();
             void _windowOptionsUpdate();
-            void _viewportUpdate();
             void _statusUpdate(const std::vector<log::Item>&);
             void _infoUpdate();
 

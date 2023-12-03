@@ -29,27 +29,27 @@ namespace tl
                 setFormat(surfaceFormat);
             }
 
-            void PanoramaTimelineViewport::setColorConfigOptions(const timeline::ColorConfigOptions& colorConfigOptions)
+            void PanoramaTimelineViewport::setOCIOOptions(const timeline::OCIOOptions& value)
             {
-                if (colorConfigOptions == _colorConfigOptions)
+                if (value == _ocioOptions)
                     return;
-                _colorConfigOptions = colorConfigOptions;
+                _ocioOptions = value;
                 update();
             }
 
-            void PanoramaTimelineViewport::setLUTOptions(const timeline::LUTOptions& lutOptions)
+            void PanoramaTimelineViewport::setLUTOptions(const timeline::LUTOptions& value)
             {
-                if (lutOptions == _lutOptions)
+                if (value == _lutOptions)
                     return;
-                _lutOptions = lutOptions;
+                _lutOptions = value;
                 update();
             }
 
-            void PanoramaTimelineViewport::setImageOptions(const timeline::ImageOptions& imageOptions)
+            void PanoramaTimelineViewport::setImageOptions(const timeline::ImageOptions& value)
             {
-                if (imageOptions == _imageOptions)
+                if (value == _imageOptions)
                     return;
-                _imageOptions = imageOptions;
+                _imageOptions = value;
                 update();
             }
 
@@ -171,10 +171,9 @@ namespace tl
                     if (_buffer)
                     {
                         gl::OffscreenBufferBinding binding(_buffer);
-                        _render->begin(
-                            offscreenBufferSize,
-                            _colorConfigOptions,
-                            _lutOptions);
+                        _render->begin(offscreenBufferSize);
+                        _render->setOCIOOptions(_ocioOptions);
+                        _render->setLUTOptions(_lutOptions);
                         _render->drawVideo(
                             { _videoData },
                             { math::Box2i(0, 0, _videoSize.w, _videoSize.h) },

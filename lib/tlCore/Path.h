@@ -49,19 +49,20 @@ namespace tl
         public:
             Path();
             explicit Path(
-                const std::string& fileName,
+                const std::string&,
                 const PathOptions& = PathOptions());
             Path(
                 const std::string& directory,
-                const std::string& fileName,
+                const std::string&,
                 const PathOptions& = PathOptions());
             Path(
                 const std::string& directory,
                 const std::string& baseName,
                 const std::string& number,
-                uint8_t padding,
+                size_t padding,
                 const std::string& extension,
-                const std::string& protocol = std::string());
+                const std::string& protocol = std::string(),
+                const std::string& request = std::string());
 
             //! Get the path.
             std::string get(
@@ -99,7 +100,7 @@ namespace tl
             void setNumber(const std::string&);
 
             //! Get the number zero padding.
-            uint8_t getPadding() const;
+            size_t getPadding() const;
 
             //! Get the number sequence.
             const math::IntRange& getSequence() const;
@@ -118,9 +119,15 @@ namespace tl
 
             //! Get the extension.
             const std::string& getExtension() const;
-            
+
             //! Set the extension.
             void setExtension(const std::string&);
+
+            //! Get the request.
+            const std::string& getRequest() const;
+
+            //! Set the request.
+            void setRequest(const std::string&);
 
             //! Is the path empty?
             bool isEmpty() const;
@@ -141,10 +148,11 @@ namespace tl
             std::string _baseName;
             std::string _number;
             int _numberValue = 0;
-            int _numberDigits = 0;
+            size_t _numberDigits = 0;
             math::IntRange _sequence;
-            uint8_t _padding = 0;
+            size_t _padding = 0;
             std::string _extension;
+            std::string _request;
         };
 
         //! Get whether the given character is a path separator.

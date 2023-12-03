@@ -409,7 +409,6 @@ namespace tl
                         event.style->getColorRole(enabled ?
                             ColorRole::Text :
                             ColorRole::TextDisabled));
-                    x += _size.margin + _size.textSize.w;
                 }
 
                 // Draw the shortcut.
@@ -592,10 +591,7 @@ namespace tl
                     {
                         if (!out->isOpen())
                         {
-                            if (auto eventLoop = getEventLoop().lock())
-                            {
-                                out->open(eventLoop, button->getGeometry());
-                            }
+                            out->open(getWindow(), button->getGeometry());
                         }
                         else
                         {

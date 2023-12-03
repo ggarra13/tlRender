@@ -2,13 +2,13 @@
 // Copyright (c) 2021-2023 Darby Johnston
 // All rights reserved.
 
-#include <tlTimeline/ColorConfigOptions.h>
+#include <tlTimeline/OCIOOptions.h>
 
 namespace tl
 {
     namespace timeline
     {
-        void to_json(nlohmann::json& json, const ColorConfigOptions& value)
+        void to_json(nlohmann::json& json, const OCIOOptions& value)
         {
             json = nlohmann::json
             {
@@ -20,7 +20,7 @@ namespace tl
             };
         }
 
-        void from_json(const nlohmann::json& json, ColorConfigOptions& value)
+        void from_json(const nlohmann::json& json, OCIOOptions& value)
         {
             json.at("fileName").get_to(value.fileName);
             json.at("input").get_to(value.input);

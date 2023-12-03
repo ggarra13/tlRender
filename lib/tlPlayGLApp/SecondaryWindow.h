@@ -4,7 +4,9 @@
 
 #pragma once
 
-#include <tlUI/Action.h>
+#include <tlGLApp/Window.h>
+
+#include <tlTimeline/Player.h>
 
 namespace tl
 {
@@ -12,26 +14,24 @@ namespace tl
     {
         class App;
 
-        //! Playback actions.
-        class PlaybackActions : public std::enable_shared_from_this<PlaybackActions>
+        //! Secondary window.
+        class SecondaryWindow : public gl_app::Window
         {
-            TLRENDER_NON_COPYABLE(PlaybackActions);
+            TLRENDER_NON_COPYABLE(SecondaryWindow);
 
         protected:
             void _init(
                 const std::shared_ptr<App>&,
                 const std::shared_ptr<system::Context>&);
 
-            PlaybackActions();
+            SecondaryWindow();
 
         public:
-            ~PlaybackActions();
+            virtual ~SecondaryWindow();
 
-            static std::shared_ptr<PlaybackActions> create(
+            static std::shared_ptr<SecondaryWindow> create(
                 const std::shared_ptr<App>&,
                 const std::shared_ptr<system::Context>&);
-
-            const std::map<std::string, std::shared_ptr<ui::Action> >& getActions() const;
 
         private:
             TLRENDER_PRIVATE();
