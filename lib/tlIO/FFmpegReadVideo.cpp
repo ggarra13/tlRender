@@ -387,6 +387,14 @@ namespace tl
                 {
                     _tags[i.first] = i.second;
                 }
+                _rotation = _getRotation(avVideoStream);
+                if (_rotation != 0.F)
+                {
+                    std::stringstream ss;
+                    ss << std::fixed;
+                    ss << _rotation;
+                    _tags["Video Rotation"] = ss.str();
+                }
                 {
                     std::stringstream ss;
                     ss << _info.size.w << " " << _info.size.h;
@@ -429,12 +437,6 @@ namespace tl
                     ss << std::fixed;
                     ss << _timeRange.start_time().rate() << " FPS";
                     _tags["Video Speed"] = ss.str();
-                }
-                {
-                    std::stringstream ss;
-                    ss << std::fixed;
-                    ss << _getMatrix(avVideoStream);
-                    _tags["Video Matrix"] = ss.str();
                 }
             }
         }
@@ -725,7 +727,7 @@ namespace tl
             return out;
         }
 
-        void ReadVideo::_copy(const std::shared_ptr<image::Image>& image)
+        void ReadVideo::_copy(std::shared_ptr<image::Image>& image)
         {
             const auto& info = image->getInfo();
             const std::size_t w = info.size.w;
@@ -765,7 +767,7 @@ namespace tl
                     }
                     break;
                 case AV_PIX_FMT_YUV420P:
-                {
+                {   
                     const std::size_t w2 = w / 2;
                     const std::size_t h2 = h / 2;
                     const uint8_t* const data1 = _avFrame->data[1];
@@ -789,6 +791,31 @@ namespace tl
                             data + (w * h) + (w2 * h2) + w2 * i,
                             data2 + linesize2 * i,
                             w2);
+                    }
+                    if (_rotation != 0.F)
+                    {
+                        auto info = _info;
+                        if (std::fabs(_rotation) != 180.F)
+                        {
+                            const auto tmp = info.size.w;
+                            info.size.w = info.size.h;
+                            info.size.h = tmp;
+                        }
+                        auto transposedImage = image::Image::create(info);
+                        if (std::fabs(_rotation) == 180.F)
+                        {
+                            _flipYUV420P(transposedImage->getData(), data);
+                        }
+                        else
+                        {
+                            bool clockwise = true;
+                            if (_rotation == 90.F ||
+                                _rotation == -270.F)
+                                clockwise = false;
+                            _transposeYUV420P(
+                                transposedImage->getData(), data, clockwise);
+                        }
+                        image = transposedImage;
                     }
                     break;
                 }
@@ -815,20 +842,107 @@ namespace tl
                     _avFrame2->linesize);
             }
         }
-
-        math::Matrix4x4f ReadVideo::_getMatrix(const AVStream* st)
+        
+        float ReadVideo::_getRotation(const AVStream* st)
         {
-            math::Matrix4x4f out;
-
+            float out;
+ 
             uint8_t* displaymatrix =
                 av_stream_get_side_data(st, AV_PKT_DATA_DISPLAYMATRIX, NULL);
-            double theta = 0;
             if (displaymatrix)
             {
-                theta = -av_display_rotation_get((int32_t*)displaymatrix);
-                out = math::rotateZ(static_cast<float>(theta));
+                out = av_display_rotation_get(
+                    reinterpret_cast<int32_t*>(displaymatrix));
             }
             return out;
+        }
+        
+        void ReadVideo::_transposeYUV420P(uint8_t* out, const uint8_t* in,
+                                          const bool clockwise)
+        {
+            const size_t w = _info.size.w;
+            const size_t h = _info.size.h;
+            const size_t w2 = w / 2;
+            const size_t h2 = h / 2;
+            const size_t size = w * h;
+            const size_t size4 = size / 4;
+
+            if (clockwise)
+            {
+                // Transpose Y plane
+                for (size_t y = 0; y < h; ++y) {
+                    for (size_t x = 0; x < w; ++x) {
+                        out[x * h + ( h - 1 - y )] = in[y * w + x];
+                    }
+                }
+
+                // Transpose U and V planes (downsampling)
+                for (size_t y = 0; y < h / 2; ++y)
+                {
+                    for (size_t x = 0; x < w / 2; ++x)
+                    {
+                        out[size + x * h2 + (h2 - y - 1)] =
+                            in[size + y * w2 + x];
+                        out[size + size4 + x * h2 + (h2 - y - 1)] =
+                            in[size + size4 + y * w2 + x];
+                    }
+                }
+            }
+            else
+            {
+                // Transpose Y plane counterclockwise
+                for (size_t y = 0; y < h; ++y)
+                {
+                    for (size_t x = 0; x < w; ++x)
+                    {
+                        out[(w - 1 - x) * h + y] = in[y * w + x];
+                    }
+                }
+
+                // Transpose U and V planes (downsampling) counterclockwise
+                for (size_t y = 0; y < h2; ++y)
+                {
+                    for (size_t x = 0; x < w2; ++x)
+                    {
+                        out[size + (w2 - 1 - x) * h2 + y] =
+                            in[size + x * h2 + y];
+                        out[size + size4 + (w2 - 1 - x) * h2 + y] =
+                            in[size + size4 + y * w2 + x];
+                    }
+                }
+            }
+        }
+
+        void ReadVideo::_flipYUV420P(uint8_t* out, const uint8_t* in)
+        {
+            // Calculate the size of each plane
+            const size_t w = _info.size.w;
+            const size_t h = _info.size.h;
+            const size_t w2 = w / 2;
+            const size_t h2 = h / 2;
+            const size_t size = w * h;
+            const size_t size4 = size / 4;
+
+            // Flip Y plane vertically
+            for (size_t y = 0; y < h; ++y)
+            {
+                for (size_t x = 0; x < w; ++x)
+                {
+                    out[(h - 1 - y) * w + (w - 1 - x)] = in[y * w + x];
+                }
+            }
+
+            // Flip U and V planes vertically
+            for (size_t y = 0; y < h2; ++y)
+            {
+                for (size_t x = 0; x < w2; ++x)
+                {
+                    out[size + y * w2 + x] =
+                        in[size + (h2 - 1 - y) * w2 + (w2 - 1 - x)];
+                    out[size + size4 + y * w2 + x] =
+                        in[size + size4 + (h2 - 1 - y) * w2 + (w2 - 1 - x)];
+                }
+            }
         }
     }
 }

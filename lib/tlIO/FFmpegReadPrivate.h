@@ -4,8 +4,6 @@
 
 #pragma once
 
-#include <tlCore/Matrix.h>
-
 #include <tlIO/FFmpeg.h>
 
 extern "C"
@@ -75,14 +73,17 @@ namespace tl
 
         private:
             int _decode(const otime::RationalTime& currentTime);
-            void _copy(const std::shared_ptr<image::Image>&);
-            math::Matrix4x4f _getMatrix(const AVStream*);
+            void _copy(std::shared_ptr<image::Image>&);
+            float _getRotation(const AVStream*);
+            void _transposeYUV420P(uint8_t*, const uint8_t*, const bool);
+            void _flipYUV420P(uint8_t*, const uint8_t*);
             
             std::string _fileName;
             Options _options;
             image::Info _info;
             otime::TimeRange _timeRange = time::invalidTimeRange;
             image::Tags _tags;
+            float _rotation = 0.F;
 
             AVFormatContext* _avFormatContext = nullptr;
             AVIOBufferData _avIOBufferData;
