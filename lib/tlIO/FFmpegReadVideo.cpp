@@ -792,31 +792,6 @@ namespace tl
                             data2 + linesize2 * i,
                             w2);
                     }
-                    if (_rotation != 0.F)
-                    {
-                        auto info = _info;
-                        if (std::fabs(_rotation) != 180.F)
-                        {
-                            const auto tmp = info.size.w;
-                            info.size.w = info.size.h;
-                            info.size.h = tmp;
-                        }
-                        auto transposedImage = image::Image::create(info);
-                        if (std::fabs(_rotation) == 180.F)
-                        {
-                            _flipYUV420P(transposedImage->getData(), data);
-                        }
-                        else
-                        {
-                            bool clockwise = true;
-                            if (_rotation == 90.F ||
-                                _rotation == -270.F)
-                                clockwise = false;
-                            _transposeYUV420P(
-                                transposedImage->getData(), data, clockwise);
-                        }
-                        image = transposedImage;
-                    }
                     break;
                 }
                 default: break;
@@ -840,6 +815,33 @@ namespace tl
                     _avCodecParameters[_avStream]->height,
                     _avFrame2->data,
                     _avFrame2->linesize);
+            }
+            if (_avOutputPixelFormat == AV_PIX_FMT_YUV420P)
+            {
+                if (_rotation != 0.F)
+                {
+                    auto info = _info;
+                    if (std::fabs(_rotation) != 180.F)
+                    {
+                        const auto tmp = info.size.w;
+                        info.size.w = info.size.h;
+                        info.size.h = tmp;
+                    }
+                    auto transposedImage = image::Image::create(info);
+                    if (std::fabs(_rotation) == 180.F)
+                    {
+                        _flipYUV420P(transposedImage->getData(), data);
+                    }
+                    else
+                    {
+                        bool clockwise = true;
+                        if (_rotation == 90.F || _rotation == -270.F)
+                            clockwise = false;
+                        _transposeYUV420P(
+                            transposedImage->getData(), data, clockwise);
+                    }
+                    image = transposedImage;
+                }
             }
         }
         
@@ -905,7 +907,7 @@ namespace tl
                     for (size_t x = 0; x < w2; ++x)
                     {
                         out[size + (w2 - 1 - x) * h2 + y] =
-                            in[size + x * h2 + y];
+                            in[size + y * w2 + x];
                         out[size + size4 + (w2 - 1 - x) * h2 + y] =
                             in[size + size4 + y * w2 + x];
                     }
