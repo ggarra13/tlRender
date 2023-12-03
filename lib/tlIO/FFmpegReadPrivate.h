@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <tlCore/Matrix.h>
+
 #include <tlIO/FFmpeg.h>
 
 extern "C"
@@ -11,6 +13,7 @@ extern "C"
 #include <libavcodec/avcodec.h>
 #include <libswresample/swresample.h>
 
+struct AVStream;    
 } // extern "C"
 
 #include <atomic>
@@ -73,7 +76,8 @@ namespace tl
         private:
             int _decode(const otime::RationalTime& currentTime);
             void _copy(const std::shared_ptr<image::Image>&);
-
+            math::Matrix4x4f _getMatrix(const AVStream*);
+            
             std::string _fileName;
             Options _options;
             image::Info _info;

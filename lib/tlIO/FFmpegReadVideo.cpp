@@ -8,6 +8,7 @@
 
 extern "C"
 {
+#include <libavutil/display.h>
 #include <libavutil/imgutils.h>
 #include <libavutil/opt.h>
 
@@ -429,6 +430,12 @@ namespace tl
                     ss << _timeRange.start_time().rate() << " FPS";
                     _tags["Video Speed"] = ss.str();
                 }
+                {
+                    std::stringstream ss;
+                    ss << std::fixed;
+                    ss << _getMatrix(avVideoStream);
+                    _tags["Video Matrix"] = ss.str();
+                }
             }
         }
 
@@ -807,6 +814,21 @@ namespace tl
                     _avFrame2->data,
                     _avFrame2->linesize);
             }
+        }
+
+        math::Matrix4x4f ReadVideo::_getMatrix(const AVStream* st)
+        {
+            math::Matrix4x4f out;
+
+            uint8_t* displaymatrix =
+                av_stream_get_side_data(st, AV_PKT_DATA_DISPLAYMATRIX, NULL);
+            double theta = 0;
+            if (displaymatrix)
+            {
+                theta = -av_display_rotation_get((int32_t*)displaymatrix);
+                out = math::rotateZ(static_cast<float>(theta));
+            }
+            return out;
         }
     }
 }
