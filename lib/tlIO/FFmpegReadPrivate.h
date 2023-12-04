@@ -75,8 +75,20 @@ namespace tl
             int _decode(const otime::RationalTime& currentTime);
             void _copy(std::shared_ptr<image::Image>&);
             float _getRotation(const AVStream*);
-            void _transposeYUV420P(uint8_t*, const uint8_t*, const bool);
-            void _flipYUV420P(uint8_t*, const uint8_t*);
+
+            template<typename T>
+            void _rotateYUV420(T*, const T*, const bool);
+            template<typename T>
+            void _rotateYUV422(T*, const T*, const bool);
+            template<typename T>
+            void _rotateYUV444(T*, const T*, const bool);
+            
+            template<typename T>
+            void _flipYUV420(T*, const T*);
+            template<typename T>
+            void _flipYUV422(T*, const T*);
+            template<typename T>
+            void _flipYUV444(T*, const T*);
             
             std::string _fileName;
             Options _options;

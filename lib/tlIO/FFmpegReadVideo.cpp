@@ -152,7 +152,7 @@ namespace tl
 
                 _avInputPixelFormat = static_cast<AVPixelFormat>(_avCodecParameters[_avStream]->format);
 
-                // LibVPX return AV_PIX_FMT_YUV420P with metadata "alpha_mode" set to 1.
+                // LibVPX returns AV_PIX_FMT_YUV420P with metadata "alpha_mode" set to 1.
                 AVDictionaryEntry* tag = nullptr;
                 while ((tag = av_dict_get(avVideoStream->metadata, "", tag, AV_DICT_IGNORE_SUFFIX)))
                 {
@@ -816,32 +816,92 @@ namespace tl
                     _avFrame2->data,
                     _avFrame2->linesize);
             }
-            if (_avOutputPixelFormat == AV_PIX_FMT_YUV420P)
+
+            // Handle embedded rotation in movie file (as when taken from a
+            // phone).
+            if (_rotation != 0.F)
             {
-                if (_rotation != 0.F)
+                int rotation = static_cast<int>(_rotation);
+                auto info = _info;
+                if (std::abs(rotation) != 180)
                 {
-                    auto info = _info;
-                    if (std::fabs(_rotation) != 180.F)
-                    {
-                        const auto tmp = info.size.w;
-                        info.size.w = info.size.h;
-                        info.size.h = tmp;
-                    }
-                    auto transposedImage = image::Image::create(info);
-                    if (std::fabs(_rotation) == 180.F)
-                    {
-                        _flipYUV420P(transposedImage->getData(), data);
-                    }
-                    else
-                    {
-                        bool clockwise = true;
-                        if (_rotation == 90.F || _rotation == -270.F)
-                            clockwise = false;
-                        _transposeYUV420P(
-                            transposedImage->getData(), data, clockwise);
-                    }
-                    image = transposedImage;
+                    const auto tmp = info.size.w;
+                    info.size.w = info.size.h;
+                    info.size.h = tmp;
                 }
+                auto tmp = image::Image::create(info);
+                if (std::abs(rotation) == 180.F)
+                {
+                    switch(info.pixelType)
+                    {
+                    case image::PixelType::YUV_420P_U8:
+                        _flipYUV420<uint8_t>(tmp->getData(), data);
+                        break;
+                    case image::PixelType::YUV_420P_U16:
+                        _flipYUV420<uint16_t>(
+                            reinterpret_cast<uint16_t*>(tmp->getData()),
+                            reinterpret_cast<uint16_t*>(data));
+                        break;
+                    case image::PixelType::YUV_422P_U8:
+                        _flipYUV422<uint8_t>(tmp->getData(), data);
+                        break;
+                    case image::PixelType::YUV_422P_U16:
+                        _flipYUV422<uint16_t>(
+                            reinterpret_cast<uint16_t*>(tmp->getData()),
+                            reinterpret_cast<uint16_t*>(data));
+                        break;
+                    case image::PixelType::YUV_444P_U8:
+                        _flipYUV444<uint8_t>(tmp->getData(), data);
+                        break;
+                    case image::PixelType::YUV_444P_U16:
+                        _flipYUV444<uint16_t>(
+                            reinterpret_cast<uint16_t*>(tmp->getData()),
+                            reinterpret_cast<uint16_t*>(data));
+                        break;
+                    default:
+                        return; // cannot flip
+                        break;
+                    }
+                }
+                else
+                {
+                    bool clockwise = true;
+                    if (rotation == 90 || rotation == -270)
+                        clockwise = false;
+
+                    switch(info.pixelType)
+                    {
+                    case image::PixelType::YUV_420P_U8:
+                        _rotateYUV420<uint8_t>(tmp->getData(), data, clockwise);
+                        break;
+                    case image::PixelType::YUV_420P_U16:
+                        _rotateYUV420<uint16_t>(
+                            reinterpret_cast<uint16_t*>(tmp->getData()),
+                            reinterpret_cast<uint16_t*>(data), clockwise);
+                        break;
+                    case image::PixelType::YUV_422P_U8:
+                        _rotateYUV422<uint8_t>(tmp->getData(), data, clockwise);
+                        break;
+                    case image::PixelType::YUV_422P_U16:
+                        _rotateYUV422<uint16_t>(
+                            reinterpret_cast<uint16_t*>(tmp->getData()),
+                            reinterpret_cast<uint16_t*>(data), clockwise);
+                        break;
+                    case image::PixelType::YUV_444P_U8:
+                        _rotateYUV444<uint8_t>(
+                            tmp->getData(), data, clockwise);
+                        break;
+                    case image::PixelType::YUV_444P_U16:
+                        _rotateYUV444<uint16_t>(
+                            reinterpret_cast<uint16_t*>(tmp->getData()),
+                            reinterpret_cast<uint16_t*>(data), clockwise);
+                        break;
+                    default:
+                        return; // cannot rotate
+                        break;
+                    }
+                }
+                image = tmp;
             }
         }
         
@@ -858,9 +918,10 @@ namespace tl
             }
             return out;
         }
-        
-        void ReadVideo::_transposeYUV420P(uint8_t* out, const uint8_t* in,
-                                          const bool clockwise)
+
+        template<typename T>
+        void ReadVideo::_rotateYUV420(T* out, const T* in,
+                                         const bool clockwise)
         {
             const size_t w = _info.size.w;
             const size_t h = _info.size.h;
@@ -872,16 +933,18 @@ namespace tl
             if (clockwise)
             {
                 // Transpose Y plane
-                for (size_t y = 0; y < h; ++y) {
-                    for (size_t x = 0; x < w; ++x) {
+                for (size_t y = 0; y < h; ++y)
+                {
+                    for (size_t x = 0; x < w; ++x)
+                    {
                         out[x * h + ( h - 1 - y )] = in[y * w + x];
                     }
                 }
 
                 // Transpose U and V planes (downsampling)
-                for (size_t y = 0; y < h / 2; ++y)
+                for (size_t y = 0; y < h2; ++y)
                 {
-                    for (size_t x = 0; x < w / 2; ++x)
+                    for (size_t x = 0; x < w2; ++x)
                     {
                         out[size + x * h2 + (h2 - y - 1)] =
                             in[size + y * w2 + x];
@@ -915,7 +978,8 @@ namespace tl
             }
         }
 
-        void ReadVideo::_flipYUV420P(uint8_t* out, const uint8_t* in)
+        template<typename T>
+        void ReadVideo::_flipYUV420(T* out, const T* in)
         {
             // Calculate the size of each plane
             const size_t w = _info.size.w;
@@ -939,10 +1003,221 @@ namespace tl
             {
                 for (size_t x = 0; x < w2; ++x)
                 {
+                    // U plane
                     out[size + y * w2 + x] =
                         in[size + (h2 - 1 - y) * w2 + (w2 - 1 - x)];
+                    // V plane
                     out[size + size4 + y * w2 + x] =
                         in[size + size4 + (h2 - 1 - y) * w2 + (w2 - 1 - x)];
+                }
+            }
+        }
+        
+ 
+        template<typename T>
+        void ReadVideo::_rotateYUV422(T* out, const T* in,
+                                         const bool clockwise)
+        {
+            const size_t w = _info.size.w;
+            const size_t h = _info.size.h;
+            const size_t w2 = w / 2;
+            const size_t size = w * h;
+            const size_t size2 = size + w2 * h;
+
+            // Create temp buffer for U and V planes
+            auto* tmp = new T[w * h];
+
+            
+            if (clockwise)
+            {
+                // Rotate Y plane clockwise
+                for (size_t y = 0; y < h; ++y)
+                {
+                    for (size_t x = 0; x < w; ++x)
+                    {
+                        out[x * h + ( h - y - 1 )] = in[y * w + x];
+                    }
+                }
+
+                // Upsample and rotate U clockwise into temp buffer
+                for (size_t y = 0; y < h; ++y)
+                {
+                    for (size_t x = 0; x < w2; ++x)
+                    {
+                        tmp[x * 2 * h + ( h - y - 1 )] = in[size + y * w2 + x];
+                        tmp[(x * 2 + 1) * h + (h - y - 1)] =
+                            in[size + y * w2 + x];
+                    }
+                }
+
+                // Downsample U into final position
+                for (size_t y = 0; y < h; ++y)
+                {
+                    for (size_t x = 0; x < w2; ++x)
+                    {
+                        out[size + y * w2 + x] = tmp[y * w + x * 2];
+                    }
+                }
+                
+                // Upsample and rotate V clockwise into temp buffer
+                for (size_t y = 0; y < h; ++y)
+                {
+                    for (size_t x = 0; x < w2; ++x)
+                    {
+                        tmp[x * 2 * h + ( h - y - 1 )] = in[size2 + y * w2 + x];
+                        tmp[(x * 2 + 1) * h + (h - y - 1)] =
+                            in[size2 + y * w2 + x];
+                    }
+                }
+
+            }
+            else
+            {
+                // Rotate Y plane counterclockwise
+                for (size_t y = 0; y < h; ++y)
+                {
+                    for (size_t x = 0; x < w; ++x)
+                    {
+                        out[(w - 1 - x) * h + y] = in[y * w + x];
+                    }
+                }
+
+                // Upsample and rotate U counterclockwise into temp buffer
+                for (size_t y = 0; y < h; ++y)
+                {
+                    for (size_t x = 0; x < w2; ++x)
+                    {
+                        const size_t x2 = (w2 - 1 - x) * 2;
+                        tmp[x2 * h + y] = in[size + y * w2 + x];
+                        tmp[(x2 + 1) * h + y] = in[size + y * w2 + x];
+                    }
+                }
+
+                // Downsample U into final position
+                for (size_t y = 0; y < h; ++y)
+                {
+                    for (size_t x = 0; x < w2; ++x)
+                    {
+                        out[size + y * w2 + x] = tmp[y * w + x * 2];
+                    }
+                }
+                
+                // Upsample and rotate V counterclockwise into temp buffer
+                for (size_t y = 0; y < h; ++y)
+                {
+                    for (size_t x = 0; x < w2; ++x)
+                    {
+                        const size_t x2 = (w2 - 1 - x) * 2;
+                        tmp[x2 * h + y] = in[size2 + y * w2 + x];
+                        tmp[(x2 + 1) * h + y] = in[size2 + y * w2 + x];
+                    }
+                }
+            }
+            
+            // Downsample V into final position
+            for (size_t y = 0; y < h; ++y)
+            {
+                for (size_t x = 0; x < w2; ++x)
+                {
+                    out[size2 + y * w2 + x] = tmp[y * w + x * 2];
+                }
+            }
+
+            // Delete tmp buffer
+            delete [] tmp;
+        }
+
+        template<typename T>
+        void ReadVideo::_flipYUV422(T* out, const T* in)
+        {
+            // Calculate the size of each plane
+            const size_t w = _info.size.w;
+            const size_t h = _info.size.h;
+            const size_t w2 = w / 2;
+            const size_t size = w * h;
+            const size_t size2 = size + w2 * h;
+
+            // Flip Y plane vertically
+            for (size_t y = 0; y < h; ++y)
+            {
+                for (size_t x = 0; x < w; ++x)
+                {
+                    out[(h - 1 - y) * w + (w - 1 - x)] = in[y * w + x];
+                }
+            }
+
+            // Flip U and V planes vertically
+            for (size_t y = 0; y < h; ++y)
+            {
+                for (size_t x = 0; x < w2; ++x)
+                {
+                    out[size + y * w2 + x] =
+                        in[size + (h - 1 - y) * w2 + (w2 - 1 - x)];
+                    out[size2 + y * w2 + x] =
+                        in[size2 + (h - 1 - y) * w2 + (w2 - 1 - x)];
+                }
+            }
+        }
+            
+        template<typename T>
+        void ReadVideo::_rotateYUV444(T* out, const T* in,
+                                         const bool clockwise)
+        {
+            const size_t w = _info.size.w;
+            const size_t h = _info.size.h;
+            const size_t size = w * h;
+
+            if (clockwise)
+            {
+                // Transpose YUV planes clockwise
+                for (int p = 0; p < 3; ++p)
+                {
+                    size_t plane = p * size;
+                    for (size_t y = 0; y < h; ++y)
+                    {
+                        for (size_t x = 0; x < w; ++x)
+                        {
+                            out[plane + x * h + ( h - 1 - y )] = in[plane + y * w + x];
+                        }
+                    }
+                }
+            }
+            else
+            {
+                // Transpose YUV planes counterclockwise
+                for (int p = 0; p < 3; ++p)
+                {
+                    size_t plane = p * size;
+                    for (size_t y = 0; y < h; ++y)
+                    {
+                        for (size_t x = 0; x < w; ++x)
+                        {
+                            out[plane + (w - 1 - x) * h + y] = in[plane + y * w + x];
+                        }
+                    }
+                }
+            }
+        }
+        
+        template<typename T>
+        void ReadVideo::_flipYUV444(T* out, const T* in)
+        {
+            // Calculate the size of each plane
+            const size_t w = _info.size.w;
+            const size_t h = _info.size.h;
+            const size_t size = w * h;
+
+            // Flip YUV planes vertically
+            for (int p = 0; p < 3; ++p)
+            {
+                size_t plane = p * size;
+                for (size_t y = 0; y < h; ++y)
+                {
+                    for (size_t x = 0; x < w; ++x)
+                    {
+                        out[plane + (h - 1 - y) * w + (w - 1 - x)] =
+                            in[plane + y * w + x];
+                    }
                 }
             }
         }
