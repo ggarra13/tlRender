@@ -2,6 +2,8 @@ build
 Debug
 Release
 RelWithDebInfo
+build*
+debug_tests
 doc/doxygen
 *~
 .git
