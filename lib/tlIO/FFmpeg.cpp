@@ -205,6 +205,7 @@ namespace tl
                     { ".mpeg3", io::FileType::Movie },
                     { ".mpeg4", io::FileType::Movie },
                     { ".mxf", io::FileType::Movie },
+                    { ".ts", io::FileType::Movie },
                     { ".vp9", io::FileType::Movie },
                     { ".y4m", io::FileType::Movie },
                     { ".webm", io::FileType::Movie },
