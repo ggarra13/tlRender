@@ -12,6 +12,7 @@ namespace tl
         {
             json = nlohmann::json
             {
+                { "enabled", value.enabled },
                 { "fileName", value.fileName },
                 { "input", value.input },
                 { "display", value.display },
@@ -22,6 +23,7 @@ namespace tl
 
         void from_json(const nlohmann::json& json, OCIOOptions& value)
         {
+            json.at("enabled").get_to(value.enabled);
             json.at("fileName").get_to(value.fileName);
             json.at("input").get_to(value.input);
             json.at("display").get_to(value.display);
