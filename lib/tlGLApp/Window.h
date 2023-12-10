@@ -23,7 +23,8 @@ namespace tl
         protected:
             void _init(
                 const std::string& name,
-                const std::shared_ptr<system::Context>&);
+                const std::shared_ptr<system::Context>&,
+                const std::shared_ptr<Window>& share);
 
             Window();
 
@@ -33,7 +34,8 @@ namespace tl
             //! Create a new window.
             static std::shared_ptr<Window> create(
                 const std::string& name,
-                const std::shared_ptr<system::Context>&);
+                const std::shared_ptr<system::Context>&,
+                const std::shared_ptr<Window>& share = nullptr);
 
             //! Observe the window size.
             std::shared_ptr<observer::IValue<math::Size2i> > observeWindowSize() const;
@@ -83,13 +85,13 @@ namespace tl
             void _doneCurrent();
 
         private:
-            bool _getSizeUpdate(const std::shared_ptr<IWidget>&) const;
-            void _sizeHintEvent(
+            bool _hasSizeUpdate(const std::shared_ptr<IWidget>&) const;
+            void _sizeHintEventRecursive(
                 const std::shared_ptr<IWidget>&,
                 const ui::SizeHintEvent&);
 
-            bool _getDrawUpdate(const std::shared_ptr<IWidget>&) const;
-            void _drawEvent(
+            bool _hasDrawUpdate(const std::shared_ptr<IWidget>&) const;
+            void _drawEventRecursive(
                 const std::shared_ptr<IWidget>&,
                 const math::Box2i&,
                 const ui::DrawEvent&);

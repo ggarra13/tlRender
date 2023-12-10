@@ -22,6 +22,7 @@
 #include <tlQt/OutputDevice.h>
 #include <tlQt/TimeObject.h>
 #include <tlQt/TimelinePlayer.h>
+#include <tlQt/ToolTipsFilter.h>
 
 #include <tlUI/RecentFilesModel.h>
 
@@ -73,9 +74,9 @@ namespace tl
             std::shared_ptr<DevicesModel> devicesModel;
             audio::Info audioInfo;
             std::shared_ptr<play::AudioModel> audioModel;
+            QScopedPointer<qt::ToolTipsFilter> toolTipsFilter;
 
             QScopedPointer<MainWindow> mainWindow;
-            int secondaryWindowScreen = -1;
             QScopedPointer<SecondaryWindow> secondaryWindow;
 
             std::shared_ptr<observer::ValueObserver<std::string> > settingsObserver;
@@ -258,15 +259,27 @@ namespace tl
         void App::setSecondaryWindow(bool value)
         {
             TLRENDER_P();
+            //! \bug macOS does not seem to like having an application with
+            //! normal and fullscreen windows.
+            QScreen* secondaryScreen = nullptr;
+#if !defined(__APPLE__)
             auto screens = this->screens();
             auto mainWindowScreen = p.mainWindow->screen();
             screens.removeOne(mainWindowScreen);
-            if (value && !screens.isEmpty())
+            if (!screens.isEmpty())
+            {
+                secondaryScreen = screens[0];
+            }
+#endif // __APPLE__
+            if (value)
             {
                 p.secondaryWindow.reset(new SecondaryWindow(this));
-                p.secondaryWindow->move(screens[0]->availableGeometry().topLeft());
-                p.secondaryWindow->setWindowState(
-                    p.secondaryWindow->windowState() ^ Qt::WindowFullScreen);
+                if (secondaryScreen)
+                {
+                    p.secondaryWindow->move(secondaryScreen->availableGeometry().topLeft());
+                    p.secondaryWindow->setWindowState(
+                        p.secondaryWindow->windowState() ^ Qt::WindowFullScreen);
+                }
 
                 connect(
                     p.secondaryWindow.get(),
@@ -453,16 +466,21 @@ namespace tl
                 p.settingsFileName,
                 p.options.resetSettings,
                 _context);
+
             p.settings->setDefaultValue("Files/RecentMax", 10);
+
             p.settings->setDefaultValue("Cache/Size", 1);
             p.settings->setDefaultValue("Cache/ReadAhead", 2.0);
             p.settings->setDefaultValue("Cache/ReadBehind", 0.5);
+
             p.settings->setDefaultValue("FileSequence/Audio",
                 timeline::FileSequenceAudio::BaseName);
             p.settings->setDefaultValue("FileSequence/AudioFileName", std::string());
             p.settings->setDefaultValue("FileSequence/AudioDirectory", std::string());
             p.settings->setDefaultValue("FileSequence/MaxDigits", 9);
+
             p.settings->setDefaultValue("SequenceIO/ThreadCount", 16);
+
             DevicesModelData devicesModelData;
             p.settings->setDefaultValue("Devices/DeviceIndex", devicesModelData.deviceIndex);
             p.settings->setDefaultValue("Devices/DisplayModeIndex", devicesModelData.displayModeIndex);
@@ -470,10 +488,12 @@ namespace tl
             p.settings->setDefaultValue("Devices/DeviceEnabled", devicesModelData.deviceEnabled);
             p.settings->setDefaultValue("Devices/HDRMode", devicesModelData.hdrMode);
             p.settings->setDefaultValue("Devices/HDRData", devicesModelData.hdrData);
+
 #if defined(TLRENDER_FFMPEG)
             p.settings->setDefaultValue("FFmpeg/YUVToRGBConversion", false);
             p.settings->setDefaultValue("FFmpeg/ThreadCount", 0);
 #endif // TLRENDER_FFMPEG
+
 #if defined(TLRENDER_USD)
             p.settings->setDefaultValue("USD/renderWidth", p.options.usdRenderWidth);
             p.settings->setDefaultValue("USD/complexity", p.options.usdComplexity);
@@ -483,13 +503,16 @@ namespace tl
             p.settings->setDefaultValue("USD/stageCacheCount", p.options.usdStageCache);
             p.settings->setDefaultValue("USD/diskCacheByteCount", p.options.usdDiskCache);
 #endif // TLRENDER_USD
+
             p.settings->setDefaultValue("FileBrowser/NativeFileDialog", true);
+
             p.settings->setDefaultValue("Performance/TimerMode",
                 timeline::PlayerOptions().timerMode);
             p.settings->setDefaultValue("Performance/AudioBufferFrameCount",
                 timeline::PlayerOptions().audioBufferFrameCount);
             p.settings->setDefaultValue("Performance/VideoRequestCount", 16);
             p.settings->setDefaultValue("Performance/AudioRequestCount", 16);
+
             p.settings->setDefaultValue("Misc/ToolTipsEnabled", true);
         }
 
@@ -831,6 +854,19 @@ namespace tl
                     recentPaths.push_back(file::Path(recentFile));
                 }
                 p.recentFilesModel->setRecent(recentPaths);
+            }
+            if ("Misc/ToolTipsEnabled" == name || name.empty())
+            {
+                if (p.settings->getValue<bool>("Misc/ToolTipsEnabled"))
+                {
+                    removeEventFilter(p.toolTipsFilter.get());
+                    p.toolTipsFilter.reset();
+                }
+                else
+                {
+                    p.toolTipsFilter.reset(new qt::ToolTipsFilter(this));
+                    installEventFilter(p.toolTipsFilter.get());
+                }
             }
         }
 

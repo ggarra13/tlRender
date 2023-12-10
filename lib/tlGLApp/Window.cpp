@@ -167,13 +167,15 @@ namespace tl
             float displayScale = 1.F;
             bool refresh = false;
             int modifiers = 0;
-            std::shared_ptr<timeline::IRender> render;
+            std::shared_ptr<timeline::GLTextureCache> textureCache;
+            std::shared_ptr<timeline::GLRender> render;
             std::shared_ptr<gl::OffscreenBuffer> offscreenBuffer;
         };
 
         void Window::_init(
             const std::string& name,
-            const std::shared_ptr<system::Context>& context)
+            const std::shared_ptr<system::Context>& context,
+            const std::shared_ptr<Window>& share)
         {
             IWindow::_init("tl::ui::Window", context, nullptr);
             TLRENDER_P();
@@ -189,7 +191,8 @@ namespace tl
                 p.windowSize->get(),
                 context,
                 static_cast<int>(gl::GLFWWindowOptions::DoubleBuffer) |
-                static_cast<int>(gl::GLFWWindowOptions::MakeCurrent));
+                static_cast<int>(gl::GLFWWindowOptions::MakeCurrent),
+                share ? share->getGLFWWindow() : nullptr);
             p.glfwWindow->setFrameBufferSizeCallback(
                 [this](const math::Size2i& value)
                 {
@@ -280,6 +283,11 @@ namespace tl
 
             p.frameBufferSize = p.glfwWindow->getFrameBufferSize();
             p.displayScale = p.glfwWindow->getContentScale().x;
+
+            if (share)
+            {
+                p.textureCache = share->_p->render->getTextureCache();
+            }
         }
 
         Window::Window() :
@@ -293,10 +301,11 @@ namespace tl
 
         std::shared_ptr<Window> Window::create(
             const std::string& name,
-            const std::shared_ptr<system::Context>& context)
+            const std::shared_ptr<system::Context>& context,
+            const std::shared_ptr<Window>& share)
         {
             auto out = std::shared_ptr<Window>(new Window);
-            out->_init(name, context);
+            out->_init(name, context, share);
             return out;
         }
 
@@ -400,24 +409,24 @@ namespace tl
             IWindow::tickEvent(parentsVisible, parentsEnabled, event);
             TLRENDER_P();
 
-            if (_getSizeUpdate(shared_from_this()))
+            if (_hasSizeUpdate(shared_from_this()))
             {
                 ui::SizeHintEvent sizeHintEvent(
                     event.style,
                     event.iconLibrary,
                     event.fontSystem,
                     p.displayScale);
-                _sizeHintEvent(shared_from_this(), sizeHintEvent);
+                _sizeHintEventRecursive(shared_from_this(), sizeHintEvent);
 
                 setGeometry(math::Box2i(p.frameBufferSize));
 
-                _clipEvent(
+                _clipEventRecursive(
                     shared_from_this(),
                     _geometry,
                     !isVisible(false));
             }
 
-            if (p.refresh || _getDrawUpdate(shared_from_this()))
+            if (p.refresh || _hasDrawUpdate(shared_from_this()))
             {
                 p.refresh = false;
 
@@ -425,7 +434,9 @@ namespace tl
 
                 if (!p.render)
                 {
-                    p.render = timeline::GLRender::create(_context.lock());
+                    p.render = timeline::GLRender::create(
+                        _context.lock(),
+                        p.textureCache);
                 }
 
                 gl::OffscreenBufferOptions offscreenBufferOptions;
@@ -450,7 +461,7 @@ namespace tl
                             p.render,
                             event.fontSystem);
                         p.render->setClipRectEnabled(true);
-                        _drawEvent(
+                        _drawEventRecursive(
                             shared_from_this(),
                             math::Box2i(p.frameBufferSize),
                             drawEvent);
@@ -591,7 +602,7 @@ namespace tl
             }
         }
 
-        bool Window::_getSizeUpdate(const std::shared_ptr<IWidget>& widget) const
+        bool Window::_hasSizeUpdate(const std::shared_ptr<IWidget>& widget) const
         {
             bool out = widget->getUpdates() & ui::Update::Size;
             if (out)
@@ -602,24 +613,24 @@ namespace tl
             {
                 for (const auto& child : widget->getChildren())
                 {
-                    out |= _getSizeUpdate(child);
+                    out |= _hasSizeUpdate(child);
                 }
             }
             return out;
         }
 
-        void Window::_sizeHintEvent(
+        void Window::_sizeHintEventRecursive(
             const std::shared_ptr<IWidget>& widget,
             const ui::SizeHintEvent& event)
         {
             for (const auto& child : widget->getChildren())
             {
-                _sizeHintEvent(child, event);
+                _sizeHintEventRecursive(child, event);
             }
             widget->sizeHintEvent(event);
         }
 
-        bool Window::_getDrawUpdate(const std::shared_ptr<IWidget>& widget) const
+        bool Window::_hasDrawUpdate(const std::shared_ptr<IWidget>& widget) const
         {
             bool out = false;
             if (!widget->isClipped())
@@ -633,14 +644,14 @@ namespace tl
                 {
                     for (const auto& child : widget->getChildren())
                     {
-                        out |= _getDrawUpdate(child);
+                        out |= _hasDrawUpdate(child);
                     }
                 }
             }
             return out;
         }
 
-        void Window::_drawEvent(
+        void Window::_drawEventRecursive(
             const std::shared_ptr<IWidget>& widget,
             const math::Box2i& drawRect,
             const ui::DrawEvent& event)
@@ -658,7 +669,7 @@ namespace tl
                     const math::Box2i& childGeometry = child->getGeometry();
                     if (childGeometry.intersects(childrenClipRect))
                     {
-                        _drawEvent(
+                        _drawEventRecursive(
                             child,
                             childGeometry.intersect(childrenClipRect),
                             event);
