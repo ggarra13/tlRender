@@ -22,8 +22,10 @@ namespace tl
         {
             int fromTrack = 0;
             int fromIndex = 0;
+            int fromOtioIndex = 0;
             int toTrack   = 0;
             int toIndex   = 0;
+            int toOtioIndex = 0;
         };
 
         //! Move items in the timeline.
