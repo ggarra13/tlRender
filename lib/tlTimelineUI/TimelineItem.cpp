@@ -7,6 +7,7 @@
 #include <tlTimelineUI/AudioClipItem.h>
 #include <tlTimelineUI/GapItem.h>
 #include <tlTimelineUI/VideoClipItem.h>
+#include <tlTimelineUI/TransitionItem.h>
 
 #include <tlUI/DrawUtil.h>
 #include <tlUI/Label.h>
@@ -39,6 +40,7 @@ namespace tl
                 std::shared_ptr<ui::Label> label;
                 std::shared_ptr<ui::Label> durationLabel;
                 std::vector<std::shared_ptr<IItem> > items;
+                std::vector<std::shared_ptr<TransitionItem> > transitions;
                 math::Size2i size;
                 int clipHeight = 0;
             };
@@ -217,6 +219,16 @@ namespace tl
                                 ui::ColorRole::VideoGap :
                                 ui::ColorRole::AudioGap,
                                 gap,
+                                scale,
+                                options,
+                                itemData,
+                                context,
+                                shared_from_this()));
+                        }
+                        else if (auto transition = otio::dynamic_retainer_cast<otio::Transition>(child))
+                        {
+                            track.transitions.push_back(TransitionItem::create(
+                                transition,
                                 scale,
                                 options,
                                 itemData,

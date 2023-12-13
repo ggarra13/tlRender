@@ -35,6 +35,7 @@ namespace tl
                 itemData,
                 context,
                 parent);
+            std::cerr << "create transition" << std::endl;
         }
 
         TransitionItem::TransitionItem()
