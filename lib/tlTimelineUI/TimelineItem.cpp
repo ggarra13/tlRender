@@ -337,7 +337,7 @@ namespace tl
                     y,
                     durationSizeHint.w,
                     durationSizeHint.h));
-
+                
                 for (const auto& item : track.items)
                 {
                     const auto i = std::find_if(
@@ -361,6 +361,19 @@ namespace tl
                         track.clipHeight));
                 }
 
+                int h = track.clipHeight;
+                for (const auto& item : track.transitions)
+                {
+                    const otime::TimeRange& timeRange = item->getTimeRange();
+                    const math::Size2i& sizeHint = item->getSizeHint();
+                    item->setGeometry(math::Box2i(
+                        _geometry.min.x +
+                        timeRange.start_time().rescaled_to(1.0).value() * _scale,
+                        y + h + std::max(labelSizeHint.h, durationSizeHint.h),
+                        sizeHint.w,
+                        sizeHint.h));
+                }
+                
                 y += track.size.h;
             }
 

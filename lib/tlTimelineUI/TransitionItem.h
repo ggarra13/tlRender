@@ -37,6 +37,20 @@ namespace tl
                 const std::shared_ptr<ItemData>&,
                 const std::shared_ptr<system::Context>&,
                 const std::shared_ptr<IWidget>& parent = nullptr);
+
+            // void setScale(double) override;
+            // void setOptions(const ItemOptions&) override;
+
+            void sizeHintEvent(const ui::SizeHintEvent&) override;
+            void clipEvent(const math::Box2i&, bool) override;
+            void drawEvent(const math::Box2i&, const ui::DrawEvent&) override;
+            
+        private:
+
+            void _timeUnitsUpdate();
+            void _textUpdate();
+            
+            TLRENDER_PRIVATE();
         };
     }
 }
