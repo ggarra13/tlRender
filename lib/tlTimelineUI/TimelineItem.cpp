@@ -366,7 +366,9 @@ namespace tl
                         track.clipHeight));
                 }
 
-                int h = track.clipHeight;
+                y += track.clipHeight;
+
+                int transitionH = 0;
                 for (const auto& item : track.transitions)
                 {
                     const otime::TimeRange& timeRange = item->getTimeRange();
@@ -374,12 +376,14 @@ namespace tl
                     item->setGeometry(math::Box2i(
                         _geometry.min.x +
                         timeRange.start_time().rescaled_to(1.0).value() * _scale,
-                        y + h + std::max(labelSizeHint.h, durationSizeHint.h),
+                        y + std::max(labelSizeHint.h, durationSizeHint.h),
                         sizeHint.w,
                         sizeHint.h));
+                    transitionH = sizeHint.h + durationSizeHint.h;
                 }
                 
-                y += track.size.h;
+                y += transitionH;
+                
             }
 
             if (auto scrollArea = getParentT<ui::ScrollArea>())

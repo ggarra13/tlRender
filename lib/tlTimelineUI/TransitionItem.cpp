@@ -24,7 +24,7 @@ namespace tl
             {
                 int margin = 0;
                 int spacing = 0;
-                int border = 0;
+                int border = 2;
                 image::FontInfo labelFontInfo = image::FontInfo("", 0);
                 image::FontInfo durationFontInfo = image::FontInfo("", 0);
                 image::FontMetrics fontMetrics;
@@ -222,8 +222,7 @@ namespace tl
         void TransitionItem::_textUpdate()
         {
             TLRENDER_P();
-            // @todo:
-            //p.durationLabel = IItem::_durationLabel(_timeRange.duration());
+            p.durationLabel = IItem::_getDurationLabel(_timeRange.duration());
             p.size.textUpdate = true;
             p.draw.durationGlyphs.clear();
             _updates |= ui::Update::Size;
