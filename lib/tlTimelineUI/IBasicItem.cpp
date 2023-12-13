@@ -75,7 +75,7 @@ namespace tl
             p.label = label;
             p.colorRole = colorRole;
             p.markers = getMarkers(item.value);
-
+            
             _textUpdate();
         }
 
@@ -102,7 +102,7 @@ namespace tl
             const bool displayScaleChanged = event.displayScale != _displayScale;
             IItem::sizeHintEvent(event);
             TLRENDER_P();
-
+            
             if (displayScaleChanged || p.size.sizeInit)
             {
                 p.size.margin = event.style->getSizeRole(ui::SizeRole::MarginInside, _displayScale);
@@ -253,6 +253,19 @@ namespace tl
 
                     y += p.size.border * 2;
 
+                    // \bug: mrv2 would crash as markerSizes would sometimes
+                    //       not be initialized properly.
+                    if (p.markers.size() > p.size.markerSizes.size())
+                    {
+                        p.size.markerSizes.clear();
+                        for (const auto& marker : p.markers)
+                        {
+                            p.size.markerSizes.push_back(
+                                event.fontSystem->getSize(
+                                    marker.name, p.size.fontInfo));
+                        }
+                    }
+                    
                     labelGeometry = math::Box2i(
                         g2.min.x + p.size.margin,
                         y + p.size.margin,
