@@ -71,15 +71,19 @@ namespace tl
                 MoveData moveData;
                 moveData.fromTrack = 0;
                 moveData.fromIndex = 0;
+                moveData.fromOtioIndex = 0;
                 moveData.toTrack = 0;
                 moveData.toIndex = 0;
+                moveData.toOtioIndex = 0;
                 auto otioTimeline2 = move(otioTimeline, { moveData });
                 TLRENDER_ASSERT("Video 0" == getChild(otioTimeline2, 0, 0)->name());
 
                 moveData.fromTrack = 0;
                 moveData.fromIndex = 0;
+                moveData.fromOtioIndex = 0;
                 moveData.toTrack = 0;
                 moveData.toIndex = 1;
+                moveData.toOtioIndex = 1;
                 auto otioTimeline3 = move(otioTimeline2, { moveData });
                 TLRENDER_ASSERT("Video 0" == getChild(otioTimeline3, 0, 0)->name());
             }
@@ -103,8 +107,10 @@ namespace tl
                 MoveData moveData;
                 moveData.fromTrack = 0;
                 moveData.fromIndex = 0;
+                moveData.fromOtioIndex = 0;
                 moveData.toTrack = 0;
                 moveData.toIndex = 2;
+                moveData.toOtioIndex = 2;
                 auto otioTimeline2 = move(otioTimeline, { moveData });
                 TLRENDER_ASSERT("Video 1" == getChild(otioTimeline2, 0, 0)->name());
                 TLRENDER_ASSERT("Video 0" == getChild(otioTimeline2, 0, 1)->name());
@@ -143,8 +149,10 @@ namespace tl
                 MoveData moveData;
                 moveData.fromTrack = 0;
                 moveData.fromIndex = 2;
+                moveData.fromOtioIndex = 2;
                 moveData.toTrack = 0;
                 moveData.toIndex = 0;
+                moveData.toOtioIndex = 0;
                 auto otioTimeline2 = move(otioTimeline, { moveData });
                 TLRENDER_ASSERT("Video 2" == getChild(otioTimeline2, 0, 0)->name());
                 TLRENDER_ASSERT("Video 0" == getChild(otioTimeline2, 0, 1)->name());
@@ -152,8 +160,10 @@ namespace tl
 
                 moveData.fromTrack = 0;
                 moveData.fromIndex = 1;
+                moveData.fromOtioIndex = 1;
                 moveData.toTrack = 0;
                 moveData.toIndex = 3;
+                moveData.toOtioIndex = 3;
                 auto otioTimeline3 = move(otioTimeline2, { moveData });
                 TLRENDER_ASSERT("Video 2" == getChild(otioTimeline3, 0, 0)->name());
                 TLRENDER_ASSERT("Video 1" == getChild(otioTimeline3, 0, 1)->name());
@@ -203,8 +213,8 @@ namespace tl
                         otime::RationalTime(48000.0, 48000.0))));
 
                 std::vector<MoveData> moveData;
-                moveData.push_back({ 0, 2, 0, 0 });
-                moveData.push_back({ 1, 2, 1, 0 });
+                moveData.push_back({ 0, 2, 2, 0, 0, 0 });
+                moveData.push_back({ 1, 2, 2, 1, 0, 0 });
                 auto otioTimeline2 = move(otioTimeline, moveData);
                 TLRENDER_ASSERT("Video 2" == getChild(otioTimeline2, 0, 0)->name());
                 TLRENDER_ASSERT("Video 0" == getChild(otioTimeline2, 0, 1)->name());
@@ -214,8 +224,8 @@ namespace tl
                 TLRENDER_ASSERT("Audio 1" == getChild(otioTimeline2, 1, 2)->name());
 
                 moveData.clear();
-                moveData.push_back({ 0, 1, 0, 3 });
-                moveData.push_back({ 1, 1, 1, 3 });
+                moveData.push_back({ 0, 1, 1, 0, 3, 3 });
+                moveData.push_back({ 1, 1, 1, 1, 3, 3 });
                 auto otioTimeline3 = move(otioTimeline2, moveData);
                 TLRENDER_ASSERT("Video 2" == getChild(otioTimeline3, 0, 0)->name());
                 TLRENDER_ASSERT("Video 1" == getChild(otioTimeline3, 0, 1)->name());
@@ -240,15 +250,19 @@ namespace tl
                 MoveData moveData;
                 moveData.fromTrack = 0;
                 moveData.fromIndex = 0;
+                moveData.fromOtioIndex = 0;
                 moveData.toTrack = 1;
                 moveData.toIndex = 0;
+                moveData.toOtioIndex = 0;
                 auto otioTimeline2 = move(otioTimeline, { moveData });
                 TLRENDER_ASSERT("Video 0" == getChild(otioTimeline2, 1, 0)->name());
 
                 moveData.fromTrack = 1;
                 moveData.fromIndex = 0;
+                moveData.fromOtioIndex = 0;
                 moveData.toTrack = 0;
                 moveData.toIndex = 0;
+                moveData.toOtioIndex = 0;
                 auto otioTimeline3 = move(otioTimeline2, { moveData });
                 TLRENDER_ASSERT("Video 0" == getChild(otioTimeline3, 0, 0)->name());
             }
@@ -274,16 +288,20 @@ namespace tl
                     MoveData moveData;
                     moveData.fromTrack = 0;
                     moveData.fromIndex = 0;
+                    moveData.fromOtioIndex = 0;
                     moveData.toTrack = 0;
                     moveData.toIndex = 2;
+                    moveData.toOtioIndex = 2;
                     auto otioTimeline2 = move(otioTimeline, { moveData });
                     TLRENDER_ASSERT(video1 == getChild(otioTimeline2, 0, 0)->name());
                     TLRENDER_ASSERT(video0 == getChild(otioTimeline2, 0, 1)->name());
 
                     moveData.fromTrack = 0;
                     moveData.fromIndex = 1;
+                    moveData.fromOtioIndex = 1;
                     moveData.toTrack = 0;
                     moveData.toIndex = 0;
+                    moveData.toOtioIndex = 0;
                     auto otioTimeline3 = move(otioTimeline2, { moveData });
                     TLRENDER_ASSERT(video0 == getChild(otioTimeline3, 0, 0)->name());
                     TLRENDER_ASSERT(video1 == getChild(otioTimeline3, 0, 1)->name());
@@ -328,16 +346,20 @@ namespace tl
                 MoveData moveData;
                 moveData.fromTrack = 0;
                 moveData.fromIndex = 0;
+                moveData.fromOtioIndex = 0;
                 moveData.toTrack = 0;
                 moveData.toIndex = 2;
+                moveData.toOtioIndex = 2;
                 auto otioTimeline2 = move(otioTimeline, { moveData });
                 TLRENDER_ASSERT(video1 == getChild(otioTimeline2, 0, 0)->name());
                 TLRENDER_ASSERT(video0 == getChild(otioTimeline2, 0, 1)->name());
 
                 moveData.fromTrack = 0;
                 moveData.fromIndex = 1;
+                moveData.fromOtioIndex = 1;
                 moveData.toTrack = 0;
                 moveData.toIndex = 0;
+                moveData.toOtioIndex = 0;
                 auto otioTimeline3 = move(otioTimeline2, { moveData });
                 TLRENDER_ASSERT(video0 == getChild(otioTimeline3, 0, 0)->name());
                 TLRENDER_ASSERT(video1 == getChild(otioTimeline3, 0, 1)->name());
