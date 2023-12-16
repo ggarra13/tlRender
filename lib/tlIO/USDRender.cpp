@@ -86,6 +86,7 @@ namespace tl
             
             struct Thread
             {
+                TfToken rendererName;
                 memory::LRUCache<std::string, StageCacheItem> stageCache;
                 memory::LRUCache<std::string, std::shared_ptr<DiskCacheItem> > diskCache;
                 std::string tempDir;
@@ -95,6 +96,8 @@ namespace tl
                 std::atomic<bool> running;
             };
             Thread thread;
+
+            std::vector<std::string> renderers;
         };
         
         void Render::_init(
@@ -141,17 +144,16 @@ namespace tl
             
             if (auto logSystem = p.logSystem.lock())
             {
-                std::vector<std::string> renderers;
                 for (const auto& id : UsdImagingGLEngine::GetRendererPlugins())
                 {
-                    renderers.push_back(UsdImagingGLEngine::GetRendererDisplayName(id));
+                    p.renderers.push_back(UsdImagingGLEngine::GetRendererDisplayName(id));
                 }
                 logSystem->print(
                     "tl::usd::Render",
                     string::Format(
                         "\n"
                         "    Renderers: {0}").
-                    arg(string::join(renderers, ", ")));
+                    arg(string::join(p.renderers, ", ")));
             }
         }
 
@@ -384,7 +386,7 @@ namespace tl
             TLRENDER_P();
             stage = UsdStage::Open(fileName);
             const bool gpuEnabled = true;
-            engine = std::make_shared<UsdImagingGLEngine>(HdDriver(), TfToken(), gpuEnabled);
+            engine = std::make_shared<UsdImagingGLEngine>(HdDriver(), p.thread.rendererName, gpuEnabled);
             if (stage && engine)
             {
                 if (auto logSystem = p.logSystem.lock())
@@ -504,12 +506,30 @@ namespace tl
                 {
                     renderWidth = std::atoi(i->second.c_str());
                 }
+                
+                i = ioOptions.find("USD/rendererName");
+                if (i != ioOptions.end())
+                {
+                    std::string rendererName = i->second;
+                    if (p.thread.rendererName != rendererName)
+                    {
+                        p.thread.rendererName = TfToken(rendererName);
+                        std::cerr << "rendererName now "
+                                  << rendererName
+                                  << " getString="
+                                  << p.thread.rendererName.GetString()
+                                  << std::endl;
+                    }
+                }
                 if (infoRequest)
                 {
                     const std::string fileName = infoRequest->path.get();
                     Private::StageCacheItem stageCacheItem;
                     if (!p.thread.stageCache.get(fileName, stageCacheItem))
                     {
+                        std::cerr << "info request rendererName getString="
+                                  << p.thread.rendererName.GetString()
+                                  << std::endl;
                         _open(fileName, stageCacheItem.stage, stageCacheItem.engine);
                         p.thread.stageCache.add(fileName, stageCacheItem);
                     }
@@ -543,6 +563,14 @@ namespace tl
                         info.videoTime = otime::TimeRange::range_from_start_end_time_inclusive(
                             otime::RationalTime(startTimeCode, timeCodesPerSecond),
                             otime::RationalTime(endTimeCode, timeCodesPerSecond));
+                        int rendererId = 0;
+                        for (const auto& renderer : p.renderers)
+                        {
+                            std::stringstream s;
+                            s << "Renderer " << rendererId;
+                            info.tags[s.str()] = renderer;
+                            ++rendererId;
+                        }
                         //std::cout << fileName << " range: " << info.videoTime << std::endl;
                     }
                     infoRequest->promise.set_value(info);
@@ -665,6 +693,14 @@ namespace tl
                             {
                                 sRGB = std::atoi(i->second.c_str());
                             }
+                            std::string rendererName = "GL";
+                            i = ioOptions.find("USD/rendererName");
+                            if (i != ioOptions.end())
+                            {
+                                rendererName = i->second;
+                            }
+                            
+                            p.thread.rendererName = TfToken(rendererName);
 
                             // Setup the camera.
                             GfCamera gfCamera;
