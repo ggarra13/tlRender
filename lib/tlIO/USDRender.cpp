@@ -514,11 +514,6 @@ namespace tl
                     if (p.thread.rendererName != rendererName)
                     {
                         p.thread.rendererName = TfToken(rendererName);
-                        std::cerr << "rendererName now "
-                                  << rendererName
-                                  << " getString="
-                                  << p.thread.rendererName.GetString()
-                                  << std::endl;
                     }
                 }
                 if (infoRequest)
@@ -527,9 +522,6 @@ namespace tl
                     Private::StageCacheItem stageCacheItem;
                     if (!p.thread.stageCache.get(fileName, stageCacheItem))
                     {
-                        std::cerr << "info request rendererName getString="
-                                  << p.thread.rendererName.GetString()
-                                  << std::endl;
                         _open(fileName, stageCacheItem.stage, stageCacheItem.engine);
                         p.thread.stageCache.add(fileName, stageCacheItem);
                     }
@@ -686,7 +678,23 @@ namespace tl
                             if (i != ioOptions.end())
                             {
                                 enableLighting = std::atoi(i->second.c_str());
+                                std::cerr << "enableLighting=" << enableLighting
+                                          << std::endl;
                             }
+                            bool enableSceneLights = true;
+                            i = ioOptions.find("USD/enableSceneLights");
+                            if (i != ioOptions.end())
+                            {
+                                enableSceneLights = std::atoi(i->second.c_str());
+                                std::cerr << "enableSceneLights=" << enableSceneLights
+                                          << std::endl;
+                            }
+                            bool enableSceneMaterials = false;
+                            // i = ioOptions.find("USD/enableSceneMaterials");
+                            // if (i != ioOptions.end())
+                            // {
+                            //     enableSceneMaterials = std::atoi(i->second.c_str());
+                            // }
                             bool sRGB = true;
                             i = ioOptions.find("USD/sRGB");
                             if (i != ioOptions.end())
@@ -698,6 +706,8 @@ namespace tl
                             if (i != ioOptions.end())
                             {
                                 rendererName = i->second;
+                                std::cerr << "rendererName=" << rendererName
+                                          << std::endl;
                             }
                             
                             p.thread.rendererName = TfToken(rendererName);
@@ -756,6 +766,8 @@ namespace tl
                             renderParams.complexity = complexity;
                             renderParams.drawMode = toUSD(drawMode);
                             renderParams.enableLighting = enableLighting;
+                            renderParams.enableSceneLights = enableSceneLights;
+                            //renderParams.enableSceneMaterials = enableSceneMaterials;
                             renderParams.clearColor = GfVec4f(0.F, 0.F, 0.F, 0.F);
                             renderParams.colorCorrectionMode = sRGB ?
                                 HdxColorCorrectionTokens->sRGB :
