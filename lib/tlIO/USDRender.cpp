@@ -510,11 +510,11 @@ namespace tl
                 i = ioOptions.find("USD/rendererName");
                 if (i != ioOptions.end())
                 {
-                    std::string rendererName = i->second;
-                    if (p.thread.rendererName != rendererName)
-                    {
-                        p.thread.rendererName = TfToken(rendererName);
-                    }
+                    // std::string rendererName = i->second;
+                    // if (p.thread.rendererName != rendererName)
+                    // {
+                    //     p.thread.rendererName = TfToken(rendererName);
+                    // }
                 }
                 if (infoRequest)
                 {
@@ -678,39 +678,35 @@ namespace tl
                             if (i != ioOptions.end())
                             {
                                 enableLighting = std::atoi(i->second.c_str());
-                                std::cerr << "enableLighting=" << enableLighting
-                                          << std::endl;
                             }
-                            bool enableSceneLights = true;
+                            bool enableSceneLights = false;
                             i = ioOptions.find("USD/enableSceneLights");
                             if (i != ioOptions.end())
                             {
                                 enableSceneLights = std::atoi(i->second.c_str());
-                                std::cerr << "enableSceneLights=" << enableSceneLights
-                                          << std::endl;
                             }
-                            bool enableSceneMaterials = false;
-                            // i = ioOptions.find("USD/enableSceneMaterials");
-                            // if (i != ioOptions.end())
-                            // {
-                            //     enableSceneMaterials = std::atoi(i->second.c_str());
-                            // }
+                            bool enableSceneMaterials = true;
+                            i = ioOptions.find("USD/enableSceneMaterials");
+                            if (i != ioOptions.end())
+                            {
+                                enableSceneMaterials = std::atoi(i->second.c_str());
+                            }
                             bool sRGB = true;
                             i = ioOptions.find("USD/sRGB");
                             if (i != ioOptions.end())
                             {
                                 sRGB = std::atoi(i->second.c_str());
                             }
-                            std::string rendererName = "GL";
-                            i = ioOptions.find("USD/rendererName");
-                            if (i != ioOptions.end())
-                            {
-                                rendererName = i->second;
-                                std::cerr << "rendererName=" << rendererName
-                                          << std::endl;
-                            }
+                            // std::string rendererName = "GL";
+                            // i = ioOptions.find("USD/rendererName");
+                            // if (i != ioOptions.end())
+                            // {
+                            //     rendererName = i->second;
+                            //     std::cerr << "rendererName=" << rendererName
+                            //               << std::endl;
+                            // }
                             
-                            p.thread.rendererName = TfToken(rendererName);
+                            // p.thread.rendererName = TfToken(rendererName);
 
                             // Setup the camera.
                             GfCamera gfCamera;
@@ -767,7 +763,7 @@ namespace tl
                             renderParams.drawMode = toUSD(drawMode);
                             renderParams.enableLighting = enableLighting;
                             renderParams.enableSceneLights = enableSceneLights;
-                            //renderParams.enableSceneMaterials = enableSceneMaterials;
+                            renderParams.enableSceneMaterials = enableSceneMaterials;
                             renderParams.clearColor = GfVec4f(0.F, 0.F, 0.F, 0.F);
                             renderParams.colorCorrectionMode = sRGB ?
                                 HdxColorCorrectionTokens->sRGB :
