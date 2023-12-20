@@ -86,7 +86,7 @@ namespace tl
             
             struct Thread
             {
-                TfToken rendererName;
+                std::string rendererName;
                 memory::LRUCache<std::string, StageCacheItem> stageCache;
                 memory::LRUCache<std::string, std::shared_ptr<DiskCacheItem> > diskCache;
                 std::string tempDir;
@@ -386,7 +386,19 @@ namespace tl
             TLRENDER_P();
             stage = UsdStage::Open(fileName);
             const bool gpuEnabled = true;
-            engine = std::make_shared<UsdImagingGLEngine>(HdDriver(), p.thread.rendererName, gpuEnabled);
+            TfToken rendererId;
+            for (const auto& id : UsdImagingGLEngine::GetRendererPlugins())
+            {
+                const std::string renderer =
+                    UsdImagingGLEngine::GetRendererDisplayName(id);
+                if (renderer == p.thread.rendererName)
+                {
+                    rendererId = id;
+                    break;
+                }
+            }
+            std::cerr << "_open rendererName=" << rendererId.GetText() << std::endl;
+            engine = std::make_shared<UsdImagingGLEngine>(HdDriver(), rendererId, gpuEnabled);
             if (stage && engine)
             {
                 if (auto logSystem = p.logSystem.lock())
@@ -506,15 +518,12 @@ namespace tl
                 {
                     renderWidth = std::atoi(i->second.c_str());
                 }
-                
+
                 i = ioOptions.find("USD/rendererName");
                 if (i != ioOptions.end())
                 {
-                    // std::string rendererName = i->second;
-                    // if (p.thread.rendererName != rendererName)
-                    // {
-                    //     p.thread.rendererName = TfToken(rendererName);
-                    // }
+                    p.thread.rendererName = i->second;
+                    std::cerr << "rendererName=" << i->second << std::endl;
                 }
                 if (infoRequest)
                 {
@@ -697,16 +706,13 @@ namespace tl
                             {
                                 sRGB = std::atoi(i->second.c_str());
                             }
-                            // std::string rendererName = "GL";
-                            // i = ioOptions.find("USD/rendererName");
-                            // if (i != ioOptions.end())
-                            // {
-                            //     rendererName = i->second;
-                            //     std::cerr << "rendererName=" << rendererName
-                            //               << std::endl;
-                            // }
-                            
-                            // p.thread.rendererName = TfToken(rendererName);
+                            i = ioOptions.find("USD/rendererName");
+                            if (i != ioOptions.end())
+                            {
+                                p.thread.rendererName = i->second;
+                                std::cerr << "rendererName="
+                                          << i->second << std::endl;
+                            }
 
                             // Setup the camera.
                             GfCamera gfCamera;
