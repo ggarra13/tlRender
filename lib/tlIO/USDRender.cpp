@@ -86,7 +86,7 @@ namespace tl
             
             struct Thread
             {
-                std::string rendererName;
+                std::string rendererName = "GL";
                 memory::LRUCache<std::string, StageCacheItem> stageCache;
                 memory::LRUCache<std::string, std::shared_ptr<DiskCacheItem> > diskCache;
                 std::string tempDir;
@@ -384,7 +384,10 @@ namespace tl
             std::shared_ptr<UsdImagingGLEngine>& engine)
         {
             TLRENDER_P();
+            std::cerr << "Open Stage: " << __LINE__ << " " << fileName
+                      << std::endl;
             stage = UsdStage::Open(fileName);
+            std::cerr << "Opened Stage: " << __LINE__ << std::endl;
             const bool gpuEnabled = true;
             TfToken rendererId;
             for (const auto& id : UsdImagingGLEngine::GetRendererPlugins())
@@ -768,8 +771,10 @@ namespace tl
                             renderParams.complexity = complexity;
                             renderParams.drawMode = toUSD(drawMode);
                             renderParams.enableLighting = enableLighting;
+#if PXR_VERSION >= 2311
                             renderParams.enableSceneLights = enableSceneLights;
                             renderParams.enableSceneMaterials = enableSceneMaterials;
+#endif
                             renderParams.clearColor = GfVec4f(0.F, 0.F, 0.F, 0.F);
                             renderParams.colorCorrectionMode = sRGB ?
                                 HdxColorCorrectionTokens->sRGB :
@@ -778,9 +783,11 @@ namespace tl
                             unsigned int sleepTime = 10;
                             while (true)
                             {
+                                std::cerr << "start render" << std::endl;
                                 stageCacheItem.engine->Render(pseudoRoot, renderParams);
                                 if (stageCacheItem.engine->IsConverged())
                                 {
+                                    std::cerr << "converged" << std::endl;
                                     break;
                                 }
                                 else
