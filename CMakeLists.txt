@@ -51,6 +51,7 @@ set(TLRENDER_QT5 FALSE CACHE BOOL "Enable support for Qt5")
 set(TLRENDER_PROGRAMS TRUE CACHE BOOL "Build programs")
 set(TLRENDER_EXAMPLES TRUE CACHE BOOL "Build examples")
 set(TLRENDER_TESTS TRUE CACHE BOOL "Build tests")
+set(TLRENDER_ASAN FALSE CACHE BOOL "Enable asan memory debugging")
 set(TLRENDER_GCOV FALSE CACHE BOOL "Enable gcov code coverage")
 set(TLRENDER_GPROF FALSE CACHE BOOL "Enable gprof code profiling")
 
@@ -76,6 +77,15 @@ endif()
 
 if(CMAKE_BUILD_TYPE MATCHES "^Debug$")
     add_definitions(-DTLRENDER_ASSERT)
+
+    # Check for Clang or GCC compiler  (@todo: add Microsoft support)
+    if ((CMAKE_CXX_COMPILER_ID MATCHES "Clang") OR (CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
+	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
+	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -fsanitize=address")
+	set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -fsanitize=address")
+	set(CMAKE_MODULE_LINKER_FLAGS "${CMAKE_MODULE_LINKER_FLAGS} -fsanitize=address")
+endif ()
+
 endif()
 
 if(TLRENDER_TESTS)
