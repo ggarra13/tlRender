@@ -35,7 +35,10 @@ endif()
 list(APPEND USD_ARGS --no-python --no-examples --no-tutorials --no-tools)
 list(APPEND USD_ARGS --verbose)
 
-
+set(USD_PATCH_COMMAND copy_if_different
+    ${CMAKE_CURRENT_SOURCE_DIR}/USD-patch/build_scripts/build_usd.py
+    build_scripts/build_usd.py)
+    
 set(USD_INSTALL_COMMAND )
 if(WIN32)
     # \todo On Windows the USD cmake build system installs the "*.dll" files
@@ -55,6 +58,7 @@ ExternalProject_Add(
     GIT_REPOSITORY ${USD_GIT_REPOSITORY}
     GIT_TAG ${USD_GIT_TAG}
     CONFIGURE_COMMAND ""
+    PATCH_COMMAND ${USD_PATCH_COMMAND}
     BUILD_COMMAND ${PYTHON_EXECUTABLE} build_scripts/build_usd.py ${USD_ARGS} ${CMAKE_INSTALL_PREFIX}
     BUILD_IN_SOURCE 1
     INSTALL_COMMAND "${USD_INSTALL_COMMAND}")
