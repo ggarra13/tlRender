@@ -730,11 +730,11 @@ def InstallBoost_Helper(context, force, buildArgs):
     if context.buildPython and pyVer >= (3, 10):
         BOOST_URL = "https://sourceforge.net/projects/boost/files/boost/1.78.0/boost_1_78_0.zip"
     elif IsVisualStudio2022OrGreater():
-        BOOST_URL = "https://boostorg.jfrog.io/artifactory/main/release/1.78.0/source/boost_1_78_0.zip"
+        BOOST_URL = "https://sourceforge.net/projects/boost/files/boost/1.78.0/boost_1_78_0.zip"
     elif MacOS():
-        BOOST_URL = "https://boostorg.jfrog.io/artifactory/main/release/1.78.0/source/boost_1_78_0.zip"
+        BOOST_URL = "https://sourceforge.net/projects/boost/files/boost/1.78.0/boost_1_78_0.zip"
     else:
-        BOOST_URL = "https://boostorg.jfrog.io/artifactory/main/release/1.76.0/source/boost_1_76_0.zip"
+        BOOST_URL = "https://sourceforge.net/projects/boost/files/boost/1.78.0/boost_1_78_0.zip"
 
     # Documentation files in the boost archive can have exceptionally
     # long paths. This can lead to errors when extracting boost on Windows,
