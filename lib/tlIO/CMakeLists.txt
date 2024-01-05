@@ -90,6 +90,17 @@ if(TLRENDER_RAW)
     list(APPEND SOURCE RAW.cpp RAWRead.cpp)
     list(APPEND LIBRARIES_PRIVATE LibRaw)
 endif()
+if(TLRENDER_NDI)
+    list(APPEND HEADERS_PRIVATE
+	${TLRENDER_NDI_SDK}/include/Processing.NDI.Lib.h)
+    list(APPEND SOURCE NDI.cpp NDIRead.cpp)
+    if(WIN32)
+    elseif(APPLE)
+    elseif(UNIX)
+	list(APPEND LIBRARIES_PRIVATE
+	    ${TLRENDER_NDI_SDK}/lib/x86_64-linux-gnu/libndi.so)
+    endif()
+endif()
 list(APPEND LIBRARIES tlGL)
 
 add_library(tlIO ${HEADERS} ${HEADERS_PRIVATE} ${SOURCE})
