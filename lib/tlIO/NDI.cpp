@@ -16,16 +16,16 @@ namespace tl
         void Plugin::_init(
             const std::shared_ptr<io::Cache>& cache,
             const std::weak_ptr<log::System>& logSystem)
-        {
+        {s
             IPlugin::_init(
                 "ndi",
                 {
-                    { ".ndi",  io::FileType::Movie },
+                    { ".ndi", io::FileType::Movie },
                 },
                 cache,
                 logSystem);
 
-            _logSystemWeak = logSystem;
+            // _logSystemWeak = logSystem;
 
             // if (auto logSystem = _logSystemWeak.lock())
             // {
