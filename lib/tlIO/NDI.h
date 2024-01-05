@@ -92,6 +92,11 @@ namespace tl
                 const file::Path&,
                 const io::Info&,
                 const io::Options& = io::Options()) override;
+
+        private:
+            //! \todo What is a better way to access the log system from the
+            //! FFmpeg callback?
+            static std::weak_ptr<log::System> _logSystemWeak;
         };
     }
 }

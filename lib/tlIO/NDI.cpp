@@ -16,7 +16,7 @@ namespace tl
         void Plugin::_init(
             const std::shared_ptr<io::Cache>& cache,
             const std::weak_ptr<log::System>& logSystem)
-        {s
+        {
             IPlugin::_init(
                 "ndi",
                 {
@@ -25,12 +25,12 @@ namespace tl
                 cache,
                 logSystem);
 
-            // _logSystemWeak = logSystem;
+            _logSystemWeak = logSystem;
 
-            // if (auto logSystem = _logSystemWeak.lock())
-            // {
-            //     logSystem->print("tl::io::ndi::Plugin", "Codecs: " + string::join(codecNames, ", "));
-            // }
+            if (auto logSystem = _logSystemWeak.lock())
+            {
+                logSystem->print("tl::io::ndi::Plugin", "");
+            }
         }
 
         Plugin::Plugin()

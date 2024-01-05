@@ -50,11 +50,6 @@ namespace tl
         {
             AVIOBufferData* bufferData = static_cast<AVIOBufferData*>(opaque);
 
-            if (whence & AVSEEK_SIZE)
-            {
-                return bufferData->size;
-            }
-
             bufferData->offset = math::clamp(
                 offset,
                 static_cast<int64_t>(0),
@@ -125,6 +120,7 @@ namespace tl
                 ss >> p.options.audioBufferSize;
             }
 
+#if 0
             p.videoThread.running = true;
             p.audioThread.running = true;
             p.videoThread.thread = std::thread(
@@ -142,7 +138,6 @@ namespace tl
                         {
                             p.info.video.push_back(videoInfo);
                             p.info.videoTime = p.readVideo->getTimeRange();
-                            p.info.tags = p.readVideo->getTags();
                         }
 
                         p.readAudio = std::make_shared<ReadAudio>(
@@ -176,7 +171,6 @@ namespace tl
                                     }
                                 }
                             });
-
                         _videoThread();
                     }
                     catch (const std::exception& e)
@@ -204,6 +198,7 @@ namespace tl
                     }
                     _cancelAudioRequests();
                 });
+#endif
         }
 
         Read::Read() :
@@ -395,7 +390,7 @@ namespace tl
                     !time::compareExact(videoRequest->time, p.videoThread.currentTime))
                 {
                     p.videoThread.currentTime = videoRequest->time;
-                    p.readVideo->seek(p.videoThread.currentTime);
+                    //p.readVideo->seek(p.videoThread.currentTime);
                 }
 
                 // Process.
@@ -445,11 +440,11 @@ namespace tl
                                 requestsSize = p.videoMutex.videoRequests.size();
                             }
                             logSystem->print(id, string::Format(
-                                "\n"
-                                "    Path: {0}\n"
-                                "    Video requests: {1}").
-                                arg(_path.get()).
-                                arg(requestsSize));
+                                                 "\n"
+                                                 "    Path: {0}\n"
+                                                 "    Video requests: {1}").
+                                             arg(_path.get()).
+                                             arg(requestsSize));
                         }
                     }
                 }
@@ -471,12 +466,12 @@ namespace tl
                 {
                     std::unique_lock<std::mutex> lock(p.audioMutex.mutex);
                     if (p.audioThread.cv.wait_for(
-                        lock,
-                        std::chrono::milliseconds(p.options.requestTimeout),
-                        [this]
-                        {
-                            return !_p->audioMutex.requests.empty();
-                        }))
+                            lock,
+                            std::chrono::milliseconds(p.options.requestTimeout),
+                            [this]
+                                {
+                                    return !_p->audioMutex.requests.empty();
+                                }))
                     {
                         if (!p.audioMutex.requests.empty())
                         {
@@ -484,8 +479,8 @@ namespace tl
                             p.audioMutex.requests.pop_front();
                             requestSampleCount = request->timeRange.duration().rescaled_to(p.info.audio.sampleRate).value();
                             if (!time::compareExact(
-                                request->timeRange.start_time(),
-                                p.audioThread.currentTime))
+                                    request->timeRange.start_time(),
+                                    p.audioThread.currentTime))
                             {
                                 seek = true;
                                 p.audioThread.currentTime = request->timeRange.start_time();
@@ -512,7 +507,7 @@ namespace tl
                 // Seek.
                 if (seek)
                 {
-                    p.readAudio->seek(p.audioThread.currentTime);
+                    //p.readAudio->seek(p.audioThread.currentTime);
                 }
 
                 // Process.

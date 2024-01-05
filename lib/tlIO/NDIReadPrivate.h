@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2024 Gonzalo Garramuño
 // All rights reserved.
 
 #pragma once
@@ -35,12 +35,79 @@ namespace tl
             otime::RationalTime startTime = time::invalidTime;
             bool yuvToRGBConversion = false;
             audio::Info audioConvertInfo;
-            size_t threadCount = ffmpeg::threadCount;
+            size_t threadCount = 2;
             size_t requestTimeout = 5;
             size_t videoBufferSize = 4;
             otime::RationalTime audioBufferSize = otime::RationalTime(2.0, 1.0);
         };
         
+        class ReadVideo
+        {
+        public:
+            ReadVideo(
+                const std::string& fileName,
+                const std::vector<file::MemoryRead>& memory,
+                const Options& options);
+
+            ~ReadVideo();
+
+            bool isValid() const;
+            const image::Info& getInfo() const;
+            const otime::TimeRange& getTimeRange() const;
+
+            void start();
+            // void seek(const otime::RationalTime&);
+            bool process(const otime::RationalTime& currentTime);
+
+            bool isBufferEmpty() const;
+            std::shared_ptr<image::Image> popBuffer();
+
+        private:
+            int _decode(const otime::RationalTime& currentTime);
+            void _copy(std::shared_ptr<image::Image>&);
+            
+            std::string _fileName;
+            Options _options;
+            image::Info _info;
+            otime::TimeRange _timeRange = time::invalidTimeRange;
+            std::list<std::shared_ptr<image::Image> > _buffer;
+        };
+
+        class ReadAudio
+        {
+        public:
+            ReadAudio(
+                const std::string& fileName,
+                const std::vector<file::MemoryRead>&,
+                double videoRate,
+                const Options&);
+
+            ~ReadAudio();
+
+            bool isValid() const;
+            const audio::Info& getInfo() const;
+            const otime::TimeRange& getTimeRange() const;
+            const image::Tags& getTags() const;
+
+            void start();
+            // void seek(const otime::RationalTime&);
+            bool process(
+                const otime::RationalTime& currentTime,
+                size_t sampleCount);
+
+            size_t getBufferSize() const;
+            void bufferCopy(uint8_t*, size_t sampleCount);
+
+        private:
+            int _decode(const otime::RationalTime& currentTime);
+
+            std::string _fileName;
+            Options _options;
+            audio::Info _info;
+            otime::TimeRange _timeRange = time::invalidTimeRange;
+            std::list<std::shared_ptr<audio::Audio> > _buffer;
+        };
+
         struct Read::Private
         {
             Options options;
