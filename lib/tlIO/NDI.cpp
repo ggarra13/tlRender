@@ -20,7 +20,7 @@ namespace tl
             IPlugin::_init(
                 "ndi",
                 {
-                    "ndi"
+                    { ".ndi",  io::FileType::Movie },
                 },
                 cache,
                 logSystem);
