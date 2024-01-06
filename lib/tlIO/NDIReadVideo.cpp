@@ -1,10 +1,21 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2024 Gonzalo Garramuño
 // All rights reserved.
 
 #include <tlIO/NDIReadPrivate.h>
 
 #include <tlCore/StringFormat.h>
+
+extern "C"
+{
+#include <libavutil/imgutils.h>
+#include <libavutil/opt.h>
+#include <libswscale/swscale.h>
+}
+
+
+#define DBG(x) \
+    std::cerr << x << " " << __FUNCTION__ << " " << __LINE__ << std::endl;
 
 namespace tl
 {
@@ -29,54 +40,17 @@ namespace tl
             _fileName(fileName),
             _options(options)
         {
-            if (!memory.empty())
-            {
-            
-            }
+            DBG("NDI find");
             pNDI_find = NDIlib_find_create_v2();
             if (!pNDI_find)
                 throw std::runtime_error("Could not create NDI find");
-        }
-
-        ReadVideo::~ReadVideo()
-        {
-            if (_swsContext)
-            {
-                sws_freeContext(_swsContext);
-            }
-            if (_avFrame2)
-            {
-                av_frame_free(&_avFrame2);
-            }
-            if (_avFrame)
-            {
-                av_frame_free(&_avFrame);
-            }
-            
-            if (pNDI_find)
-                NDIlib_find_destroy(pNDI_find);
-    
-            // Destroy the receiver
-            if (pNDI_recv)
-                NDIlib_recv_destroy(pNDI_recv);
-            
-            // Not required, but nice
-            NDIlib_destroy();
-        }
-
-        bool ReadVideo::isValid() const
-        {
-            return true;
-        }
-
-        const image::Info& ReadVideo::getInfo() const
-        {
+            DBG("NDI found");
             uint32_t no_sources = 0;
             const NDIlib_source_t* p_sources = NULL;
             while (!no_sources)
             {
                 // Wait until the sources on the network have changed
-                std::cerr << "Looking for sources ..." << std::endl;
+                DBG("Looking for sources ...");
                 NDIlib_find_wait_for_sources(pNDI_find, 1000/* One second */);
                 p_sources = NDIlib_find_get_current_sources(pNDI_find,
                                                             &no_sources);
@@ -91,7 +65,7 @@ namespace tl
     
             // Connect to our sources
             NDIlib_recv_connect(pNDI_recv, p_sources + 0);
-    
+            
             // Destroy the NDI finder.
             // We needed to have access to the pointers to p_sources[0]
             NDIlib_find_destroy(pNDI_find);
@@ -112,10 +86,9 @@ namespace tl
             {
             case NDIlib_FourCC_type_UYVY:
                 // YCbCr color space using 4:2:2.
-                _avInputPixelFormat = AV_PIX_FMT_UYVY;
+                //_avInputPixelFormat = AV_PIX_FMT_UYVY; // @todo:
                 _info.pixelType = image::PixelType::YUV_422P_U8;
-                _avOut
-                    putPixelFormat = _avInputPixelFormat;
+                _avOutputPixelFormat = _avInputPixelFormat;
                 break;
             case NDIlib_FourCC_type_P216:
                 // YCbCr color space using 4:2:2 in 16bpp.
@@ -160,7 +133,7 @@ namespace tl
             case NDIlib_FourCC_type_BGRX:
                 _avInputPixelFormat = AV_PIX_FMT_BGR24;
                 _info.pixelType = image::PixelType::RGB_U8;
-                _avOutputPixelFormat = AV_PIXEL_FMT_RGB24;
+                _avOutputPixelFormat = AV_PIX_FMT_RGB24;
                 break;
             case NDIlib_FourCC_type_I420:
                 _avInputPixelFormat = AV_PIX_FMT_YUV420P;
@@ -186,7 +159,42 @@ namespace tl
                 throw std::runtime_error("Unsupported pixel type");
             }
             
+        }
+
+        ReadVideo::~ReadVideo()
+        {
+            DBG("exit read video");
+            if (_swsContext)
+            {
+                sws_freeContext(_swsContext);
+            }
+            if (_avFrame2)
+            {
+                av_frame_free(&_avFrame2);
+            }
+            if (_avFrame)
+            {
+                av_frame_free(&_avFrame);
+            }
+            
+            if (pNDI_find)
+                NDIlib_find_destroy(pNDI_find);
     
+            // Destroy the receiver
+            if (pNDI_recv)
+                NDIlib_recv_destroy(pNDI_recv);
+            
+            // Not required, but nice
+            NDIlib_destroy();
+        }
+
+        bool ReadVideo::isValid() const
+        {
+            return true;
+        }
+
+        const image::Info& ReadVideo::getInfo() const
+        {
             return _info;
         }
 
@@ -194,15 +202,14 @@ namespace tl
         {
             // @todo: how to determine time range? It seems NDI is a constant
             //        stream...
-            double fps = frame_rate_N / frame_rate_D;
-            _timeRange = otime::TimeRange(otime::RationalTime(0, fps),
-                                          otime::RationalTime(300000, fps));
+            DBG("getTimeRange " << _timeRange);
             return _timeRange;
         }
 
         bool ReadVideo::process(const otime::RationalTime& currentTime)
         {
             bool out = false;
+            DBG("process " << _timeRange);
             return out;
         }
 
@@ -224,6 +231,7 @@ namespace tl
         
         void ReadVideo::start()
         {
+            DBG("start");
             _avFrame = av_frame_alloc();
             if (!_avFrame)
             {
@@ -243,14 +251,25 @@ namespace tl
                     throw std::runtime_error(string::Format("{0}: Cannot allocate context").arg(_fileName));
                 }
                 av_opt_set_defaults(_swsContext);
-                int r = av_opt_set_int(_swsContext, "srcw", _info.size.w);
-                r = av_opt_set_int(_swsContext, "srch", _info.size.h);
-                r = av_opt_set_int(_swsContext, "src_format", _avInputPixelFormat, AV_OPT_SEARCH_CHILDREN);
-                r = av_opt_set_int(_swsContext, "dstw", _info.size.w, AV_OPT_SEARCH_CHILDREN);
-                r = av_opt_set_int(_swsContext, "dsth", _info.size.h, AV_OPT_SEARCH_CHILDREN);
-                r = av_opt_set_int(_swsContext, "dst_format", _avOutputPixelFormat, AV_OPT_SEARCH_CHILDREN);
-                r = av_opt_set_int(_swsContext, "sws_flags", swsScaleFlags, AV_OPT_SEARCH_CHILDREN);
-                r = av_opt_set_int(_swsContext, "threads", 0, AV_OPT_SEARCH_CHILDREN);
+                int r = av_opt_set_int(
+                    _swsContext, "srcw", _info.size.w, AV_OPT_SEARCH_CHILDREN);
+                r = av_opt_set_int(
+                    _swsContext, "srch", _info.size.h, AV_OPT_SEARCH_CHILDREN);
+                r = av_opt_set_int(
+                    _swsContext, "src_format", _avInputPixelFormat,
+                    AV_OPT_SEARCH_CHILDREN);
+                r = av_opt_set_int(
+                    _swsContext, "dstw", _info.size.w, AV_OPT_SEARCH_CHILDREN);
+                r = av_opt_set_int(
+                    _swsContext, "dsth", _info.size.h, AV_OPT_SEARCH_CHILDREN);
+                r = av_opt_set_int(
+                    _swsContext, "dst_format", _avOutputPixelFormat,
+                    AV_OPT_SEARCH_CHILDREN);
+                r = av_opt_set_int(
+                    _swsContext, "sws_flags", swsScaleFlags,
+                    AV_OPT_SEARCH_CHILDREN);
+                r = av_opt_set_int(
+                    _swsContext, "threads", 0, AV_OPT_SEARCH_CHILDREN);
                 r = sws_init_context(_swsContext, nullptr, nullptr);
                 if (r < 0)
                 {
@@ -261,7 +280,9 @@ namespace tl
         
         int ReadVideo::_decode(const otime::RationalTime& currentTime)
         {
+            DBG("decode");
             int out = 0;
+            NDIlib_video_frame_v2_t video_frame;
             NDIlib_frame_type_e type =
                 NDIlib_recv_capture_v2(pNDI_recv, &video_frame, nullptr,
                                        nullptr, 5000);
@@ -365,7 +386,7 @@ namespace tl
                     (uint8_t const* const*)_avFrame->data,
                     _avFrame->linesize,
                     0,
-                    _avCodecParameters[_avStream]->height,
+                    _info.size.h,
                     _avFrame2->data,
                     _avFrame2->linesize);
             }

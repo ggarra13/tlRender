@@ -80,13 +80,15 @@ namespace tl
             image::Info _info;
             otime::TimeRange _timeRange = time::invalidTimeRange;
             std::list<std::shared_ptr<image::Image> > _buffer;
-            
+
+            // NDI structs
             NDIlib_find_instance_t pNDI_find;
             NDIlib_recv_instance_t pNDI_recv;
             uint32_t no_sources = 0;
             const NDIlib_source_t* p_sources = nullptr;
             int frame_rate_N = 30000, frame_rate_D = 1001;
-            
+
+            // FFmpeg conversion variables
             AVFrame* _avFrame = nullptr;
             AVFrame* _avFrame2 = nullptr;
             AVPixelFormat _avInputPixelFormat = AV_PIX_FMT_NONE;

@@ -45,6 +45,9 @@ endif()
 if(TLRENDER_FFMPEG)
     find_package(FFmpeg)
 endif()
+if(TLRENDER_NDI)
+    find_package(NDI)
+endif()
 
 find_path(tlRender_INCLUDE_DIR NAMES tlCore/Util.h PATH_SUFFIXES tlRender)
 set(tlRender_INCLUDE_DIRS
@@ -73,6 +76,9 @@ if(FFmpeg_FOUND)
 endif()
 if(LibRaw_FOUND)
     list(APPEND tlRender_INCLUDE_DIRS ${LibRaw_INCLUDE_DIRS})
+endif()
+if(NDI_FOUND)
+    list(APPEND tlRender_INCLUDE_DIRS ${NDI_INCLUDE_DIRS})
 endif()
 
 if(CMAKE_BUILD_TYPE MATCHES "^Debug$")
@@ -109,6 +115,7 @@ set(tlRender_LIBRARIES
     ${OpenEXR_LIBRARIES}
     ${FFmpeg_LIBRARIES}
     ${LibRaw_LIBRARIES}
+    ${NDI_LIBRARIES}
     ${glfw3_LIBRARIES})
 
 include(FindPackageHandleStandardArgs)
@@ -133,26 +140,30 @@ mark_as_advanced(
 
 set(tlRender_tlCore_LIBRARIES "OTIO;Imath::Imath;Freetype::Freetype;nlohmann_json::nlohmann_json" )
 if (OpenColorIO_FOUND)
-   list(APPEND tlRender_tlCore_LIBRARIES OpenColorIO::OpenColorIO)
+    list(APPEND tlRender_tlCore_LIBRARIES OpenColorIO::OpenColorIO)
 endif()
 if (RtAudio_FOUND)
-   list(APPEND tlRender_tlCore_LIBRARIES RtAudio)
+    list(APPEND tlRender_tlCore_LIBRARIES RtAudio)
 endif()
 set(tlRender_tlIO_LIBRARIES libjpeg-turbo::turbojpeg-static )
 if (PNG_FOUND)
-   list(APPEND tlRender_tlIO_LIBRARIES PNG)
+    list(APPEND tlRender_tlIO_LIBRARIES PNG)
 endif()
 if (TIFF_FOUND)
-   list(APPEND tlRender_tlIO_LIBRARIES TIFF)
+    list(APPEND tlRender_tlIO_LIBRARIES TIFF)
 endif()
 if (OpenEXR_FOUND)
-   list(APPEND tlRender_tlIO_LIBRARIES OpenEXR::OpenEXR)
+    list(APPEND tlRender_tlIO_LIBRARIES OpenEXR::OpenEXR)
 endif()
 if (FFmpeg_FOUND)
-   list(APPEND tlRender_tlIO_LIBRARIES FFmpeg)
+    list(APPEND tlRender_tlIO_LIBRARIES FFmpeg)
 endif()
 if (LibRaw_FOUND)
-   list(APPEND tlRender_tlIO_LIBRARIES LibRaw)
+    list(APPEND tlRender_tlIO_LIBRARIES LibRaw)
+endif()
+if (NDI_FOUND)
+    message(STATUS "APPEND NDI")
+    list(APPEND tlRender_tlIO_LIBRARIES NDI)
 endif()
 
 

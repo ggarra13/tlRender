@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2024 Gonzalo Garramuño
 // All rights reserved.
 
 #include <tlIO/NDIReadPrivate.h>
@@ -7,12 +7,6 @@
 #include <tlCore/Assert.h>
 #include <tlCore/LogSystem.h>
 #include <tlCore/StringFormat.h>
-
-extern "C"
-{
-#include <libavutil/opt.h>
-
-} // extern "C"
 
 namespace tl
 {
@@ -69,58 +63,12 @@ namespace tl
 
             TLRENDER_P();
 
-            auto i = options.find("NDI/YUVToRGBConversion");
+            auto i = options.find("FFmpeg/YUVToRGBConversion");
             if (i != options.end())
             {
                 std::stringstream ss(i->second);
                 ss >> p.options.yuvToRGBConversion;
             }
-            i = options.find("NDI/AudioChannelCount");
-            if (i != options.end())
-            {
-                std::stringstream ss(i->second);
-                size_t channelCount = 0;
-                ss >> channelCount;
-                p.options.audioConvertInfo.channelCount = std::min(channelCount, static_cast<size_t>(255));
-            }
-            i = options.find("NDI/AudioDataType");
-            if (i != options.end())
-            {
-                std::stringstream ss(i->second);
-                ss >> p.options.audioConvertInfo.dataType;
-            }
-            i = options.find("NDI/AudioSampleRate");
-            if (i != options.end())
-            {
-                std::stringstream ss(i->second);
-                ss >> p.options.audioConvertInfo.sampleRate;
-            }
-            i = options.find("NDI/ThreadCount");
-            if (i != options.end())
-            {
-                std::stringstream ss(i->second);
-                ss >> p.options.threadCount;
-            }
-            i = options.find("NDI/RequestTimeout");
-            if (i != options.end())
-            {
-                std::stringstream ss(i->second);
-                ss >> p.options.requestTimeout;
-            }
-            i = options.find("NDI/VideoBufferSize");
-            if (i != options.end())
-            {
-                std::stringstream ss(i->second);
-                ss >> p.options.videoBufferSize;
-            }
-            i = options.find("NDI/AudioBufferSize");
-            if (i != options.end())
-            {
-                std::stringstream ss(i->second);
-                ss >> p.options.audioBufferSize;
-            }
-
-#if 0
             p.videoThread.running = true;
             p.audioThread.running = true;
             p.videoThread.thread = std::thread(
@@ -130,9 +78,7 @@ namespace tl
                     try
                     {
                         p.readVideo = std::make_shared<ReadVideo>(
-                            file::PathType::Full,
-                            _memory,
-                            p.options);
+                            "ndi", _memory, p.options);
                         const auto& videoInfo = p.readVideo->getInfo();
                         if (videoInfo.isValid())
                         {
@@ -140,8 +86,9 @@ namespace tl
                             p.info.videoTime = p.readVideo->getTimeRange();
                         }
 
+#if 0
                         p.readAudio = std::make_shared<ReadAudio>(
-                            file::PathType::Full,
+                            "ndi",
                             _memory,
                             p.info.videoTime.duration().rate(),
                             p.options);
@@ -171,6 +118,8 @@ namespace tl
                                     }
                                 }
                             });
+#endif
+                        
                         _videoThread();
                     }
                     catch (const std::exception& e)
@@ -196,9 +145,10 @@ namespace tl
                         std::unique_lock<std::mutex> lock(p.audioMutex.mutex);
                         p.audioMutex.stopped = true;
                     }
+#if 0
                     _cancelAudioRequests();
-                });
 #endif
+                });
         }
 
         Read::Read() :

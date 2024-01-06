@@ -1,14 +1,18 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2024 Gonzalo Garramuño
 // All rights reserved.
 
 #pragma once
 
 #include <tlIO/Plugin.h>
 
-#include <tlCore/HDR.h>
-
 #include <Processing.NDI.Lib.h>
+
+extern "C"
+{
+#include <libavformat/avformat.h>
+#include <libswscale/swscale.h>
+}
 
 #ifdef _WIN32
 #ifdef _WIN64
