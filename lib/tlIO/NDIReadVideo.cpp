@@ -14,8 +14,12 @@ extern "C"
 }
 
 
-#define DBG(x) \
+#if 0
+#  define DBG(x) \
     std::cerr << x << " " << __FUNCTION__ << " " << __LINE__ << std::endl;
+#else
+#  define DBG(x)
+#endif
 
 namespace tl
 {
@@ -40,17 +44,14 @@ namespace tl
             _fileName(fileName),
             _options(options)
         {
-            DBG("NDI find");
             pNDI_find = NDIlib_find_create_v2();
             if (!pNDI_find)
                 throw std::runtime_error("Could not create NDI find");
-            DBG("NDI found");
             uint32_t no_sources = 0;
             const NDIlib_source_t* p_sources = NULL;
             while (!no_sources)
             {
                 // Wait until the sources on the network have changed
-                DBG("Looking for sources ...");
                 NDIlib_find_wait_for_sources(pNDI_find, 1000/* One second */);
                 p_sources = NDIlib_find_get_current_sources(pNDI_find,
                                                             &no_sources);
@@ -59,7 +60,10 @@ namespace tl
     
             // We now have at least one source,
             // so we create a receiver to look at it.
-            pNDI_recv = NDIlib_recv_create_v3();
+            NDIlib_recv_create_v3_t recv_desc;
+            recv_desc.color_format = NDIlib_recv_color_format_fastest;
+    
+            pNDI_recv = NDIlib_recv_create_v3(&recv_desc);
             if (!pNDI_recv)
                 throw std::runtime_error("Could not create NDI receiver");
     
@@ -72,25 +76,35 @@ namespace tl
             pNDI_find = nullptr;
 
             NDIlib_video_frame_v2_t video_frame;
-            NDIlib_audio_frame_v2_t audio_frame;
+            NDIlib_frame_type_e type_e = NDIlib_frame_type_none;
 
-            NDIlib_recv_capture_v2(pNDI_recv, &video_frame, nullptr,
-                                   nullptr, 5000);
+            while(type_e != NDIlib_frame_type_video)
+            {
+                type_e = NDIlib_recv_capture_v2(
+                    pNDI_recv, &video_frame, nullptr, nullptr, 5000);
+            }
 
+            double fps = video_frame.frame_rate_N /
+                         static_cast<double>(video_frame.frame_rate_D);
+            double last = 3 * 60 * 60 * fps; // 3 hours time range
+            _timeRange = otime::TimeRange(otime::RationalTime(0.0, fps),
+                                          otime::RationalTime(last, fps));
+            
             _info.size.w = video_frame.xres;
             _info.size.h = video_frame.yres;
             _info.size.pixelAspectRatio = video_frame.picture_aspect_ratio;
-            _info.layout.mirror.y = true;
 
             switch(video_frame.FourCC)
             {
             case NDIlib_FourCC_type_UYVY:
+                DBG("UYVY");
                 // YCbCr color space using 4:2:2.
-                //_avInputPixelFormat = AV_PIX_FMT_UYVY; // @todo:
+                _avInputPixelFormat = AV_PIX_FMT_UYVY422;
                 _info.pixelType = image::PixelType::YUV_422P_U8;
-                _avOutputPixelFormat = _avInputPixelFormat;
+                _avOutputPixelFormat = AV_PIX_FMT_YUV422P;
                 break;
             case NDIlib_FourCC_type_P216:
+                DBG("P216");
                 // YCbCr color space using 4:2:2 in 16bpp.
                 _avInputPixelFormat = AV_PIX_FMT_YUV422P16LE;
                 if (options.yuvToRGBConversion)
@@ -100,42 +114,44 @@ namespace tl
                 }
                 else
                 {
-                    //! \todo Use the _info.layout.endian field instead of
-                    //! converting endianness.
                     _avOutputPixelFormat = AV_PIX_FMT_YUV422P16LE;
                     _info.pixelType = image::PixelType::YUV_422P_U16;
                 }
                 break;
             case NDIlib_FourCC_type_PA16:
+                DBG("PA16");
                 // YCbCr color space using 4:2:2 in 16bpp.
                 _avInputPixelFormat = AV_PIX_FMT_YUVA422P16LE;
-                //! \todo Support these formats natively.
                 _avOutputPixelFormat = AV_PIX_FMT_RGBA64;
                 _info.pixelType = image::PixelType::RGBA_U16;
                 break;
             case NDIlib_FourCC_type_YV12:
+                DBG("YV12");
                 // Planar 8bit 4:2:0 video format.
                 _avInputPixelFormat = AV_PIX_FMT_YUV420P;
-                //! \todo Support these formats natively.
                 _avOutputPixelFormat = AV_PIX_FMT_RGBA;
                 _info.pixelType = image::PixelType::YUV_420P_U8;
                 break;
             case NDIlib_FourCC_type_RGBA:
+                DBG("RGBA");
                 _avInputPixelFormat = AV_PIX_FMT_RGBA;
                 _info.pixelType = image::PixelType::RGBA_U8;
                 _avOutputPixelFormat = _avInputPixelFormat;
                 break;
             case NDIlib_FourCC_type_RGBX:
+                DBG("RGBX");
                 _avInputPixelFormat = AV_PIX_FMT_RGB24;
                 _info.pixelType = image::PixelType::RGB_U8;
                 _avOutputPixelFormat = _avInputPixelFormat;
                 break;
             case NDIlib_FourCC_type_BGRX:
+                DBG("BGRX");
                 _avInputPixelFormat = AV_PIX_FMT_BGR24;
                 _info.pixelType = image::PixelType::RGB_U8;
                 _avOutputPixelFormat = AV_PIX_FMT_RGB24;
                 break;
             case NDIlib_FourCC_type_I420:
+                DBG("I420");
                 _avInputPixelFormat = AV_PIX_FMT_YUV420P;
                 if (options.yuvToRGBConversion)
                 {
@@ -148,22 +164,19 @@ namespace tl
                     _info.pixelType = image::PixelType::YUV_420P_U8;
                 }
                 break;
-            case AV_PIX_FMT_YUVA420P:
-            case AV_PIX_FMT_YUVA422P:
-            case AV_PIX_FMT_YUVA444P:
-                //! \todo Support these formats natively.
-                _avOutputPixelFormat = AV_PIX_FMT_RGBA;
-                _info.pixelType = image::PixelType::RGBA_U8;
-                break;
             default:
                 throw std::runtime_error("Unsupported pixel type");
             }
-            
+
+            DBG(_info.size << " " << _info.size.pixelAspectRatio);
+            DBG(_info.pixelType);
+
+            // Release this frame (we will miss the first frame of the stream)
+            NDIlib_recv_free_video_v2(pNDI_recv, &video_frame);
         }
 
         ReadVideo::~ReadVideo()
         {
-            DBG("exit read video");
             if (_swsContext)
             {
                 sws_freeContext(_swsContext);
@@ -200,16 +213,18 @@ namespace tl
 
         const otime::TimeRange& ReadVideo::getTimeRange() const
         {
-            // @todo: how to determine time range? It seems NDI is a constant
-            //        stream...
-            DBG("getTimeRange " << _timeRange);
             return _timeRange;
+        }
+
+        void ReadVideo::seek(const otime::RationalTime& time)
+        {
+            _buffer.clear();
         }
 
         bool ReadVideo::process(const otime::RationalTime& currentTime)
         {
             bool out = false;
-            DBG("process " << _timeRange);
+            _decode(currentTime);
             return out;
         }
 
@@ -231,7 +246,6 @@ namespace tl
         
         void ReadVideo::start()
         {
-            DBG("start");
             _avFrame = av_frame_alloc();
             if (!_avFrame)
             {
@@ -280,24 +294,34 @@ namespace tl
         
         int ReadVideo::_decode(const otime::RationalTime& currentTime)
         {
-            DBG("decode");
             int out = 0;
+            
             NDIlib_video_frame_v2_t video_frame;
-            NDIlib_frame_type_e type =
-                NDIlib_recv_capture_v2(pNDI_recv, &video_frame, nullptr,
-                                       nullptr, 5000);
-            switch(type)
+            NDIlib_frame_type_e type_e = NDIlib_frame_type_none;
+            while(type_e != NDIlib_frame_type_video)
             {
-            case NDIlib_frame_type_video:
-                std::cerr << "got video" << std::endl;
-				NDIlib_recv_free_video_v2(pNDI_recv, &video_frame);
-                break;
-            case NDIlib_frame_type_audio:
-                std::cerr << "ignoring audio" << std::endl;
-                break;
-            default:
-                break;
+                type_e = NDIlib_recv_capture_v2(
+                    pNDI_recv, &video_frame, nullptr, nullptr, 5000);
             }
+
+            // Fill source avFrame
+            av_image_fill_arrays(
+                _avFrame->data,
+                _avFrame->linesize,
+                video_frame.p_data,
+                _avInputPixelFormat,
+                _info.size.w,
+                _info.size.h,
+                1);
+                
+            auto image = image::Image::create(_info);
+            _copy(image);
+            _buffer.push_back(image);
+            out = 1;
+
+            // Release this frame
+            NDIlib_recv_free_video_v2(pNDI_recv, &video_frame);
+            
             return out;
         }
 
@@ -320,15 +344,6 @@ namespace tl
                             data + w * 3 * i,
                             data0 + linesize0 * 3 * i,
                             w * 3);
-                    }
-                    break;
-                case AV_PIX_FMT_GRAY8:
-                    for (std::size_t i = 0; i < h; ++i)
-                    {
-                        std::memcpy(
-                            data + w * i,
-                            data0 + linesize0 * i,
-                            w);
                     }
                     break;
                 case AV_PIX_FMT_RGBA:
@@ -373,6 +388,7 @@ namespace tl
             }
             else
             {
+                // Fill destination avFrame
                 av_image_fill_arrays(
                     _avFrame2->data,
                     _avFrame2->linesize,
@@ -381,6 +397,8 @@ namespace tl
                     w,
                     h,
                     1);
+
+                // Do the conversion with FFmpeg
                 sws_scale(
                     _swsContext,
                     (uint8_t const* const*)_avFrame->data,

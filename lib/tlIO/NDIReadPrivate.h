@@ -9,9 +9,7 @@
 extern "C"
 {
 #include <libavcodec/avcodec.h>
-#include <libswresample/swresample.h>
-
-struct AVStream;    
+#include <libswresample/swresample.h>  
 } // extern "C"
 
 
@@ -65,7 +63,7 @@ namespace tl
             const otime::TimeRange& getTimeRange() const;
 
             void start();
-            // void seek(const otime::RationalTime&);
+            void seek(const otime::RationalTime&);
             bool process(const otime::RationalTime& currentTime);
 
             bool isBufferEmpty() const;
@@ -113,7 +111,7 @@ namespace tl
             const image::Tags& getTags() const;
 
             void start();
-            // void seek(const otime::RationalTime&);
+            void seek(const otime::RationalTime&);
             bool process(
                 const otime::RationalTime& currentTime,
                 size_t sampleCount);
@@ -123,6 +121,13 @@ namespace tl
 
         private:
             int _decode(const otime::RationalTime& currentTime);
+            
+            // NDI structs
+            NDIlib_find_instance_t pNDI_find;
+            NDIlib_recv_instance_t pNDI_recv;
+            uint32_t no_sources = 0;
+            const NDIlib_source_t* p_sources = nullptr;
+            int frame_rate_N = 30000, frame_rate_D = 1001;
 
             std::string _fileName;
             Options _options;

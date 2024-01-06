@@ -8,50 +8,13 @@
 #include <tlCore/LogSystem.h>
 #include <tlCore/StringFormat.h>
 
+#define DBG(x) \
+    std::cerr << x << " " << __FUNCTION__ << " " << __LINE__ << std::endl;
+
 namespace tl
 {
     namespace ndi
     {
-        AVIOBufferData::AVIOBufferData()
-        {}
-
-        AVIOBufferData::AVIOBufferData(const uint8_t* p, size_t size) :
-            p(p),
-            size(size)
-        {}
-
-        int avIOBufferRead(void* opaque, uint8_t* buf, int bufSize)
-        {
-            AVIOBufferData* bufferData = static_cast<AVIOBufferData*>(opaque);
-
-            const int64_t remaining = bufferData->size - bufferData->offset;
-            int bufSizeClamped = math::clamp(
-                static_cast<int64_t>(bufSize),
-                static_cast<int64_t>(0),
-                remaining);
-            if (!bufSizeClamped)
-            {
-                return AVERROR_EOF;
-            }
-
-            memcpy(buf, bufferData->p + bufferData->offset, bufSizeClamped);
-            bufferData->offset += bufSizeClamped;
-
-            return bufSizeClamped;
-        }
-
-        int64_t avIOBufferSeek(void* opaque, int64_t offset, int whence)
-        {
-            AVIOBufferData* bufferData = static_cast<AVIOBufferData*>(opaque);
-
-            bufferData->offset = math::clamp(
-                offset,
-                static_cast<int64_t>(0),
-                static_cast<int64_t>(bufferData->size));
-
-            return offset;
-        }
-
         void Read::_init(
             const file::Path& path,
             const std::vector<file::MemoryRead>& memory,
@@ -86,7 +49,6 @@ namespace tl
                             p.info.videoTime = p.readVideo->getTimeRange();
                         }
 
-#if 0
                         p.readAudio = std::make_shared<ReadAudio>(
                             "ndi",
                             _memory,
@@ -118,7 +80,6 @@ namespace tl
                                     }
                                 }
                             });
-#endif
                         
                         _videoThread();
                     }
@@ -145,9 +106,7 @@ namespace tl
                         std::unique_lock<std::mutex> lock(p.audioMutex.mutex);
                         p.audioMutex.stopped = true;
                     }
-#if 0
                     _cancelAudioRequests();
-#endif
                 });
         }
 
@@ -335,12 +294,11 @@ namespace tl
                     }
                 }
 
-                // Seek.
+                // No seeking allowed
                 if (videoRequest &&
                     !time::compareExact(videoRequest->time, p.videoThread.currentTime))
                 {
                     p.videoThread.currentTime = videoRequest->time;
-                    //p.readVideo->seek(p.videoThread.currentTime);
                 }
 
                 // Process.
@@ -409,6 +367,7 @@ namespace tl
             p.audioThread.logTimer = std::chrono::steady_clock::now();
             while (p.audioThread.running)
             {
+                DBG("");
                 // Check requests.
                 std::shared_ptr<Private::AudioRequest> request;
                 size_t requestSampleCount = 0;
@@ -423,15 +382,19 @@ namespace tl
                                     return !_p->audioMutex.requests.empty();
                                 }))
                     {
+                        DBG("cv.wait_for=" << p.options.requestTimeout);
                         if (!p.audioMutex.requests.empty())
                         {
+                            DBG("requests not empty");
                             request = p.audioMutex.requests.front();
                             p.audioMutex.requests.pop_front();
                             requestSampleCount = request->timeRange.duration().rescaled_to(p.info.audio.sampleRate).value();
+                            DBG("requestSampleCount=" << requestSampleCount);
                             if (!time::compareExact(
                                     request->timeRange.start_time(),
                                     p.audioThread.currentTime))
                             {
+                                DBG("currentTime=" << p.audioThread.currentTime);
                                 seek = true;
                                 p.audioThread.currentTime = request->timeRange.start_time();
                             }
@@ -439,6 +402,7 @@ namespace tl
                     }
                 }
 
+                DBG("");
                 // Check the cache.
                 io::AudioData audioData;
                 if (request && _cache)
@@ -452,13 +416,10 @@ namespace tl
                         request->promise.set_value(audioData);
                         request.reset();
                     }
+                    DBG("");
                 }
 
-                // Seek.
-                if (seek)
-                {
-                    //p.readAudio->seek(p.audioThread.currentTime);
-                }
+                // No Seek.
 
                 // Process.
                 bool intersects = false;
@@ -466,6 +427,7 @@ namespace tl
                 {
                     intersects = request->timeRange.intersects(p.info.audioTime);
                 }
+                DBG("");
                 while (
                     request &&
                     intersects &&
@@ -477,29 +439,36 @@ namespace tl
                         requestSampleCount :
                         p.options.audioBufferSize.rescaled_to(p.info.audio.sampleRate).value()))
                     ;
+                DBG("");
 
                 // Handle request.
                 if (request)
                 {
+                DBG("");
                     io::AudioData audioData;
                     audioData.time = request->timeRange.start_time();
                     audioData.audio = audio::Audio::create(p.info.audio, request->timeRange.duration().value());
                     audioData.audio->zero();
+                    DBG("");
                     if (intersects)
                     {
+                        DBG("");
                         size_t offset = 0;
                         if (audioData.time < p.info.audioTime.start_time())
                         {
                             offset = (p.info.audioTime.start_time() - audioData.time).value();
                         }
+                        DBG("");
                         p.readAudio->bufferCopy(
                             audioData.audio->getData() + offset * p.info.audio.getByteCount(),
                             audioData.audio->getSampleCount() - offset);
+                        DBG("");
                     }
                     request->promise.set_value(audioData);
 
                     if (_cache)
                     {
+                        DBG("");
                         const std::string cacheKey = io::Cache::getAudioKey(
                             _path.get(),
                             request->timeRange,
@@ -507,9 +476,11 @@ namespace tl
                         _cache->addAudio(cacheKey, audioData);
                     }
 
+                    DBG("");
                     p.audioThread.currentTime += request->timeRange.duration();
                 }
 
+                DBG("");
                 // Logging.
                 // {
                 //     const auto now = std::chrono::steady_clock::now();
@@ -535,6 +506,7 @@ namespace tl
                 //     }
                 // }
             }
+            DBG("");
         }
 
         void Read::_cancelVideoRequests()

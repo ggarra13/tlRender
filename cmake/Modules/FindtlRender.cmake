@@ -162,7 +162,6 @@ if (LibRaw_FOUND)
     list(APPEND tlRender_tlIO_LIBRARIES LibRaw)
 endif()
 if (NDI_FOUND)
-    message(STATUS "APPEND NDI")
     list(APPEND tlRender_tlIO_LIBRARIES NDI)
 endif()
 
