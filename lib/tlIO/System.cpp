@@ -81,7 +81,7 @@ namespace tl
 #endif // TLRENDER_EXR
 #if defined(TLRENDER_NDI)
                 _plugins.push_back(ndi::Plugin::create(p.cache, logSystem));
-#endif // TLRENDER_EXR
+#endif // TLRENDER_NDI
 #if defined(TLRENDER_PNG)
                 _plugins.push_back(png::Plugin::create(p.cache, logSystem));
 #endif // TLRENDER_PNG

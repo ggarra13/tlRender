@@ -24,7 +24,7 @@ namespace tl
                 },
                 cache,
                 logSystem);
-
+            
             _logSystemWeak = logSystem;
 
             if (auto logSystem = _logSystemWeak.lock())
@@ -59,5 +59,7 @@ namespace tl
         {
             return Read::create(path, memory, options, _cache, _logSystem);
         }
+        
+        std::weak_ptr<log::System> Plugin::_logSystemWeak;
     }
 }

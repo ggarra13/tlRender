@@ -8,11 +8,24 @@
 
 #include <tlCore/HDR.h>
 
+#include <Processing.NDI.Lib.h>
+
+#ifdef _WIN32
+#ifdef _WIN64
+#pragma comment(lib, "Processing.NDI.Lib.x64.lib")
+#else // _WIN64
+#pragma comment(lib, "Processing.NDI.Lib.x86.lib")
+#endif // _WIN64
+#endif // _WIN32
+
 namespace tl
 {
     //! Ndi video and audio I/O
     namespace ndi
     {
+        //! Software scaler flags.
+        const int swsScaleFlags = SWS_FAST_BILINEAR;
+        
         //! Ndi reader
         class Read : public io::IRead
         {
@@ -87,11 +100,19 @@ namespace tl
                 const io::Options & = io::Options()) override;
             image::Info getWriteInfo(
                 const image::Info&,
-                const io::Options& = io::Options()) const override;
+                const io::Options& = io::Options()) const override
+                {
+                    image::Info out;
+                    return out;
+                }
             std::shared_ptr<io::IWrite> write(
                 const file::Path&,
                 const io::Info&,
-                const io::Options& = io::Options()) override;
+                const io::Options& = io::Options()) override
+                {
+                    std::shared_ptr<io::IWrite> out;
+                    return out;
+                }
 
         private:
             //! \todo What is a better way to access the log system from the
