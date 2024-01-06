@@ -8,8 +8,12 @@
 #include <tlCore/LogSystem.h>
 #include <tlCore/StringFormat.h>
 
+#if 0
+#define DBG(x)
+#else
 #define DBG(x) \
     std::cerr << x << " " << __FUNCTION__ << " " << __LINE__ << std::endl;
+#endif
 
 namespace tl
 {
@@ -32,38 +36,131 @@ namespace tl
                 std::stringstream ss(i->second);
                 ss >> p.options.yuvToRGBConversion;
             }
-            p.videoThread.running = true;
-            p.audioThread.running = true;
+            i = options.find("NDI/source");
+            if (i != options.end())
+            {
+                std::stringstream ss(i->second);
+                std::cerr << "Changed to source " << p.options.ndiSource;
+                ss >> p.options.ndiSource;
+            }
+        
+            NDIlib_find_instance_t pNDI_find;
+            pNDI_find = NDIlib_find_create_v2();
+            if (!pNDI_find)
+                throw std::runtime_error("Could not create NDI find");
+            
+            uint32_t no_sources = 0;
+            const NDIlib_source_t* p_sources = NULL;
+            while (!no_sources)
+            {
+                // Wait until the sources on the network have changed
+                NDIlib_find_wait_for_sources(pNDI_find, 1000/* One second */);
+                p_sources = NDIlib_find_get_current_sources(pNDI_find,
+                                                            &no_sources);
+            }
+
+    
+            // We now have at least one source,
+            // so we create a receiver to look at it.
+            NDIlib_recv_create_v3_t recv_desc;
+            recv_desc.color_format = NDIlib_recv_color_format_fastest;
+    
+            p.NDI_recv = NDIlib_recv_create_v3(&recv_desc);
+            if (!p.NDI_recv)
+                throw std::runtime_error("Could not create NDI receiver");
+    
+            // Connect to our sources
+            NDIlib_recv_connect(p.NDI_recv, p_sources + p.options.ndiSource);
+
+            // Get the name of the source for debugging purposes
+            const std::string source = p_sources[p.options.ndiSource].p_ndi_name;
+            
+            // Destroy the NDI finder.
+            // We needed to have access to the pointers to p_sources[0]
+            NDIlib_find_destroy(pNDI_find);
+            pNDI_find = nullptr;
+
+            
+            // The descriptors
+            NDIlib_video_frame_v2_t video_frame;
+            NDIlib_audio_frame_v2_t audio_frame;
+
+            bool video = false;
+            bool audio = false;
+            
+            NDIlib_frame_type_e type_e = NDIlib_frame_type_none;
+            while(1)
+            {
+                type_e = NDIlib_recv_capture_v2(
+                    p.NDI_recv, &video_frame, &audio_frame, nullptr, 5000);
+                if (type_e == NDIlib_frame_type_audio &&
+                    audio_frame.p_data)
+                {
+                    if (!audio)
+                        audio = true;
+                    else
+                        break;
+                }
+                if (type_e == NDIlib_frame_type_video &&
+                    video_frame.p_data)
+                {
+                    if (!video)
+                        video = true;
+                    else
+                        break;
+                }
+            }
+
+            p.audioThread.running = audio;
+            p.videoThread.running = video;
+            
+            DBG("videoThread.running=" << p.videoThread.running );
+            DBG("audioThread.running=" << p.audioThread.running );
+            
             p.videoThread.thread = std::thread(
-                [this, path]
+                [this, path, source]
                 {
                     TLRENDER_P();
                     try
                     {
-                        p.readVideo = std::make_shared<ReadVideo>(
-                            "ndi", _memory, p.options);
-                        const auto& videoInfo = p.readVideo->getInfo();
-                        if (videoInfo.isValid())
+                        DBG("");
+                        if (p.videoThread.running)
                         {
-                            p.info.video.push_back(videoInfo);
-                            p.info.videoTime = p.readVideo->getTimeRange();
+                            p.readVideo = std::make_shared<ReadVideo>(
+                                source,
+                                p.NDI_recv, _memory, p.options);
+                            DBG("");
+                            const auto& videoInfo = p.readVideo->getInfo();
+                            if (videoInfo.isValid())
+                            {
+                                p.info.video.push_back(videoInfo);
+                                p.info.videoTime = p.readVideo->getTimeRange();
+                            }
+                            DBG("");
                         }
 
-                        p.readAudio = std::make_shared<ReadAudio>(
-                            "ndi",
-                            _memory,
-                            p.info.videoTime.duration().rate(),
-                            p.options);
-                        p.info.audio = p.readAudio->getInfo();
-                        p.info.audioTime = p.readAudio->getTimeRange();
-
+                        if (p.audioThread.running)
+                        {
+                            p.readAudio = std::make_shared<ReadAudio>(
+                                source,
+                                p.NDI_recv,
+                                _memory,
+                                p.info.videoTime.duration().rate(),
+                                p.options);
+                            
+                            DBG("");
+                            p.info.audio = p.readAudio->getInfo();
+                            p.info.audioTime = p.readAudio->getTimeRange();
+                        }
+                        DBG("");
                         p.audioThread.thread = std::thread(
                             [this, path]
                             {
                                 TLRENDER_P();
                                 try
                                 {
-                                    _audioThread();
+                                    if (p.audioThread.running)
+                                        _audioThread();
                                 }
                                 catch (const std::exception& e)
                                 {
@@ -81,7 +178,10 @@ namespace tl
                                 }
                             });
                         
-                        _videoThread();
+                        DBG("");
+                        if (p.videoThread.running)
+                            _videoThread();
+                        DBG("");
                     }
                     catch (const std::exception& e)
                     {
@@ -127,6 +227,13 @@ namespace tl
             {
                 p.audioThread.thread.join();
             }
+            
+            // Destroy the NDI sender
+            NDIlib_recv_destroy(p.NDI_recv);
+            p.NDI_recv = nullptr;
+            
+            // Not required, but nice
+            NDIlib_destroy();
         }
 
         std::shared_ptr<Read> Read::create(
@@ -482,29 +589,29 @@ namespace tl
 
                 DBG("");
                 // Logging.
-                // {
-                //     const auto now = std::chrono::steady_clock::now();
-                //     const std::chrono::duration<float> diff = now - p.audioThread.logTimer;
-                //     if (diff.count() > 10.F)
-                //     {
-                //         p.audioThread.logTimer = now;
-                //         if (auto logSystem = _logSystem.lock())
-                //         {
-                //             const std::string id = string::Format("tl::io::ndi::Read {0}").arg(this);
-                //             size_t requestsSize = 0;
-                //             {
-                //                 std::unique_lock<std::mutex> lock(p.audioMutex.mutex);
-                //                 requestsSize = p.audioMutex.requests.size();
-                //             }
-                //             logSystem->print(id, string::Format(
-                //                 "\n"
-                //                 "    Path: {0}\n"
-                //                 "    Audio requests: {1}").
-                //                 arg(_path.get()).
-                //                 arg(requestsSize));
-                //         }
-                //     }
-                // }
+                {
+                    const auto now = std::chrono::steady_clock::now();
+                    const std::chrono::duration<float> diff = now - p.audioThread.logTimer;
+                    if (diff.count() > 10.F)
+                    {
+                        p.audioThread.logTimer = now;
+                        if (auto logSystem = _logSystem.lock())
+                        {
+                            const std::string id = string::Format("tl::io::ndi::Read {0}").arg(this);
+                            size_t requestsSize = 0;
+                            {
+                                std::unique_lock<std::mutex> lock(p.audioMutex.mutex);
+                                requestsSize = p.audioMutex.requests.size();
+                            }
+                            logSystem->print(id, string::Format(
+                                "\n"
+                                "    Path: {0}\n"
+                                "    Audio requests: {1}").
+                                arg(_path.get()).
+                                arg(requestsSize));
+                        }
+                    }
+                }
             }
             DBG("");
         }

@@ -41,6 +41,7 @@ namespace tl
         {
             otime::RationalTime startTime = time::invalidTime;
             bool yuvToRGBConversion = false;
+            int  ndiSource = 0;
             audio::Info audioConvertInfo;
             size_t threadCount = 2;
             size_t requestTimeout = 5;
@@ -53,6 +54,7 @@ namespace tl
         public:
             ReadVideo(
                 const std::string& fileName,
+                NDIlib_recv_instance_t recv,
                 const std::vector<file::MemoryRead>& memory,
                 const Options& options);
 
@@ -73,17 +75,14 @@ namespace tl
             int _decode(const otime::RationalTime& currentTime);
             void _copy(std::shared_ptr<image::Image>&);
             
-            std::string _fileName;
             Options _options;
             image::Info _info;
             otime::TimeRange _timeRange = time::invalidTimeRange;
             std::list<std::shared_ptr<image::Image> > _buffer;
 
             // NDI structs
-            NDIlib_find_instance_t pNDI_find;
+            const std::string _fileName;
             NDIlib_recv_instance_t pNDI_recv;
-            uint32_t no_sources = 0;
-            const NDIlib_source_t* p_sources = nullptr;
             int frame_rate_N = 30000, frame_rate_D = 1001;
 
             // FFmpeg conversion variables
@@ -99,6 +98,7 @@ namespace tl
         public:
             ReadAudio(
                 const std::string& fileName,
+                NDIlib_recv_instance_t recv,
                 const std::vector<file::MemoryRead>&,
                 double videoRate,
                 const Options&);
@@ -123,13 +123,9 @@ namespace tl
             int _decode(const otime::RationalTime& currentTime);
             
             // NDI structs
-            NDIlib_find_instance_t pNDI_find;
+            const std::string _fileName;
             NDIlib_recv_instance_t pNDI_recv;
-            uint32_t no_sources = 0;
-            const NDIlib_source_t* p_sources = nullptr;
-            int frame_rate_N = 30000, frame_rate_D = 1001;
 
-            std::string _fileName;
             Options _options;
             audio::Info _info;
             otime::TimeRange _timeRange = time::invalidTimeRange;
@@ -140,6 +136,8 @@ namespace tl
         {
             Options options;
 
+            NDIlib_recv_instance_t NDI_recv = nullptr;
+            
             std::shared_ptr<ReadVideo> readVideo;
             std::shared_ptr<ReadAudio> readAudio;
 

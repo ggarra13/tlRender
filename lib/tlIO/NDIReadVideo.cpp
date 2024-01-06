@@ -14,7 +14,7 @@ extern "C"
 }
 
 
-#if 0
+#if 1
 #  define DBG(x) \
     std::cerr << x << " " << __FUNCTION__ << " " << __LINE__ << std::endl;
 #else
@@ -39,42 +39,14 @@ namespace tl
 
         ReadVideo::ReadVideo(
             const std::string& fileName,
+            NDIlib_recv_instance_t recv,
             const std::vector<file::MemoryRead>& memory,
             const Options& options) :
+            pNDI_recv(recv),
             _fileName(fileName),
             _options(options)
         {
-            pNDI_find = NDIlib_find_create_v2();
-            if (!pNDI_find)
-                throw std::runtime_error("Could not create NDI find");
-            uint32_t no_sources = 0;
-            const NDIlib_source_t* p_sources = NULL;
-            while (!no_sources)
-            {
-                // Wait until the sources on the network have changed
-                NDIlib_find_wait_for_sources(pNDI_find, 1000/* One second */);
-                p_sources = NDIlib_find_get_current_sources(pNDI_find,
-                                                            &no_sources);
-            }
-
-    
-            // We now have at least one source,
-            // so we create a receiver to look at it.
-            NDIlib_recv_create_v3_t recv_desc;
-            recv_desc.color_format = NDIlib_recv_color_format_fastest;
-    
-            pNDI_recv = NDIlib_recv_create_v3(&recv_desc);
-            if (!pNDI_recv)
-                throw std::runtime_error("Could not create NDI receiver");
-    
-            // Connect to our sources
-            NDIlib_recv_connect(pNDI_recv, p_sources + 0);
-            
-            // Destroy the NDI finder.
-            // We needed to have access to the pointers to p_sources[0]
-            NDIlib_find_destroy(pNDI_find);
-            pNDI_find = nullptr;
-
+            DBG("");
             NDIlib_video_frame_v2_t video_frame;
             NDIlib_frame_type_e type_e = NDIlib_frame_type_none;
 
@@ -173,6 +145,7 @@ namespace tl
 
             // Release this frame (we will miss the first frame of the stream)
             NDIlib_recv_free_video_v2(pNDI_recv, &video_frame);
+            DBG("");
         }
 
         ReadVideo::~ReadVideo()
@@ -189,16 +162,6 @@ namespace tl
             {
                 av_frame_free(&_avFrame);
             }
-            
-            if (pNDI_find)
-                NDIlib_find_destroy(pNDI_find);
-    
-            // Destroy the receiver
-            if (pNDI_recv)
-                NDIlib_recv_destroy(pNDI_recv);
-            
-            // Not required, but nice
-            NDIlib_destroy();
         }
 
         bool ReadVideo::isValid() const
@@ -304,6 +267,8 @@ namespace tl
                     pNDI_recv, &video_frame, nullptr, nullptr, 5000);
             }
 
+            DBG("VIDEO currentTime=" << currentTime);
+            
             // Fill source avFrame
             av_image_fill_arrays(
                 _avFrame->data,

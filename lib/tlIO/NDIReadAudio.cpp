@@ -6,11 +6,12 @@
 
 #include <tlCore/StringFormat.h>
 
+#  define DBG(x)
 #if 1
-#  define DBG(x) \
+#  define DBG2(x) \
     std::cerr << x << " " << __FUNCTION__ << " " << __LINE__ << std::endl;
 #else
-#  define DBG(x)
+#  define DBG2(x)
 #endif
 
 namespace tl
@@ -34,59 +35,24 @@ namespace tl
         
         ReadAudio::ReadAudio(
             const std::string& fileName,
+            NDIlib_recv_instance_t recv,
             const std::vector<file::MemoryRead>& memory,
             double videoRate,
             const Options& options) :
+            pNDI_recv(recv),
             _fileName(fileName),
             _options(options)
         {
             DBG("");
-            pNDI_find = NDIlib_find_create_v2();
-            if (!pNDI_find)
-                throw std::runtime_error("Could not create NDI find");
-            DBG("");
-            uint32_t no_sources = 0;
-            const NDIlib_source_t* p_sources = NULL;
-            while (!no_sources)
-            {
-                // Wait until the sources on the network have changed
-                NDIlib_find_wait_for_sources(pNDI_find, 1000/* One second */);
-                p_sources = NDIlib_find_get_current_sources(pNDI_find,
-                                                            &no_sources);
-            }
 
-            DBG("");
-            pNDI_recv = NDIlib_recv_create_v3();
-            if (!pNDI_recv)
-                throw std::runtime_error("Could not create NDI receiver");
-    
-            DBG("");
-            // Connect to our sources
-            NDIlib_recv_connect(pNDI_recv, p_sources + 0);
             
-            // Destroy the NDI finder.
-            // We needed to have access to the pointers to p_sources[0]
-            NDIlib_find_destroy(pNDI_find);
-            pNDI_find = nullptr;
-
-            DBG("");
-            NDIlib_video_frame_v2_t video_frame;
             NDIlib_audio_frame_v2_t audio_frame;
             NDIlib_frame_type_e type_e = NDIlib_frame_type_none;
-
-
-            int frame_rate_N = 3000, frame_rate_D = 1001;
             
             while(type_e != NDIlib_frame_type_audio)
             {
                 type_e = NDIlib_recv_capture_v2(
-                    pNDI_recv, &video_frame, &audio_frame, nullptr, 5000);
-                if (type_e == NDIlib_frame_type_video)
-                {
-                    frame_rate_N = video_frame.frame_rate_N;
-                    frame_rate_D = video_frame.frame_rate_D;
-                }
-                
+                    pNDI_recv, nullptr, &audio_frame, nullptr, 5000);
             }
 
             DBG("");
@@ -94,8 +60,7 @@ namespace tl
             _info.sampleRate   = audio_frame.sample_rate;
             _info.dataType     = audio::DataType::F32;
 
-            double fps =
-                frame_rate_N / static_cast<double>(frame_rate_D);
+            double fps = videoRate;
             double last = 3 * 60 * 60 * fps; // 3 hours time range
             _timeRange = otime::TimeRange(
                 otime::RationalTime(0.0, fps).rescaled_to(_info.sampleRate),
@@ -179,9 +144,11 @@ namespace tl
             }
             
             DBG("");
-            const int64_t timestamp = audio_frame.timecode;
+            int64_t timestamp = audio_frame.timecode - audio_frame.timestamp;
             
-            DBG("timestamp " << timestamp);
+            DBG2("AUDIO timecode " << timestamp << " timestamp "
+                 << audio_frame.timestamp
+                 << " currentTime=" << currentTime);
             AVRational r;
             r.num = 1;
             r.den = _info.sampleRate;
