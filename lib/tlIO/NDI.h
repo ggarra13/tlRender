@@ -8,6 +8,9 @@
 
 #include <Processing.NDI.Lib.h>
 
+#define NDI_TIME_BASE 10000000
+#define NDI_TIME_BASE_Q (AVRational){1, NDI_TIME_BASE}
+
 extern "C"
 {
 #include <libavformat/avformat.h>

@@ -144,26 +144,20 @@ namespace tl
             }
             
             DBG("");
-            int64_t timestamp = audio_frame.timecode - audio_frame.timestamp;
             
-            DBG2("AUDIO timecode " << timestamp << " timestamp "
-                 << audio_frame.timestamp
-                 << " currentTime=" << currentTime);
             AVRational r;
             r.num = 1;
             r.den = _info.sampleRate;
-            AVRational time_base;
-            r.num = _info.sampleRate;
-            r.den = 1;
+            
             const auto time = otime::RationalTime(
                 _timeRange.start_time().value() +
                 av_rescale_q(
-                    timestamp,
-                    time_base,
+                    audio_frame.timecode,
+                    NDI_TIME_BASE_Q,
                     r),
                 _info.sampleRate);
                 
-            if (1)
+            if (time >= currentTime)
             {
                 DBG2( "audio time: " << time << " currentTime=" << currentTime );
                 DBG2( "nb_samples: " << audio_frame.no_samples );

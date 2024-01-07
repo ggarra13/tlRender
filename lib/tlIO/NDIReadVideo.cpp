@@ -65,6 +65,7 @@ namespace tl
             _info.size.w = video_frame.xres;
             _info.size.h = video_frame.yres;
             _info.size.pixelAspectRatio = video_frame.picture_aspect_ratio;
+            _info.layout.mirror.y = true;
 
             switch(video_frame.FourCC)
             {
@@ -267,23 +268,38 @@ namespace tl
                     pNDI_recv, &video_frame, nullptr, nullptr, 5000);
             }
 
-            DBG("VIDEO currentTime=" << currentTime);
-            
-            // Fill source avFrame
-            av_image_fill_arrays(
-                _avFrame->data,
-                _avFrame->linesize,
-                video_frame.p_data,
-                _avInputPixelFormat,
-                _info.size.w,
-                _info.size.h,
-                1);
-                
-            auto image = image::Image::create(_info);
-            _copy(image);
-            _buffer.push_back(image);
-            out = 1;
+            AVRational r;
+            r.num = 1;
+            r.den = _timeRange.duration().rate();
 
+            const int64_t dts =
+                av_rescale_q(video_frame.timecode, NDI_TIME_BASE_Q, r);
+
+            const otime::RationalTime time(
+                _timeRange.start_time().value() + dts,
+                _timeRange.duration().rate());
+                
+                
+            if (time >= currentTime)
+            {
+                DBG("VIDEO time=" << time << " currentTime=" << currentTime);
+            
+                // Fill source avFrame
+                av_image_fill_arrays(
+                    _avFrame->data,
+                    _avFrame->linesize,
+                    video_frame.p_data,
+                    _avInputPixelFormat,
+                    _info.size.w,
+                    _info.size.h,
+                    1);
+                
+                auto image = image::Image::create(_info);
+                _copy(image);
+                _buffer.push_back(image);
+                out = 1;
+            }
+                
             // Release this frame
             NDIlib_recv_free_video_v2(pNDI_recv, &video_frame);
             
