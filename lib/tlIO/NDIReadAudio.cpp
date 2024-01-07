@@ -163,10 +163,10 @@ namespace tl
                     r),
                 _info.sampleRate);
                 
-            if (1) //time >= currentTime)
+            if (1)
             {
-                DBG( "audio time: " << time << " currentTime=" << currentTime );
-                DBG( "nb_samples: " << audio_frame.no_samples );
+                DBG2( "audio time: " << time << " currentTime=" << currentTime );
+                DBG2( "nb_samples: " << audio_frame.no_samples );
                 // Allocate enough space for 16bpp interleaved buffer
 				NDIlib_audio_frame_interleaved_16s_t audio_frame_16bpp_interleaved;
 				audio_frame_16bpp_interleaved.reference_level = 20;	// We are going to have 20dB of headroom

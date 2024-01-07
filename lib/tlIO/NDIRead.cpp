@@ -8,7 +8,7 @@
 #include <tlCore/LogSystem.h>
 #include <tlCore/StringFormat.h>
 
-#if 0
+#if 1
 #define DBG(x)
 #else
 #define DBG(x) \
