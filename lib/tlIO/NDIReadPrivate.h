@@ -108,7 +108,6 @@ namespace tl
             bool isValid() const;
             const audio::Info& getInfo() const;
             const otime::TimeRange& getTimeRange() const;
-            const image::Tags& getTags() const;
 
             void start();
             void seek(const otime::RationalTime&);
@@ -129,6 +128,7 @@ namespace tl
             Options _options;
             audio::Info _info;
             otime::TimeRange _timeRange = time::invalidTimeRange;
+            SwrContext* _swrContext = nullptr;
             std::list<std::shared_ptr<audio::Audio> > _buffer;
         };
 

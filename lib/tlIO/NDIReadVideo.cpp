@@ -14,7 +14,7 @@ extern "C"
 }
 
 
-#if 1
+#if 0
 #  define DBG(x) \
     std::cerr << x << " " << __FUNCTION__ << " " << __LINE__ << std::endl;
 #else
@@ -64,7 +64,10 @@ namespace tl
             
             _info.size.w = video_frame.xres;
             _info.size.h = video_frame.yres;
-            _info.size.pixelAspectRatio = video_frame.picture_aspect_ratio;
+            if (video_frame.picture_aspect_ratio == 0.F)
+                _info.size.pixelAspectRatio = 1.0 / _info.size.w * _info.size.h;
+            else
+                _info.size.pixelAspectRatio = 1.0;
             _info.layout.mirror.y = true;
 
             switch(video_frame.FourCC)

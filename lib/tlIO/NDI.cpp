@@ -13,6 +13,19 @@ namespace tl
 {
     namespace ndi
     {
+        AVSampleFormat fromAudioType(audio::DataType value)
+        {
+            AVSampleFormat out = AV_SAMPLE_FMT_NONE;
+            switch (value)
+            {
+            case audio::DataType::S16: out = AV_SAMPLE_FMT_S16; break;
+            case audio::DataType::S32: out = AV_SAMPLE_FMT_S32; break;
+            case audio::DataType::F32: out = AV_SAMPLE_FMT_FLT; break;
+            case audio::DataType::F64: out = AV_SAMPLE_FMT_DBL; break;
+            default: break;
+            }
+            return out;
+        }
         void Plugin::_init(
             const std::shared_ptr<io::Cache>& cache,
             const std::weak_ptr<log::System>& logSystem)

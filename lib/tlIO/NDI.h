@@ -33,7 +33,10 @@ namespace tl
         //! Software scaler flags.
         const int swsScaleFlags = SWS_FAST_BILINEAR;
         
-        //! Ndi reader
+        //! Convert to FFmpeg.
+        AVSampleFormat fromAudioType(audio::DataType);
+        
+        //! NDI reader
         class Read : public io::IRead
         {
         protected:
