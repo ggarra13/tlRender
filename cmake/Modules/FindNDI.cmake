@@ -16,12 +16,15 @@
 find_path(NDI_INCLUDE_DIR
     NAMES Processing.NDI.Recv.h
     PATHS ${TLRENDER_NDI_SDK}/include
+          ${TLRENDER_NDI_SDK}/Include
 )
 set(NDI_INCLUDE_DIRS
     ${NDI_INCLUDE_DIR})
 
 find_library(NDI_LIBRARY NAMES ndi
-    PATHS ${TLRENDER_NDI_SDK}/lib/x86_64-linux-gnu)
+    PATHS ${TLRENDER_NDI_SDK}/lib/x86_64-linux-gnu
+          ${TLRENDER_NDI_SDK}/Lib/x64
+)
 set(NDI_LIBRARIES
     ${NDI_LIBRARY})
 if(APPLE)
