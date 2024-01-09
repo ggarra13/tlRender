@@ -77,12 +77,6 @@ namespace tl
         void ReadAudio::seek(const otime::RationalTime& time)
         {
             //std::cout << "audio seek: " << time << std::endl;
-#ifndef USE_NDI
-            if (_swrContext)
-            {
-                swr_init(_swrContext);
-            }
-#endif
             _buffer.clear();
         }
 

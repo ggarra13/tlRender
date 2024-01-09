@@ -8,6 +8,13 @@
 
 #include <Processing.NDI.Lib.h>
 
+#define NDIlib_audio_frame_t NDIlib_audio_frame_v2_t
+#define NDIlib_video_frame_t NDIlib_video_frame_v2_t
+#define NDIlib_recv_capture NDIlib_recv_capture_v2
+#define NDIlib_recv_free_video NDIlib_recv_free_video_v2
+#define NDIlib_recv_free_audio NDIlib_recv_free_audio_v2
+#define NDIlib_util_audio_to_interleaved_16s NDIlib_util_audio_to_interleaved_16s_v2 
+
 #define NDI_TIME_BASE 10000000
 #define NDI_TIME_BASE_Q (AVRational){1, NDI_TIME_BASE}
 
