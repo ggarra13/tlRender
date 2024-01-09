@@ -21,7 +21,7 @@ find_path(NDI_INCLUDE_DIR
 set(NDI_INCLUDE_DIRS
     ${NDI_INCLUDE_DIR})
 
-find_library(NDI_LIBRARY NAMES ndi
+find_library(NDI_LIBRARY NAMES ndi Processing.NDI.Lib.x64
     PATHS ${TLRENDER_NDI_SDK}/lib/x86_64-linux-gnu
           ${TLRENDER_NDI_SDK}/Lib/x64
 )
