@@ -13,7 +13,7 @@
 #define DBG2(x) \
     std::cerr << x << " " << __FUNCTION__ << " " << __LINE__ << std::endl;
 #else
-#define DBG(x) \
+#define DBG(x)                                                          \
     std::cerr << x << " " << __FUNCTION__ << " " << __LINE__ << std::endl;
 #endif
 
@@ -84,8 +84,8 @@ namespace tl
 
             
             // The descriptors
-            NDIlib_video_frame_v2_t video_frame;
-            NDIlib_audio_frame_v2_t audio_frame;
+            NDIlib_video_frame_t video_frame;
+            NDIlib_audio_frame_t audio_frame;
 
             bool video = false;
             bool audio = false;
@@ -93,11 +93,12 @@ namespace tl
             NDIlib_frame_type_e type_e = NDIlib_frame_type_none;
             while(1)
             {
-                type_e = NDIlib_recv_capture_v2(
+                type_e = NDIlib_recv_capture(
                     p.NDI_recv, &video_frame, &audio_frame, nullptr, 5000);
                 if (type_e == NDIlib_frame_type_audio &&
                     audio_frame.p_data)
                 {
+                    NDIlib_recv_free_audio(p.NDI_recv, &audio_frame);
                     if (!audio)
                         audio = true;
                     else
@@ -106,6 +107,7 @@ namespace tl
                 if (type_e == NDIlib_frame_type_video &&
                     video_frame.p_data)
                 {
+                    NDIlib_recv_free_video(p.NDI_recv, &video_frame);
                     if (!video)
                         video = true;
                     else

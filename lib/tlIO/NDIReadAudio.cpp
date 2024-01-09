@@ -30,12 +30,12 @@ namespace tl
             _options(options)
         {
             
-            NDIlib_audio_frame_v2_t audio_frame;
+            NDIlib_audio_frame_t audio_frame;
             NDIlib_frame_type_e type_e = NDIlib_frame_type_none;
             
             while(type_e != NDIlib_frame_type_audio)
             {
-                type_e = NDIlib_recv_capture_v2(
+                type_e = NDIlib_recv_capture(
                     pNDI_recv, nullptr, &audio_frame, nullptr, 5000);
             }
 
@@ -140,7 +140,7 @@ namespace tl
                         r),
                     _info.sampleRate);
                 
-                if (time >= currentTime)
+                if (1) //time >= currentTime)
                 {
                     DBG2( "audio time: " << time << " timecode="
                           << audio_frame.timecode
@@ -149,7 +149,7 @@ namespace tl
 
                     auto tmp =
                         audio::Audio::create(_info, audio_frame.no_samples);
-
+                    
                     // Allocate enough space for 16bpp interleaved buffer
                     NDIlib_audio_frame_interleaved_16s_t dst;
                     dst.reference_level = 0;
@@ -158,6 +158,13 @@ namespace tl
                     // Convert it
                     NDIlib_util_audio_to_interleaved_16s(&audio_frame, &dst);
                     
+
+                    std::cerr << "---------------------" << std::endl;
+                    for (int i = 0; i < 8; ++i)
+                    {
+                        std::cerr << dst.p_data[i] << std::endl;
+                    }
+                    
                     // Free the original buffer
                     NDIlib_recv_free_audio(pNDI_recv, &audio_frame);
 
@@ -165,6 +172,9 @@ namespace tl
                     out = 1;
                     break;
                 }
+                
+                // Free the original buffer
+                NDIlib_recv_free_audio(pNDI_recv, &audio_frame);
             }
             return out;
         }

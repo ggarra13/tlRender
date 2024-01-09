@@ -47,12 +47,12 @@ namespace tl
             _options(options)
         {
             DBG("");
-            NDIlib_video_frame_v2_t video_frame;
+            NDIlib_video_frame_t video_frame;
             NDIlib_frame_type_e type_e = NDIlib_frame_type_none;
 
             while(type_e != NDIlib_frame_type_video)
             {
-                type_e = NDIlib_recv_capture_v2(
+                type_e = NDIlib_recv_capture(
                     pNDI_recv, &video_frame, nullptr, nullptr, 5000);
             }
 
@@ -148,7 +148,7 @@ namespace tl
             DBG(_info.pixelType);
 
             // Release this frame (we will miss the first frame of the stream)
-            NDIlib_recv_free_video_v2(pNDI_recv, &video_frame);
+            NDIlib_recv_free_video(pNDI_recv, &video_frame);
             DBG("");
         }
 
@@ -263,11 +263,11 @@ namespace tl
         {
             int out = 0;
             
-            NDIlib_video_frame_v2_t video_frame;
+            NDIlib_video_frame_t video_frame;
             NDIlib_frame_type_e type_e = NDIlib_frame_type_none;
             while(type_e != NDIlib_frame_type_video)
             {
-                type_e = NDIlib_recv_capture_v2(
+                type_e = NDIlib_recv_capture(
                     pNDI_recv, &video_frame, nullptr, nullptr, 5000);
             }
 
@@ -304,7 +304,7 @@ namespace tl
             }
                 
             // Release this frame
-            NDIlib_recv_free_video_v2(pNDI_recv, &video_frame);
+            NDIlib_recv_free_video(pNDI_recv, &video_frame);
             
             return out;
         }
