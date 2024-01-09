@@ -57,7 +57,8 @@ namespace tl
 
             double fps = video_frame.frame_rate_N /
                          static_cast<double>(video_frame.frame_rate_D);
-            double last = 3 * 60 * 60 * fps; // 3 hours time range
+            //double last = 3 * 60 * 60 * fps; // 3 hours time range
+            double last = 60 * 1 * fps; // 1 minute
             _timeRange = otime::TimeRange(otime::RationalTime(0.0, fps),
                                           otime::RationalTime(last, fps));
             

@@ -45,7 +45,8 @@ namespace tl
             _info.dataType     = audio::DataType::F32;  // S16
 
             double fps = videoRate;
-            double last = 3 * 60 * 60 * fps; // 3 hours time range
+            //double last = 3 * 60 * 60 * fps; // 3 hours time range
+            double last = 60 * 1 * fps; // 1 minute
             _timeRange = otime::TimeRange(
                 otime::RationalTime(0.0, fps).rescaled_to(_info.sampleRate),
                 otime::RationalTime(last, fps).rescaled_to(_info.sampleRate));

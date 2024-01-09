@@ -8,8 +8,12 @@
 
 #include <Processing.NDI.Lib.h>
 
+// Structs
 #define NDIlib_audio_frame_t NDIlib_audio_frame_v2_t
 #define NDIlib_video_frame_t NDIlib_video_frame_v2_t
+
+// Functions
+#define NDIlib_recv_create   NDIlib_recv_create_v3
 #define NDIlib_recv_capture NDIlib_recv_capture_v2
 #define NDIlib_recv_free_video NDIlib_recv_free_video_v2
 #define NDIlib_recv_free_audio NDIlib_recv_free_audio_v2

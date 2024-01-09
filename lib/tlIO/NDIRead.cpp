@@ -67,7 +67,7 @@ namespace tl
             NDIlib_recv_create_v3_t recv_desc;
             recv_desc.color_format = NDIlib_recv_color_format_fastest;
     
-            p.NDI_recv = NDIlib_recv_create_v3(&recv_desc);
+            p.NDI_recv = NDIlib_recv_create(&recv_desc);
             if (!p.NDI_recv)
                 throw std::runtime_error("Could not create NDI receiver");
     
@@ -76,6 +76,12 @@ namespace tl
 
             // Get the name of the source for debugging purposes
             const std::string source = p_sources[p.options.ndiSource].p_ndi_name;
+            NDIlib_tally_t tally_state;
+            tally_state.on_program = true;
+            tally_state.on_preview = false;
+            
+            /* Set tally */
+            NDIlib_recv_set_tally(p.NDI_recv, &tally_state);
             
             // Destroy the NDI finder.
             // We needed to have access to the pointers to p_sources[0]
@@ -502,19 +508,6 @@ namespace tl
                 DBG("");
                 // Check the cache.
                 io::AudioData audioData;
-                // if (request && _cache)
-                // {
-                //     const std::string cacheKey = io::Cache::getAudioKey(
-                //         _path.get(),
-                //         request->timeRange,
-                //         request->options);
-                //     if (_cache->getAudio(cacheKey, audioData))
-                //     {
-                //         request->promise.set_value(audioData);
-                //         request.reset();
-                //     }
-                //     DBG("");
-                // }
 
                 // No Seek.
 
@@ -540,7 +533,6 @@ namespace tl
                 // Handle request.
                 if (request)
                 {
-                    DBG2("HANDLING REQUEST (zero audio)");
                     io::AudioData audioData;
                     audioData.time = request->timeRange.start_time();
                     audioData.audio = audio::Audio::create(p.info.audio, request->timeRange.duration().value());
@@ -556,22 +548,13 @@ namespace tl
                             audioData.audio->getData() + offset * p.info.audio.getByteCount(),
                             audioData.audio->getSampleCount() - offset);
                     }
-                    std::cerr << "set audioData for " << audioData.time
+                    std::cerr << "set promise audioData for "
+                              << audioData.time << " frame="
+                              << audioData.time.rescaled_to(24.0).value()
                               << std::endl;
                     request->promise.set_value(audioData);
 
-                    // if (_cache)
-                    // {
-                    //     const std::string cacheKey = io::Cache::getAudioKey(
-                    //         _path.get(),
-                    //         request->timeRange,
-                    //         request->options);
-                    //     _cache->addAudio(cacheKey, audioData);
-                    // }
-
                     p.audioThread.currentTime += request->timeRange.duration();
-                    DBG2("AUDIO THREAD CURRENT TIME="
-                         << p.audioThread.currentTime);
                 }
 
                 // Logging.
