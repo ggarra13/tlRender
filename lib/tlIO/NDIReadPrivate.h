@@ -22,20 +22,6 @@ namespace tl
 {
     namespace ndi
     {
-        struct AVIOBufferData
-        {
-            AVIOBufferData();
-            AVIOBufferData(const uint8_t* p, size_t size);
-
-            const uint8_t* p = nullptr;
-            size_t size = 0;
-            size_t offset = 0;
-        };
-
-        int avIOBufferRead(void* opaque, uint8_t* buf, int bufSize);
-        int64_t avIOBufferSeek(void* opaque, int64_t offset, int whence);
-
-        const size_t avIOContextBufferSize = 4096;
         
         struct Options
         {
@@ -55,7 +41,6 @@ namespace tl
             ReadVideo(
                 const std::string& fileName,
                 NDIlib_recv_instance_t recv,
-                const std::vector<file::MemoryRead>& memory,
                 const Options& options);
 
             ~ReadVideo();
@@ -99,8 +84,8 @@ namespace tl
             ReadAudio(
                 const std::string& fileName,
                 NDIlib_recv_instance_t recv,
-                const std::vector<file::MemoryRead>&,
-                double videoRate,
+                const double videoRate,
+                const int64_t startTimecode,
                 const Options&);
 
             ~ReadAudio();
@@ -124,7 +109,8 @@ namespace tl
             // NDI structs
             const std::string _fileName;
             NDIlib_recv_instance_t pNDI_recv;
-
+            int64_t _startTimecode = 0;
+            
             Options _options;
             audio::Info _info;
             otime::TimeRange _timeRange = time::invalidTimeRange;

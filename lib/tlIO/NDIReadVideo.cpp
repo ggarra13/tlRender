@@ -40,7 +40,6 @@ namespace tl
         ReadVideo::ReadVideo(
             const std::string& fileName,
             NDIlib_recv_instance_t recv,
-            const std::vector<file::MemoryRead>& memory,
             const Options& options) :
             pNDI_recv(recv),
             _fileName(fileName),

@@ -84,6 +84,7 @@ namespace tl
 
             
             // The descriptors
+            int64_t audio_timecode = 0;
             NDIlib_video_frame_t video_frame;
             NDIlib_audio_frame_t audio_frame;
 
@@ -95,17 +96,16 @@ namespace tl
             {
                 type_e = NDIlib_recv_capture(
                     p.NDI_recv, &video_frame, &audio_frame, nullptr, 5000);
-                if (type_e == NDIlib_frame_type_audio &&
-                    audio_frame.p_data)
+                if (type_e == NDIlib_frame_type_audio)
                 {
+                    audio_timecode = audio_frame.timecode;
                     NDIlib_recv_free_audio(p.NDI_recv, &audio_frame);
                     if (!audio)
                         audio = true;
                     else
                         break;
                 }
-                if (type_e == NDIlib_frame_type_video &&
-                    video_frame.p_data)
+                if (type_e == NDIlib_frame_type_video)
                 {
                     NDIlib_recv_free_video(p.NDI_recv, &video_frame);
                     if (!video)
@@ -127,8 +127,7 @@ namespace tl
                         if (p.videoThread.running)
                         {
                             p.readVideo = std::make_shared<ReadVideo>(
-                                source,
-                                p.NDI_recv, _memory, p.options);
+                                source, p.NDI_recv, p.options);
                             const auto& videoInfo = p.readVideo->getInfo();
                             if (videoInfo.isValid())
                             {
@@ -142,8 +141,8 @@ namespace tl
                             p.readAudio = std::make_shared<ReadAudio>(
                                 source,
                                 p.NDI_recv,
-                                _memory,
                                 p.info.videoTime.duration().rate(),
+                                0, // timecode
                                 p.options);
                             
                             p.info.audio = p.readAudio->getInfo();
@@ -332,6 +331,7 @@ namespace tl
             }
             else
             {
+                std::cerr << "set empty audio data" << std::endl;
                 request->promise.set_value(io::AudioData());
             }
             return future;
@@ -476,24 +476,22 @@ namespace tl
                 {
                     std::unique_lock<std::mutex> lock(p.audioMutex.mutex);
                     if (p.audioThread.cv.wait_for(
-                            lock,
-                            std::chrono::milliseconds(p.options.requestTimeout),
-                            [this]
-                                {
-                                    return !_p->audioMutex.requests.empty();
-                                }))
+                        lock,
+                        std::chrono::milliseconds(p.options.requestTimeout),
+                        [this]
+                        {
+                            return !_p->audioMutex.requests.empty();
+                        }))
                     {
                         if (!p.audioMutex.requests.empty())
                         {
                             request = p.audioMutex.requests.front();
                             p.audioMutex.requests.pop_front();
                             requestSampleCount = request->timeRange.duration().rescaled_to(p.info.audio.sampleRate).value();
-                            DBG2("requestSampleCount=" << requestSampleCount);
                             if (!time::compareExact(
-                                    request->timeRange.start_time(),
-                                    p.audioThread.currentTime))
+                                request->timeRange.start_time(),
+                                p.audioThread.currentTime))
                             {
-                                DBG2("currentTime=" << p.audioThread.currentTime);
                                 seek = true;
                                 p.audioThread.currentTime = request->timeRange.start_time();
                             }
@@ -504,19 +502,19 @@ namespace tl
                 DBG("");
                 // Check the cache.
                 io::AudioData audioData;
-                if (request && _cache)
-                {
-                    const std::string cacheKey = io::Cache::getAudioKey(
-                        _path.get(),
-                        request->timeRange,
-                        request->options);
-                    if (_cache->getAudio(cacheKey, audioData))
-                    {
-                        request->promise.set_value(audioData);
-                        request.reset();
-                    }
-                    DBG("");
-                }
+                // if (request && _cache)
+                // {
+                //     const std::string cacheKey = io::Cache::getAudioKey(
+                //         _path.get(),
+                //         request->timeRange,
+                //         request->options);
+                //     if (_cache->getAudio(cacheKey, audioData))
+                //     {
+                //         request->promise.set_value(audioData);
+                //         request.reset();
+                //     }
+                //     DBG("");
+                // }
 
                 // No Seek.
 
@@ -549,34 +547,27 @@ namespace tl
                     audioData.audio->zero();
                     if (intersects)
                     {
-                        DBG2("********* INTERSECTS");
                         size_t offset = 0;
                         if (audioData.time < p.info.audioTime.start_time())
                         {
                             offset = (p.info.audioTime.start_time() - audioData.time).value();
                         }
-                        DBG2(
-                            "COPY OFFSET "
-                            << offset
-                            << " DATA=" << audioData.audio->getSampleCount());
                         p.readAudio->bufferCopy(
                             audioData.audio->getData() + offset * p.info.audio.getByteCount(),
                             audioData.audio->getSampleCount() - offset);
                     }
-                    else
-                    {
-                        DBG2("********* EMPTY AUDIO");
-                    }
+                    std::cerr << "set audioData for " << audioData.time
+                              << std::endl;
                     request->promise.set_value(audioData);
 
-                    if (_cache)
-                    {
-                        const std::string cacheKey = io::Cache::getAudioKey(
-                            _path.get(),
-                            request->timeRange,
-                            request->options);
-                        _cache->addAudio(cacheKey, audioData);
-                    }
+                    // if (_cache)
+                    // {
+                    //     const std::string cacheKey = io::Cache::getAudioKey(
+                    //         _path.get(),
+                    //         request->timeRange,
+                    //         request->options);
+                    //     _cache->addAudio(cacheKey, audioData);
+                    // }
 
                     p.audioThread.currentTime += request->timeRange.duration();
                     DBG2("AUDIO THREAD CURRENT TIME="
