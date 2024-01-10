@@ -26,6 +26,7 @@ namespace tl
             }
             return out;
         }
+        
         void Plugin::_init(
             const std::shared_ptr<io::Cache>& cache,
             const std::weak_ptr<log::System>& logSystem)
