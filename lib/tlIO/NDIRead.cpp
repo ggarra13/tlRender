@@ -38,13 +38,12 @@ namespace tl
                 std::stringstream ss(i->second);
                 ss >> p.options.yuvToRGBConversion;
             }
-            i = options.find("NDI/source");
-            if (i != options.end())
-            {
-                std::stringstream ss(i->second);
-                std::cerr << "Changed to source " << p.options.ndiSource;
-                ss >> p.options.ndiSource;
-            }
+
+            std::ifstream s(path.get());
+            std::string sourceName;
+            std::getline(s, sourceName);
+
+            std::cerr << "NDIRead SOURCE NAME=" << sourceName << std::endl;
         
             NDIlib_find_instance_t pNDI_find;
             pNDI_find = NDIlib_find_create_v2();
@@ -70,7 +69,24 @@ namespace tl
             p.NDI_recv = NDIlib_recv_create(&recv_desc);
             if (!p.NDI_recv)
                 throw std::runtime_error("Could not create NDI receiver");
-    
+
+            for (int i = 0; i < no_sources; ++i)
+            {
+                if (p_sources.p_ndi_name == sourceName)
+                {
+                    std::cerr << "MATCHED SOURCE NAME" << std::endl;
+                    p.options.ndiSource = i;
+                }
+            }
+
+            if (p.options.ndiSource < 0)
+            {
+#ifdef _WIN32
+                p.options.ndiSource = no_sources - 1;
+#else
+                p.options.ndiSource = 0;
+#endif
+            }            
             // Connect to our sources
             NDIlib_recv_connect(p.NDI_recv, p_sources + p.options.ndiSource);
 

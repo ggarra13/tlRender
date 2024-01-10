@@ -27,7 +27,7 @@ namespace tl
         {
             otime::RationalTime startTime = time::invalidTime;
             bool yuvToRGBConversion = false;
-            int  ndiSource = 0;
+            int  ndiSource = -1;
             audio::Info audioConvertInfo;
             size_t threadCount = 2;
             size_t requestTimeout = 5;
