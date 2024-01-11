@@ -8,6 +8,7 @@
 
 extern "C"
 {
+#include <libavutil/mathematics.h>
 #include <libavcodec/avcodec.h>
 #include <libswresample/swresample.h>  
 } // extern "C"

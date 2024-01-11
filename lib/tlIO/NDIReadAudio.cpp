@@ -125,16 +125,16 @@ namespace tl
                         pNDI_recv, nullptr, &audio_frame, nullptr, 5000);
                 }
                 
-                AVRational r;
-                r.num = 1;
-                r.den = _info.sampleRate;
+                // AVRational r;
+                // r.num = 1;
+                // r.den = _info.sampleRate;
 
-                int64_t pts = audio_frame.timecode - _startTimecode;
+                // int64_t pts = audio_frame.timecode - _startTimecode;
 
-                const auto time = otime::RationalTime(
-                    _timeRange.start_time().value() +
-                        av_rescale_q(pts, NDI_TIME_BASE_Q, r),
-                    _info.sampleRate);
+                // const auto time = otime::RationalTime(
+                //     _timeRange.start_time().value() +
+                //         av_rescale_q(pts, NDI_TIME_BASE_Q, r),
+                //     _info.sampleRate);
 
                 if (1) //time >= currentTime)
                 {

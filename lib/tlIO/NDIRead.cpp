@@ -2,6 +2,8 @@
 // Copyright (c) 2024 Gonzalo Garramuño
 // All rights reserved.
 
+#include <fstream>
+
 #include <tlIO/NDIReadPrivate.h>
 
 #include <tlCore/Assert.h>
@@ -72,10 +74,11 @@ namespace tl
 
             for (int i = 0; i < no_sources; ++i)
             {
-                if (p_sources.p_ndi_name == sourceName)
+                if (p_sources[i].p_ndi_name == sourceName)
                 {
                     std::cerr << "MATCHED SOURCE NAME" << std::endl;
                     p.options.ndiSource = i;
+                    break;
                 }
             }
 
