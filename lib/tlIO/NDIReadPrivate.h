@@ -86,7 +86,6 @@ namespace tl
                 const std::string& fileName,
                 NDIlib_recv_instance_t recv,
                 const double videoRate,
-                const int64_t startTimecode,
                 const Options&);
 
             ~ReadAudio();
@@ -96,6 +95,7 @@ namespace tl
             const otime::TimeRange& getTimeRange() const;
 
             void start();
+            
             void seek(const otime::RationalTime&);
             bool process(
                 const otime::RationalTime& currentTime,
@@ -109,14 +109,16 @@ namespace tl
 
         private:
             int _decode(const otime::RationalTime& currentTime);
+            void _calculateCurrentTime(const NDIlib_audio_frame_t& audio_frame);
             
             // NDI structs
             const std::string _fileName;
             NDIlib_recv_instance_t pNDI_recv;
-            int64_t _startTimecode = 0;
 
             otime::RationalTime _currentTime;
             otime::RationalTime _duration;
+
+            bool running = true;
             
             Options _options;
             audio::Info _info;

@@ -6,14 +6,6 @@
 
 #include <tlCore/StringFormat.h>
 
-#  define DBG(x)
-#if 1
-#  define DBG2(x) \
-    std::cerr << x << " " << __FUNCTION__ << " " << __LINE__ << std::endl;
-#else
-#  define DBG2(x)
-#endif
-
 namespace tl
 {
     namespace ndi
@@ -23,10 +15,8 @@ namespace tl
             const std::string& fileName,
             NDIlib_recv_instance_t recv,
             const double videoRate,
-            const int64_t startTimecode,
             const Options& options) :
             pNDI_recv(recv),
-            _startTimecode(startTimecode),
             _fileName(fileName),
             _options(options)
         {
@@ -42,7 +32,7 @@ namespace tl
 
             _info.channelCount = audio_frame.no_channels;
             _info.sampleRate   = audio_frame.sample_rate;
-            _info.dataType     = audio::DataType::F32;  // S16
+            _info.dataType     = audio::DataType::F32;
 
             double fps = videoRate;
             //double last = 3 * 60 * 60 * fps; // 3 hours time range
@@ -52,6 +42,7 @@ namespace tl
                 otime::RationalTime(start, fps).rescaled_to(_info.sampleRate),
                 otime::RationalTime(last, fps).rescaled_to(_info.sampleRate));
 
+            _calculateCurrentTime(audio_frame);
         }
 
         ReadAudio::~ReadAudio()
@@ -89,7 +80,6 @@ namespace tl
 
         void ReadAudio::seek(const otime::RationalTime& time)
         {
-            //std::cout << "audio seek: " << time << std::endl;
             _buffer.clear();
         }
 
@@ -120,12 +110,31 @@ namespace tl
         {
             audio::move(_buffer, out, sampleCount);
         }
-
+        
+        void ReadAudio::_calculateCurrentTime(
+            const NDIlib_audio_frame_t& audio_frame)
+        {
+            AVRational r;
+            r.num = 1;
+            r.den = _info.sampleRate;
+            
+            const int64_t pts = audio_frame.timecode;
+            
+            _currentTime = otime::RationalTime(
+                _timeRange.start_time().value() +
+                av_rescale_q(pts, NDI_TIME_BASE_Q, r),
+                _info.sampleRate);
+                
+            _duration    = otime::RationalTime(
+                av_rescale_q(audio_frame.no_samples, NDI_TIME_BASE_Q, r),
+                _info.sampleRate);
+        }
+        
         int ReadAudio::_decode(const otime::RationalTime& currentTime)
         {
             int out = 0;
 
-            while(out == 0)
+            while(out == 0 && running)
             {
                 NDIlib_audio_frame_t audio_frame;
                 NDIlib_frame_type_e type_e = NDIlib_frame_type_none;
@@ -139,25 +148,15 @@ namespace tl
                 r.num = 1;
                 r.den = _info.sampleRate;
 
-                int64_t pts = audio_frame.timecode;
+                _calculateCurrentTime(audio_frame);
 
-                _currentTime = otime::RationalTime(
-                    _timeRange.start_time().value() +
-                        av_rescale_q(pts, NDI_TIME_BASE_Q, r),
-                    _info.sampleRate);
-                _duration    = otime::RationalTime(
-                    av_rescale_q(audio_frame.no_samples, NDI_TIME_BASE_Q, r),
-                    _info.sampleRate);
-
-                if (1) //time >= currentTime)
+                if (_currentTime >= currentTime)
                 {
-                    // DBG2( "audio time: " << time << " timecode="
-                    //       << audio_frame.timecode
-                    //       << " currentTime=" << currentTime );
-                    // DBG2( "nb_samples: " << audio_frame.no_samples );
                     auto tmp =
                         audio::Audio::create(_info, audio_frame.no_samples);
-                    memcpy(tmp->getData(), audio_frame.p_data, tmp->getByteCount());
+                    memcpy(tmp->getData(), audio_frame.p_data,
+                           tmp->getByteCount());
+                    tmp = audio::planarInterleave(tmp);
                     
                     // Free the original buffer
                     NDIlib_recv_free_audio(pNDI_recv, &audio_frame);

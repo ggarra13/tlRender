@@ -145,7 +145,6 @@ namespace tl
                                 source,
                                 p.NDI_recv,
                                 p.info.videoTime.duration().rate(),
-                                0, // timecode
                                 p.options);
                             
                             p.info.audio = p.readAudio->getInfo();
@@ -214,8 +213,10 @@ namespace tl
         Read::~Read()
         {
             TLRENDER_P();
+
             p.videoThread.running = false;
             p.audioThread.running = false;
+            
             if (p.videoThread.thread.joinable())
             {
                 p.videoThread.thread.join();
@@ -340,7 +341,6 @@ namespace tl
             }
             else
             {
-                std::cerr << "set empty audio data" << std::endl;
                 request->promise.set_value(io::AudioData());
             }
             return future;
@@ -472,10 +472,9 @@ namespace tl
 
         void Read::_audioThread()
         {
-            std::cerr << this << " START _audioThread()" << std::endl;
             TLRENDER_P();
-            p.audioThread.currentTime = p.info.audioTime.start_time();
             p.readAudio->start();
+            p.audioThread.currentTime = p.readAudio->getTime();
             p.audioThread.logTimer = std::chrono::steady_clock::now();
             while (p.audioThread.running)
             {
@@ -503,9 +502,6 @@ namespace tl
                                 p.audioThread.currentTime))
                             {
                                 seek = true;
-                                std::cerr << this << " seek request="
-                                          << request->timeRange.start_time()
-                                          << std::endl;
                                 p.audioThread.currentTime = request->timeRange.start_time();
                             }
                         }
@@ -553,10 +549,10 @@ namespace tl
                 {
                     io::AudioData audioData;
                     audioData.time = p.readAudio->getTime();
-//request->timeRange.start_time();
-                    std::cerr << this << " Read audioData.time: "
-                              << audioData.time
-                              << std::endl;
+                    // audioData.time = request->timeRange.start_time();
+                    // std::cerr << this << " Read audioData.time: "
+                    //           << audioData.time
+                    //           << std::endl;
                     audioData.audio = audio::Audio::create(p.info.audio, request->timeRange.duration().value());
                     audioData.audio->zero();
                     if (intersects)
@@ -572,10 +568,8 @@ namespace tl
                     }
                     request->promise.set_value(audioData);
 
+                    //p.audioThread.currentTime += request->timeRange.duration();
                     p.audioThread.currentTime += p.readAudio->getDuration();
-                    std::cerr << this << " FINISHED read audioThread.currentTime: "
-                              << p.audioThread.currentTime
-                              << std::endl;
                     if (_cache)
                     {
                         const std::string cacheKey = io::Cache::getAudioKey(

@@ -271,19 +271,19 @@ namespace tl
                     pNDI_recv, &video_frame, nullptr, nullptr, 5000);
             }
 
-            // AVRational r;
-            // r.num = 1;
-            // r.den = _timeRange.duration().rate();
+            AVRational r;
+            r.num = 1;
+            r.den = _timeRange.duration().rate();
 
-            // const int64_t dts =
-            //     av_rescale_q(video_frame.timecode, NDI_TIME_BASE_Q, r);
+            const int64_t dts =
+                av_rescale_q(video_frame.timecode, NDI_TIME_BASE_Q, r);
 
-            // const otime::RationalTime time(
-            //     _timeRange.start_time().value() + dts,
-            //     _timeRange.duration().rate());
+            const otime::RationalTime time(
+                _timeRange.start_time().value() + dts,
+                _timeRange.duration().rate());
                 
                 
-            if (1) //time >= currentTime)
+            if (time >= currentTime)
             {
                 DBG("VIDEO time=" << time << " currentTime=" << currentTime);
             
