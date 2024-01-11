@@ -42,11 +42,21 @@ namespace tl
                 std::stringstream ss(i->second);
                 ss >> p.options.yuvToRGBConversion;
             }
-            
-            std::ifstream s(path.get());
+
             std::string sourceName;
-            std::getline(s, sourceName);
-            s.close();
+            i = options.find("NDI/SourceName");
+            if (i != options.end())
+            {
+                // @bug: SourceName is not being sent through options
+                std::stringstream ss(i->second);
+                ss >> sourceName;
+            }
+            else
+            {
+                std::ifstream s(path.get());
+                std::getline(s, sourceName);
+                s.close();
+            }
 
             p.NDI_find = NDIlib_find_create_v2();
             if (!p.NDI_find)
@@ -56,27 +66,22 @@ namespace tl
             uint32_t no_sources = 0;
             if (p.options.ndiSource < 0 || !p.sources)
             {
-
-                std::cerr << "NDIRead SOURCE NAME=" << sourceName << std::endl;
-                
-                
-                
-                // Run for 5000 milliseconds
-                using namespace std::chrono;
-                for (const auto start = high_resolution_clock::now(); high_resolution_clock::now() - start < seconds(10);) {
-                    // Wait up till 5 seconds to check for new sources to be added or removed
-                    if (!NDIlib_find_wait_for_sources(p.NDI_find,
-                                                      5000 /* milliseconds */)) {
-                        break;
-                    }
-                    
-                    // Get the updated list of sources
+                // Get the updated list of sources
+                while (!no_sources)
+                {
                     p.sources = NDIlib_find_get_current_sources(p.NDI_find, &no_sources);
                 }
-    
             }
             
-            
+            for (int i = 0; i < no_sources; ++i)
+            {
+                if (p.sources[i].p_ndi_name == sourceName)
+                {
+                    p.options.ndiSource = i;
+                    break;
+                }
+            }
+
             // We now have at least one source,
             // so we create a receiver to look at it.
             NDIlib_recv_create_v3_t recv_desc;
@@ -86,23 +91,6 @@ namespace tl
             if (!p.NDI_recv)
                 throw std::runtime_error("Could not create NDI receiver");
             
-            for (int i = 0; i < no_sources; ++i)
-            {
-                std::cerr << p.sources[i].p_ndi_name
-                          << " == "
-                          << sourceName
-                          << std::endl;
-                if (p.sources[i].p_ndi_name == sourceName)
-                    {
-                        std::cerr << "MATCHED SOURCE NAME " << i << std::endl;
-                        p.options.ndiSource = i;
-                        break;
-                    }
-            }
-            
-            std::cerr << "SOURCE INDEX " << p.options.ndiSource << " p.sources="
-                      << p.sources << std::endl;
-
             // Connect to our sources
             NDIlib_recv_connect(p.NDI_recv,
                                 p.sources + p.options.ndiSource);
