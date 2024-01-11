@@ -101,6 +101,9 @@ namespace tl
                 const otime::RationalTime& currentTime,
                 size_t sampleCount);
 
+            otime::RationalTime getTime() const;
+            otime::RationalTime getDuration() const;
+            
             size_t getBufferSize() const;
             void bufferCopy(uint8_t*, size_t sampleCount);
 
@@ -111,6 +114,9 @@ namespace tl
             const std::string _fileName;
             NDIlib_recv_instance_t pNDI_recv;
             int64_t _startTimecode = 0;
+
+            otime::RationalTime _currentTime;
+            otime::RationalTime _duration;
             
             Options _options;
             audio::Info _info;

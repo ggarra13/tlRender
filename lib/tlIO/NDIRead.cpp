@@ -115,7 +115,8 @@ namespace tl
             bool video = true;
             bool audio = true;
 
-            std::cerr << "got video=" << video << " audio=" << audio << std::endl;
+            std::cerr << this << " got video=" << video
+                      << " audio=" << audio << std::endl;
             
             p.audioThread.running = audio;
             p.videoThread.running = video;
@@ -471,6 +472,7 @@ namespace tl
 
         void Read::_audioThread()
         {
+            std::cerr << this << " START _audioThread()" << std::endl;
             TLRENDER_P();
             p.audioThread.currentTime = p.info.audioTime.start_time();
             p.readAudio->start();
@@ -501,15 +503,29 @@ namespace tl
                                 p.audioThread.currentTime))
                             {
                                 seek = true;
+                                std::cerr << this << " seek request="
+                                          << request->timeRange.start_time()
+                                          << std::endl;
                                 p.audioThread.currentTime = request->timeRange.start_time();
                             }
                         }
                     }
                 }
 
-                DBG("");
                 // Check the cache.
                 io::AudioData audioData;
+                if (request && _cache)
+                {
+                    const std::string cacheKey = io::Cache::getAudioKey(
+                        _path.get(),
+                        request->timeRange,
+                        request->options);
+                    if (_cache->getAudio(cacheKey, audioData))
+                    {
+                        request->promise.set_value(audioData);
+                        request.reset();
+                    }
+                }
 
                 // No Seek.
 
@@ -536,7 +552,11 @@ namespace tl
                 if (request)
                 {
                     io::AudioData audioData;
-                    audioData.time = request->timeRange.start_time();
+                    audioData.time = p.readAudio->getTime();
+//request->timeRange.start_time();
+                    std::cerr << this << " Read audioData.time: "
+                              << audioData.time
+                              << std::endl;
                     audioData.audio = audio::Audio::create(p.info.audio, request->timeRange.duration().value());
                     audioData.audio->zero();
                     if (intersects)
@@ -552,7 +572,19 @@ namespace tl
                     }
                     request->promise.set_value(audioData);
 
-                    p.audioThread.currentTime += request->timeRange.duration();
+                    p.audioThread.currentTime += p.readAudio->getDuration();
+                    std::cerr << this << " FINISHED read audioThread.currentTime: "
+                              << p.audioThread.currentTime
+                              << std::endl;
+                    if (_cache)
+                    {
+                        const std::string cacheKey = io::Cache::getAudioKey(
+                            _path.get(),
+                            request->timeRange,
+                            request->options);
+                        _cache->addAudio(cacheKey, audioData);
+                    }
+
                 }
 
                 // Logging.

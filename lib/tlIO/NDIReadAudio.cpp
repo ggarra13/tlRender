@@ -46,9 +46,10 @@ namespace tl
 
             double fps = videoRate;
             //double last = 3 * 60 * 60 * fps; // 3 hours time range
+            double start = 0 * fps;
             double last = 60 * 1 * fps; // 1 minute
             _timeRange = otime::TimeRange(
-                otime::RationalTime(0.0, fps).rescaled_to(_info.sampleRate),
+                otime::RationalTime(start, fps).rescaled_to(_info.sampleRate),
                 otime::RationalTime(last, fps).rescaled_to(_info.sampleRate));
 
         }
@@ -75,10 +76,19 @@ namespace tl
         void ReadAudio::start()
         {
         }
+        
+        otime::RationalTime ReadAudio::getTime() const
+        {
+            return _currentTime;
+        }
+
+        otime::RationalTime ReadAudio::getDuration() const
+        {
+            return _duration;
+        }
 
         void ReadAudio::seek(const otime::RationalTime& time)
         {
-            abort();
             //std::cout << "audio seek: " << time << std::endl;
             _buffer.clear();
         }
@@ -125,16 +135,19 @@ namespace tl
                         pNDI_recv, nullptr, &audio_frame, nullptr, 5000);
                 }
                 
-                // AVRational r;
-                // r.num = 1;
-                // r.den = _info.sampleRate;
+                AVRational r;
+                r.num = 1;
+                r.den = _info.sampleRate;
 
-                // int64_t pts = audio_frame.timecode - _startTimecode;
+                int64_t pts = audio_frame.timecode;
 
-                // const auto time = otime::RationalTime(
-                //     _timeRange.start_time().value() +
-                //         av_rescale_q(pts, NDI_TIME_BASE_Q, r),
-                //     _info.sampleRate);
+                _currentTime = otime::RationalTime(
+                    _timeRange.start_time().value() +
+                        av_rescale_q(pts, NDI_TIME_BASE_Q, r),
+                    _info.sampleRate);
+                _duration    = otime::RationalTime(
+                    av_rescale_q(audio_frame.no_samples, NDI_TIME_BASE_Q, r),
+                    _info.sampleRate);
 
                 if (1) //time >= currentTime)
                 {
@@ -142,36 +155,9 @@ namespace tl
                     //       << audio_frame.timecode
                     //       << " currentTime=" << currentTime );
                     // DBG2( "nb_samples: " << audio_frame.no_samples );
-#if 1
-
                     auto tmp =
                         audio::Audio::create(_info, audio_frame.no_samples);
                     memcpy(tmp->getData(), audio_frame.p_data, tmp->getByteCount());
-                    
-                    
-                    // // Allocate enough space for 16bpp interleaved buffer
-                    // NDIlib_audio_frame_interleaved_16s_t dst;
-                    // dst.reference_level = 0;
-                    // dst.p_data = (short*) tmp->getData();
-                    // Convert it
-                    // NDIlib_util_audio_to_interleaved_16s(&audio_frame, &dst);
-
-#else
-                    // Fill it with sine wave
-                    float* d = (float*)tmp->getData();
-                    
-                    const double pi = 3.14159265358979323846;
-                    const int sampleRate = _info.sampleRate;
-                    const double frequency = 440.0; // Frequency of the sine wave in Hz
-
-                    // Generate and output the sine wave samples
-                    for (int i = 0; i < tmp->getSampleCount() / 2; i += 2) {
-                        double time = static_cast<double>(i/2) / sampleRate;
-                        double value = sin(2.0 * pi * frequency * time);
-                        d[i] = value;
-                        d[i+1] = value;
-                    }
-#endif
                     
                     // Free the original buffer
                     NDIlib_recv_free_audio(pNDI_recv, &audio_frame);
