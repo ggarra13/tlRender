@@ -117,7 +117,53 @@ namespace tl
 
             std::cerr << this << " got video=" << video
                       << " audio=" << audio << std::endl;
+
+            p.decodeThread.running = true;
+            p.decodeThread.thread = std::thread(
+                [this, source]
+                    {
+                        TLRENDER_P();
+                        
+                        NDIlib_video_frame_t v;
+                        NDIlib_audio_frame_t a;
+                        NDIlib_frame_type_e type_e = NDIlib_frame_type_none;
+
+                        while (type_e != NDIlib_frame_type_error &&
+                               p.decodeThread.running)
+                        {
+                            type_e = NDIlib_recv_capture(
+                                p.NDI_recv, &v, &a, nullptr, 5000);
+                            if (type_e == NDIlib_frame_type_video)
+                            {
+                                if (!p.readVideo)
+                                {
+                                    p.videoThread.running = true;
+                                    p.readVideo = std::make_shared<ReadVideo>(
+                                        source, v, p.options);
+                                    const auto& videoInfo = p.readVideo->getInfo();
+                                    if (videoInfo.isValid())
+                                    {
+                                        p.info.video.push_back(videoInfo);
+                                        p.info.videoTime = p.readVideo->getTimeRange();
+                                    }
+                                    p.readVideo->start();
+                                    p.videoThread.currentTime =
+                                        p.info.videoTime.start_time();
+                                    p.videoThread.logTimer = std::chrono::steady_clock::now();
+                                }
+                                else
+                                {
+                                    _videoThread(v);
+                                }
+
+                                // Release this frame (we will miss the first frame of the stream)
+                                NDIlib_recv_free_video(p.NDI_recv, &v);
+                            }
+                        }
             
+                    });
+
+#if 0
             p.audioThread.running = audio;
             p.videoThread.running = video;
             
@@ -204,6 +250,8 @@ namespace tl
                     }
                     _cancelAudioRequests();
                 });
+#endif
+            
         }
 
         Read::Read() :
@@ -214,9 +262,14 @@ namespace tl
         {
             TLRENDER_P();
 
+            p.decodeThread.running = false;
             p.videoThread.running = false;
             p.audioThread.running = false;
             
+            if (p.decodeThread.thread.joinable())
+            {
+                p.decodeThread.thread.join();
+            }
             if (p.videoThread.thread.joinable())
             {
                 p.videoThread.thread.join();
@@ -352,12 +405,9 @@ namespace tl
             _cancelAudioRequests();
         }
 
-        void Read::_videoThread()
+        void Read::_videoThread(const NDIlib_video_frame_t& v)
         {
             TLRENDER_P();
-            p.videoThread.currentTime = p.info.videoTime.start_time();
-            p.readVideo->start();
-            p.videoThread.logTimer = std::chrono::steady_clock::now();
             while (p.videoThread.running)
             {
                 // Check requests.
@@ -413,11 +463,9 @@ namespace tl
                 }
 
                 // Process.
-                while (
-                    videoRequest &&
-                    p.readVideo->isBufferEmpty() &&
-                    p.readVideo->isValid() &&
-                    _p->readVideo->process(p.videoThread.currentTime))
+                while (videoRequest && p.readVideo->isBufferEmpty() &&
+                       p.readVideo->isValid() &&
+                       p.readVideo->process(p.videoThread.currentTime, v))
                     ;
 
                 // Video request.
@@ -441,6 +489,7 @@ namespace tl
                     }
 
                     p.videoThread.currentTime += otime::RationalTime(1.0, p.info.videoTime.duration().rate());
+                    return;
                 }
 
                 // Logging.

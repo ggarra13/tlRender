@@ -41,7 +41,7 @@ namespace tl
         public:
             ReadVideo(
                 const std::string& fileName,
-                NDIlib_recv_instance_t recv,
+                const NDIlib_video_frame_t& video_frame,
                 const Options& options);
 
             ~ReadVideo();
@@ -52,7 +52,8 @@ namespace tl
 
             void start();
             void seek(const otime::RationalTime&);
-            bool process(const otime::RationalTime& currentTime);
+            bool process(const otime::RationalTime& currentTime,
+                         const NDIlib_video_frame_t& video_frame);
 
             bool isBufferEmpty() const;
             std::shared_ptr<image::Image> popBuffer();
@@ -192,6 +193,14 @@ namespace tl
                 std::atomic<bool> running;
             };
             AudioThread audioThread;
+            
+            struct DecodeThread
+            {
+                std::chrono::steady_clock::time_point logTimer;
+                std::thread thread;
+                std::atomic<bool> running;
+            };
+            DecodeThread decodeThread;
         };
     }
 }

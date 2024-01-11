@@ -88,7 +88,7 @@ namespace tl
             void cancelRequests() override;
 
         private:
-            void _videoThread();
+            void _videoThread(const NDIlib_video_frame_t& video_frame);
             void _audioThread();
             void _cancelVideoRequests();
             void _cancelAudioRequests();

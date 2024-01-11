@@ -39,38 +39,29 @@ namespace tl
 
         ReadVideo::ReadVideo(
             const std::string& fileName,
-            NDIlib_recv_instance_t recv,
+            const NDIlib_video_frame_t& v,
             const Options& options) :
-            pNDI_recv(recv),
             _fileName(fileName),
             _options(options)
         {
             DBG("");
-            NDIlib_video_frame_t video_frame;
-            NDIlib_frame_type_e type_e = NDIlib_frame_type_none;
 
-            while(type_e != NDIlib_frame_type_video)
-            {
-                type_e = NDIlib_recv_capture(
-                    pNDI_recv, &video_frame, nullptr, nullptr, 5000);
-            }
-
-            double fps = video_frame.frame_rate_N /
-                         static_cast<double>(video_frame.frame_rate_D);
+            double fps = v.frame_rate_N /
+                         static_cast<double>(v.frame_rate_D);
             //double last = 3 * 60 * 60 * fps; // 3 hours time range
             double last = 60 * 1 * fps; // 1 minute
             _timeRange = otime::TimeRange(otime::RationalTime(0.0, fps),
                                           otime::RationalTime(last, fps));
             
-            _info.size.w = video_frame.xres;
-            _info.size.h = video_frame.yres;
-            if (video_frame.picture_aspect_ratio == 0.F)
+            _info.size.w = v.xres;
+            _info.size.h = v.yres;
+            if (v.picture_aspect_ratio == 0.F)
                 _info.size.pixelAspectRatio = 1.0 / _info.size.w * _info.size.h;
             else
                 _info.size.pixelAspectRatio = 1.0;
             _info.layout.mirror.y = true;
 
-            switch(video_frame.FourCC)
+            switch(v.FourCC)
             {
             case NDIlib_FourCC_type_UYVY:
                 DBG("UYVY");
@@ -146,10 +137,6 @@ namespace tl
 
             DBG(_info.size << " " << _info.size.pixelAspectRatio);
             DBG(_info.pixelType);
-
-            // Release this frame (we will miss the first frame of the stream)
-            NDIlib_recv_free_video(pNDI_recv, &video_frame);
-            DBG("");
         }
 
         ReadVideo::~ReadVideo()
@@ -188,13 +175,46 @@ namespace tl
             _buffer.clear();
         }
 
-        bool ReadVideo::process(const otime::RationalTime& currentTime)
+        bool ReadVideo::process(const otime::RationalTime& currentTime,
+                                const NDIlib_video_frame_t& video_frame)
         {
-            bool out = false;
-            _decode(currentTime);
+            bool out = true;
+
+            AVRational r;
+            r.num = 1;
+            r.den = _timeRange.duration().rate();
+
+            const int64_t dts =
+                av_rescale_q(video_frame.timecode, NDI_TIME_BASE_Q, r);
+
+            const otime::RationalTime time(
+                _timeRange.start_time().value() + dts,
+                _timeRange.duration().rate());
+                
+                
+            if (time >= currentTime)
+            {
+                DBG("VIDEO time=" << time << " currentTime=" << currentTime);
+            
+                // Fill source avFrame
+                av_image_fill_arrays(
+                    _avFrame->data,
+                    _avFrame->linesize,
+                    video_frame.p_data,
+                    _avInputPixelFormat,
+                    _info.size.w,
+                    _info.size.h,
+                    1);
+                
+                auto image = image::Image::create(_info);
+                _copy(image);
+                _buffer.push_back(image);
+                out = false;
+            }
+            
             return out;
         }
-
+        
         bool ReadVideo::isBufferEmpty() const
         {
             return _buffer.empty();
@@ -257,57 +277,7 @@ namespace tl
                     throw std::runtime_error(string::Format("{0}: Cannot initialize sws context").arg(_fileName));
                 }
             }
-        }
-        
-        int ReadVideo::_decode(const otime::RationalTime& currentTime)
-        {
-            int out = 0;
-            
-            NDIlib_video_frame_t video_frame;
-            NDIlib_frame_type_e type_e = NDIlib_frame_type_none;
-            while(type_e != NDIlib_frame_type_video)
-            {
-                type_e = NDIlib_recv_capture(
-                    pNDI_recv, &video_frame, nullptr, nullptr, 5000);
-            }
-
-            AVRational r;
-            r.num = 1;
-            r.den = _timeRange.duration().rate();
-
-            const int64_t dts =
-                av_rescale_q(video_frame.timecode, NDI_TIME_BASE_Q, r);
-
-            const otime::RationalTime time(
-                _timeRange.start_time().value() + dts,
-                _timeRange.duration().rate());
-                
-                
-            if (time >= currentTime)
-            {
-                DBG("VIDEO time=" << time << " currentTime=" << currentTime);
-            
-                // Fill source avFrame
-                av_image_fill_arrays(
-                    _avFrame->data,
-                    _avFrame->linesize,
-                    video_frame.p_data,
-                    _avInputPixelFormat,
-                    _info.size.w,
-                    _info.size.h,
-                    1);
-                
-                auto image = image::Image::create(_info);
-                _copy(image);
-                _buffer.push_back(image);
-                out = 1;
-            }
-                
-            // Release this frame
-            NDIlib_recv_free_video(pNDI_recv, &video_frame);
-            
-            return out;
-        }
+        }        
 
         void ReadVideo::_copy(std::shared_ptr<image::Image>& image)
         {
