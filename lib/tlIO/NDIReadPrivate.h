@@ -26,9 +26,9 @@ namespace tl
         
         struct Options
         {
+            static int  ndiSource;
             otime::RationalTime startTime = time::invalidTime;
             bool yuvToRGBConversion = false;
-            int  ndiSource = -1;
             audio::Info audioConvertInfo;
             size_t threadCount = 2;
             size_t requestTimeout = 5;
@@ -123,7 +123,9 @@ namespace tl
         {
             Options options;
 
+            NDIlib_find_instance_t NDI_find = nullptr;
             NDIlib_recv_instance_t NDI_recv = nullptr;
+            const NDIlib_source_t* sources = nullptr;
             
             std::shared_ptr<ReadVideo> readVideo;
             std::shared_ptr<ReadAudio> readAudio;

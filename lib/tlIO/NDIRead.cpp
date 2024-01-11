@@ -23,6 +23,8 @@ namespace tl
 {
     namespace ndi
     {
+        int Options::ndiSource = -1;
+        
         void Read::_init(
             const file::Path& path,
             const std::vector<file::MemoryRead>& memory,
@@ -40,72 +42,81 @@ namespace tl
                 std::stringstream ss(i->second);
                 ss >> p.options.yuvToRGBConversion;
             }
-
+            
             std::ifstream s(path.get());
             std::string sourceName;
             std::getline(s, sourceName);
+            s.close();
 
-            std::cerr << "NDIRead SOURCE NAME=" << sourceName << std::endl;
-        
-            NDIlib_find_instance_t pNDI_find;
-            pNDI_find = NDIlib_find_create_v2();
-            if (!pNDI_find)
+            p.NDI_find = NDIlib_find_create_v2();
+            if (!p.NDI_find)
                 throw std::runtime_error("Could not create NDI find");
-            
-            uint32_t no_sources = 0;
-            const NDIlib_source_t* p_sources = NULL;
-            while (!no_sources)
-            {
-                // Wait until the sources on the network have changed
-                NDIlib_find_wait_for_sources(pNDI_find, 1000/* One second */);
-                p_sources = NDIlib_find_get_current_sources(pNDI_find,
-                                                            &no_sources);
-            }
 
+                
+            uint32_t no_sources = 0;
+            if (p.options.ndiSource < 0 || !p.sources)
+            {
+
+                std::cerr << "NDIRead SOURCE NAME=" << sourceName << std::endl;
+                
+                
+                
+                // Run for 5000 milliseconds
+                using namespace std::chrono;
+                for (const auto start = high_resolution_clock::now(); high_resolution_clock::now() - start < seconds(10);) {
+                    // Wait up till 5 seconds to check for new sources to be added or removed
+                    if (!NDIlib_find_wait_for_sources(p.NDI_find,
+                                                      5000 /* milliseconds */)) {
+                        break;
+                    }
+                    
+                    // Get the updated list of sources
+                    p.sources = NDIlib_find_get_current_sources(p.NDI_find, &no_sources);
+                }
     
+            }
+            
+            
             // We now have at least one source,
             // so we create a receiver to look at it.
             NDIlib_recv_create_v3_t recv_desc;
             recv_desc.color_format = NDIlib_recv_color_format_fastest;
-    
+            
             p.NDI_recv = NDIlib_recv_create(&recv_desc);
             if (!p.NDI_recv)
                 throw std::runtime_error("Could not create NDI receiver");
-
+            
             for (int i = 0; i < no_sources; ++i)
             {
-                if (p_sources[i].p_ndi_name == sourceName)
-                {
-                    std::cerr << "MATCHED SOURCE NAME" << std::endl;
-                    p.options.ndiSource = i;
-                    break;
-                }
+                std::cerr << p.sources[i].p_ndi_name
+                          << " == "
+                          << sourceName
+                          << std::endl;
+                if (p.sources[i].p_ndi_name == sourceName)
+                    {
+                        std::cerr << "MATCHED SOURCE NAME " << i << std::endl;
+                        p.options.ndiSource = i;
+                        break;
+                    }
             }
+            
+            std::cerr << "SOURCE INDEX " << p.options.ndiSource << " p.sources="
+                      << p.sources << std::endl;
 
-            if (p.options.ndiSource < 0)
-            {
-#ifdef _WIN32
-                p.options.ndiSource = no_sources - 1;
-#else
-                p.options.ndiSource = 0;
-#endif
-            }            
             // Connect to our sources
-            NDIlib_recv_connect(p.NDI_recv, p_sources + p.options.ndiSource);
+            NDIlib_recv_connect(p.NDI_recv,
+                                p.sources + p.options.ndiSource);
+            
 
+                
             // Get the name of the source for debugging purposes
-            const std::string source = p_sources[p.options.ndiSource].p_ndi_name;
+            const std::string source = sourceName;
             NDIlib_tally_t tally_state;
             tally_state.on_program = true;
             tally_state.on_preview = false;
             
             /* Set tally */
             NDIlib_recv_set_tally(p.NDI_recv, &tally_state);
-            
-            // Destroy the NDI finder.
-            // We needed to have access to the pointers to p_sources[0]
-            NDIlib_find_destroy(pNDI_find);
-            pNDI_find = nullptr;
 
             
             // The descriptors
@@ -113,33 +124,11 @@ namespace tl
             NDIlib_video_frame_t video_frame;
             NDIlib_audio_frame_t audio_frame;
 
-            bool video = false;
-            bool audio = false;
-            
-            NDIlib_frame_type_e type_e = NDIlib_frame_type_none;
-            while(1)
-            {
-                type_e = NDIlib_recv_capture(
-                    p.NDI_recv, &video_frame, &audio_frame, nullptr, 5000);
-                if (type_e == NDIlib_frame_type_audio)
-                {
-                    audio_timecode = audio_frame.timecode;
-                    NDIlib_recv_free_audio(p.NDI_recv, &audio_frame);
-                    if (!audio)
-                        audio = true;
-                    else
-                        break;
-                }
-                if (type_e == NDIlib_frame_type_video)
-                {
-                    NDIlib_recv_free_video(p.NDI_recv, &video_frame);
-                    if (!video)
-                        video = true;
-                    else
-                        break;
-                }
-            }
+            bool video = true;
+            bool audio = true;
 
+            std::cerr << "got video=" << video << " audio=" << audio << std::endl;
+            
             p.audioThread.running = audio;
             p.videoThread.running = video;
             
@@ -250,6 +239,12 @@ namespace tl
             // Destroy the NDI receiver
             NDIlib_recv_destroy(p.NDI_recv);
             p.NDI_recv = nullptr;
+            
+            // Destroy the NDI finder.
+            // We needed to have access to the pointers to p.sources[0]
+            if(p.NDI_find)
+                NDIlib_find_destroy(p.NDI_find);
+            p.NDI_find = nullptr;
             
             // Not required, but nice
             NDIlib_destroy();
@@ -567,10 +562,6 @@ namespace tl
                             audioData.audio->getData() + offset * p.info.audio.getByteCount(),
                             audioData.audio->getSampleCount() - offset);
                     }
-                    std::cerr << "set promise audioData for "
-                              << audioData.time << " frame="
-                              << audioData.time.rescaled_to(24.0).value()
-                              << std::endl;
                     request->promise.set_value(audioData);
 
                     p.audioThread.currentTime += request->timeRange.duration();
