@@ -49,8 +49,9 @@ namespace tl
             double fps = v.frame_rate_N /
                          static_cast<double>(v.frame_rate_D);
             //double last = 3 * 60 * 60 * fps; // 3 hours time range
+            double start = 0 * fps; //
             double last = 60 * 1 * fps; // 1 minute
-            _timeRange = otime::TimeRange(otime::RationalTime(0.0, fps),
+            _timeRange = otime::TimeRange(otime::RationalTime(start, fps),
                                           otime::RationalTime(last, fps));
             
             _info.size.w = v.xres;
@@ -168,11 +169,6 @@ namespace tl
         const otime::TimeRange& ReadVideo::getTimeRange() const
         {
             return _timeRange;
-        }
-
-        void ReadVideo::seek(const otime::RationalTime& time)
-        {
-            _buffer.clear();
         }
 
         bool ReadVideo::process(const otime::RationalTime& currentTime,

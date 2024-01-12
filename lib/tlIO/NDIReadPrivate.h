@@ -29,8 +29,6 @@ namespace tl
             static int  ndiSource;
             otime::RationalTime startTime = time::invalidTime;
             bool yuvToRGBConversion = false;
-            audio::Info audioConvertInfo;
-            size_t threadCount = 2;
             size_t requestTimeout = 5;
             size_t videoBufferSize = 4;
             otime::RationalTime audioBufferSize = otime::RationalTime(2.0, 1.0);
@@ -51,7 +49,7 @@ namespace tl
             const otime::TimeRange& getTimeRange() const;
 
             void start();
-            void seek(const otime::RationalTime&);
+            
             bool process(const otime::RationalTime& currentTime,
                          const NDIlib_video_frame_t& video_frame);
 
@@ -85,7 +83,7 @@ namespace tl
         public:
             ReadAudio(
                 const std::string& fileName,
-                NDIlib_recv_instance_t recv,
+                const NDIlib_audio_frame_t& audio_frame,
                 const double videoRate,
                 const Options&);
 
@@ -97,25 +95,17 @@ namespace tl
 
             void start();
             
-            void seek(const otime::RationalTime&);
             bool process(
                 const otime::RationalTime& currentTime,
-                size_t sampleCount);
-
-            otime::RationalTime getTime() const;
-            otime::RationalTime getDuration() const;
+                const NDIlib_audio_frame_t& audio_frame);
             
             size_t getBufferSize() const;
             void bufferCopy(uint8_t*, size_t sampleCount);
 
         private:
-            int _decode(const otime::RationalTime& currentTime);
             void _calculateCurrentTime(const NDIlib_audio_frame_t& audio_frame);
             
-            // NDI structs
             const std::string _fileName;
-            NDIlib_recv_instance_t pNDI_recv;
-
             otime::RationalTime _currentTime;
             otime::RationalTime _duration;
 
@@ -138,7 +128,7 @@ namespace tl
             
             std::shared_ptr<ReadVideo> readVideo;
             std::shared_ptr<ReadAudio> readAudio;
-
+            
             io::Info info;
             struct InfoRequest
             {
@@ -155,7 +145,6 @@ namespace tl
             {
                 std::list<std::shared_ptr<InfoRequest> > infoRequests;
                 std::list<std::shared_ptr<VideoRequest> > videoRequests;
-                //std::shared_ptr<VideoRequest> videoRequest;
                 bool stopped = false;
                 std::mutex mutex;
             };
@@ -165,7 +154,6 @@ namespace tl
                 otime::RationalTime currentTime = time::invalidTime;
                 std::chrono::steady_clock::time_point logTimer;
                 std::condition_variable cv;
-                std::thread thread;
                 std::atomic<bool> running;
             };
             VideoThread videoThread;
@@ -179,7 +167,7 @@ namespace tl
             struct AudioMutex
             {
                 std::list<std::shared_ptr<AudioRequest> > requests;
-                //std::shared_ptr<AudioRequest> currentRequest;
+                std::shared_ptr<AudioRequest> currentRequest;
                 bool stopped = false;
                 std::mutex mutex;
             };
@@ -189,7 +177,6 @@ namespace tl
                 otime::RationalTime currentTime = time::invalidTime;
                 std::chrono::steady_clock::time_point logTimer;
                 std::condition_variable cv;
-                std::thread thread;
                 std::atomic<bool> running;
             };
             AudioThread audioThread;
