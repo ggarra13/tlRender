@@ -96,7 +96,6 @@ if(TLRENDER_NDI AND TLRENDER_FFMPEG)
     list(APPEND SOURCE NDI.cpp NDIRead.cpp NDIReadVideo.cpp NDIReadAudio.cpp )
     list(APPEND LIBRARIES_PRIVATE NDI)
     if(WIN32)
-    elseif(APPLE)
     elseif(UNIX)
 	# Set the installation destination for the NDI library
 	install(
