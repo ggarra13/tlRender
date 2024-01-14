@@ -10,21 +10,13 @@
 #include <tlCore/LogSystem.h>
 #include <tlCore/StringFormat.h>
 
-#if 1
-#define DBG(x)
-#define DBG2(x) \
-    std::cerr << x << " " << __FUNCTION__ << " " << __LINE__ << std::endl;
-#else
-#define DBG(x)                                                          \
-    std::cerr << x << " " << __FUNCTION__ << " " << __LINE__ << std::endl;
-#endif
 
 namespace tl
 {
     namespace ndi
     {
-        int Options::ndiSource = -1;
         std::string Read::Private::sourceName;
+        std::map<std::string, NDIlib_recv_instance_t> Read::Private::NDI_recvs;
         
         void Read::_init(
             const file::Path& path,
@@ -51,7 +43,9 @@ namespace tl
                 std::string tmp;
                 std::getline(s, tmp);
                 if (tmp != p.sourceName)
+                {
                     p.sourceName = tmp;
+                }
                 std::getline(s, tmp);
                 if (tmp == "1")
                     p.options.noAudio = true;
@@ -60,61 +54,82 @@ namespace tl
                 s.close();
             }
 
-            p.NDI_find = NDIlib_find_create_v2();
-            if (!p.NDI_find)
-                throw std::runtime_error("Could not create NDI find");
+            {
+                p.NDI_recv = nullptr;
+                auto i = p.NDI_recvs.find(p.sourceName);
+                if (i != p.NDI_recvs.end())
+                {
+                    p.NDI_recv = i->second;
+                }
+            }
+                    
+            if (!p.NDI_recv)
+            {
+                auto NDI_find = NDIlib_find_create_v2();
+                if (!NDI_find)
+                    throw std::runtime_error("Could not create NDI find");
 
-            
-            using namespace std::chrono;
+                using namespace std::chrono;
                 for (const auto start = high_resolution_clock::now();
                      high_resolution_clock::now() - start < seconds(3);)
                 {
                     // Wait up till 1 second to check for new sources to be added or removed
-                    if (!NDIlib_find_wait_for_sources(p.NDI_find,
+                    if (!NDIlib_find_wait_for_sources(NDI_find,
                                                       1000 /* milliseconds */)) {
                         break;
                     }
                 }
-
                 
-            uint32_t no_sources = 0;
-            // Get the updated list of sources
-            while (!no_sources)
-            {
-                p.sources = NDIlib_find_get_current_sources(p.NDI_find, &no_sources);
-            }
-            
-            for (int i = 0; i < no_sources; ++i)
-            {
-                if (p.sources[i].p_ndi_name == p.sourceName)
+                uint32_t no_sources = 0;
+
+                const NDIlib_source_t* sources = nullptr;
+                // Get the updated list of sources
+                while (!no_sources)
                 {
-                    p.options.ndiSource = i;
-                    break;
+                    sources = NDIlib_find_get_current_sources(NDI_find, &no_sources);
                 }
+
+                int ndiSource = -1;
+                for (int i = 0; i < no_sources; ++i)
+                {
+                    if (sources[i].p_ndi_name == p.sourceName)
+                    {
+                        ndiSource = i;
+                        break;
+                    }
+                }
+
+                if (ndiSource < 0)
+                {
+                    throw std::runtime_error("Could not find a valid source");
+                }
+            
+
+                // We now have at least one source,
+                // so we create a receiver to look at it.
+                NDIlib_recv_create_v3_t recv_desc;
+                recv_desc.color_format = NDIlib_recv_color_format_fastest;
+                recv_desc.source_to_connect_to = sources[ndiSource];
+                
+                p.NDI_recv = NDIlib_recv_create(&recv_desc);
+                if (!p.NDI_recv)
+                    throw std::runtime_error("Could not create NDI receiver");
+
+
+                p.NDI_recvs[p.sourceName] = p.NDI_recv;
+                
+                // Get the name of the source for debugging purposes
+                NDIlib_tally_t tally_state;
+                tally_state.on_program = true;
+                tally_state.on_preview = false;
+                
+                /* Set tally */
+                NDIlib_recv_set_tally(p.NDI_recv, &tally_state);
+
+                NDIlib_find_destroy(NDI_find);
             }
 
-            // We now have at least one source,
-            // so we create a receiver to look at it.
-            NDIlib_recv_create_v3_t recv_desc;
-            recv_desc.color_format = NDIlib_recv_color_format_fastest;
-            
-            p.NDI_recv = NDIlib_recv_create(&recv_desc);
-            if (!p.NDI_recv)
-                throw std::runtime_error("Could not create NDI receiver");
-            
-            // Connect to our sources
-            NDIlib_recv_connect(p.NDI_recv,
-                                p.sources + p.options.ndiSource);
-            
-
                 
-            // Get the name of the source for debugging purposes
-            NDIlib_tally_t tally_state;
-            tally_state.on_program = true;
-            tally_state.on_preview = false;
-            
-            /* Set tally */
-            NDIlib_recv_set_tally(p.NDI_recv, &tally_state);
 
             
             // The descriptors
@@ -219,19 +234,8 @@ namespace tl
                 p.decodeThread.thread.join();
             }
             
-            
-            // Destroy the NDI receiver
-            NDIlib_recv_destroy(p.NDI_recv);
-            p.NDI_recv = nullptr;
-            
-            // Destroy the NDI finder.
-            // We needed to have access to the pointers to p.sources[0]
-            if(p.NDI_find)
-                NDIlib_find_destroy(p.NDI_find);
-            p.NDI_find = nullptr;
-            
-            // Not required, but nice
-            NDIlib_destroy();
+            // Do not destroy receiver as it is kept in the map
+            // NDIlib_recv_destroy(p.NDI_recv);
         }
 
         std::shared_ptr<Read> Read::create(

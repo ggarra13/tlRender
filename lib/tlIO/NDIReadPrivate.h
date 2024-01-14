@@ -26,8 +26,7 @@ namespace tl
         
         struct Options
         {
-            static int  ndiSource;
-            bool noAudio;
+            bool noAudio = false;
             otime::RationalTime startTime = time::invalidTime;
             bool yuvToRGBConversion = false;
             size_t requestTimeout = 5;
@@ -116,11 +115,9 @@ namespace tl
         {
             Options options;
             
-            NDIlib_recv_instance_t NDI_recv;
+            NDIlib_recv_instance_t NDI_recv = nullptr;
+            static std::map<std::string, NDIlib_recv_instance_t> NDI_recvs;
             static std::string sourceName;
-
-            NDIlib_find_instance_t NDI_find = nullptr;
-            const NDIlib_source_t* sources = nullptr;
             
             
             std::shared_ptr<ReadVideo> readVideo;
