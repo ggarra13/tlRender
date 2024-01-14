@@ -27,6 +27,7 @@ namespace tl
         struct Options
         {
             static int  ndiSource;
+            bool noAudio;
             otime::RationalTime startTime = time::invalidTime;
             bool yuvToRGBConversion = false;
             size_t requestTimeout = 5;
@@ -84,7 +85,6 @@ namespace tl
             ReadAudio(
                 const std::string& fileName,
                 const NDIlib_audio_frame_t& audio_frame,
-                const double videoRate,
                 const Options&);
 
             ~ReadAudio();
@@ -103,13 +103,7 @@ namespace tl
             void bufferCopy(uint8_t*, size_t sampleCount);
 
         private:
-            void _calculateCurrentTime(const NDIlib_audio_frame_t& audio_frame);
-            
             const std::string _fileName;
-            otime::RationalTime _currentTime;
-            otime::RationalTime _duration;
-
-            bool running = true;
             
             Options _options;
             audio::Info _info;
@@ -121,10 +115,13 @@ namespace tl
         struct Read::Private
         {
             Options options;
+            
+            NDIlib_recv_instance_t NDI_recv;
+            static std::string sourceName;
 
             NDIlib_find_instance_t NDI_find = nullptr;
-            NDIlib_recv_instance_t NDI_recv = nullptr;
             const NDIlib_source_t* sources = nullptr;
+            
             
             std::shared_ptr<ReadVideo> readVideo;
             std::shared_ptr<ReadAudio> readAudio;

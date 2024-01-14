@@ -48,9 +48,8 @@ namespace tl
 
             double fps = v.frame_rate_N /
                          static_cast<double>(v.frame_rate_D);
-            //double last = 3 * 60 * 60 * fps; // 3 hours time range
-            double start = 0 * fps; //
-            double last = 60 * 1 * fps; // 1 minute
+            double start = 0.0;
+            double last = kNDI_MOVIE_DURATION * fps; 
             _timeRange = otime::TimeRange(otime::RationalTime(start, fps),
                                           otime::RationalTime(last, fps));
             
@@ -180,8 +179,12 @@ namespace tl
             r.num = 1;
             r.den = _timeRange.duration().rate();
 
+            AVRational time_base;
+            time_base.num = 1;
+            time_base.den = NDI_TIME_BASE;
+
             const int64_t dts =
-                av_rescale_q(video_frame.timecode, NDI_TIME_BASE_Q, r);
+                av_rescale_q(video_frame.timecode, time_base, r);
 
             const otime::RationalTime time(
                 _timeRange.start_time().value() + dts,

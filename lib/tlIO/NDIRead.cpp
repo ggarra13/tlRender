@@ -24,6 +24,7 @@ namespace tl
     namespace ndi
     {
         int Options::ndiSource = -1;
+        std::string Read::Private::sourceName;
         
         void Read::_init(
             const file::Path& path,
@@ -43,18 +44,19 @@ namespace tl
                 ss >> p.options.yuvToRGBConversion;
             }
 
-            std::string sourceName;
-            i = options.find("NDI/SourceName");
-            if (i != options.end())
+            std::ifstream s(path.get());
+
+            if (s.is_open())
             {
-                // @bug: SourceName is not being sent through options
-                std::stringstream ss(i->second);
-                ss >> sourceName;
-            }
-            else
-            {
-                std::ifstream s(path.get());
-                std::getline(s, sourceName);
+                std::string tmp;
+                std::getline(s, tmp);
+                if (tmp != p.sourceName)
+                    p.sourceName = tmp;
+                std::getline(s, tmp);
+                if (tmp == "1")
+                    p.options.noAudio = true;
+                else
+                    p.options.noAudio = false;
                 s.close();
             }
 
@@ -62,20 +64,29 @@ namespace tl
             if (!p.NDI_find)
                 throw std::runtime_error("Could not create NDI find");
 
+            
+            using namespace std::chrono;
+                for (const auto start = high_resolution_clock::now();
+                     high_resolution_clock::now() - start < seconds(3);)
+                {
+                    // Wait up till 1 second to check for new sources to be added or removed
+                    if (!NDIlib_find_wait_for_sources(p.NDI_find,
+                                                      1000 /* milliseconds */)) {
+                        break;
+                    }
+                }
+
                 
             uint32_t no_sources = 0;
-            if (p.options.ndiSource < 0 || !p.sources)
+            // Get the updated list of sources
+            while (!no_sources)
             {
-                // Get the updated list of sources
-                while (!no_sources)
-                {
-                    p.sources = NDIlib_find_get_current_sources(p.NDI_find, &no_sources);
-                }
+                p.sources = NDIlib_find_get_current_sources(p.NDI_find, &no_sources);
             }
             
             for (int i = 0; i < no_sources; ++i)
             {
-                if (p.sources[i].p_ndi_name == sourceName)
+                if (p.sources[i].p_ndi_name == p.sourceName)
                 {
                     p.options.ndiSource = i;
                     break;
@@ -98,7 +109,6 @@ namespace tl
 
                 
             // Get the name of the source for debugging purposes
-            const std::string source = sourceName;
             NDIlib_tally_t tally_state;
             tally_state.on_program = true;
             tally_state.on_preview = false;
@@ -110,7 +120,7 @@ namespace tl
             // The descriptors
             p.decodeThread.running = true;
             p.decodeThread.thread = std::thread(
-                [this, source]
+                [this]
                     {
                         TLRENDER_P();
                         
@@ -132,7 +142,7 @@ namespace tl
                                 {
                                     p.videoThread.running = true;
                                     p.readVideo = std::make_shared<ReadVideo>(
-                                        source, v, p.options);
+                                        p.sourceName, v, p.options);
                                     const auto& videoInfo = p.readVideo->getInfo();
                                     if (videoInfo.isValid())
                                     {
@@ -164,7 +174,7 @@ namespace tl
                                 if (!p.readAudio)
                                 {
                                     p.readAudio = std::make_shared<ReadAudio>(
-                                        source, a, fps, p.options);
+                                        p.sourceName, a, p.options);
                                     p.info.audio = p.readAudio->getInfo();
                                     p.info.audioTime = p.readAudio->getTimeRange();
                                     p.readAudio->start();
