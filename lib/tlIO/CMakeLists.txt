@@ -98,6 +98,14 @@ if(TLRENDER_NDI AND TLRENDER_FFMPEG)
     if(WIN32)
     elseif(APPLE)
     elseif(UNIX)
+	# Set the installation destination for the NDI library
+	install(
+	    TARGETS NDI
+	    LIBRARY DESTINATION lib
+	    ARCHIVE DESTINATION lib
+	    RUNTIME DESTINATION bin
+	    INCLUDES DESTINATION include
+	)
     endif()
 endif()
 list(APPEND LIBRARIES tlGL)
