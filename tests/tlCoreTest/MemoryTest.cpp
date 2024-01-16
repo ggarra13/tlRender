@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
 #include <tlCoreTest/MemoryTest.h>
@@ -28,6 +28,7 @@ namespace tl
         {
             _enums();
             _endian();
+            _bits();
         }
 
         void MemoryTest::_enums()
@@ -149,6 +150,44 @@ namespace tl
                 TLRENDER_ASSERT(p[5] == p2[2]);
                 TLRENDER_ASSERT(p[6] == p2[1]);
                 TLRENDER_ASSERT(p[7] == p2[0]);
+            }
+        }
+
+        void MemoryTest::_bits()
+        {
+            {
+                uint8_t a = 0;
+                _print(getBitString(a));
+                TLRENDER_ASSERT(!getBit(a, 0));
+                a = setBit(a, 0);
+                _print(getBitString(a));
+                TLRENDER_ASSERT(getBit(a, 0));
+                a = setBit(a, 7);
+                _print(getBitString(a));
+                TLRENDER_ASSERT(getBit(a, 7));
+                a = clearBit(a, 7);
+                _print(getBitString(a));
+                TLRENDER_ASSERT(!getBit(a, 7));
+                a = toggleBit(a, 7);
+                _print(getBitString(a));
+                TLRENDER_ASSERT(getBit(a, 7));
+            }
+            {
+                uint16_t a = 0;
+                _print(getBitString(a));
+                TLRENDER_ASSERT(!getBit(a, 0));
+                a = setBit(a, 0);
+                _print(getBitString(a));
+                TLRENDER_ASSERT(getBit(a, 0));
+                a = setBit(a, 7);
+                _print(getBitString(a));
+                TLRENDER_ASSERT(getBit(a, 7));
+                a = clearBit(a, 7);
+                _print(getBitString(a));
+                TLRENDER_ASSERT(!getBit(a, 7));
+                a = toggleBit(a, 7);
+                _print(getBitString(a));
+                TLRENDER_ASSERT(getBit(a, 7));
             }
         }
     }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
 #include <tlPlayQtApp/SecondaryWindow.h>
@@ -120,9 +120,14 @@ namespace tl
             p.app->settings()->setValue("SecondaryWindow/Size", size);
         }
 
-        qtwidget::TimelineViewport* SecondaryWindow::viewport() const
+        void SecondaryWindow::setView(
+            const tl::math::Vector2i& pos,
+            double                    zoom,
+            bool                      frame)
         {
-            return _p->viewport;
+            TLRENDER_P();
+            p.viewport->setViewPosAndZoom(pos, zoom);
+            p.viewport->setFrameView(frame);
         }
     }
 }

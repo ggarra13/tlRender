@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
 #pragma once
@@ -57,7 +57,9 @@ namespace tl
             void drawEvent(const math::Box2i&, const ui::DrawEvent&) override;
 
         private:
-            std::string _getThumbnailKey(const otime::RationalTime&) const;
+            std::string _getThumbnailKey(
+                const otime::RationalTime&,
+                const io::Options&) const;
 
             void _drawInfo(
                 const math::Box2i&,

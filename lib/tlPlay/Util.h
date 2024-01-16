@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
 #pragma once
@@ -8,7 +8,7 @@
 
 namespace tl
 {
-    //! Common functionality for the "tlplay-gl" and "tlplay-qt" applications.
+    //! Common functionality for the "tlplay" and "tlplay-qt" applications.
     namespace play
     {
         //! Get the path to the application documents directory. The directory

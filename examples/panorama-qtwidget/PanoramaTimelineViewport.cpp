@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
 #include "PanoramaTimelineViewport.h"
@@ -104,7 +104,7 @@ namespace tl
                     // Create the renderer.
                     if (auto context = _context.lock())
                     {
-                        _render = timeline::GLRender::create(context);
+                        _render = timeline_gl::Render::create(context);
                     }
 
                     // Create the shader.

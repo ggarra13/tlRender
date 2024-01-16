@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
 #pragma once
@@ -79,6 +79,8 @@ namespace tl
             Plugin();
 
         public:
+            virtual ~Plugin();
+
             //! Create a new plugin.
             static std::shared_ptr<Plugin> create(
                 const std::shared_ptr<io::Cache>&,

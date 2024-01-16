@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
 #pragma once
@@ -235,8 +235,8 @@ namespace tl
         {
         public:
             Info();
-            explicit Info(const Size&, PixelType);
-            explicit Info(int w, int h, PixelType);
+            Info(const Size&, PixelType);
+            Info(int w, int h, PixelType);
 
             std::string     name             = "Default";
             Size            size;

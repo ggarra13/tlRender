@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
 #include <cstdint>
@@ -17,6 +17,26 @@ namespace tl
         constexpr Endian opposite(Endian in)
         {
             return Endian::MSB == in ? Endian::LSB : Endian::MSB;
+        }
+
+        inline bool getBit(unsigned int value, int bit)
+        {
+            return (value >> bit) & 0x01;
+        }
+
+        inline unsigned int setBit(unsigned int value, int bit)
+        {
+            return value | (1 << bit);
+        }
+
+        inline unsigned int clearBit(unsigned int value, int bit)
+        {
+            return value & ~(1 << bit);
+        }
+
+        inline unsigned int toggleBit(unsigned int value, int bit)
+        {
+            return value ^ (1 << bit);
         }
     }
 }

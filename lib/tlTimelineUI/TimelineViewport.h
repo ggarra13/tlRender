@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
 #pragma once
@@ -58,10 +58,10 @@ namespace tl
             void setPlayers(const std::vector<std::shared_ptr<timeline::Player> >&);
 
             //! Get the view position.
-            const math::Vector2i& viewPos() const;
+            const math::Vector2i& getViewPos() const;
 
             //! Get the view zoom.
-            double viewZoom() const;
+            double getViewZoom() const;
 
             //! Set the view position and zoom.
             void setViewPosAndZoom(const math::Vector2i&, double);
@@ -77,6 +77,9 @@ namespace tl
 
             //! Set whether the view is framed automatically.
             void setFrameView(bool);
+
+            //! Set the view framed callback.
+            void setFrameViewCallback(const std::function<void(bool)>&);
 
             //! Set the view zoom to 1:1.
             void viewZoom1To1();

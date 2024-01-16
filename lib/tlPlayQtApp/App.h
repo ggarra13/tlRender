@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
 #pragma once
 
-#include <tlApp/IApp.h>
+#include <tlBaseApp/BaseApp.h>
 
 #include <tlTimeline/TimeUnits.h>
 #include <tlTimeline/IRender.h>
@@ -17,6 +17,13 @@
 
 namespace tl
 {
+    namespace device
+    {
+#if defined(TLRENDER_BMD)
+        class BMDOutputDevice;
+#endif // TLRENDER_BMD
+    }
+
     namespace play
     {
         struct FilesModelItem;
@@ -26,11 +33,13 @@ namespace tl
         class FilesModel;
         class Settings;
         class ViewportModel;
+#if defined(TLRENDER_BMD)
+        class BMDDevicesModel;
+#endif // TLRENDER_BMD
     }
 
     namespace qt
     {
-        class OutputDevice;
         class TimeObject;
         class TimelinePlayer;
     }
@@ -40,16 +49,15 @@ namespace tl
         class RecentFilesModel;
     }
 
-    //! tlplay-qt application.
+    //! tlplay-qt application
     namespace play_qt
     {
-        class DevicesModel;
         class FilesAModel;
         class FilesBModel;
         class MainWindow;
 
         //! Application.
-        class App : public QApplication, public app::IApp
+        class App : public QApplication, public app::BaseApp
         {
             Q_OBJECT
 
@@ -88,17 +96,19 @@ namespace tl
             //! Get the color model.
             const std::shared_ptr<play::ColorModel>& colorModel() const;
 
-            //! Get the output device.
-            qt::OutputDevice* outputDevice() const;
-
-            //! Get the devices model.
-            const std::shared_ptr<DevicesModel>& devicesModel() const;
-
             //! Get the audio model.
             const std::shared_ptr<play::AudioModel>& audioModel() const;
 
             //! Get the main window.
             MainWindow* mainWindow() const;
+
+#if defined(TLRENDER_BMD)
+            //! Get the BMD devices model.
+            const std::shared_ptr<play::BMDDevicesModel>& bmdDevicesModel() const;
+
+            //! Get the BMD output device.
+            const std::shared_ptr<device::BMDOutputDevice>& bmdOutputDevice() const;
+#endif // TLRENDER_BMD
 
         public Q_SLOTS:
             //! Open a file.
@@ -120,6 +130,9 @@ namespace tl
             //! This signal is emitted when the secondary window active state is changed.
             void secondaryWindowChanged(bool);
 
+        protected:
+            void timerEvent(QTimerEvent*) override;
+
         private Q_SLOTS:
             void _filesCallback(const std::vector<std::shared_ptr<tl::play::FilesModelItem> >&);
             void _activeCallback(const std::vector<std::shared_ptr<tl::play::FilesModelItem> >&);
@@ -130,6 +143,7 @@ namespace tl
             void _fileLogInit(const std::string&);
             void _settingsInit(const std::string&);
             void _modelsInit();
+            void _devicesInit();
             void _observersInit();
             void _inputFilesInit();
             void _windowsInit();
@@ -140,6 +154,7 @@ namespace tl
 
             void _settingsUpdate(const std::string&);
             void _cacheUpdate();
+            void _viewUpdate(const math::Vector2i& pos, double zoom, bool frame);
             void _audioUpdate();
 
             TLRENDER_PRIVATE();

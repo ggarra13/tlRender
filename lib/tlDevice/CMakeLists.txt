@@ -1,29 +1,29 @@
 set(HEADERS
-    DeviceData.h
-    IDeviceSystem.h
-    IOutputDevice.h
     Init.h)
 set(HEADERS_PRIVATE)
 
 set(SOURCE
-    DeviceData.cpp
-    IDeviceSystem.cpp
-    IOutputDevice.cpp
     Init.cpp)
 
 set(INCLUDE_DIRS)
-set(LIBRARIES tlTimeline)
+set(LIBRARIES tlTimelineGL)
 set(LIBRARIES_PRIVATE)
 
 if(TLRENDER_BMD)
 
-    list(APPEND HEADERS_PRIVATE
-        BMDDeviceSystem.h
+    list(APPEND HEADERS
+        BMDData.h
         BMDOutputDevice.h
+        BMDSystem.h
         BMDUtil.h)
+    list(APPEND HEADERS_PRIVATE
+        BMDOutputPrivate.h)
     list(APPEND SOURCE
-        BMDDeviceSystem.cpp
+        BMDData.cpp
+        BMDOutputCallback.cpp
+        BMDHDRVideoFrame.cpp
         BMDOutputDevice.cpp
+        BMDSystem.cpp
         BMDUtil.cpp)
 
     if(WIN32)

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
 #pragma once
@@ -8,7 +8,7 @@
 
 namespace tl
 {
-    //! Qt QWidget support.
+    //! Qt QWidget support
     namespace qtwidget
     {
         //! Initialize the library. This needs to be called before the Qt

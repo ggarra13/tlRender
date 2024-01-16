@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
 #include <tlQtWidget/TimelineViewport.h>
 
 #include <tlUI/DrawUtil.h>
 
-#include <tlTimeline/GLRender.h>
+#include <tlTimelineGL/Render.h>
 
 #include <tlGL/Init.h>
 #include <tlGL/Mesh.h>
@@ -37,7 +37,7 @@ namespace tl
             std::vector<image::Size> timelineSizes;
             std::vector<timeline::VideoData> videoData;
             math::Vector2i viewPos;
-            float viewZoom = 1.F;
+            double viewZoom = 1.0;
             bool frameView = true;
 
             struct DroppedFrames
@@ -214,7 +214,7 @@ namespace tl
             return _p->viewPos;
         }
 
-        float TimelineViewport::viewZoom() const
+        double TimelineViewport::viewZoom() const
         {
             return _p->viewZoom;
         }
@@ -224,7 +224,7 @@ namespace tl
             return _p->frameView;
         }
 
-        void TimelineViewport::setViewPosAndZoom(const math::Vector2i& pos, float zoom)
+        void TimelineViewport::setViewPosAndZoom(const math::Vector2i& pos, double zoom)
         {
             TLRENDER_P();
             if (pos == p.viewPos && zoom == p.viewZoom)
@@ -237,7 +237,7 @@ namespace tl
             setFrameView(false);
         }
 
-        void TimelineViewport::setViewZoom(float zoom, const math::Vector2i& focus)
+        void TimelineViewport::setViewZoom(double zoom, const math::Vector2i& focus)
         {
             TLRENDER_P();
             math::Vector2i pos;
@@ -324,7 +324,7 @@ namespace tl
             {
                 if (auto context = p.context.lock())
                 {
-                    p.render = timeline::GLRender::create(context);
+                    p.render = timeline_gl::Render::create(context);
                 }
             
                 const std::string vertexSource =
@@ -373,6 +373,7 @@ namespace tl
         void TimelineViewport::resizeGL(int w, int h)
         {
             TLRENDER_P();
+            p.doRender = true;
             p.vao.reset();
             p.vbo.reset();
         }
@@ -681,15 +682,19 @@ namespace tl
             TLRENDER_P();
             const math::Size2i viewportSize = _viewportSize();
             const math::Size2i renderSize = _renderSize();
-            float zoom = viewportSize.w / static_cast<float>(renderSize.w);
-            if (zoom * renderSize.h > viewportSize.h)
+            double zoom = 1.0;
+            if (renderSize.w > 0)
             {
-                zoom = viewportSize.h / static_cast<float>(renderSize.h);
+                zoom = viewportSize.w / static_cast<double>(renderSize.w);
+                if (renderSize.h > 0 && zoom * renderSize.h > viewportSize.h)
+                {
+                    zoom = viewportSize.h / static_cast<double>(renderSize.h);
+                }
             }
             const math::Vector2i c(renderSize.w / 2, renderSize.h / 2);
             const math::Vector2i viewPos(
-                viewportSize.w / 2.F - c.x * zoom,
-                viewportSize.h / 2.F - c.y * zoom);
+                viewportSize.w / 2.0 - c.x * zoom,
+                viewportSize.h / 2.0 - c.y * zoom);
             if (viewPos != p.viewPos || zoom != p.viewZoom)
             {
                 p.viewPos = viewPos;

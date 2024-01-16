@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
 #include <tlIO/FFmpegReadPrivate.h>
@@ -84,9 +84,7 @@ namespace tl
             if (i != options.end())
             {
                 std::stringstream ss(i->second);
-                size_t channelCount = 0;
-                ss >> channelCount;
-                p.options.audioConvertInfo.channelCount = std::min(channelCount, static_cast<size_t>(255));
+                ss >> p.options.audioConvertInfo.channelCount;
             }
             i = options.find("FFmpeg/AudioDataType");
             if (i != options.end())
@@ -410,7 +408,7 @@ namespace tl
                     _p->readVideo->process(p.videoThread.currentTime))
                     ;
 
-                // Video request.
+                // Handle request.
                 if (videoRequest)
                 {
                     io::VideoData data;

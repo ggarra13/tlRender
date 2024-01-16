@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
 #include <tlQt/Init.h>
@@ -7,7 +7,7 @@
 #include <tlQt/MetaTypes.h>
 #include <tlQt/TimeObject.h>
 
-#include <tlDevice/Init.h>
+#include <tlTimeline/Init.h>
 
 #include <tlCore/Context.h>
 #include <tlCore/Mesh.h>
@@ -22,7 +22,7 @@ namespace tl
             DefaultSurfaceFormat defaultSurfaceFormat,
             const std::shared_ptr<system::Context>& context)
         {
-            device::init(context);
+            timeline::init(context);
             if (!context->getSystem<System>())
             {
                 context->addSystem(System::create(

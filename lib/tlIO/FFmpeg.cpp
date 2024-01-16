@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
 #include <tlIO/FFmpeg.h>
@@ -311,7 +311,6 @@ namespace tl
             case AV_LOG_ERROR:
             case AV_LOG_WARNING:
             case AV_LOG_INFO:
-            case AV_LOG_VERBOSE:
                 if (auto logSystem = _logSystemWeak.lock())
                 {
                     char buf[string::cBufferSize];
@@ -319,6 +318,7 @@ namespace tl
                     logSystem->print("tl::io::ffmpeg::Plugin", string::removeTrailingNewlines(buf));
                 }
                 break;
+            case AV_LOG_VERBOSE:
             default: break;
             }
         }

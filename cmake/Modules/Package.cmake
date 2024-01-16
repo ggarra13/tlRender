@@ -19,8 +19,8 @@ if(WIN32)
     
     if(TLRENDER_USD)
         set(BOOST_DLLS
-            ${CMAKE_INSTALL_PREFIX}/bin/boost_atomic-vc143-mt-x64-1_76.dll
-            ${CMAKE_INSTALL_PREFIX}/bin/boost_regex-vc143-mt-x64-1_76.dll)
+            ${CMAKE_INSTALL_PREFIX}/bin/boost_atomic-vc143-mt-x64-1_78.dll
+            ${CMAKE_INSTALL_PREFIX}/bin/boost_regex-vc143-mt-x64-1_78.dll)
         set(MATERIALX_DLLS
             ${CMAKE_INSTALL_PREFIX}/bin/MaterialXCore.dll
             ${CMAKE_INSTALL_PREFIX}/bin/MaterialXFormat.dll

@@ -2,18 +2,14 @@ set(HEADERS
     ContextObject.h
     Init.h
     MetaTypes.h
-    OutputDevice.h
     TimeObject.h
     TimelinePlayer.h
     ToolTipsFilter.h)
-set(PRIVATE_HEADERS
-    OutputDevicePrivate.h)
+set(PRIVATE_HEADERS)
 
 set(SOURCE
     ContextObject.cpp
     Init.cpp
-    OutputDevice.cpp
-    OutputDevicePrivate.cpp
     TimeObject.cpp
     TimelinePlayer.cpp
     ToolTipsFilter.cpp)
@@ -24,7 +20,7 @@ if(TLRENDER_QT6)
 elseif(TLRENDER_QT5)
     list(APPEND LIBRARIES Qt5::Gui)
 endif()
-list(APPEND LIBRARIES tlDevice)
+list(APPEND LIBRARIES tlTimelineGL)
 
 add_library(tlQt ${HEADERS} ${PRIVATE_HEADERS} ${SOURCE})
 target_link_libraries(tlQt ${LIBRARIES})

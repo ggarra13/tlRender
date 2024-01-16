@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
 #include <tlTimelineUI/TimelineWidget.h>
@@ -174,7 +174,7 @@ namespace tl
         {
             TLRENDER_P();
             p.scrollWidget->setScrollPos(math::Vector2i());
-            const float scale = _getTimelineScale();
+            const double scale = _getTimelineScale();
             if (scale != p.scale)
             {
                 p.scale = scale;

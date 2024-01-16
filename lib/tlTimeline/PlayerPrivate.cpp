@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
 #include <tlTimeline/PlayerPrivate.h>
@@ -376,6 +376,7 @@ namespace tl
                     audioDataRequestsIt->second.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
                 {
                     auto audioData = audioDataRequestsIt->second.get();
+                    audioData.seconds = audioDataRequestsIt->first;
                     {
                         std::unique_lock<std::mutex> lock(audioMutex.mutex);
                         audioMutex.audioDataCache[audioDataRequestsIt->first] = audioData;
@@ -778,7 +779,9 @@ namespace tl
         void Player::Private::rtAudioErrorCallback(
             RtAudioError::Type type,
             const std::string& errorText)
-        {}
+        {
+            //std::cout << "RtAudio ERROR: " << errorText << std::endl;
+        }
 #endif // TLRENDER_AUDIO
 
         void Player::Private::log(const std::shared_ptr<system::Context>& context)

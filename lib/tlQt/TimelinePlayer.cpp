@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
 #include <tlQt/TimelinePlayer.h>
@@ -14,9 +14,15 @@ namespace tl
 {
     namespace qt
     {
+        namespace
+        {
+            const size_t timeout = 5;
+        }
+
         struct TimelinePlayer::Private
         {
             std::shared_ptr<timeline::Player> player;
+            int timerId = 0;
 
             std::shared_ptr<observer::ValueObserver<double> > speedObserver;
             std::shared_ptr<observer::ValueObserver<timeline::Playback> > playbackObserver;
@@ -133,7 +139,7 @@ namespace tl
                     Q_EMIT cacheInfoChanged(value);
                 });
 
-            startTimer(5, Qt::PreciseTimer);
+            p.timerId = startTimer(timeout, Qt::PreciseTimer);
         }
 
         TimelinePlayer::TimelinePlayer(
@@ -147,7 +153,13 @@ namespace tl
         }
 
         TimelinePlayer::~TimelinePlayer()
-        {}
+        {
+            TLRENDER_P();
+            if (p.timerId != 0)
+            {
+                killTimer(p.timerId);
+            }
+        }
         
         const std::weak_ptr<system::Context>& TimelinePlayer::context() const
         {
@@ -231,7 +243,7 @@ namespace tl
 
         const timeline::VideoData& TimelinePlayer::currentVideo() const
         {
-            return _p->player->observeCurrentVideo()->get();
+            return _p->player->getCurrentVideo();
         }
 
         float TimelinePlayer::volume() const
@@ -251,7 +263,7 @@ namespace tl
 
         const std::vector<timeline::AudioData>& TimelinePlayer::currentAudio() const
         {
-            return _p->player->observeCurrentAudio()->get();
+            return _p->player->getCurrentAudio();
         }
 
         const timeline::PlayerCacheOptions& TimelinePlayer::cacheOptions() const

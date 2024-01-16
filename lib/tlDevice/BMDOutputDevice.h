@@ -1,128 +1,125 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2022 Darby Johnston
+// Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
 #pragma once
 
-#include <tlDevice/IOutputDevice.h>
+#include <tlDevice/BMDData.h>
 
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif // NOMINMAX
-#include "platform.h"
-
-#if defined(__APPLE__)
-typedef int64_t LONGLONG;
-#elif defined(__linux__)
-typedef bool BOOL;
-typedef int64_t LONGLONG;
-#endif // __APPLE__
+#include <tlTimeline/IRender.h>
+#include <tlTimeline/Player.h>
 
 namespace tl
 {
     namespace device
     {
-        //! Decklink wrapper.
-        class DLWrapper
-        {
-        public:
-            ~DLWrapper();
-
-            IDeckLink* p = nullptr;
-        };
-
-        //! Decklink configuration wrapper.
-        class DLConfigWrapper
-        {
-        public:
-            ~DLConfigWrapper();
-
-            IDeckLinkConfiguration* p = nullptr;
-        };
-
-        //! Decklink output wrapper.
-        class DLOutputWrapper
-        {
-        public:
-            ~DLOutputWrapper();
-
-            IDeckLinkOutput* p = nullptr;
-        };
-
-        //! Decklink output callback.
-        class DLOutputCallback :
-            public IDeckLinkVideoOutputCallback,
-            public IDeckLinkAudioOutputCallback
-        {
-        public:
-            DLOutputCallback(
-                IDeckLinkOutput*,
-                const math::Size2i& size,
-                PixelType pixelType,
-                const otime::RationalTime& frameRate,
-                const audio::Info& audioInfo);
-
-            void setPlayback(timeline::Playback, const otime::RationalTime&);
-            void setPixelData(const std::shared_ptr<device::PixelData>&);
-            void setVolume(float);
-            void setMute(bool);
-            void setAudioOffset(double);
-            void setAudioData(const std::vector<timeline::AudioData>&);
-
-            HRESULT STDMETHODCALLTYPE ScheduledFrameCompleted(IDeckLinkVideoFrame*, BMDOutputFrameCompletionResult) override;
-            HRESULT STDMETHODCALLTYPE ScheduledPlaybackHasStopped() override;
-
-            HRESULT STDMETHODCALLTYPE RenderAudioSamples(BOOL preroll) override;
-
-            HRESULT STDMETHODCALLTYPE QueryInterface(REFIID iid, LPVOID* ppv) override;
-            ULONG STDMETHODCALLTYPE AddRef() override;
-            ULONG STDMETHODCALLTYPE Release() override;
-
-        private:
-            TLRENDER_PRIVATE();
-        };
-
-        //! Decklink output callback wrapper.
-        class DLOutputCallbackWrapper
-        {
-        public:
-            ~DLOutputCallbackWrapper();
-            
-            DLOutputCallback* p = nullptr;
-        };
-
         //! BMD output device.
-        class BMDOutputDevice : public IOutputDevice
+        class BMDOutputDevice : public std::enable_shared_from_this<BMDOutputDevice>
         {
             TLRENDER_NON_COPYABLE(BMDOutputDevice);
 
         protected:
-            void _init(
-                int deviceIndex,
-                int displayModeIndex,
-                PixelType,
-                const std::shared_ptr<system::Context>&);
+            void _init(const std::shared_ptr<system::Context>&);
 
             BMDOutputDevice();
 
         public:
-            ~BMDOutputDevice() override;
+            ~BMDOutputDevice();
 
             //! Create a new BMD output device.
-            static std::shared_ptr<BMDOutputDevice> create(
-                int deviceIndex,
-                int displayModeIndex,
-                PixelType,
-                const std::shared_ptr<system::Context>&);
+            static std::shared_ptr<BMDOutputDevice> create(const std::shared_ptr<system::Context>&);
 
-            void setPlayback(timeline::Playback, const otime::RationalTime&) override;
-            void setPixelData(const std::shared_ptr<device::PixelData>&) override;
-            void setVolume(float) override;
-            void setMute(bool) override;
-            void setAudioOffset(double) override;
-            void setAudioData(const std::vector<timeline::AudioData>&) override;
+            //! Get the output device configuration.
+            DeviceConfig getConfig() const;
+
+            //! Observe the output device configuration.
+            std::shared_ptr<observer::IValue<DeviceConfig> > observeConfig() const;
+
+            //! Set the output device configuration.
+            void setConfig(const DeviceConfig&);
+
+            //! Get whether the output device is enabled.
+            bool isEnabled() const;
+
+            //! Observe whether the output device is enabled.
+            std::shared_ptr<observer::IValue<bool> > observeEnabled() const;
+
+            //! Set whether the output device is enabled.
+            void setEnabled(bool);
+
+            //! Get whether the output device is active.
+            bool isActive() const;
+
+            //! Observe whether the output device is active.
+            std::shared_ptr<observer::IValue<bool> > observeActive() const;
+
+            //! Get the output device size.
+            const math::Size2i& getSize() const;
+
+            //! Observe the output device size.
+            std::shared_ptr<observer::IValue<math::Size2i> > observeSize() const;
+
+            //! Get the output device frame rate.
+            const otime::RationalTime& getFrameRate() const;
+
+            //! Observe the output device frame rate.
+            std::shared_ptr<observer::IValue<otime::RationalTime> > observeFrameRate() const;
+
+            //! Set the view.
+            void setView(
+                const tl::math::Vector2i& position,
+                double                    zoom,
+                bool                      frame);
+
+            //! Set the OpenColorIO options.
+            void setOCIOOptions(const timeline::OCIOOptions&);
+
+            //! Set the LUT options.
+            void setLUTOptions(const timeline::LUTOptions&);
+
+            //! Set the image options.
+            void setImageOptions(const std::vector<timeline::ImageOptions>&);
+
+            //! Set the display options.
+            void setDisplayOptions(const std::vector<timeline::DisplayOptions>&);
+
+            //! Set the HDR mode and metadata.
+            void setHDR(device::HDRMode, const image::HDRData&);
+
+            //! Set the comparison options.
+            void setCompareOptions(const timeline::CompareOptions&);
+
+            //! Set the volume.
+            void setVolume(float);
+
+            //! Set whether the audio is muted.
+            void setMute(bool);
+
+            //! Set the audio sync offset.
+            void setAudioOffset(double);
+
+            //! Set the timeline players.
+            void setPlayers(const std::vector<std::shared_ptr<timeline::Player> >&);
+
+            //! Tick the output device.
+            void tick();
 
         private:
+            void _run();
+            void _createDevice(
+                const device::DeviceConfig&,
+                bool& active,
+                math::Size2i& size,
+                otime::RationalTime& frameRate);
+            void _render(
+                const device::DeviceConfig&,
+                const timeline::OCIOOptions&,
+                const timeline::LUTOptions&,
+                const std::vector<timeline::ImageOptions>&,
+                const std::vector<timeline::DisplayOptions>&,
+                const timeline::CompareOptions&);
+            void _read();
+
             TLRENDER_PRIVATE();
         };
     }
