@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
 #include <tlTimelineUI/TimelineViewport.h>
@@ -33,6 +33,7 @@ namespace tl
             math::Vector2i viewPos;
             double viewZoom = 1.0;
             std::shared_ptr<observer::Value<bool> > frameView;
+            std::function<void(bool)> frameViewCallback;
             std::function<void(const math::Vector2i&, double)> viewPosAndZoomCallback;
 
             struct DroppedFrames
@@ -217,12 +218,12 @@ namespace tl
             }
         }
 
-        const math::Vector2i& TimelineViewport::viewPos() const
+        const math::Vector2i& TimelineViewport::getViewPos() const
         {
             return _p->viewPos;
         }
 
-        double TimelineViewport::viewZoom() const
+        double TimelineViewport::getViewZoom() const
         {
             return _p->viewZoom;
         }
@@ -267,9 +268,18 @@ namespace tl
             TLRENDER_P();
             if (p.frameView->setIfChanged(value))
             {
+                if (p.frameViewCallback)
+                {
+                    p.frameViewCallback(value);
+                }
                 p.doRender = true;
                 _updates |= ui::Update::Draw;
             }
+        }
+
+        void TimelineViewport::setFrameViewCallback(const std::function<void(bool)>& value)
+        {
+            _p->frameViewCallback = value;
         }
 
         void TimelineViewport::viewZoom1To1()

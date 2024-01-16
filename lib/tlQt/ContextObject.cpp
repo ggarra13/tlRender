@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
 #include <tlQt/ContextObject.h>
@@ -10,9 +10,15 @@ namespace tl
 {
     namespace qt
     {
+        namespace
+        {
+            const size_t timeout = 5;
+        }
+
         struct ContextObject::Private
         {
             std::shared_ptr<system::Context> context;
+            int timerId = 0;
         };
 
         ContextObject::ContextObject(
@@ -21,13 +27,19 @@ namespace tl
             QObject(parent),
             _p(new Private)
         {
-            _p->context = context;
-
-            startTimer(5, Qt::PreciseTimer);
+            TLRENDER_P();
+            p.context = context;
+            p.timerId = startTimer(timeout, Qt::PreciseTimer);
         }
 
         ContextObject::~ContextObject()
-        {}
+        {
+            TLRENDER_P();
+            if (p.timerId != 0)
+            {
+                killTimer(p.timerId);
+            }
+        }
 
         const std::shared_ptr<system::Context>& ContextObject::context() const
         {

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
 namespace tl
@@ -9,14 +9,11 @@ namespace tl
         inline bool HDRData::operator == (const HDRData& other) const
         {
             return
-                other.eotf == eotf &&
-                other.redPrimaries == redPrimaries &&
-                other.greenPrimaries == greenPrimaries &&
-                other.bluePrimaries == bluePrimaries &&
-                other.whitePrimaries == whitePrimaries &&
-                other.displayMasteringLuminance == displayMasteringLuminance &&
-                other.maxCLL == maxCLL &&
-                other.maxFALL == maxFALL;
+                eotf == other.eotf &&
+                primaries == other.primaries &&
+                displayMasteringLuminance == other.displayMasteringLuminance &&
+                maxCLL == other.maxCLL &&
+                maxFALL == other.maxFALL;
         }
 
         inline bool HDRData::operator != (const HDRData& other) const

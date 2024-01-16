@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
 #pragma once
@@ -23,6 +23,7 @@ namespace tl
         private:
             void _enums();
             void _endian();
+            void _bits();
         };
     }
 }

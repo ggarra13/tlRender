@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
 #include <tlCore/Math.h>
@@ -12,7 +12,10 @@ namespace tl
     {
         inline bool Info::isValid() const
         {
-            return dataType != DataType::None;
+            return
+                channelCount > 0 &&
+                dataType != DataType::None &&
+                sampleRate > 0;
         }
 
         inline size_t Info::getByteCount() const

@@ -13,7 +13,7 @@ integrating the library with Qt and OpenGL applications.
 
 The library is written in C++ and uses the CMake build system.
 
-![tlplay-gl](etc/Images/tlplay-gl-screenshot1.png)
+![tlplay](etc/Images/tlplay-screenshot1.png)
 
 This screenshot shows an example playback application built with the tlRender
 user interface library. Two files are being compared with an A/B "wipe", a USD
@@ -53,15 +53,31 @@ Contents:
 
 # Libraries
 
-tlRender is composed of multiple libraries:
+Core libraries:
+* tlBaseApp - Base application
+* tlCore - Core functionality; file paths and I/O, math, images, audio, etc.
+* tlGL - OpenGL support
+* tlIO - Video, audio, and image I/O
+* tlUI - User interface
+* tlUIApp - User interface application
 
-<img src="etc/Images/tlRenderLibraries.png" height=500>
+Timeline libraries:
+* tlDevice - Hardware devices
+* tlTimeline - Timelines
+* tlTimelineGL - Timeline OpenGL support
+* tlTimelineUI - Timeline user interface
 
-| Libraries                                | Description              |
-| ---------------------------------------- | ------------------------ |
-| tlCore, tlGL, tlIO, tlTimelime, tlDevice | Core libraries           |
-| tlUI, tlTimelineIO                       | User interface libraries |
-| tlQt, tlQtWidget, tlQtQuick              | Qt integration libraries | 
+Qt integration libraries:
+* tlQt - Qt support
+* tlQtQuick - Qt Quick support
+* tlQtWidget - Qt QWidget support
+
+Application libraries:
+* tlBakeApp - tlbake application
+* tlPlay - Player application support
+* tlPlayApp - tlplay application
+* tlPlayQtApp - tlplay-qt application
+* tlResourceApp - tlresource application
 
 
 # Dependencies
@@ -120,16 +136,17 @@ Start the build:
 ```
 cmake --build . -j 4 --config Debug
 ```
-Try running the "tlplay-gl" application:
+Try running the `tlplay` application:
 ```
 export LD_LIBRARY_PATH=$PWD/install/lib:$LD_LIBRARY_PATH
-./tlRender/src/tlRender-build/bin/tlplay-gl/tlplay-gl ../etc/SampleData/MultipleClips.otio
+./tlRender/src/tlRender-build/bin/tlplay/tlplay ../etc/SampleData/MultipleClips.otio
 ```
 
 ### Building on Linux with Qt 6
 
 When running CMake with the super build script, add the Qt location to
-"CMAKE_PREFIX_PATH" (make sure to use quotes), and enable "TLRENDER_QT6":
+`CMAKE_PREFIX_PATH` (place double quotes around the list of paths),
+and enable `TLRENDER_QT6`:
 ```
 cmake ../etc/SuperBuild -DCMAKE_INSTALL_PREFIX=$PWD/install -DCMAKE_PREFIX_PATH="$PWD/install;$HOME/Qt/6.5.0/gcc_64" -DTLRENDER_QT6=ON -DCMAKE_BUILD_TYPE=Debug
 ```
@@ -137,7 +154,8 @@ cmake ../etc/SuperBuild -DCMAKE_INSTALL_PREFIX=$PWD/install -DCMAKE_PREFIX_PATH=
 ### Building on Linux with Qt 5
 
 When running CMake with the super build script, add the Qt location to
-"CMAKE_PREFIX_PATH" (make sure to use quotes), and enable "TLRENDER_QT5":
+`CMAKE_PREFIX_PATH` (place double quotes around the list of paths),
+and enable `TLRENDER_QT5`:
 ```
 cmake ../etc/SuperBuild -DCMAKE_INSTALL_PREFIX=$PWD/install -DCMAKE_PREFIX_PATH="$PWD/install;$HOME/Qt/5.15.2/gcc_64" -DTLRENDER_QT5=ON -DCMAKE_BUILD_TYPE=Debug
 ```
@@ -178,15 +196,16 @@ Start the build:
 ```
 cmake --build . -j 4 --config Debug
 ```
-Try running the "tlplay-gl" application:
+Try running the `tlplay` application:
 ```
-./tlRender/src/tlRender-build/bin/tlplay-gl/tlplay-gl ../etc/SampleData/MultipleClips.otio
+./tlRender/src/tlRender-build/bin/tlplay/tlplay ../etc/SampleData/MultipleClips.otio
 ```
 
 ### Building on macOS with Qt 6
 
 When running CMake with the super build script add the Qt location to
-"CMAKE_PREFIX_PATH" (make sure to use quotes), and enable "TLRENDER_QT6":
+`CMAKE_PREFIX_PATH` (place double quotes around the list of paths),
+and enable `TLRENDER_QT6`:
 ```
 cmake ../etc/SuperBuild -DCMAKE_INSTALL_PREFIX=$PWD/install -DCMAKE_PREFIX_PATH="$PWD/install;$HOME/Qt/6.5.0/macos" -DTLRENDER_QT6=ON -DCMAKE_BUILD_TYPE=Debug
 ```
@@ -194,14 +213,15 @@ cmake ../etc/SuperBuild -DCMAKE_INSTALL_PREFIX=$PWD/install -DCMAKE_PREFIX_PATH=
 ### Building on macOS with Qt 5
 
 When running CMake with the super build script add the Qt location to
-"CMAKE_PREFIX_PATH" (make sure to use quotes), and enable "TLRENDER_QT5":
+`CMAKE_PREFIX_PATH` (place double quotes around the list of paths),
+and enable `TLRENDER_QT5`:
 ```
 cmake ../etc/SuperBuild -DCMAKE_INSTALL_PREFIX=$PWD/install -DCMAKE_PREFIX_PATH="$PWD/install;$HOME/Qt/5.15.2/clang_64" -DTLRENDER_QT5=ON -DCMAKE_BUILD_TYPE=Debug
 ```
 
 ### Notes for building on macOS
 
-The CMake variable "CMAKE_OSX_ARCHITECTURES" can be used to specify the build
+The CMake variable `CMAKE_OSX_ARCHITECTURES` can be used to specify the build
 architecture:
 ```
 -DCMAKE_OSX_ARCHITECTURES=x86_64
@@ -218,7 +238,10 @@ alias intel="env /usr/bin/arch -x86_64 /bin/zsh --login"
 
 ## Building on Windows
 
-Install MSYS2 (https://www.msys2.org) for compiling FFmpeg.
+Dependencies:
+* Install MSYS2 (https://www.msys2.org) for compiling FFmpeg.
+* Install Strawberry Perl (https://strawberryperl.com/) for compiling network support.
+* Install Python 3.11 for compiling USD.
 
 Clone the repository:
 ```
@@ -240,16 +263,17 @@ Start the build:
 ```
 cmake --build . -j 4 --config Debug
 ```
-Try running the "tlplay-gl" application:
+Try running the `tlplay` application:
 ```
 set PATH=%CD%\install\bin;%PATH%
-.\tlRender\src\tlRender-build\bin\tlplay-gl\Debug\tlplay-gl ..\etc\SampleData\MultipleClips.otio
+.\tlRender\src\tlRender-build\bin\tlplay\Debug\tlplay ..\etc\SampleData\MultipleClips.otio
 ```
 
 ### Building on Windows with Qt 6
 
 When running CMake with the super build script add the Qt location to
-"CMAKE_PREFIX_PATH" (make sure to use quotes), and enable "TLRENDER_QT6":
+`CMAKE_PREFIX_PATH` (place double quotes around the list of paths),
+and enable `TLRENDER_QT6`:
 ```
 cmake ..\etc\SuperBuild -DCMAKE_INSTALL_PREFIX=%CD%\install -DCMAKE_PREFIX_PATH="%CD%\install;C:\Qt\6.5.0\msvc2019_64" -DTLRENDER_QT6=ON -DCMAKE_BUILD_TYPE=Debug
 ```
@@ -257,7 +281,8 @@ cmake ..\etc\SuperBuild -DCMAKE_INSTALL_PREFIX=%CD%\install -DCMAKE_PREFIX_PATH=
 ### Building on Windows with Qt 5
 
 When running CMake with the super build script add the Qt location to
-"CMAKE_PREFIX_PATH" (make sure to use quotes), and enable "TLRENDER_QT5":
+`CMAKE_PREFIX_PATH` (place double quotes around the list of paths),
+and enable `TLRENDER_QT5`:
 ```
 cmake ..\etc\SuperBuild -DCMAKE_INSTALL_PREFIX=%CD%\install -DCMAKE_PREFIX_PATH="%CD%\install;C:\Qt\5.15.2\msvc2019_64" -DTLRENDER_QT5=ON -DCMAKE_BUILD_TYPE=Debug
 ```

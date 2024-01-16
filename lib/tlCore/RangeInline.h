@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
 #include <algorithm>
@@ -24,10 +24,6 @@ namespace tl
         constexpr Range<T>::Range(T min, T max) :
             _min(std::min(min, max)),
             _max(std::max(min, max))
-        {}
-
-        template<typename T>
-        inline Range<T>::~Range()
         {}
 
         template<typename T>

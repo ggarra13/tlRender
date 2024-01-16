@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
 #include <tlCore/Timer.h>
@@ -128,7 +128,9 @@ namespace tl
         };
 
         void TimerSystem::_init(const std::shared_ptr<system::Context>& context)
-        {}
+        {
+            ISystem::_init("tl::time::TimerSystem", context);
+        }
 
         TimerSystem::TimerSystem() :
             _p(new Private)
@@ -181,3 +183,4 @@ namespace tl
         }
     }
 }
+

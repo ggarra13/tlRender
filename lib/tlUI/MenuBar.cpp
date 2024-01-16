@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
 #include <tlUI/MenuBar.h>
@@ -57,38 +57,45 @@ namespace tl
                 button->setText(text);
                 p.buttons.push_back(button);
                 button->setParent(p.layout);
+                auto menuWeak = std::weak_ptr<Menu>(menu);
                 button->setHoveredCallback(
-                    [this, menu, button](bool value)
+                    [this, menuWeak, button](bool value)
                     {
                         if (value)
                         {
-                            std::shared_ptr<Menu> openMenu;
-                            for (auto& i : _p->menus)
+                            if (auto menu = menuWeak.lock())
                             {
-                                if (i->isOpen())
+                                std::shared_ptr<Menu> openMenu;
+                                for (auto& i : _p->menus)
                                 {
-                                    openMenu = i;
-                                    break;
+                                    if (i->isOpen())
+                                    {
+                                        openMenu = i;
+                                        break;
+                                    }
                                 }
-                            }
-                            if (openMenu && menu != openMenu)
-                            {
-                                openMenu->close();
-                                button->takeKeyFocus();
-                                menu->open(getWindow(), button->getGeometry());
+                                if (openMenu && menu != openMenu)
+                                {
+                                    openMenu->close();
+                                    button->takeKeyFocus();
+                                    menu->open(getWindow(), button->getGeometry());
+                                }
                             }
                         }
                     });
                 button->setPressedCallback(
-                    [this, menu, button]
+                    [this, menuWeak, button]
                     {
-                        if (!menu->isOpen())
+                        if (auto menu = menuWeak.lock())
                         {
-                            menu->open(getWindow(), button->getGeometry());
-                        }
-                        else
-                        {
-                            menu->close();
+                            if (!menu->isOpen())
+                            {
+                                menu->open(getWindow(), button->getGeometry());
+                            }
+                            else
+                            {
+                                menu->close();
+                            }
                         }
                     });
                 menu->setCloseCallback(

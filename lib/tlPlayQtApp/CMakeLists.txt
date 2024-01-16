@@ -4,7 +4,6 @@ set(HEADERS
     AudioTool.h
     ColorTool.h
     CompareActions.h
-    DevicesModel.h
     DevicesTool.h
     DockTitleBar.h
     FileActions.h
@@ -35,7 +34,6 @@ set(SOURCE
     AudioTool.cpp
     ColorTool.cpp
     CompareActions.cpp
-    DevicesModel.cpp
     DevicesTool.cpp
     DockTitleBar.cpp
     FileActions.cpp
@@ -66,7 +64,7 @@ elseif(TLRENDER_QT5)
 endif()
 
 add_library(tlPlayQtApp ${HEADERS} ${SOURCE})
-target_link_libraries(tlPlayQtApp tlQtWidget tlPlay tlApp)
+target_link_libraries(tlPlayQtApp tlQtWidget tlPlay tlBaseApp)
 set_target_properties(tlPlayQtApp PROPERTIES FOLDER lib)
 set_target_properties(tlPlayQtApp PROPERTIES PUBLIC_HEADER "${HEADERS}")
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
 #pragma once
@@ -24,13 +24,7 @@ namespace tl
 
             virtual ~AudioOffsetWidget();
 
-        private Q_SLOTS:
-            void _offsetCallback(double);
-
         private:
-            void _playersUpdate(const QVector<QSharedPointer<qt::TimelinePlayer> >&);
-            void _offsetUpdate();
-
             TLRENDER_PRIVATE();
         };
 

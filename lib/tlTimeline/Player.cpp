@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
 #include <tlTimeline/PlayerPrivate.h>
@@ -146,9 +146,9 @@ namespace tl
                 {
                     TLRENDER_P();
 
+#if defined(TLRENDER_AUDIO)
                     if (auto context = getContext().lock())
                     {
-#if defined(TLRENDER_AUDIO)
                         // Initialize audio.
                         auto audioSystem = context->getSystem<audio::System>();
                         if (p.thread.rtAudio && !audioSystem->getDevices().empty())
@@ -185,8 +185,8 @@ namespace tl
                                 }
                             }
                         }
-#endif // TLRENDER_AUDIO
                     }
+#endif // TLRENDER_AUDIO
 
                     p.thread.cacheTimer = std::chrono::steady_clock::now();
                     p.thread.logTimer = std::chrono::steady_clock::now();
@@ -774,6 +774,11 @@ namespace tl
             }
         }
 
+        const VideoData& Player::getCurrentVideo() const
+        {
+            return _p->currentVideoData->get();
+        }
+
         std::shared_ptr<observer::IValue<VideoData> > Player::observeCurrentVideo() const
         {
             return _p->currentVideoData;
@@ -837,6 +842,11 @@ namespace tl
                 std::unique_lock<std::mutex> lock(p.mutex.mutex);
                 p.mutex.audioOffset = value;
             }
+        }
+
+        const std::vector<AudioData>& Player::getCurrentAudio() const
+        {
+            return _p->currentAudioData->get();
         }
 
         std::shared_ptr<observer::IList<AudioData> > Player::observeCurrentAudio() const

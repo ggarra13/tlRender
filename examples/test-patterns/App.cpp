@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
 #include "App.h"
 
 #include "TestPatterns.h"
 
-#include <tlTimeline/GLRender.h>
+#include <tlTimelineGL/Render.h>
 
 #include <tlGL/GL.h>
 #include <tlGL/GLFWWindow.h>
@@ -33,13 +33,12 @@ namespace tl
                 const std::vector<std::string>& argv,
                 const std::shared_ptr<system::Context>& context)
             {
-                IApp::_init(
+                BaseApp::_init(
                     argv,
                     context,
                     "test-patterns",
                     "Example test patterns application.");
 
-                // Create the window.
                 _window = gl::GLFWWindow::create(
                     "test-patterns",
                     math::Size2i(1, 1),
@@ -135,7 +134,7 @@ namespace tl
                             auto image = image::Image::create(info);
 
                             // Render the test pattern.
-                            auto render = timeline::GLRender::create(_context);
+                            auto render = timeline_gl::Render::create(_context);
                             auto pattern = TestPatternFactory::create(name, size, _context);
                             for (double i = ioInfo.videoTime.start_time().value(); i < ioInfo.videoTime.duration().value(); i = i + 1.0)
                             {

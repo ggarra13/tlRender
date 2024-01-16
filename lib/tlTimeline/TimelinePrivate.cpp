@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
 #include <tlTimeline/TimelinePrivate.h>
@@ -562,6 +562,7 @@ namespace tl
         {
             std::future<io::VideoData> out;
             io::Options optionsMerged = io::merge(options, this->options.ioOptions);
+            optionsMerged["USD/cameraName"] = clip->name();
             ReadCacheItem item = getRead(clip, optionsMerged);
             const auto timeRangeOpt = clip->trimmed_range_in_parent();
             if (item.read && timeRangeOpt.has_value())

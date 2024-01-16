@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2023 Darby Johnston
+// Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
 #include <tlPlayQtApp/MainWindow.h>
@@ -9,7 +9,6 @@
 #include <tlPlayQtApp/AudioTool.h>
 #include <tlPlayQtApp/ColorTool.h>
 #include <tlPlayQtApp/CompareActions.h>
-#include <tlPlayQtApp/DevicesModel.h>
 #include <tlPlayQtApp/DevicesTool.h>
 #include <tlPlayQtApp/FileActions.h>
 #include <tlPlayQtApp/FilesTool.h>
@@ -40,7 +39,9 @@
 #include <tlQtWidget/TimelineWidget.h>
 #include <tlQtWidget/Util.h>
 
-#include <tlQt/OutputDevice.h>
+#if defined(TLRENDER_BMD)
+#include <tlDevice/BMDOutputDevice.h>
+#endif // TLRENDER_BMD
 
 #include <tlCore/File.h>
 
@@ -79,7 +80,6 @@ namespace tl
 
             QVector<QSharedPointer<qt::TimelinePlayer> > timelinePlayers;
             bool floatOnTop = false;
-            image::VideoLevels outputVideoLevels;
 
             FileActions* fileActions = nullptr;
             CompareActions* compareActions = nullptr;
@@ -122,7 +122,6 @@ namespace tl
             std::shared_ptr<observer::ValueObserver<timeline::LUTOptions> > lutOptionsObserver;
             std::shared_ptr<observer::ValueObserver<timeline::DisplayOptions> > displayOptionsObserver;
             std::shared_ptr<observer::ValueObserver<timeline::ImageOptions> > imageOptionsObserver;
-            std::shared_ptr<observer::ValueObserver<DevicesModelData> > devicesModelObserver;
             std::shared_ptr<observer::ValueObserver<float> > volumeObserver;
             std::shared_ptr<observer::ValueObserver<bool> > muteObserver;
             std::shared_ptr<observer::ListObserver<log::Item> > logObserver;
@@ -465,14 +464,6 @@ namespace tl
                     _widgetUpdate();
                 });
 
-            p.devicesModelObserver = observer::ValueObserver<DevicesModelData>::create(
-                app->devicesModel()->observeData(),
-                [this](const DevicesModelData& value)
-                {
-                    _p->outputVideoLevels = value.videoLevels;
-                    _widgetUpdate();
-                });
-
             p.volumeObserver = observer::ValueObserver<float>::create(
                 app->audioModel()->observeVolume(),
                 [this](float)
@@ -627,25 +618,10 @@ namespace tl
                 });
             connect(
                 p.timelineViewport,
-                &qtwidget::TimelineViewport::viewPosAndZoomChanged,
-                [this](const math::Vector2i& pos, float zoom)
-                {
-                    _p->app->outputDevice()->setView(
-                        pos,
-                        zoom,
-                        _p->timelineViewport->hasFrameView());
-                });
-            connect(
-                p.timelineViewport,
                 &qtwidget::TimelineViewport::frameViewChanged,
                 [this](bool value)
                 {
                     _p->viewActions->actions()["Frame"]->setChecked(value);
-
-                    _p->app->outputDevice()->setView(
-                        _p->timelineViewport->viewPos(),
-                        _p->timelineViewport->viewZoom(),
-                        value);
                 });
 
             connect(
@@ -908,16 +884,6 @@ namespace tl
             }
             p.infoLabel->setText(QString::fromUtf8(infoLabel.c_str()));
             p.infoLabel->setToolTip(QString::fromUtf8(infoToolTip.c_str()));
-
-            p.app->outputDevice()->setOCIOOptions(colorModel->getOCIOOptions());
-            p.app->outputDevice()->setLUTOptions(colorModel->getLUTOptions());
-            p.app->outputDevice()->setImageOptions(imageOptions);
-            for (auto& i : displayOptions)
-            {
-                i.videoLevels = p.outputVideoLevels;
-            }
-            p.app->outputDevice()->setDisplayOptions(displayOptions);
-            p.app->outputDevice()->setCompareOptions(p.app->filesModel()->getCompareOptions());
         }
     }
 }
