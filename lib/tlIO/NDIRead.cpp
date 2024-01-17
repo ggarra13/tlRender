@@ -166,19 +166,34 @@ namespace tl
                                 }
                                 else
                                 {
-                                    if (p.videoThread.currentTime <=
-                                        p.audioThread.currentTime)
+                                    const auto audio = p.audioThread.currentTime;
+                                    const auto video = p.videoThread.currentTime.rescaled_to(audio.rate());
+                                    if (video <= audio)
                                     {
+                                        std::cerr << "decode video "
+                                                  << video
+                                                  << std::endl;
+                                        std::cerr << "decode audio "
+                                                  << audio
+                                                  << std::endl;
                                         // We should not process the first frame or else
                                         // p.info.audio will not be set.
                                         _videoThread(v);
+                                    }
+                                    else
+                                    {
+                                        std::cerr << "skip video "
+                                                  << video
+                                                  << " > "
+                                                  << audio
+                                                  << std::endl;
                                     }
                                 }
                                 
                                 // Release this video frame
                                 NDIlib_recv_free_video(p.NDI_recv, &v);
                             }
-                            if (type_e == NDIlib_frame_type_audio)
+                            else if (type_e == NDIlib_frame_type_audio)
                             {
                                 if (!p.options.noAudio)
                                 {
@@ -193,14 +208,22 @@ namespace tl
                                             p.info.audioTime.start_time();
                                         p.audioThread.logTimer = std::chrono::steady_clock::now();
                                     }
-                                    
+
+                                    std::cerr << "decode audio"
+                                              << std::endl;
                                     _audioThread(a);
+                                    std::cerr << "decoded audio"
+                                              << std::endl;
                                 }
                                 else
                                 {
                                     p.audioThread.currentTime =
                                         p.videoThread.currentTime;
                                 }
+
+                                std::cerr << "p.audioThread.currentTime="
+                                          << p.audioThread.currentTime
+                                          << std::endl;
                                 
                                 // Release this audio frame
                                 NDIlib_recv_free_audio(p.NDI_recv, &a);
@@ -355,10 +378,10 @@ namespace tl
         {
             TLRENDER_P();
 
-            std::shared_ptr<Private::VideoRequest> videoRequest;
-            while(p.videoThread.running && !videoRequest)
+            while(p.videoThread.running)
             {
                 // Check requests.
+                std::shared_ptr<Private::VideoRequest> videoRequest;
                 std::list<std::shared_ptr<Private::InfoRequest> > infoRequests;
                 {
                     std::unique_lock<std::mutex> lock(p.videoMutex.mutex);
@@ -399,6 +422,7 @@ namespace tl
                     {
                         videoRequest->promise.set_value(videoData);
                         videoRequest.reset();
+                        return;
                     }
                 }
 
@@ -436,6 +460,7 @@ namespace tl
                     }
 
                     p.videoThread.currentTime += otime::RationalTime(1.0, p.info.videoTime.duration().rate());
+                    return;
                 }
 
                 // Logging.
