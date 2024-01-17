@@ -109,6 +109,8 @@ namespace tl
                 // so we create a receiver to look at it.
                 NDIlib_recv_create_v3_t recv_desc;
                 recv_desc.color_format = NDIlib_recv_color_format_fastest;
+                recv_desc.bandwidth = NDIlib_recv_bandwidth_highest;
+                recv_desc.allow_video_fields = false;
                 recv_desc.source_to_connect_to = sources[ndiSource];
                 
                 p.NDI_recv = NDIlib_recv_create(&recv_desc);
@@ -150,7 +152,12 @@ namespace tl
                         while (type_e != NDIlib_frame_type_error &&
                                p.decodeThread.running)
                         {
-                            type_e = NDIlib_recv_capture(p.NDI_recv, &v, &a, nullptr, 50);
+                            if (p.options.noAudio)
+                                type_e = NDIlib_recv_capture(
+                                    p.NDI_recv, &v, nullptr, nullptr, 50);
+                            else
+                                type_e = NDIlib_recv_capture(
+                                    p.NDI_recv, &v, &a, nullptr, 50);
                             if (type_e == NDIlib_frame_type_video)
                             {
                                 if (!p.readVideo)
