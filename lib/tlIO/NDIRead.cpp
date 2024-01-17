@@ -16,7 +16,6 @@ namespace tl
     namespace ndi
     {
         std::string Read::Private::sourceName;
-        std::map<std::string, NDIlib_recv_instance_t> Read::Private::NDI_recvs;
         
         void Read::_init(
             const file::Path& path,
@@ -52,15 +51,6 @@ namespace tl
                 else
                     p.options.noAudio = false;
                 s.close();
-            }
-
-            {
-                p.NDI_recv = nullptr;
-                auto i = p.NDI_recvs.find(path.get());
-                if (i != p.NDI_recvs.end())
-                {
-                    p.NDI_recv = i->second;
-                }
             }
                     
             if (!p.NDI_recv)
@@ -116,9 +106,6 @@ namespace tl
                 p.NDI_recv = NDIlib_recv_create(&recv_desc);
                 if (!p.NDI_recv)
                     throw std::runtime_error("Could not create NDI receiver");
-
-
-                p.NDI_recvs[path.get()] = p.NDI_recv;
                 
                 // Get the name of the source for debugging purposes
                 NDIlib_tally_t tally_state;
@@ -248,8 +235,8 @@ namespace tl
                 p.decodeThread.thread.join();
             }
             
-            // Do not destroy receiver as it is kept in the map
-            // NDIlib_recv_destroy(p.NDI_recv);
+            // We destroy receiver as it is kept in the map
+            NDIlib_recv_destroy(p.NDI_recv);
         }
 
         std::shared_ptr<Read> Read::create(
@@ -368,11 +355,11 @@ namespace tl
         {
             TLRENDER_P();
 
-            while(p.videoThread.running)
+            std::shared_ptr<Private::VideoRequest> videoRequest;
+            while(p.videoThread.running && !videoRequest)
             {
                 // Check requests.
                 std::list<std::shared_ptr<Private::InfoRequest> > infoRequests;
-                std::shared_ptr<Private::VideoRequest> videoRequest;
                 {
                     std::unique_lock<std::mutex> lock(p.videoMutex.mutex);
                     if (p.videoThread.cv.wait_for(
@@ -449,7 +436,6 @@ namespace tl
                     }
 
                     p.videoThread.currentTime += otime::RationalTime(1.0, p.info.videoTime.duration().rate());
-                    return;
                 }
 
                 // Logging.
