@@ -95,13 +95,20 @@ if(TLRENDER_NDI AND TLRENDER_FFMPEG)
     list(APPEND HEADERS_PRIVATE NDI.h)
     list(APPEND SOURCE NDI.cpp NDIRead.cpp NDIReadVideo.cpp NDIReadAudio.cpp )
     list(APPEND LIBRARIES_PRIVATE NDI)
-    install(
-	TARGETS NDI
-	LIBRARY DESTINATION lib
-	ARCHIVE DESTINATION lib
-	RUNTIME DESTINATION bin
-	INCLUDES DESTINATION include
-    )
+    if (WIN32)
+	# Additional handling for Windows to copy the DLL
+	execute_process(${CMAKE_COMMAND} -E copy_if_different
+            "${TLRENDER_NDI_SDK}/Bin/x64/Processing.NDI.Lib.x64.dll"
+	    "${CMAKE_INSTALL_PRFIX}/bin")
+    else()
+	install(
+	    TARGETS NDI
+	    LIBRARY DESTINATION lib
+	    ARCHIVE DESTINATION lib
+	    RUNTIME DESTINATION bin
+	    INCLUDES DESTINATION include
+	)
+    endif()
 endif()
 list(APPEND LIBRARIES tlGL)
 
