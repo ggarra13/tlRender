@@ -191,7 +191,7 @@ namespace tl
                 _timeRange.duration().rate());
                 
                 
-            if (time >= currentTime)
+            if (1) //time >= currentTime)
             {
                 DBG("VIDEO time=" << time << " currentTime=" << currentTime);
             
