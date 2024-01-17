@@ -56,7 +56,7 @@ namespace tl
 
             {
                 p.NDI_recv = nullptr;
-                auto i = p.NDI_recvs.find(p.sourceName);
+                auto i = p.NDI_recvs.find(path.get());
                 if (i != p.NDI_recvs.end())
                 {
                     p.NDI_recv = i->second;
@@ -118,7 +118,7 @@ namespace tl
                     throw std::runtime_error("Could not create NDI receiver");
 
 
-                p.NDI_recvs[p.sourceName] = p.NDI_recv;
+                p.NDI_recvs[path.get()] = p.NDI_recv;
                 
                 // Get the name of the source for debugging purposes
                 NDIlib_tally_t tally_state;
