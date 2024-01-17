@@ -95,17 +95,13 @@ if(TLRENDER_NDI AND TLRENDER_FFMPEG)
     list(APPEND HEADERS_PRIVATE NDI.h)
     list(APPEND SOURCE NDI.cpp NDIRead.cpp NDIReadVideo.cpp NDIReadAudio.cpp )
     list(APPEND LIBRARIES_PRIVATE NDI)
-    if(WIN32)
-    elseif(UNIX)
-	# Set the installation destination for the NDI library
-	install(
-	    TARGETS NDI
-	    LIBRARY DESTINATION lib
-	    ARCHIVE DESTINATION lib
-	    RUNTIME DESTINATION bin
-	    INCLUDES DESTINATION include
-	)
-    endif()
+    install(
+	TARGETS NDI
+	LIBRARY DESTINATION lib
+	ARCHIVE DESTINATION lib
+	RUNTIME DESTINATION bin
+	INCLUDES DESTINATION include
+    )
 endif()
 list(APPEND LIBRARIES tlGL)
 

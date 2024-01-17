@@ -52,6 +52,17 @@ if(NDI_FOUND AND NOT TARGET NDI::ndi)
         INTERFACE_COMPILE_DEFINITIONS NDI_FOUND
         INTERFACE_INCLUDE_DIRECTORIES "${NDI_INCLUDE_DIR}"
         INTERFACE_LINK_LIBRARIES "${NDI_LINK_LIBRARIES}")
+    
+    # Additional handling for Windows to copy the DLL
+    if(WIN32)
+        add_custom_command(
+            TARGET NDI::ndi
+            POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${TLRENDER_NDI_SDK}/Bin/x64/Processing.NDI.Lib.x64.dll"
+                $<TARGET_FILE_DIR:NDI::ndi>
+        )
+    endif()
 endif()
 if(NDI_FOUND AND NOT TARGET NDI)
     add_library(NDI INTERFACE)
