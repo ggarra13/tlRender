@@ -234,6 +234,7 @@ namespace tl
         {
             TLRENDER_P();
 
+            p.videoThread.running = false;
             p.decodeThread.running = false;
             if (p.decodeThread.thread.joinable())
             {
@@ -359,109 +360,113 @@ namespace tl
         void Read::_videoThread(const NDIlib_video_frame_t& v)
         {
             TLRENDER_P();
-            
-            // Check requests.
-            std::list<std::shared_ptr<Private::InfoRequest> > infoRequests;
-            std::shared_ptr<Private::VideoRequest> videoRequest;
+
+            while(p.videoThread.running)
             {
-                std::unique_lock<std::mutex> lock(p.videoMutex.mutex);
-                if (p.videoThread.cv.wait_for(
-                        lock,
-                        std::chrono::milliseconds(p.options.requestTimeout),
-                        [this]
-                            {
-                                return
-                                    !_p->videoMutex.infoRequests.empty() ||
-                                    !_p->videoMutex.videoRequests.empty();
-                            }))
+                // Check requests.
+                std::list<std::shared_ptr<Private::InfoRequest> > infoRequests;
+                std::shared_ptr<Private::VideoRequest> videoRequest;
                 {
-                    infoRequests = std::move(p.videoMutex.infoRequests);
-                    if (!p.videoMutex.videoRequests.empty())
+                    std::unique_lock<std::mutex> lock(p.videoMutex.mutex);
+                    if (p.videoThread.cv.wait_for(
+                            lock,
+                            std::chrono::milliseconds(p.options.requestTimeout),
+                            [this]
+                                {
+                                    return
+                                        !_p->videoMutex.infoRequests.empty() ||
+                                        !_p->videoMutex.videoRequests.empty();
+                                }))
                     {
-                        videoRequest = p.videoMutex.videoRequests.front();
-                        p.videoMutex.videoRequests.pop_front();
+                        infoRequests = std::move(p.videoMutex.infoRequests);
+                        if (!p.videoMutex.videoRequests.empty())
+                        {
+                            videoRequest = p.videoMutex.videoRequests.front();
+                            p.videoMutex.videoRequests.pop_front();
+                        }
                     }
                 }
-            }
 
-            // Information requests.
-            for (auto& request : infoRequests)
-            {
-                request->promise.set_value(p.info);
-            }
-
-            // Check the cache.
-            io::VideoData videoData;
-            if (videoRequest && _cache)
-            {
-                const std::string cacheKey = io::Cache::getVideoKey(
-                    _path.get(),
-                    videoRequest->time,
-                    videoRequest->options);
-                if (_cache->getVideo(cacheKey, videoData))
+                // Information requests.
+                for (auto& request : infoRequests)
                 {
-                    videoRequest->promise.set_value(videoData);
-                    videoRequest.reset();
+                    request->promise.set_value(p.info);
                 }
-            }
 
-            // No seeking allowed
-            if (videoRequest &&
-                !time::compareExact(videoRequest->time, p.videoThread.currentTime))
-            {
-                p.videoThread.currentTime = videoRequest->time;
-            }
-
-            // Process.
-            while (videoRequest && p.readVideo->isBufferEmpty() &&
-                   p.readVideo->isValid() &&
-                   p.readVideo->process(p.videoThread.currentTime, v))
-                ;
-
-            // Video request.
-            if (videoRequest)
-            {
-                io::VideoData data;
-                data.time = videoRequest->time;
-                if (!p.readVideo->isBufferEmpty())
-                {
-                    data.image = p.readVideo->popBuffer();
-                }
-                videoRequest->promise.set_value(data);
-                    
-                if (_cache)
+                // Check the cache.
+                io::VideoData videoData;
+                if (videoRequest && _cache)
                 {
                     const std::string cacheKey = io::Cache::getVideoKey(
                         _path.get(),
                         videoRequest->time,
                         videoRequest->options);
-                    _cache->addVideo(cacheKey, data);
+                    if (_cache->getVideo(cacheKey, videoData))
+                    {
+                        videoRequest->promise.set_value(videoData);
+                        videoRequest.reset();
+                    }
                 }
 
-                p.videoThread.currentTime += otime::RationalTime(1.0, p.info.videoTime.duration().rate());
-            }
-
-            // Logging.
-            {
-                const auto now = std::chrono::steady_clock::now();
-                const std::chrono::duration<float> diff = now - p.videoThread.logTimer;
-                if (diff.count() > 10.F)
+                // No seeking allowed
+                if (videoRequest &&
+                    !time::compareExact(videoRequest->time, p.videoThread.currentTime))
                 {
-                    p.videoThread.logTimer = now;
-                    if (auto logSystem = _logSystem.lock())
+                    p.videoThread.currentTime = videoRequest->time;
+                }
+
+                // Process.
+                while (videoRequest && p.readVideo->isBufferEmpty() &&
+                       p.readVideo->isValid() &&
+                       p.readVideo->process(p.videoThread.currentTime, v))
+                    ;
+
+                // Video request.
+                if (videoRequest)
+                {
+                    io::VideoData data;
+                    data.time = videoRequest->time;
+                    if (!p.readVideo->isBufferEmpty())
                     {
-                        const std::string id = string::Format("tl::io::ndi::Read {0}").arg(this);
-                        size_t requestsSize = 0;
+                        data.image = p.readVideo->popBuffer();
+                    }
+                    videoRequest->promise.set_value(data);
+                    
+                    if (_cache)
+                    {
+                        const std::string cacheKey = io::Cache::getVideoKey(
+                            _path.get(),
+                            videoRequest->time,
+                            videoRequest->options);
+                        _cache->addVideo(cacheKey, data);
+                    }
+
+                    p.videoThread.currentTime += otime::RationalTime(1.0, p.info.videoTime.duration().rate());
+                    return;
+                }
+
+                // Logging.
+                {
+                    const auto now = std::chrono::steady_clock::now();
+                    const std::chrono::duration<float> diff = now - p.videoThread.logTimer;
+                    if (diff.count() > 10.F)
+                    {
+                        p.videoThread.logTimer = now;
+                        if (auto logSystem = _logSystem.lock())
                         {
-                            std::unique_lock<std::mutex> lock(p.videoMutex.mutex);
-                            requestsSize = p.videoMutex.videoRequests.size();
+                            const std::string id = string::Format("tl::io::ndi::Read {0}").arg(this);
+                            size_t requestsSize = 0;
+                            {
+                                std::unique_lock<std::mutex> lock(p.videoMutex.mutex);
+                                requestsSize = p.videoMutex.videoRequests.size();
+                            }
+                            logSystem->print(id, string::Format(
+                                                 "\n"
+                                                 "    Path: {0}\n"
+                                                 "    Video requests: {1}").
+                                             arg(_path.get()).
+                                             arg(requestsSize));
                         }
-                        logSystem->print(id, string::Format(
-                                             "\n"
-                                             "    Path: {0}\n"
-                                             "    Video requests: {1}").
-                                         arg(_path.get()).
-                                         arg(requestsSize));
                     }
                 }
             }
