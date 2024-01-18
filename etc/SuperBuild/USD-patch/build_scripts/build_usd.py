@@ -732,7 +732,7 @@ def InstallBoost_Helper(context, force, buildArgs):
     elif IsVisualStudio2022OrGreater():
         BOOST_URL = "https://sourceforge.net/projects/boost/files/boost/1.78.0/boost_1_78_0.zip"
     elif MacOS():
-        BOOST_URL = "https://boostorg.jfrog.io/artifactory/main/release/1.78.0/source/boost_1_78_0.zip"
+        BOOST_URL = "https://sourceforge.net/projects/boost/files/boost/1.78.0/boost_1_78_0.zip"
     else:
         BOOST_URL = "https://sourceforge.net/projects/boost/files/boost/1.78.0/boost_1_78_0.zip"
 

@@ -4,20 +4,53 @@
 
 #pragma once
 
-#include <tlIO/SequenceIO.h>
+#include <tlIO/Plugin.h>
 
-#include <tlCore/FileIO.h>
+#include <Processing.NDI.Lib.h>
+
+// Structs
+#define NDIlib_audio_frame_t NDIlib_audio_frame_v2_t
+#define NDIlib_video_frame_t NDIlib_video_frame_v2_t
+
+// Functions
+#define NDIlib_recv_create   NDIlib_recv_create_v3
+#define NDIlib_recv_capture NDIlib_recv_capture_v2
+#define NDIlib_recv_free_video NDIlib_recv_free_video_v2
+#define NDIlib_recv_free_audio NDIlib_recv_free_audio_v2
+#define NDIlib_util_audio_to_interleaved_16s NDIlib_util_audio_to_interleaved_16s_v2 
+
+#define NDI_TIME_BASE 10000000
+#define NDI_TIME_BASE_Q (AVRational){1, NDI_TIME_BASE}
+
+#define kNDI_MOVIE_DURATION 60.0 * 60.0 * 3.0   // in seconds (3 hours)
+ 
+extern "C"
+{
+#include <libavformat/avformat.h>
+#include <libswscale/swscale.h>
+}
+
+#ifdef _WIN32
+#ifdef _WIN64
+#pragma comment(lib, "Processing.NDI.Lib.x64.lib")
+#else // _WIN64
+#pragma comment(lib, "Processing.NDI.Lib.x86.lib")
+#endif // _WIN64
+#endif // _WIN32
 
 namespace tl
 {
-    //! RAW image I/O.
-    //!
-    //! References:
-    //! https://www.libraw.org/
-    namespace raw
+    //! Ndi video and audio I/O
+    namespace ndi
     {
-        //! RAW reader.
-        class Read : public io::ISequenceRead
+        //! Software scaler flags.
+        const int swsScaleFlags = SWS_FAST_BILINEAR;
+        
+        //! Convert to FFmpeg.
+        AVSampleFormat fromAudioType(audio::DataType);
+        
+        //! NDI reader
+        class Read : public io::IRead
         {
         protected:
             void _init(
@@ -47,21 +80,32 @@ namespace tl
                 const std::shared_ptr<io::Cache>&,
                 const std::weak_ptr<log::System>&);
 
-        protected:
-            io::Info _getInfo(
-                const std::string& fileName,
-                const file::MemoryRead*) override;
-            io::VideoData _readVideo(
-                const std::string& fileName,
-                const file::MemoryRead*,
+            std::future<io::Info> getInfo() override;
+            std::future<io::VideoData> readVideo(
                 const otime::RationalTime&,
-                const io::Options&) override;
+                const io::Options& = io::Options()) override;
+            std::future<io::AudioData> readAudio(
+                const otime::TimeRange&,
+                const io::Options& = io::Options()) override;
+            void cancelRequests() override;
+
+        private:
+            void _videoThread(const NDIlib_video_frame_t& video_frame);
+            void _audioThread(const NDIlib_audio_frame_t& audio_frame);
+            void _cancelVideoRequests();
+            void _cancelAudioRequests();
+
+            TLRENDER_PRIVATE();
         };
 
-        //! RAW plugin.
+        //! Ndi Plugin
         class Plugin : public io::IPlugin
         {
         protected:
+            void _init(
+                const std::shared_ptr<io::Cache>&,
+                const std::weak_ptr<log::System>&);
+
             Plugin();
 
         public:
@@ -92,6 +136,11 @@ namespace tl
                     std::shared_ptr<io::IWrite> out;
                     return out;
                 }
+
+        private:
+            //! \todo What is a better way to access the log system from the
+            //! FFmpeg callback?
+            static std::weak_ptr<log::System> _logSystemWeak;
         };
     }
 }

@@ -20,6 +20,9 @@
 #if defined(TLRENDER_EXR)
 #include <tlIO/OpenEXR.h>
 #endif // TLRENDER_EXR
+#if defined(TLRENDER_NDI)
+#include <tlIO/NDI.h>
+#endif // TLRENDER_NDI
 #if defined(TLRENDER_PNG)
 #include <tlIO/PNG.h>
 #endif // TLRENDER_PNG
@@ -76,6 +79,9 @@ namespace tl
 #if defined(TLRENDER_EXR)
                 _plugins.push_back(exr::Plugin::create(p.cache, logSystem));
 #endif // TLRENDER_EXR
+#if defined(TLRENDER_NDI)
+                _plugins.push_back(ndi::Plugin::create(p.cache, logSystem));
+#endif // TLRENDER_NDI
 #if defined(TLRENDER_PNG)
                 _plugins.push_back(png::Plugin::create(p.cache, logSystem));
 #endif // TLRENDER_PNG
