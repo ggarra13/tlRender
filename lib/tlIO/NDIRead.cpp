@@ -133,18 +133,11 @@ namespace tl
                         NDIlib_audio_frame_t a;
                         NDIlib_frame_type_e type_e = NDIlib_frame_type_none;
 
-                        bool once = true;
-                        double ignore = 0.0;
-                        double preroll = 1000.0;
                         while (type_e != NDIlib_frame_type_error &&
                                p.decodeThread.running)
                         {
-                            if (p.options.noAudio)
-                                type_e = NDIlib_recv_capture(
-                                    p.NDI_recv, &v, nullptr, nullptr, 50);
-                            else
-                                type_e = NDIlib_recv_capture(
-                                    p.NDI_recv, &v, &a, nullptr, 50);
+                            type_e = NDIlib_recv_capture(
+                                p.NDI_recv, &v, &a, nullptr, 50);
                             if (type_e == NDIlib_frame_type_video)
                             {
                                 if (!p.readVideo)
@@ -167,26 +160,15 @@ namespace tl
                                 else
                                 {
                                     const auto audio = p.audioThread.currentTime;
-                                    const auto video = p.videoThread.currentTime.rescaled_to(audio.rate());
-                                    if (video <= audio)
+                                    auto video = p.videoThread.currentTime;
+                                    if (p.readAudio)
+                                        video = video.rescaled_to(audio.rate());
+                                    if (video <= audio || p.options.noAudio)
                                     {
-                                        std::cerr << "decode video "
-                                                  << video
-                                                  << std::endl;
-                                        std::cerr << "decode audio "
-                                                  << audio
-                                                  << std::endl;
-                                        // We should not process the first frame or else
+                                        // We should not process the first
+                                        // frame or else
                                         // p.info.audio will not be set.
                                         _videoThread(v);
-                                    }
-                                    else
-                                    {
-                                        std::cerr << "skip video "
-                                                  << video
-                                                  << " > "
-                                                  << audio
-                                                  << std::endl;
                                     }
                                 }
                                 
@@ -209,21 +191,13 @@ namespace tl
                                         p.audioThread.logTimer = std::chrono::steady_clock::now();
                                     }
 
-                                    std::cerr << "decode audio"
-                                              << std::endl;
                                     _audioThread(a);
-                                    std::cerr << "decoded audio"
-                                              << std::endl;
                                 }
                                 else
                                 {
                                     p.audioThread.currentTime =
                                         p.videoThread.currentTime;
                                 }
-
-                                std::cerr << "p.audioThread.currentTime="
-                                          << p.audioThread.currentTime
-                                          << std::endl;
                                 
                                 // Release this audio frame
                                 NDIlib_recv_free_audio(p.NDI_recv, &a);
@@ -526,6 +500,7 @@ namespace tl
                 if (_cache->getAudio(cacheKey, audioData))
                 {
                     p.audioMutex.currentRequest->promise.set_value(audioData);
+                    p.audioThread.currentTime += p.audioMutex.currentRequest->timeRange.duration();
                     p.audioMutex.currentRequest.reset();
                 }
             }
