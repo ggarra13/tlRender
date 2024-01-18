@@ -500,10 +500,8 @@ namespace tl
                     p.audioMutex.currentRequest->options);
                 if (_cache->getAudio(cacheKey, audioData))
                 {
-                    const auto& timeRange = p.audioMutex.currentRequest->timeRange;
                     p.audioMutex.currentRequest->promise.set_value(audioData);
-                    p.audioThread.currentTime = timeRange.start_time() +
-                                                timeRange.duration();
+                    p.audioThread.currentTime += p.audioMutex.currentRequest->timeRange.duration();
                     p.audioMutex.currentRequest.reset();
                 }
             }
