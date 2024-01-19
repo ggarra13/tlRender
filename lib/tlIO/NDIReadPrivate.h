@@ -67,7 +67,6 @@ namespace tl
 
             // NDI structs
             const std::string _fileName;
-            NDIlib_recv_instance_t pNDI_recv;
             int frame_rate_N = 30000, frame_rate_D = 1001;
 
             // FFmpeg conversion variables
@@ -116,7 +115,6 @@ namespace tl
             Options options;
             
             NDIlib_recv_instance_t NDI_recv = nullptr;
-            static std::map<std::string, NDIlib_recv_instance_t> NDI_recvs;
             static std::string sourceName;
             
             

@@ -16,7 +16,6 @@ namespace tl
     namespace ndi
     {
         std::string Read::Private::sourceName;
-        std::map<std::string, NDIlib_recv_instance_t> Read::Private::NDI_recvs;
         
         void Read::_init(
             const file::Path& path,
@@ -52,15 +51,6 @@ namespace tl
                 else
                     p.options.noAudio = false;
                 s.close();
-            }
-
-            {
-                p.NDI_recv = nullptr;
-                auto i = p.NDI_recvs.find(p.sourceName);
-                if (i != p.NDI_recvs.end())
-                {
-                    p.NDI_recv = i->second;
-                }
             }
                     
             if (!p.NDI_recv)
@@ -109,14 +99,13 @@ namespace tl
                 // so we create a receiver to look at it.
                 NDIlib_recv_create_v3_t recv_desc;
                 recv_desc.color_format = NDIlib_recv_color_format_fastest;
+                recv_desc.bandwidth = NDIlib_recv_bandwidth_highest;
+                recv_desc.allow_video_fields = false;
                 recv_desc.source_to_connect_to = sources[ndiSource];
                 
                 p.NDI_recv = NDIlib_recv_create(&recv_desc);
                 if (!p.NDI_recv)
                     throw std::runtime_error("Could not create NDI receiver");
-
-
-                p.NDI_recvs[p.sourceName] = p.NDI_recv;
                 
                 // Get the name of the source for debugging purposes
                 NDIlib_tally_t tally_state;
@@ -144,13 +133,11 @@ namespace tl
                         NDIlib_audio_frame_t a;
                         NDIlib_frame_type_e type_e = NDIlib_frame_type_none;
 
-                        bool once = true;
-                        double ignore = 0.0;
-                        double preroll = 1000.0;
                         while (type_e != NDIlib_frame_type_error &&
                                p.decodeThread.running)
                         {
-                            type_e = NDIlib_recv_capture(p.NDI_recv, &v, &a, nullptr, 50);
+                            type_e = NDIlib_recv_capture(
+                                p.NDI_recv, &v, &a, nullptr, 50);
                             if (type_e == NDIlib_frame_type_video)
                             {
                                 if (!p.readVideo)
@@ -172,10 +159,14 @@ namespace tl
                                 }
                                 else
                                 {
-                                    if (p.videoThread.currentTime <=
-                                        p.audioThread.currentTime)
+                                    const auto audio = p.audioThread.currentTime;
+                                    auto video = p.videoThread.currentTime;
+                                    if (p.readAudio)
+                                        video = video.rescaled_to(audio.rate());
+                                    if (video <= audio || p.options.noAudio)
                                     {
-                                        // We should not process the first frame or else
+                                        // We should not process the first
+                                        // frame or else
                                         // p.info.audio will not be set.
                                         _videoThread(v);
                                     }
@@ -184,7 +175,7 @@ namespace tl
                                 // Release this video frame
                                 NDIlib_recv_free_video(p.NDI_recv, &v);
                             }
-                            if (type_e == NDIlib_frame_type_audio)
+                            else if (type_e == NDIlib_frame_type_audio)
                             {
                                 if (!p.options.noAudio)
                                 {
@@ -199,7 +190,7 @@ namespace tl
                                             p.info.audioTime.start_time();
                                         p.audioThread.logTimer = std::chrono::steady_clock::now();
                                     }
-                                    
+
                                     _audioThread(a);
                                 }
                                 else
@@ -234,14 +225,15 @@ namespace tl
         {
             TLRENDER_P();
 
+            p.videoThread.running = false;
             p.decodeThread.running = false;
             if (p.decodeThread.thread.joinable())
             {
                 p.decodeThread.thread.join();
             }
             
-            // Do not destroy receiver as it is kept in the map
-            // NDIlib_recv_destroy(p.NDI_recv);
+            // We destroy receiver as it is kept in the map
+            NDIlib_recv_destroy(p.NDI_recv);
         }
 
         std::shared_ptr<Read> Read::create(
@@ -359,109 +351,115 @@ namespace tl
         void Read::_videoThread(const NDIlib_video_frame_t& v)
         {
             TLRENDER_P();
-            
-            // Check requests.
-            std::list<std::shared_ptr<Private::InfoRequest> > infoRequests;
-            std::shared_ptr<Private::VideoRequest> videoRequest;
+
+            while(p.videoThread.running)
             {
-                std::unique_lock<std::mutex> lock(p.videoMutex.mutex);
-                if (p.videoThread.cv.wait_for(
-                        lock,
-                        std::chrono::milliseconds(p.options.requestTimeout),
-                        [this]
-                            {
-                                return
-                                    !_p->videoMutex.infoRequests.empty() ||
-                                    !_p->videoMutex.videoRequests.empty();
-                            }))
+                // Check requests.
+                std::shared_ptr<Private::VideoRequest> videoRequest;
+                std::list<std::shared_ptr<Private::InfoRequest> > infoRequests;
                 {
-                    infoRequests = std::move(p.videoMutex.infoRequests);
-                    if (!p.videoMutex.videoRequests.empty())
+                    std::unique_lock<std::mutex> lock(p.videoMutex.mutex);
+                    if (p.videoThread.cv.wait_for(
+                            lock,
+                            std::chrono::milliseconds(p.options.requestTimeout),
+                            [this]
+                                {
+                                    return
+                                        !_p->videoMutex.infoRequests.empty() ||
+                                        !_p->videoMutex.videoRequests.empty();
+                                }))
                     {
-                        videoRequest = p.videoMutex.videoRequests.front();
-                        p.videoMutex.videoRequests.pop_front();
+                        infoRequests = std::move(p.videoMutex.infoRequests);
+                        if (!p.videoMutex.videoRequests.empty())
+                        {
+                            videoRequest = p.videoMutex.videoRequests.front();
+                            p.videoMutex.videoRequests.pop_front();
+                        }
                     }
                 }
-            }
 
-            // Information requests.
-            for (auto& request : infoRequests)
-            {
-                request->promise.set_value(p.info);
-            }
-
-            // Check the cache.
-            io::VideoData videoData;
-            if (videoRequest && _cache)
-            {
-                const std::string cacheKey = io::Cache::getVideoKey(
-                    _path.get(),
-                    videoRequest->time,
-                    videoRequest->options);
-                if (_cache->getVideo(cacheKey, videoData))
+                // Information requests.
+                for (auto& request : infoRequests)
                 {
-                    videoRequest->promise.set_value(videoData);
-                    videoRequest.reset();
+                    request->promise.set_value(p.info);
                 }
-            }
 
-            // No seeking allowed
-            if (videoRequest &&
-                !time::compareExact(videoRequest->time, p.videoThread.currentTime))
-            {
-                p.videoThread.currentTime = videoRequest->time;
-            }
-
-            // Process.
-            while (videoRequest && p.readVideo->isBufferEmpty() &&
-                   p.readVideo->isValid() &&
-                   p.readVideo->process(p.videoThread.currentTime, v))
-                ;
-
-            // Video request.
-            if (videoRequest)
-            {
-                io::VideoData data;
-                data.time = videoRequest->time;
-                if (!p.readVideo->isBufferEmpty())
-                {
-                    data.image = p.readVideo->popBuffer();
-                }
-                videoRequest->promise.set_value(data);
-                    
-                if (_cache)
+                // Check the cache.
+                io::VideoData videoData;
+                if (videoRequest && _cache)
                 {
                     const std::string cacheKey = io::Cache::getVideoKey(
                         _path.get(),
                         videoRequest->time,
                         videoRequest->options);
-                    _cache->addVideo(cacheKey, data);
+                    if (_cache->getVideo(cacheKey, videoData))
+                    {
+                        p.videoThread.currentTime = videoRequest->time;
+                        videoRequest->promise.set_value(videoData);
+                        videoRequest.reset();
+                        return;
+                    }
                 }
 
-                p.videoThread.currentTime += otime::RationalTime(1.0, p.info.videoTime.duration().rate());
-            }
-
-            // Logging.
-            {
-                const auto now = std::chrono::steady_clock::now();
-                const std::chrono::duration<float> diff = now - p.videoThread.logTimer;
-                if (diff.count() > 10.F)
+                // No seeking allowed
+                if (videoRequest &&
+                    !time::compareExact(videoRequest->time, p.videoThread.currentTime))
                 {
-                    p.videoThread.logTimer = now;
-                    if (auto logSystem = _logSystem.lock())
+                    p.videoThread.currentTime = videoRequest->time;
+                }
+
+                // Process.
+                while (videoRequest && p.readVideo->isBufferEmpty() &&
+                       p.readVideo->isValid() &&
+                       p.readVideo->process(p.videoThread.currentTime, v))
+                    ;
+
+                // Video request.
+                if (videoRequest)
+                {
+                    io::VideoData data;
+                    data.time = videoRequest->time;
+                    if (!p.readVideo->isBufferEmpty())
                     {
-                        const std::string id = string::Format("tl::io::ndi::Read {0}").arg(this);
-                        size_t requestsSize = 0;
+                        data.image = p.readVideo->popBuffer();
+                    }
+                    videoRequest->promise.set_value(data);
+                    
+                    if (_cache)
+                    {
+                        const std::string cacheKey = io::Cache::getVideoKey(
+                            _path.get(),
+                            videoRequest->time,
+                            videoRequest->options);
+                        _cache->addVideo(cacheKey, data);
+                    }
+
+                    p.videoThread.currentTime += otime::RationalTime(1.0, p.info.videoTime.duration().rate());
+                    return;
+                }
+
+                // Logging.
+                {
+                    const auto now = std::chrono::steady_clock::now();
+                    const std::chrono::duration<float> diff = now - p.videoThread.logTimer;
+                    if (diff.count() > 10.F)
+                    {
+                        p.videoThread.logTimer = now;
+                        if (auto logSystem = _logSystem.lock())
                         {
-                            std::unique_lock<std::mutex> lock(p.videoMutex.mutex);
-                            requestsSize = p.videoMutex.videoRequests.size();
+                            const std::string id = string::Format("tl::io::ndi::Read {0}").arg(this);
+                            size_t requestsSize = 0;
+                            {
+                                std::unique_lock<std::mutex> lock(p.videoMutex.mutex);
+                                requestsSize = p.videoMutex.videoRequests.size();
+                            }
+                            logSystem->print(id, string::Format(
+                                                 "\n"
+                                                 "    Path: {0}\n"
+                                                 "    Video requests: {1}").
+                                             arg(_path.get()).
+                                             arg(requestsSize));
                         }
-                        logSystem->print(id, string::Format(
-                                             "\n"
-                                             "    Path: {0}\n"
-                                             "    Video requests: {1}").
-                                         arg(_path.get()).
-                                         arg(requestsSize));
                     }
                 }
             }
@@ -503,6 +501,7 @@ namespace tl
                 if (_cache->getAudio(cacheKey, audioData))
                 {
                     p.audioMutex.currentRequest->promise.set_value(audioData);
+                    p.audioThread.currentTime += p.audioMutex.currentRequest->timeRange.duration();
                     p.audioMutex.currentRequest.reset();
                 }
             }
