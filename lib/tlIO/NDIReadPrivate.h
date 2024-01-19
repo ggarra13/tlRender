@@ -11,7 +11,6 @@ extern "C"
 {
 #include <libavutil/mathematics.h>
 #include <libavcodec/avcodec.h>
-#include <libswresample/swresample.h>  
 } // extern "C"
 
 
@@ -97,7 +96,6 @@ namespace tl
             Options _options;
             audio::Info _info;
             otime::TimeRange _timeRange = time::invalidTimeRange;
-            SwrContext* _swrContext = nullptr;
             std::list<std::shared_ptr<audio::Audio> > _buffer;
         };
 
