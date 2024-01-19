@@ -20,7 +20,7 @@ typedef int64_t LONGLONG;
 
 namespace tl
 {
-    namespace device
+    namespace bmd
     {
         class DLIteratorWrapper
         {
@@ -184,3 +184,4 @@ namespace tl
         };
     }
 }
+

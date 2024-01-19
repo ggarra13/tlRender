@@ -8,7 +8,6 @@
 
 #include <tlTimelineGL/Render.h>
 
-#include <tlGL/GL.h>
 #include <tlGL/GLFWWindow.h>
 #include <tlGL/OffscreenBuffer.h>
 #include <tlGL/Texture.h>
@@ -31,14 +30,14 @@
 
 namespace tl
 {
-    namespace device
+    namespace bmd
     {
         namespace
         {
             const std::chrono::milliseconds timeout(5);
         }
 
-        struct BMDOutputDevice::Private
+        struct OutputDevice::Private
         {
             std::weak_ptr<system::Context> context;
             std::shared_ptr<observer::Value<DeviceConfig> > config;
@@ -77,6 +76,7 @@ namespace tl
                 otime::RationalTime currentTime = time::invalidTime;
                 std::vector<image::Size> sizes;
                 std::vector<timeline::VideoData> videoData;
+                std::shared_ptr<image::Image> overlay;
                 float volume = 1.F;
                 bool mute = false;
                 double audioOffset = 0.0;
@@ -99,10 +99,12 @@ namespace tl
                 otime::TimeRange timeRange = time::invalidTimeRange;
                 std::vector<image::Size> sizes;
                 std::vector<timeline::VideoData> videoData;
+                std::shared_ptr<image::Image> overlay;
 
                 std::shared_ptr<timeline::IRender> render;
                 std::shared_ptr<gl::OffscreenBuffer> offscreenBuffer;
                 GLuint pbo = 0;
+
                 std::condition_variable cv;
                 std::thread thread;
                 std::atomic<bool> running;
@@ -110,7 +112,7 @@ namespace tl
             Thread thread;
         };
 
-        void BMDOutputDevice::_init(const std::shared_ptr<system::Context>& context)
+        void OutputDevice::_init(const std::shared_ptr<system::Context>& context)
         {
             TLRENDER_P();
 
@@ -122,7 +124,7 @@ namespace tl
             p.frameRate = observer::Value<otime::RationalTime>::create(time::invalidTime);
 
             p.window = gl::GLFWWindow::create(
-                "tl::device::BMDOutputDevice",
+                "tl::bmd::OutputDevice",
                 math::Size2i(1, 1),
                 context,
                 static_cast<int>(gl::GLFWWindowOptions::None));
@@ -140,7 +142,7 @@ namespace tl
                         if (auto context = p.context.lock())
                         {
                             context->log(
-                                "tl::device::BMDOutputDevice",
+                                "tl::bmd::OutputDevice",
                                 string::Format("Cannot make the OpenGL context current: {0}").
                                 arg(e.what()),
                                 log::Type::Error);
@@ -151,11 +153,11 @@ namespace tl
                 });
         }
 
-        BMDOutputDevice::BMDOutputDevice() :
+        OutputDevice::OutputDevice() :
             _p(new Private)
         {}
 
-        BMDOutputDevice::~BMDOutputDevice()
+        OutputDevice::~OutputDevice()
         {
             TLRENDER_P();
             p.thread.running = false;
@@ -165,25 +167,25 @@ namespace tl
             }
         }
 
-        std::shared_ptr<BMDOutputDevice> BMDOutputDevice::create(
+        std::shared_ptr<OutputDevice> OutputDevice::create(
             const std::shared_ptr<system::Context>& context)
         {
-            auto out = std::shared_ptr<BMDOutputDevice>(new BMDOutputDevice);
+            auto out = std::shared_ptr<OutputDevice>(new OutputDevice);
             out->_init(context);
             return out;
         }
 
-        DeviceConfig BMDOutputDevice::getConfig() const
+        DeviceConfig OutputDevice::getConfig() const
         {
             return _p->config->get();
         }
 
-        std::shared_ptr<observer::IValue<DeviceConfig> > BMDOutputDevice::observeConfig() const
+        std::shared_ptr<observer::IValue<DeviceConfig> > OutputDevice::observeConfig() const
         {
             return _p->config;
         }
 
-        void BMDOutputDevice::setConfig(const DeviceConfig& value)
+        void OutputDevice::setConfig(const DeviceConfig& value)
         {
             TLRENDER_P();
             if (p.config->setIfChanged(value))
@@ -196,17 +198,17 @@ namespace tl
             }
         }
 
-        bool BMDOutputDevice::isEnabled() const
+        bool OutputDevice::isEnabled() const
         {
             return _p->enabled->get();
         }
 
-        std::shared_ptr<observer::IValue<bool> > BMDOutputDevice::observeEnabled() const
+        std::shared_ptr<observer::IValue<bool> > OutputDevice::observeEnabled() const
         {
             return _p->enabled;
         }
 
-        void BMDOutputDevice::setEnabled(bool value)
+        void OutputDevice::setEnabled(bool value)
         {
             TLRENDER_P();
             if (p.enabled->setIfChanged(value))
@@ -219,37 +221,37 @@ namespace tl
             }
         }
 
-        bool BMDOutputDevice::isActive() const
+        bool OutputDevice::isActive() const
         {
             return _p->active->get();
         }
 
-        std::shared_ptr<observer::IValue<bool> > BMDOutputDevice::observeActive() const
+        std::shared_ptr<observer::IValue<bool> > OutputDevice::observeActive() const
         {
             return _p->active;
         }
 
-        const math::Size2i& BMDOutputDevice::getSize() const
+        const math::Size2i& OutputDevice::getSize() const
         {
             return _p->size->get();
         }
 
-        std::shared_ptr<observer::IValue<math::Size2i> > BMDOutputDevice::observeSize() const
+        std::shared_ptr<observer::IValue<math::Size2i> > OutputDevice::observeSize() const
         {
             return _p->size;
         }
 
-        const otime::RationalTime& BMDOutputDevice::getFrameRate() const
+        const otime::RationalTime& OutputDevice::getFrameRate() const
         {
             return _p->frameRate->get();
         }
 
-        std::shared_ptr<observer::IValue<otime::RationalTime> > BMDOutputDevice::observeFrameRate() const
+        std::shared_ptr<observer::IValue<otime::RationalTime> > OutputDevice::observeFrameRate() const
         {
             return _p->frameRate;
         }
 
-        void BMDOutputDevice::setView(
+        void OutputDevice::setView(
             const tl::math::Vector2i& position,
             double                    zoom,
             bool                      frame)
@@ -264,7 +266,7 @@ namespace tl
             p.thread.cv.notify_one();
         }
 
-        void BMDOutputDevice::setOCIOOptions(const timeline::OCIOOptions& value)
+        void OutputDevice::setOCIOOptions(const timeline::OCIOOptions& value)
         {
             TLRENDER_P();
             {
@@ -274,7 +276,7 @@ namespace tl
             p.thread.cv.notify_one();
         }
 
-        void BMDOutputDevice::setLUTOptions(const timeline::LUTOptions& value)
+        void OutputDevice::setLUTOptions(const timeline::LUTOptions& value)
         {
             TLRENDER_P();
             {
@@ -284,7 +286,7 @@ namespace tl
             p.thread.cv.notify_one();
         }
 
-        void BMDOutputDevice::setImageOptions(const std::vector<timeline::ImageOptions>& value)
+        void OutputDevice::setImageOptions(const std::vector<timeline::ImageOptions>& value)
         {
             TLRENDER_P();
             {
@@ -294,7 +296,7 @@ namespace tl
             p.thread.cv.notify_one();
         }
 
-        void BMDOutputDevice::setDisplayOptions(const std::vector<timeline::DisplayOptions>& value)
+        void OutputDevice::setDisplayOptions(const std::vector<timeline::DisplayOptions>& value)
         {
             TLRENDER_P();
             {
@@ -304,7 +306,7 @@ namespace tl
             p.thread.cv.notify_one();
         }
 
-        void BMDOutputDevice::setHDR(HDRMode hdrMode, const image::HDRData& hdrData)
+        void OutputDevice::setHDR(HDRMode hdrMode, const image::HDRData& hdrData)
         {
             TLRENDER_P();
             {
@@ -315,7 +317,7 @@ namespace tl
             p.thread.cv.notify_one();
         }
 
-        void BMDOutputDevice::setCompareOptions(const timeline::CompareOptions& value)
+        void OutputDevice::setCompareOptions(const timeline::CompareOptions& value)
         {
             TLRENDER_P();
             {
@@ -325,7 +327,17 @@ namespace tl
             p.thread.cv.notify_one();
         }
 
-        void BMDOutputDevice::setVolume(float value)
+        void OutputDevice::setOverlay(const std::shared_ptr<image::Image>& value)
+        {
+            TLRENDER_P();
+            {
+                std::unique_lock<std::mutex> lock(p.mutex.mutex);
+                p.mutex.overlay = value;
+            }
+            p.thread.cv.notify_one();
+        }
+
+        void OutputDevice::setVolume(float value)
         {
             TLRENDER_P();
             {
@@ -335,7 +347,7 @@ namespace tl
             p.thread.cv.notify_one();
         }
 
-        void BMDOutputDevice::setMute(bool value)
+        void OutputDevice::setMute(bool value)
         {
             TLRENDER_P();
             {
@@ -345,7 +357,7 @@ namespace tl
             p.thread.cv.notify_one();
         }
 
-        void BMDOutputDevice::setAudioOffset(double value)
+        void OutputDevice::setAudioOffset(double value)
         {
             TLRENDER_P();
             {
@@ -355,7 +367,7 @@ namespace tl
             p.thread.cv.notify_one();
         }
 
-        void BMDOutputDevice::setPlayers(const std::vector<std::shared_ptr<timeline::Player> >& value)
+        void OutputDevice::setPlayers(const std::vector<std::shared_ptr<timeline::Player> >& value)
         {
             TLRENDER_P();
             if (value == p.players)
@@ -370,7 +382,7 @@ namespace tl
 
             if (!p.players.empty() && p.players.front())
             {
-                auto weak = std::weak_ptr<BMDOutputDevice>(shared_from_this());
+                auto weak = std::weak_ptr<OutputDevice>(shared_from_this());
                 p.playbackObserver = observer::ValueObserver<timeline::Playback>::create(
                     p.players.front()->observePlayback(),
                     [weak](timeline::Playback value)
@@ -470,7 +482,7 @@ namespace tl
             }
         }
 
-        void BMDOutputDevice::tick()
+        void OutputDevice::tick()
         {
             TLRENDER_P();
             bool active = false;
@@ -487,7 +499,7 @@ namespace tl
             p.frameRate->setIfChanged(frameRate);
         }
 
-        void BMDOutputDevice::_run()
+        void OutputDevice::_run()
         {
             TLRENDER_P();
 
@@ -504,6 +516,7 @@ namespace tl
             bool mute = false;
             double audioOffset = 0.0;
             std::vector<timeline::AudioData> audioData;
+            std::shared_ptr<image::Image> overlay;
 
             if (auto context = p.context.lock())
             {
@@ -515,7 +528,6 @@ namespace tl
             {
                 bool createDevice = false;
                 bool doRender = false;
-                bool overlayChanged = false;
                 bool audioDataChanged = false;
                 {
                     std::unique_lock<std::mutex> lock(p.mutex.mutex);
@@ -546,6 +558,7 @@ namespace tl
                                 currentTime != _p->mutex.currentTime ||
                                 _p->thread.sizes != _p->mutex.sizes ||
                                 _p->thread.videoData != _p->mutex.videoData ||
+                                _p->thread.overlay != _p->mutex.overlay ||
                                 volume != _p->mutex.volume ||
                                 mute != _p->mutex.mute ||
                                 audioOffset != _p->mutex.audioOffset ||
@@ -575,7 +588,8 @@ namespace tl
                             p.thread.viewZoom != p.mutex.viewZoom ||
                             p.thread.frameView != p.mutex.frameView ||
                             p.thread.sizes != p.mutex.sizes ||
-                            p.thread.videoData != p.mutex.videoData;
+                            p.thread.videoData != p.mutex.videoData ||
+                            p.thread.overlay != p.mutex.overlay;
                         ocioOptions = p.mutex.ocioOptions;
                         lutOptions = p.mutex.lutOptions;
                         imageOptions = p.mutex.imageOptions;
@@ -588,6 +602,7 @@ namespace tl
                         p.thread.frameView = p.mutex.frameView;
                         p.thread.sizes = p.mutex.sizes;
                         p.thread.videoData = p.mutex.videoData;
+                        p.thread.overlay = p.mutex.overlay;
 
                         audioDataChanged =
                             createDevice ||
@@ -624,7 +639,7 @@ namespace tl
                             if (auto context = p.context.lock())
                             {
                                 context->log(
-                                    "tl::device::BMDOutputDevice",
+                                    "tl::bmd::OutputDevice",
                                     e.what(),
                                     log::Type::Error);
                             }
@@ -663,7 +678,7 @@ namespace tl
                         if (auto context = p.context.lock())
                         {
                             context->log(
-                                "tl::device::BMDOutputDevice",
+                                "tl::bmd::OutputDevice",
                                 e.what(),
                                 log::Type::Error);
                         }
@@ -709,7 +724,7 @@ namespace tl
             p.thread.dl.reset();
         }
 
-        void BMDOutputDevice::_createDevice(
+        void OutputDevice::_createDevice(
             const DeviceConfig& config,
             bool& active,
             math::Size2i& size,
@@ -777,7 +792,7 @@ namespace tl
                     BOOL value = 0;
                     p.thread.dl->config->GetFlag(bmdDeckLinkConfig444SDIVideoOutput, &value);
                     context->log(
-                        "tl::device::BMDOutputDevice",
+                        "tl::bmd::OutputDevice",
                         string::Format("444 SDI output: {0}").arg(value));
                 }
 
@@ -828,7 +843,7 @@ namespace tl
                     if (auto context = p.context.lock())
                     {
                         context->log(
-                            "tl::device::BMDOutputDevice",
+                            "tl::bmd::OutputDevice",
                             string::Format(
                                 "\n"
                                 "    #{0} {1}\n"
@@ -895,7 +910,7 @@ namespace tl
             }
         }
 
-        void BMDOutputDevice::_render(
+        void OutputDevice::_render(
             const DeviceConfig& config,
             const timeline::OCIOOptions& ocioOptions,
             const timeline::LUTOptions& lutOptions,
@@ -963,6 +978,21 @@ namespace tl
                     imageOptions,
                     displayOptions,
                     compareOptions);
+                if (p.thread.overlay)
+                {
+                    p.thread.render->setTransform(pm);
+                    timeline::ImageOptions imageOptions;
+                    imageOptions.alphaBlend = timeline::AlphaBlend::Premultiplied;
+                    p.thread.render->drawImage(
+                        p.thread.overlay,
+                        math::Box2i(
+                            0,
+                            0,
+                            p.thread.overlay->getWidth(),
+                            p.thread.overlay->getHeight()),
+                        image::Color4f(1.F, 1.F, 1.F),
+                        imageOptions);
+                }
 
                 p.thread.render->end();
 
@@ -979,7 +1009,7 @@ namespace tl
             }
         }
 
-        void BMDOutputDevice::_read()
+        void OutputDevice::_read()
         {
             TLRENDER_P();
 
