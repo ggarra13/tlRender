@@ -12,12 +12,15 @@ jobs:
       TLRENDER_GLFW: ON
       TLRENDER_OCIO: ON
       TLRENDER_AUDIO: ON
+      TLRENDER_ASAN: OFF
       TLRENDER_JPEG: ON
       TLRENDER_TIFF: ON
       TLRENDER_STB: ON
       TLRENDER_PNG: ON
       TLRENDER_EXR: ON
       TLRENDER_FFMPEG: ON
+      TLRENDER_X11: ON
+      TLRENDER_WAYLAND: ON
       TLRENDER_USD: OFF
       TLRENDER_NFD: OFF
       TLRENDER_QT5: ON
@@ -78,6 +81,9 @@ jobs:
       TLRENDER_PNG: OFF
       TLRENDER_EXR: OFF
       TLRENDER_FFMPEG: OFF
+      TLRENDER_X11: ON
+      TLRENDER_WAYLAND: OFF
+      TLRENDER_ASAN: OFF
       TLRENDER_USD: OFF
       TLRENDER_NFD: OFF
       TLRENDER_QT5: OFF
@@ -90,7 +96,7 @@ jobs:
     - uses: actions/setup-python@v5
       with:
         python-version: '3.11'
-
+      
     - name: Setup environment
       run: |
         echo "$PWD/build/install/bin" >> $GITHUB_PATH
@@ -122,6 +128,8 @@ jobs:
       TLRENDER_STB: OFF
       TLRENDER_PNG: OFF
       TLRENDER_EXR: OFF
+      TLRENDER_X11: OFF
+      TLRENDER_WAYLAND: ON
       TLRENDER_FFMPEG: OFF
       TLRENDER_USD: OFF
       TLRENDER_NFD: OFF
