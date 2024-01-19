@@ -10,8 +10,11 @@
 # This module defines the following imported targets:
 #
 # * tlRender::tlCore
+# * tlRender::tlBaseApp
+# * tlRender::tlPlay
 # * tlRender::tlIO
 # * tlRender::tlTimeline
+# * tlRender::tlTimelineGL
 # * tlRender::tlDevice
 # * tlRender::tlGL
 # * tlRender::glad
@@ -83,6 +86,7 @@ endif()
 
 if(CMAKE_BUILD_TYPE MATCHES "^Debug$")
     find_library(tlRender_tlCore_LIBRARY NAMES tlCore)
+    find_library(tlRender_tlBaseApp_LIBRARY NAMES tlBaseApp)
     find_library(tlRender_tlPlay_LIBRARY NAMES tlPlay)
     find_library(tlRender_tlIO_LIBRARY NAMES tlIO)
     find_library(tlRender_tlTimeline_LIBRARY NAMES tlTimeline)
@@ -92,6 +96,7 @@ if(CMAKE_BUILD_TYPE MATCHES "^Debug$")
     find_library(tlRender_glad_LIBRARY NAMES glad)
 else()
     find_library(tlRender_tlCore_LIBRARY NAMES tlCore)
+    find_library(tlRender_tlBaseApp_LIBRARY NAMES tlBaseApp)
     find_library(tlRender_tlPlay_LIBRARY NAMES tlPlay)
     find_library(tlRender_tlIO_LIBRARY NAMES tlIO)
     find_library(tlRender_tlTimeline_LIBRARY NAMES tlTimeline)
@@ -104,9 +109,11 @@ endif()
 set(tlRender_LIBRARIES
     ${tlRender_tlCore_LIBRARY}
     ${tlRender_tlIO_LIBRARY}
+    ${tlRender_tlBaseApp_LIBRARY}
     ${tlRender_tlPlay_LIBRARY}
     ${tlRender_tlTimeline_LIBRARY}
     ${tlRender_tlDevice_LIBRARY}
+    ${tlRender_tlTimelineGL_LIBRARY}
     ${tlRender_tlGL_LIBRARY}
     ${tlRender_glad_LIBRARY}
     ${Imath_LIBRARIES}
@@ -130,8 +137,10 @@ find_package_handle_standard_args(
         tlRender_INCLUDE_DIR
         tlRender_tlCore_LIBRARY
         tlRender_tlPlay_LIBRARY
+        tlRender_tlBaseApp_LIBRARY
         tlRender_tlIO_LIBRARY
         tlRender_tlTimeline_LIBRARY
+        tlRender_tlTimelineGL_LIBRARY
         tlRender_tlDevice_LIBRARY
         tlRender_tlGL_LIBRARY
         tlRender_glad_LIBRARY)
@@ -140,7 +149,9 @@ mark_as_advanced(
     tlRender_tlCore_LIBRARY
     tlRender_tlPlay_LIBRARY
     tlRender_tlIO_LIBRARY
+    tlRender_tlBaseApp_LIBRARY
     tlRender_tlTimeline_LIBRARY
+    tlRender_tlTimelineGL_LIBRARY
     tlRender_tlDevice_LIBRARY
     tlRender_tlGL_LIBRARY
     tlRender_glad_LIBRARY)
@@ -148,6 +159,7 @@ mark_as_advanced(
 set(tlRender_tlCore_LIBRARIES "OTIO;Imath::Imath;Freetype::Freetype;nlohmann_json::nlohmann_json" )
 if (OpenColorIO_FOUND)
     list(APPEND tlRender_tlCore_LIBRARIES OpenColorIO::OpenColorIO)
+    list(APPEND tlRender_tlTimelineGL_LIBRARIES "tlRender::tlTimeline;OpenColorIO::OpenColorIO")
 endif()
 if (RtAudio_FOUND)
     list(APPEND tlRender_tlCore_LIBRARIES RtAudio)
@@ -163,7 +175,7 @@ if (OpenEXR_FOUND)
     list(APPEND tlRender_tlIO_LIBRARIES OpenEXR::OpenEXR)
 endif()
 if (FFmpeg_FOUND)
-    list(APPEND tlRender_tlIO_LIBRARIES FFmpeg nlohmann_json::nlohmann_json)
+    list(APPEND tlRender_tlIO_LIBRARIES FFmpeg tlRender::tlCore)
 endif()
 if (LibRaw_FOUND)
     list(APPEND tlRender_tlIO_LIBRARIES LibRaw)
@@ -191,6 +203,14 @@ if(tlRender_FOUND AND NOT TARGET tlRender::tlIO)
         INTERFACE_INCLUDE_DIRECTORIES "${tlRender_INCLUDE_DIR}"
         INTERFACE_LINK_LIBRARIES "${tlRender_tlIO_LIBRARIES}")
 endif()
+if(tlRender_FOUND AND NOT TARGET tlRender::tlBaseApp)
+    add_library(tlRender::tlBaseApp UNKNOWN IMPORTED)
+    set_target_properties(tlRender::tlBaseApp PROPERTIES
+        IMPORTED_LOCATION "${tlRender_tlBaseApp_LIBRARY}"
+        INTERFACE_COMPILE_DEFINITIONS "${tlRender_COMPILE_DEFINITIONS}"
+        INTERFACE_INCLUDE_DIRECTORIES "${tlRender_INCLUDE_DIR}"
+        INTERFACE_LINK_LIBRARIES "${tlRender_tlBaseApp_LIBRARIES}")
+endif()
 if(tlRender_FOUND AND NOT TARGET tlRender::tlPlay)
     add_library(tlRender::tlPlay UNKNOWN IMPORTED)
     set_target_properties(tlRender::tlPlay PROPERTIES
@@ -204,7 +224,8 @@ if(tlRender_FOUND AND NOT TARGET tlRender::tlTimeline)
     set_target_properties(tlRender::tlTimeline PROPERTIES
         IMPORTED_LOCATION "${tlRender_tlTimeline_LIBRARY}"
         INTERFACE_COMPILE_DEFINITIONS "${tlRender_COMPILE_DEFINITIONS}"
-        INTERFACE_INCLUDE_DIRECTORIES "${tlRender_INCLUDE_DIR}")
+        INTERFACE_INCLUDE_DIRECTORIES "${tlRender_INCLUDE_DIR}"
+        INTERFACE_LINK_LIBRARIES "${tlRender_tTimeline_LIBRARIES}")
 endif()
 if(tlRender_FOUND AND NOT TARGET tlRender::tlDevice)
     add_library(tlRender::tlDevice UNKNOWN IMPORTED)
@@ -221,11 +242,12 @@ if(tlRender_FOUND AND NOT TARGET tlRender::tlGL)
         INTERFACE_INCLUDE_DIRECTORIES "${tlRender_INCLUDE_DIR}")
 endif()
 if(tlRender_FOUND AND NOT TARGET tlRender::tlTimelineGL)
-    add_library(tlRender::tlTimeline UNKNOWN IMPORTED)
+    add_library(tlRender::tlTimelineGL UNKNOWN IMPORTED)
     set_target_properties(tlRender::tlTimelineGL PROPERTIES
         IMPORTED_LOCATION "${tlRender_tlTimelineGL_LIBRARY}"
         INTERFACE_COMPILE_DEFINITIONS "${tlRender_COMPILE_DEFINITIONS}"
-        INTERFACE_INCLUDE_DIRECTORIES "${tlRender_INCLUDE_DIR}")
+        INTERFACE_INCLUDE_DIRECTORIES "${tlRender_INCLUDE_DIR}"
+        INTERFACE_LINK_LIBRARIES "${tlRender_tlTimelineGL_LIBRARIES}")
 endif()
 if(tlRender_FOUND AND NOT TARGET tlRender::glad)
     add_library(tlRender::glad UNKNOWN IMPORTED)
@@ -238,6 +260,7 @@ if(tlRender_FOUND AND NOT TARGET tlRender)
     add_library(tlRender INTERFACE)
     target_link_libraries(tlRender INTERFACE tlRender::tlCore)
     target_link_libraries(tlRender INTERFACE tlRender::tlIO)
+    target_link_libraries(tlRender INTERFACE tlRender::tlBaseApp)
     target_link_libraries(tlRender INTERFACE tlRender::tlPlay)
     target_link_libraries(tlRender INTERFACE tlRender::tlTimeline)
     target_link_libraries(tlRender INTERFACE tlRender::tlTimelineGL)
