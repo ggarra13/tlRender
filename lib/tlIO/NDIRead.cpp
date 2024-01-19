@@ -39,17 +39,9 @@ namespace tl
 
             if (s.is_open())
             {
-                std::string tmp;
-                std::getline(s, tmp);
-                if (tmp != p.sourceName)
-                {
-                    p.sourceName = tmp;
-                }
-                std::getline(s, tmp);
-                if (tmp == "1")
-                    p.options.noAudio = true;
-                else
-                    p.options.noAudio = false;
+                nlohmann::json j;
+                s >> j;
+                p.options = j;
                 s.close();
             }
                     
@@ -82,7 +74,7 @@ namespace tl
                 int ndiSource = -1;
                 for (int i = 0; i < no_sources; ++i)
                 {
-                    if (sources[i].p_ndi_name == p.sourceName)
+                    if (sources[i].p_ndi_name == p.options.sourceName)
                     {
                         ndiSource = i;
                         break;
@@ -144,7 +136,7 @@ namespace tl
                                 {
                                     p.videoThread.running = true;
                                     p.readVideo = std::make_shared<ReadVideo>(
-                                        p.sourceName, v, p.options);
+                                        p.options.sourceName, v, p.options);
                                     const auto& videoInfo = p.readVideo->getInfo();
                                     if (videoInfo.isValid())
                                     {
@@ -182,7 +174,7 @@ namespace tl
                                     if (!p.readAudio)
                                     {
                                         p.readAudio = std::make_shared<ReadAudio>(
-                                            p.sourceName, a, p.options);
+                                            p.options.sourceName, a, p.options);
                                         p.info.audio = p.readAudio->getInfo();
                                         p.info.audioTime = p.readAudio->getTimeRange();
                                         p.readAudio->start();

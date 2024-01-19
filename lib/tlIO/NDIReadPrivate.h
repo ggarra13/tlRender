@@ -5,6 +5,7 @@
 #pragma once
 
 #include <tlIO/NDI.h>
+#include <tlCore/NDI.h>
 
 extern "C"
 {
@@ -23,16 +24,6 @@ namespace tl
 {
     namespace ndi
     {
-        
-        struct Options
-        {
-            bool noAudio = false;
-            otime::RationalTime startTime = time::invalidTime;
-            bool yuvToRGBConversion = false;
-            size_t requestTimeout = 5;
-            size_t videoBufferSize = 4;
-            otime::RationalTime audioBufferSize = otime::RationalTime(2.0, 1.0);
-        };
         
         class ReadVideo
         {
