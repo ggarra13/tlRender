@@ -241,7 +241,7 @@ namespace tl
                 }
                 if (p.cmdLine.options.size())
                 {
-                    ss << " [option],...";
+                    ss << " [option]...";
                 }
                 _print(ss.str());
                 _printNewline();
