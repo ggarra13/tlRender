@@ -194,8 +194,13 @@ namespace tl
             {
                 try
                 {
-                    if (!(p.cmdLine.argv.empty() && i->isOptional()))
+                    if (!p.cmdLine.argv.empty())
                     {
+                        if(i->isUnused())
+                        {
+                            _unusedArgs = p.cmdLine.argv;
+                            break;
+                        }
                         i->parse(p.cmdLine.argv);
                     }
                 }
