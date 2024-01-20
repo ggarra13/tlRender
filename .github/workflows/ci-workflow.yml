@@ -7,6 +7,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
+      TLRENDER_API: GL_4_1
       TLRENDER_PYTHON: OFF
       TLRENDER_GLFW: ON
       TLRENDER_OCIO: ON
@@ -66,6 +67,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
+      TLRENDER_API: GL_4_1
       TLRENDER_PYTHON: OFF
       TLRENDER_GLFW: ON
       TLRENDER_OCIO: OFF
@@ -111,6 +113,7 @@ jobs:
 
     env:
       CMAKE_OSX_DEPLOYMENT_TARGET: 10.15
+      TLRENDER_API: GL_4_1
       TLRENDER_PYTHON: OFF
       TLRENDER_GLFW: ON
       TLRENDER_OCIO: ON
@@ -159,6 +162,7 @@ jobs:
     runs-on: windows-latest
 
     env:
+      TLRENDER_API: GL_4_1
       TLRENDER_PYTHON: OFF
       TLRENDER_GLFW: ON
       TLRENDER_OCIO: ON
