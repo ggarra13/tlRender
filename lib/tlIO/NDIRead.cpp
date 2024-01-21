@@ -125,6 +125,11 @@ namespace tl
                         NDIlib_audio_frame_t a;
                         NDIlib_frame_type_e type_e = NDIlib_frame_type_none;
 
+                        p.audioThread.currentTime =
+                            otime::RationalTime(0.0, 48000.0);
+                        p.videoThread.currentTime =
+                            otime::RationalTime(0.0, fps);
+
                         while (type_e != NDIlib_frame_type_error &&
                                p.decodeThread.running)
                         {
@@ -155,11 +160,13 @@ namespace tl
                                     auto video = p.videoThread.currentTime;
                                     if (p.readAudio)
                                         video = video.rescaled_to(audio.rate());
-                                    if (video <= audio || p.options.noAudio)
+                                    if ((p.readAudio && (video <= audio)) ||
+                                        p.options.noAudio)
                                     {
                                         // We should not process the first
-                                        // frame or else
-                                        // p.info.audio will not be set.
+                                        // video frame until p.readAudio has
+                                        // been created or p.info.audio will
+                                        // not be set.
                                         _videoThread(v);
                                     }
                                 }
