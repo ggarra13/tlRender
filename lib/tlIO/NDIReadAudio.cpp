@@ -23,7 +23,7 @@ namespace tl
             _info.dataType     = audio::DataType::F32;
 
             double start = 0.0;
-            double last = kNDI_MOVIE_DURATION; // 1 minute
+            double last = kNDI_MOVIE_DURATION;
             _timeRange = otime::TimeRange(
                 otime::RationalTime(start, 1.0).rescaled_to(_info.sampleRate),
                 otime::RationalTime(last, 1.0).rescaled_to(_info.sampleRate));
