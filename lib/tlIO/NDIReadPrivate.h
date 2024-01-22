@@ -72,6 +72,7 @@ namespace tl
         public:
             ReadAudio(
                 const std::string& fileName,
+                const NDIlib_source_t& NDIsource,
                 const NDIlib_audio_frame_t& audio_frame,
                 const Options&);
 
@@ -92,6 +93,7 @@ namespace tl
 
         private:
             const std::string _fileName;
+            NDIlib_recv_instance_t NDI_recv = nullptr;
             
             Options _options;
             audio::Info _info;

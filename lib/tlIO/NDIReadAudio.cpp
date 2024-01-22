@@ -13,6 +13,7 @@ namespace tl
         
         ReadAudio::ReadAudio(
             const std::string& fileName,
+            const NDIlib_source_t& NDIsource,
             const NDIlib_audio_frame_t& audio_frame,
             const Options& options) :
             _fileName(fileName),
@@ -27,10 +28,23 @@ namespace tl
             _timeRange = otime::TimeRange(
                 otime::RationalTime(start, 1.0).rescaled_to(_info.sampleRate),
                 otime::RationalTime(last, 1.0).rescaled_to(_info.sampleRate));
+
+            // We now have at least one source,
+            // so we create a receiver to look at it.
+            NDIlib_recv_create_v3_t recv_desc;
+            recv_desc.color_format = NDIlib_recv_color_format_fastest;
+            recv_desc.bandwidth = NDIlib_recv_bandwidth_highest;
+            recv_desc.allow_video_fields = false;
+            recv_desc.source_to_connect_to = NDIsource;
+                
+            NDI_recv = NDIlib_recv_create(&recv_desc);
+            if (!NDI_recv)
+                throw std::runtime_error("Could not create NDI audio receiver");
         }
 
         ReadAudio::~ReadAudio()
         {
+            NDIlib_recv_destroy(NDI_recv);
         }
         
         bool ReadAudio::isValid() const

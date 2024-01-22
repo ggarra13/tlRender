@@ -45,78 +45,79 @@ namespace tl
                 s.close();
             }
                     
-            if (!p.NDI_recv)
-            {
-                auto NDI_find = NDIlib_find_create_v2();
-                if (!NDI_find)
-                    throw std::runtime_error("Could not create NDI find");
-
-                using namespace std::chrono;
-                for (const auto start = high_resolution_clock::now();
-                     high_resolution_clock::now() - start < seconds(3);)
-                {
-                    // Wait up till 1 second to check for new sources to be added or removed
-                    if (!NDIlib_find_wait_for_sources(NDI_find,
-                                                      1000 /* milliseconds */)) {
-                        break;
-                    }
-                }
-                
-                uint32_t no_sources = 0;
-
-                const NDIlib_source_t* sources = nullptr;
-                // Get the updated list of sources
-                while (!no_sources)
-                {
-                    sources = NDIlib_find_get_current_sources(NDI_find, &no_sources);
-                }
-
-                int ndiSource = -1;
-                for (int i = 0; i < no_sources; ++i)
-                {
-                    if (sources[i].p_ndi_name == p.options.sourceName)
-                    {
-                        ndiSource = i;
-                        break;
-                    }
-                }
-
-                if (ndiSource < 0)
-                {
-                    throw std::runtime_error("Could not find a valid source");
-                }
+            const NDIlib_source_t* sources = nullptr;
             
-
-                // We now have at least one source,
-                // so we create a receiver to look at it.
-                NDIlib_recv_create_v3_t recv_desc;
-                recv_desc.color_format = NDIlib_recv_color_format_fastest;
-                recv_desc.bandwidth = NDIlib_recv_bandwidth_highest;
-                recv_desc.allow_video_fields = false;
-                recv_desc.source_to_connect_to = sources[ndiSource];
-                
-                p.NDI_recv = NDIlib_recv_create(&recv_desc);
-                if (!p.NDI_recv)
-                    throw std::runtime_error("Could not create NDI receiver");
-                
-                // Get the name of the source for debugging purposes
-                NDIlib_tally_t tally_state;
-                tally_state.on_program = true;
-                tally_state.on_preview = false;
-                
-                /* Set tally */
-                NDIlib_recv_set_tally(p.NDI_recv, &tally_state);
-
-                NDIlib_find_destroy(NDI_find);
+            auto NDI_find = NDIlib_find_create_v2();
+            if (!NDI_find)
+                throw std::runtime_error("Could not create NDI find");
+            
+            using namespace std::chrono;
+            for (const auto start = high_resolution_clock::now();
+                 high_resolution_clock::now() - start < seconds(3);)
+            {
+                // Wait up till 1 second to check for new sources to be added or removed
+                if (!NDIlib_find_wait_for_sources(NDI_find,
+                                                  1000 /* milliseconds */)) {
+                    break;
+                }
+            }
+            
+            uint32_t no_sources = 0;
+            
+            // Get the updated list of sources
+            while (!no_sources)
+            {
+                sources = NDIlib_find_get_current_sources(NDI_find, &no_sources);
+            }
+            
+            int ndiSource = -1;
+            for (int i = 0; i < no_sources; ++i)
+            {
+                if (sources[i].p_ndi_name == p.options.sourceName)
+                {
+                    ndiSource = i;
+                    break;
+                }
             }
 
-                
+            if (ndiSource < 0)
+            {
+                throw std::runtime_error("Could not find a valid source");
+            }
+            
 
+            //
+            const auto& NDIsource = sources[ndiSource];
+
+            
+            // We now have at least one source,
+            // so we create a receiver to look at it.
+            NDIlib_recv_create_v3_t recv_desc;
+            recv_desc.color_format = NDIlib_recv_color_format_fastest;
+            recv_desc.bandwidth = NDIlib_recv_bandwidth_highest;
+            recv_desc.allow_video_fields = false;
+            recv_desc.source_to_connect_to = NDIsource;
+            
+            p.NDI_recv = NDIlib_recv_create(&recv_desc);
+            if (!p.NDI_recv)
+                throw std::runtime_error("Could not create NDI receiver");
+            
+            // Get the name of the source for debugging purposes
+            NDIlib_tally_t tally_state;
+            tally_state.on_program = true;
+            tally_state.on_preview = false;
+            
+            /* Set tally */
+            NDIlib_recv_set_tally(p.NDI_recv, &tally_state);
+            
+            NDIlib_find_destroy(NDI_find);
+            
+            
             
             // The descriptors
             p.decodeThread.running = true;
             p.decodeThread.thread = std::thread(
-                [this]
+                [this, NDIsource]
                     {
                         TLRENDER_P();
                         
@@ -180,8 +181,10 @@ namespace tl
                                 {
                                     if (!p.readAudio)
                                     {
-                                        p.readAudio = std::make_shared<ReadAudio>(
-                                            p.options.sourceName, a, p.options);
+                                        p.readAudio =
+                                            std::make_shared<ReadAudio>(
+                                                p.options.sourceName, NDIsource,
+                                                a, p.options);
                                         p.info.audio = p.readAudio->getInfo();
                                         p.info.audioTime = p.readAudio->getTimeRange();
                                         p.readAudio->start();
@@ -229,12 +232,6 @@ namespace tl
             if (p.decodeThread.thread.joinable())
             {
                 p.decodeThread.thread.join();
-            }
-
-            if (p.audioMutex.currentRequest)
-            {
-                p.audioMutex.currentRequest->promise.set_value(io::AudioData());
-                p.audioMutex.currentRequest.reset();
             }
             
             // We destroy receiver as it is kept in the map
