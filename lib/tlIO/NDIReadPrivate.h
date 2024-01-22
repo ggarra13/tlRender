@@ -83,15 +83,15 @@ namespace tl
             const otime::TimeRange& getTimeRange() const;
 
             void start();
-            
-            bool process(
-                const otime::RationalTime& currentTime,
-                const NDIlib_audio_frame_t& audio_frame);
-            
+
+            bool
+            process(const otime::RationalTime& currentTime, size_t sampleCount);
+
             size_t getBufferSize() const;
             void bufferCopy(uint8_t*, size_t sampleCount);
 
         private:
+            int _decode(const otime::RationalTime& currentTime);
             const std::string _fileName;
             NDIlib_recv_instance_t NDI_recv = nullptr;
             

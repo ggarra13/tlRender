@@ -69,14 +69,50 @@ namespace tl
 
         bool ReadAudio::process(
             const otime::RationalTime& currentTime,
-            const NDIlib_audio_frame_t& audio_frame)
+            size_t sampleCount)
         {
             bool out = false;
-            auto tmp = audio::Audio::create(_info, audio_frame.no_samples);
-            memcpy(tmp->getData(), audio_frame.p_data,
-                   tmp->getByteCount());
-            tmp = audio::planarInterleave(tmp);
-            _buffer.push_back(tmp);
+            const size_t bufferSampleCount = audio::getSampleCount(_buffer);
+            while (bufferSampleCount < sampleCount)
+            {
+                int decoding = _decode(currentTime);
+                if (1 == decoding)
+                {
+                    out = true;
+                    break;
+                }
+                else if (0 < decoding)
+                {
+                    // \todo: how this should be handled
+                }
+            }
+            return out;
+        }
+
+        int    ReadAudio::_decode(const otime::RationalTime& time)
+        {
+            int out = -1;
+            NDIlib_audio_frame_t a;
+            NDIlib_frame_type_e type_e;
+            type_e = NDIlib_recv_capture(NDI_recv, nullptr, &a, nullptr, 50);
+            if (type_e == NDIlib_frame_type_error)
+            {
+                out = -1;
+            }
+            else if (type_e != NDIlib_frame_type_audio)
+            {
+                out = 0;
+            }
+            else
+            {
+                auto tmp = audio::Audio::create(_info, a.no_samples);
+                memcpy(tmp->getData(), a.p_data, tmp->getByteCount());
+                tmp = audio::planarInterleave(tmp);
+                _buffer.push_back(tmp);
+                out = 1;
+            }
+            
+            NDIlib_recv_free_audio(NDI_recv, &a);
             return out;
         }
 

@@ -6,6 +6,8 @@
 
 #include <nlohmann/json.hpp>
 
+#include <tlCore/Time.h>
+
 #include <string>
 
 namespace tl
@@ -19,6 +21,7 @@ namespace tl
             bool yuvToRGBConversion = false;
             size_t requestTimeout = 5;
             size_t videoBufferSize = 4;
+            otime::RationalTime audioBufferSize = otime::RationalTime(2.0, 1.0);
         };
         
         //! \name Serialize

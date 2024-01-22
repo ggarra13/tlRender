@@ -470,62 +470,73 @@ namespace tl
         void Read::_audioThread(const NDIlib_audio_frame_t& a)
         {
             TLRENDER_P();
-            // Check requests.
+            while (p.audioThread.running)
             {
-                std::unique_lock<std::mutex> lock(p.audioMutex.mutex);
-                if (p.audioThread.cv.wait_for(
-                        lock,
-                        std::chrono::milliseconds(p.options.requestTimeout),
-                        [this]
-                            {
-                                return !_p->audioMutex.requests.empty();
-                            }))
+                std::shared_ptr<Private::AudioRequest> request;
+                size_t requestSampleCount = 0;
+                // Check requests.
                 {
-                    if (!p.audioMutex.requests.empty() &&
-                        !p.audioMutex.currentRequest)
+                    std::unique_lock<std::mutex> lock(p.audioMutex.mutex);
+                    if (p.audioThread.cv.wait_for(
+                            lock,
+                            std::chrono::milliseconds(p.options.requestTimeout),
+                            [this]
+                                {
+                                    return !_p->audioMutex.requests.empty();
+                                }))
                     {
-                        p.audioMutex.currentRequest = p.audioMutex.requests.front();
-                        p.audioMutex.requests.pop_front();
+                        if (!p.audioMutex.requests.empty())
+                        {
+                            request = p.audioMutex.requests.front();
+                            p.audioMutex.requests.pop_front();
+                        }
                     }
                 }
-            }
 
-            // Check the cache.
-            io::AudioData audioData;
-            if (p.audioMutex.currentRequest && _cache)
-            {
-                const std::string cacheKey = io::Cache::getAudioKey(
-                    _path.get(),
-                    p.audioMutex.currentRequest->timeRange,
-                    p.audioMutex.currentRequest->options);
-                if (_cache->getAudio(cacheKey, audioData))
+                // Check the cache.
+                io::AudioData audioData;
+                if (request && _cache)
                 {
-                    p.audioMutex.currentRequest->promise.set_value(audioData);
-                    p.audioThread.currentTime += p.audioMutex.currentRequest->timeRange.duration();
-                    p.audioMutex.currentRequest.reset();
+                    const std::string cacheKey = io::Cache::getAudioKey(
+                        _path.get(),
+                        request->timeRange,
+                        request->options);
+                    if (_cache->getAudio(cacheKey, audioData))
+                    {
+                        request->promise.set_value(audioData);
+                        request.reset();
+                    }
                 }
-            }
 
-            // No Seek.
+                // No Seek.
 
-            // Process.
-            bool intersects = false;
-            if (p.audioMutex.currentRequest)
-            {
-                intersects = p.audioMutex.currentRequest->timeRange.intersects(p.info.audioTime);
-                if (intersects && p.readAudio->isValid())
-                    p.readAudio->process(p.audioThread.currentTime, a);
+                // Process.
+                bool intersects = false;
+                if (request)
+                {
+                    intersects = request->timeRange.intersects(p.info.audioTime);
+                while (
+                    request &&
+                    intersects &&
+                    p.readAudio->getBufferSize() < request->timeRange.duration().rescaled_to(p.info.audio.sampleRate).value() &&
+                    p.readAudio->isValid() &&
+                    p.readAudio->process(
+                        p.audioThread.currentTime,
+                        requestSampleCount ?
+                        requestSampleCount :
+                        p.options.audioBufferSize.rescaled_to(p.info.audio.sampleRate).value()))
+                    ;
                 
                 // Handle request.
                 if (p.readAudio->getBufferSize() >=
-                    p.audioMutex.currentRequest->timeRange.duration()
+                    request->timeRange.duration()
                     .rescaled_to(p.info.audio.sampleRate)
                     .value())
                 {
                     io::AudioData audioData;
-                    audioData.time = p.audioMutex.currentRequest->timeRange.start_time();
+                    audioData.time = request->timeRange.start_time();
                     audioData.audio = audio::Audio::create(
-                        p.info.audio, p.audioMutex.currentRequest->timeRange.duration().value());
+                        p.info.audio, request->timeRange.duration().value());
                     audioData.audio->zero();
                     if (intersects)
                     {
@@ -538,19 +549,17 @@ namespace tl
                             audioData.audio->getData() + offset * p.info.audio.getByteCount(),
                             audioData.audio->getSampleCount() - offset);
                     }
-                    p.audioMutex.currentRequest->promise.set_value(audioData);
+                    request->promise.set_value(audioData);
 
-                    p.audioThread.currentTime += p.audioMutex.currentRequest->timeRange.duration();
+                    p.audioThread.currentTime += request->timeRange.duration();
                     if (_cache)
                     {
                         const std::string cacheKey = io::Cache::getAudioKey(
                             _path.get(),
-                            p.audioMutex.currentRequest->timeRange,
-                            p.audioMutex.currentRequest->options);
+                            request->timeRange,
+                            request->options);
                         _cache->addAudio(cacheKey, audioData);
                     }
-                
-                    p.audioMutex.currentRequest.reset();
                 }
             }
 
@@ -579,6 +588,7 @@ namespace tl
                                          arg(requestsSize));
                     }
                 }
+            }
             }
         }
 
