@@ -151,7 +151,6 @@ namespace tl
             struct AudioMutex
             {
                 std::list<std::shared_ptr<AudioRequest> > requests;
-                std::shared_ptr<AudioRequest> currentRequest;
                 bool stopped = false;
                 std::mutex mutex;
             };
