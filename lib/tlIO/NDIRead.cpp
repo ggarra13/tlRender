@@ -47,8 +47,8 @@ namespace tl
                     
             const NDIlib_source_t* sources = nullptr;
             
-            auto NDI_find = NDIlib_find_create_v2();
-            if (!NDI_find)
+            p.NDI_find = NDIlib_find_create_v2();
+            if (!p.NDI_find)
                 throw std::runtime_error("Could not create NDI find");
             
             using namespace std::chrono;
@@ -56,7 +56,7 @@ namespace tl
                  high_resolution_clock::now() - start < seconds(3);)
             {
                 // Wait up till 1 second to check for new sources to be added or removed
-                if (!NDIlib_find_wait_for_sources(NDI_find,
+                if (!NDIlib_find_wait_for_sources(p.NDI_find,
                                                   1000 /* milliseconds */)) {
                     break;
                 }
@@ -67,7 +67,8 @@ namespace tl
             // Get the updated list of sources
             while (!no_sources)
             {
-                sources = NDIlib_find_get_current_sources(NDI_find, &no_sources);
+                sources = NDIlib_find_get_current_sources(p.NDI_find,
+                                                          &no_sources);
             }
             
             int ndiSource = -1;
@@ -110,8 +111,6 @@ namespace tl
             /* Set tally */
             NDIlib_recv_set_tally(p.NDI_recv, &tally_state);
             
-            NDIlib_find_destroy(NDI_find);
-            
             
             
             // The descriptors
@@ -136,8 +135,8 @@ namespace tl
                         {
                             if (p.readAudio)
                             {
-                            type_e = NDIlib_recv_capture(
-                                p.NDI_recv, &v, nullptr, nullptr, 50);
+                                type_e = NDIlib_recv_capture(
+                                    p.NDI_recv, &v, nullptr, nullptr, 50);
                             }
                             else
                             {
@@ -254,8 +253,11 @@ namespace tl
                 p.decodeThread.thread.join();
             }
             
-            // We destroy receiver as it is kept in the map
+            // We destroy receiver (video)
             NDIlib_recv_destroy(p.NDI_recv);
+
+            // We destroy the finder
+            NDIlib_find_destroy(p.NDI_find);
         }
 
         std::shared_ptr<Read> Read::create(

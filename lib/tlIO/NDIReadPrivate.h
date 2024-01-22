@@ -104,7 +104,8 @@ namespace tl
         struct Read::Private
         {
             Options options;
-            
+
+            NDIlib_find_instance_t NDI_find = nullptr;
             NDIlib_recv_instance_t NDI_recv = nullptr;
             static std::string sourceName;
             
