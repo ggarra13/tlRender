@@ -230,6 +230,12 @@ namespace tl
             {
                 p.decodeThread.thread.join();
             }
+
+            if (p.audioMutex.currentRequest)
+            {
+                p.audioMutex.currentRequest->promise.set_value(io::AudioData());
+                p.audioMutex.currentRequest.reset();
+            }
             
             // We destroy receiver as it is kept in the map
             NDIlib_recv_destroy(p.NDI_recv);
@@ -468,7 +474,6 @@ namespace tl
         {
             TLRENDER_P();
             // Check requests.
-            size_t requestSampleCount = 0;
             {
                 std::unique_lock<std::mutex> lock(p.audioMutex.mutex);
                 if (p.audioThread.cv.wait_for(
@@ -484,7 +489,6 @@ namespace tl
                     {
                         p.audioMutex.currentRequest = p.audioMutex.requests.front();
                         p.audioMutex.requests.pop_front();
-                        requestSampleCount = p.audioMutex.currentRequest->timeRange.duration().rescaled_to(p.info.audio.sampleRate).value();
                     }
                 }
             }
