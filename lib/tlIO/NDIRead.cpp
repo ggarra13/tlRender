@@ -134,8 +134,16 @@ namespace tl
                         while (type_e != NDIlib_frame_type_error &&
                                p.decodeThread.running)
                         {
+                            if (p.readAudio)
+                            {
                             type_e = NDIlib_recv_capture(
-                                p.NDI_recv, &v, &a, nullptr, 50);
+                                p.NDI_recv, &v, nullptr, nullptr, 50);
+                            }
+                            else
+                            {
+                                type_e = NDIlib_recv_capture(
+                                    p.NDI_recv, &v, &a, nullptr, 50);
+                            }
                             if (type_e == NDIlib_frame_type_video)
                             {
                                 if (!p.readVideo)
@@ -191,18 +199,25 @@ namespace tl
                                         p.audioThread.currentTime =
                                             p.info.audioTime.start_time();
                                         p.audioThread.logTimer = std::chrono::steady_clock::now();
-                                    }
 
-                                    _audioThread(a);
+                                        p.audioThread.running = true;
+                                        p.audioThread.thread =
+                                            std::thread(
+                                                [this]
+                                                    {
+                                                        _audioThread();
+                                                    });
+                                    
+                                    }
+                                
+                                    // Release this audio frame
+                                    NDIlib_recv_free_audio(p.NDI_recv, &a);
                                 }
                                 else
                                 {
                                     p.audioThread.currentTime =
                                         p.videoThread.currentTime;
                                 }
-                                
-                                // Release this audio frame
-                                NDIlib_recv_free_audio(p.NDI_recv, &a);
                             }
                         }
             
@@ -227,6 +242,11 @@ namespace tl
         {
             TLRENDER_P();
 
+            p.audioThread.running = false;
+            if (p.audioThread.thread.joinable())
+            {
+                p.audioThread.thread.join();
+            }
             p.videoThread.running = false;
             p.decodeThread.running = false;
             if (p.decodeThread.thread.joinable())
@@ -467,7 +487,7 @@ namespace tl
             }
         }
 
-        void Read::_audioThread(const NDIlib_audio_frame_t& a)
+        void Read::_audioThread()
         {
             TLRENDER_P();
             while (p.audioThread.running)
@@ -515,6 +535,7 @@ namespace tl
                 if (request)
                 {
                     intersects = request->timeRange.intersects(p.info.audioTime);
+                }
                 while (
                     request &&
                     intersects &&
@@ -528,10 +549,7 @@ namespace tl
                     ;
                 
                 // Handle request.
-                if (p.readAudio->getBufferSize() >=
-                    request->timeRange.duration()
-                    .rescaled_to(p.info.audio.sampleRate)
-                    .value())
+                if (request)
                 {
                     io::AudioData audioData;
                     audioData.time = request->timeRange.start_time();
@@ -551,7 +569,6 @@ namespace tl
                     }
                     request->promise.set_value(audioData);
 
-                    p.audioThread.currentTime += request->timeRange.duration();
                     if (_cache)
                     {
                         const std::string cacheKey = io::Cache::getAudioKey(
@@ -560,35 +577,36 @@ namespace tl
                             request->options);
                         _cache->addAudio(cacheKey, audioData);
                     }
+                    
+                    p.audioThread.currentTime += request->timeRange.duration();
                 }
-            }
 
 
                     
-            // Logging.
-            {
-                const auto now = std::chrono::steady_clock::now();
-                const std::chrono::duration<float> diff = now - p.audioThread.logTimer;
-                if (diff.count() > 10.F)
+                // Logging.
                 {
-                    p.audioThread.logTimer = now;
-                    if (auto logSystem = _logSystem.lock())
+                    const auto now = std::chrono::steady_clock::now();
+                    const std::chrono::duration<float> diff = now - p.audioThread.logTimer;
+                    if (diff.count() > 10.F)
                     {
-                        const std::string id = string::Format("tl::io::ndi::Read {0}").arg(this);
-                        size_t requestsSize = 0;
+                        p.audioThread.logTimer = now;
+                        if (auto logSystem = _logSystem.lock())
                         {
-                            std::unique_lock<std::mutex> lock(p.audioMutex.mutex);
-                            requestsSize = p.audioMutex.requests.size();
+                            const std::string id = string::Format("tl::io::ndi::Read {0}").arg(this);
+                            size_t requestsSize = 0;
+                            {
+                                std::unique_lock<std::mutex> lock(p.audioMutex.mutex);
+                                requestsSize = p.audioMutex.requests.size();
+                            }
+                            logSystem->print(id, string::Format(
+                                                 "\n"
+                                                 "    Path: {0}\n"
+                                                 "    Audio requests: {1}").
+                                             arg(_path.get()).
+                                             arg(requestsSize));
                         }
-                        logSystem->print(id, string::Format(
-                                             "\n"
-                                             "    Path: {0}\n"
-                                             "    Audio requests: {1}").
-                                         arg(_path.get()).
-                                         arg(requestsSize));
                     }
                 }
-            }
             }
         }
 

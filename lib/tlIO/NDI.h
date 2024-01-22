@@ -91,7 +91,7 @@ namespace tl
 
         private:
             void _videoThread(const NDIlib_video_frame_t& video_frame);
-            void _audioThread(const NDIlib_audio_frame_t& audio_frame);
+            void _audioThread();
             void _cancelVideoRequests();
             void _cancelAudioRequests();
 

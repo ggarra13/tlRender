@@ -160,6 +160,7 @@ namespace tl
                 otime::RationalTime currentTime = time::invalidTime;
                 std::chrono::steady_clock::time_point logTimer;
                 std::condition_variable cv;
+                std::thread thread;
                 std::atomic<bool> running;
             };
             AudioThread audioThread;
