@@ -40,6 +40,8 @@ namespace tl
             NDI_recv = NDIlib_recv_create(&recv_desc);
             if (!NDI_recv)
                 throw std::runtime_error("Could not create NDI audio receiver");
+
+            _from_ndi(audio_frame);
         }
 
         ReadAudio::~ReadAudio()
@@ -89,6 +91,15 @@ namespace tl
             return out;
         }
 
+        void ReadAudio::_from_ndi(const NDIlib_audio_frame_t& a)
+        {
+            auto tmp = audio::Audio::create(_info, a.no_samples);
+            memcpy(tmp->getData(), a.p_data, tmp->getByteCount());
+            tmp = audio::planarInterleave(tmp);
+            _buffer.push_back(tmp);
+            NDIlib_recv_free_audio(NDI_recv, &a);
+        }
+        
         int    ReadAudio::_decode(const otime::RationalTime& time)
         {
             int out = 0;
@@ -101,12 +112,7 @@ namespace tl
             }
             else if (type_e == NDIlib_frame_type_audio)
             {
-                auto tmp = audio::Audio::create(_info, a.no_samples);
-                memcpy(tmp->getData(), a.p_data, tmp->getByteCount());
-                tmp = audio::planarInterleave(tmp);
-                _buffer.push_back(tmp);
-                NDIlib_recv_free_audio(NDI_recv, &a);
-                
+                _from_ndi(a);
                 out = 1;
             }
             else

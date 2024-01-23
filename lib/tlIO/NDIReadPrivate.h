@@ -92,6 +92,8 @@ namespace tl
 
         private:
             int _decode(const otime::RationalTime& currentTime);
+            void _from_ndi(const NDIlib_audio_frame_t& audio_frame);
+
             const std::string _fileName;
             NDIlib_recv_instance_t NDI_recv = nullptr;
             

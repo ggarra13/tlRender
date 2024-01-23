@@ -188,6 +188,8 @@ namespace tl
                                 {
                                     if (!p.readAudio)
                                     {
+                                        // p.readAudio will release the audio
+                                        // frame for us.
                                         p.readAudio =
                                             std::make_shared<ReadAudio>(
                                                 p.options.sourceName, NDIsource,
@@ -208,9 +210,6 @@ namespace tl
                                                     });
                                     
                                     }
-                                
-                                    // Release this audio frame
-                                    NDIlib_recv_free_audio(p.NDI_recv, &a);
                                 }
                                 else
                                 {
