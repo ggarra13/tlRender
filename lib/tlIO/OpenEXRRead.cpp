@@ -154,6 +154,7 @@ namespace tl
                     const std::string& fileName,
                     const file::MemoryRead* memory,
                     ChannelGrouping channelGrouping,
+                    const bool ignoreDisplayWindow,
                     const std::weak_ptr<log::System>& logSystemWeak)
                 {
                     // Open the file.
@@ -168,6 +169,8 @@ namespace tl
                     _f.reset(new Imf::MultiPartInputFile(*_s));
                     int numberOfParts = _f->parts();
                     int partNumber;
+
+                    _ignoreDisplayWindow = ignoreDisplayWindow;
 
                     for (partNumber = 0; partNumber < numberOfParts; ++partNumber)
                     {
@@ -222,8 +225,20 @@ namespace tl
                                 _fast = false;
                             auto& info = _info.video[offset + i];
                             info.name = view + layer.name;
-                            info.size.w = _displayWindow.w();
-                            info.size.h = _displayWindow.h();
+                            int w = std::max(_displayWindow.w(),
+                                             _dataWindow.w());
+                            int h = std::max(_displayWindow.h(),
+                                             _dataWindow.h());
+                            if (_ignoreDisplayWindow)
+                            {
+                                info.size.w = w;
+                                info.size.h = h;
+                            }
+                            else
+                            {
+                                info.size.w = _displayWindow.w();
+                                info.size.h = _displayWindow.h();
+                            }
                             info.size.pixelAspectRatio = header.pixelAspectRatio();
                             switch (layer.channels[0].pixelType)
                             {
@@ -259,7 +274,7 @@ namespace tl
                 {
                     io::VideoData out;
                     int layer = 0;
-                    const auto i = options.find("Layer");
+                    auto i = options.find("Layer");
                     if (i != options.end())
                     {
                         layer = std::min(
@@ -312,6 +327,15 @@ namespace tl
                     }
                     else
                     {
+                        int minY = std::min(_dataWindow.min.y,
+                                            _displayWindow.min.y);
+                        int minX = std::min(_dataWindow.min.x,
+                                            _displayWindow.min.x);
+                        int maxY = std::max(_dataWindow.max.y,
+                                            _displayWindow.max.y);
+                        int maxX = std::max(_dataWindow.max.x,
+                                            _displayWindow.max.x);
+                        
                         Imf::FrameBuffer frameBuffer;
                         std::vector<char> buf(_dataWindow.w() * cb);
                         for (int c = 0; c < channels; ++c)
@@ -331,24 +355,62 @@ namespace tl
                         }
                         Imf::InputPart in(*_f.get(), _layers[layer].partNumber);
                         in.setFrameBuffer(frameBuffer);
-                        for (int y = _displayWindow.min.y; y <= _displayWindow.max.y; ++y)
+
+                        if (!_ignoreDisplayWindow)
                         {
-                            uint8_t* p = out.image->getData() + ((y - _displayWindow.min.y) * scb);
-                            uint8_t* end = p + scb;
-                            if (y >= _intersectedWindow.min.y && y <= _intersectedWindow.max.y)
+                            for (int y = _displayWindow.min.y; y <= _displayWindow.max.y; ++y)
                             {
-                                size_t size = (_intersectedWindow.min.x - _displayWindow.min.x) * cb;
-                                std::memset(p, 0, size);
-                                p += size;
-                                size = _intersectedWindow.w() * cb;
+                                uint8_t* p = out.image->getData() + ((y - _displayWindow.min.y) * scb);
+                                uint8_t* end = p + scb;
+                                if (y >= _intersectedWindow.min.y && y <= _intersectedWindow.max.y)
+                                {
+                                    size_t size = (_intersectedWindow.min.x - _displayWindow.min.x) * cb;
+                                    std::memset(p, 0, size);
+                                    p += size;
+                                    size = _intersectedWindow.w() * cb;
+                                    in.readPixels(y, y);
+                                    std::memcpy(
+                                        p,
+                                        buf.data() + std::max(_displayWindow.min.x - _dataWindow.min.x, 0) * cb,
+                                        size);
+                                    p += size;
+                                }
+                                std::memset(p, 0, end - p);
+                            }
+                        }
+                        else
+                        {
+                            // Display the full data window
+                            for (int y = minY; y <= maxY; ++y)
+                            {
+                                uint8_t* p = out.image->getData() +
+                                             (y - minY) * scb;
+                                uint8_t* end = p + scb;
+                                size_t size = _dataWindow.w() * cb;
                                 in.readPixels(y, y);
                                 std::memcpy(
                                     p,
-                                    buf.data() + std::max(_displayWindow.min.x - _dataWindow.min.x, 0) * cb,
+                                    buf.data() +
+                                    std::max(_dataWindow.min.x, 0) * cb,
                                     size);
                                 p += size;
+                                std::memset(p, 0, end - p);
                             }
-                            std::memset(p, 0, end - p);
+
+                            auto data = dataWindow;
+                            auto display = displayWindow;
+                            display.min.y += -data.min.y;
+                            display.max.y += -data.min.y;
+                            display.min.x += -data.min.x;
+                            display.max.x += -data.min.x;
+                            data.max.y += -data.min.y;
+                            data.min.y = 0;
+                            data.max.x += -data.min.x;
+                            data.min.x = 0;
+                            
+                            _info.tags["Display Window"] = serialize(display);
+                            _info.tags["Data Window"] = serialize(data);
+                            out.image->setTags(_info.tags);
                         }
                     }
                     return out;
@@ -356,6 +418,7 @@ namespace tl
 
             private:
                 ChannelGrouping                 _channelGrouping = ChannelGrouping::Known;
+                bool                            _ignoreDisplayWindow = false;
                 std::unique_ptr<Imf::IStream>   _s;
                 std::unique_ptr<Imf::MultiPartInputFile> _f;
                 math::Box2i                     _displayWindow;
@@ -381,6 +444,13 @@ namespace tl
             {
                 std::stringstream ss(option->second);
                 ss >> _channelGrouping;
+            }
+            
+            option = options.find("OpenEXR/IgnoreDisplayWindow");
+            if (option != options.end())
+            {
+                _ignoreDisplayWindow =
+                    static_cast<bool>(std::atoi(option->second.c_str()));
             }
         }
 
@@ -419,7 +489,7 @@ namespace tl
             const std::string& fileName,
             const file::MemoryRead* memory)
         {
-            io::Info out = File(fileName, memory, _channelGrouping, _logSystem.lock()).getInfo();
+            io::Info out = File(fileName, memory, _channelGrouping, _ignoreDisplayWindow, _logSystem.lock()).getInfo();
             float speed = _defaultSpeed;
             const auto i = out.tags.find("Frame Per Second");
             if (i != out.tags.end())
@@ -441,7 +511,7 @@ namespace tl
             const otime::RationalTime& time,
             const io::Options& options)
         {
-            return File(fileName, memory, _channelGrouping, _logSystem).read(fileName, time, options);
+            return File(fileName, memory, _channelGrouping, _ignoreDisplayWindow, _logSystem).read(fileName, time, options);
         }
     }
 }

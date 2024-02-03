@@ -89,6 +89,7 @@ namespace tl
 
         private:
             ChannelGrouping _channelGrouping = ChannelGrouping::Known;
+            bool            _ignoreDisplayWindow = false;
         };
 
         //! OpenEXR writer.
