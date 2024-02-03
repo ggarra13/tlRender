@@ -356,7 +356,11 @@ namespace tl
                         Imf::InputPart in(*_f.get(), _layers[layer].partNumber);
                         in.setFrameBuffer(frameBuffer);
 
-                        if (!_ignoreDisplayWindow)
+                        if (!_ignoreDisplayWindow ||
+                            _dataWindow.min.x >= _displayWindow.min.x ||
+                            _dataWindow.max.x <= _displayWindow.max.x ||
+                            _dataWindow.min.y >= _displayWindow.min.y ||
+                            _dataWindow.max.y <= _displayWindow.max.y )
                         {
                             for (int y = _displayWindow.min.y; y <= _displayWindow.max.y; ++y)
                             {
