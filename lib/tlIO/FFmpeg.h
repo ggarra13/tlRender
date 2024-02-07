@@ -33,6 +33,7 @@ namespace tl
             ProRes_HQ,
             ProRes_4444,
             ProRes_XQ,
+            VP9,
 
             Count
         };

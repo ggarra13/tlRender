@@ -602,10 +602,18 @@ namespace tl
                     avCodecID = AV_CODEC_ID_PRORES;
                     avProfile = FF_PROFILE_PRORES_XQ;
                     break;
+                case Profile::VP9:
+                    avCodecID = AV_CODEC_ID_VP9;
+                    avProfile = FF_PROFILE_VP9_0;
+                    break;
                 default: break;
                 }
                 
                 const AVCodec* avCodec = avcodec_find_encoder(avCodecID);
+                if (avCodecID == AV_CODEC_ID_VP9)
+                {
+                    avCodec = avcodec_find_encoder_by_name("libvpx-vp9");
+                }
                 if (!avCodec)
                 {
                     throw std::runtime_error(string::Format("{0}: Cannot find encoder").arg(p.fileName));
@@ -643,7 +651,10 @@ namespace tl
                 }
                 p.avCodecContext->thread_count = 0;
                 p.avCodecContext->thread_type = FF_THREAD_FRAME;
-
+                p.avCodecContext->bit_rate = 400000;
+                p.avCodecContext->gop_size = 10;
+                p.avCodecContext->max_b_frames = 1;
+                
                 r = avcodec_open2(p.avCodecContext, avCodec, NULL);
                 if (r < 0)
                 {
@@ -773,8 +784,8 @@ namespace tl
                     string::Format("{0}: No video or audio streams.")
                         .arg(p.fileName));
             }
-                
-            //av_dump_format(p.avFormatContext, 0, p.fileName.c_str(), 1);
+            
+            // av_dump_format(p.avFormatContext, 0, p.fileName.c_str(), 1);
 
             r = avio_open(&p.avFormatContext->pb, p.fileName.c_str(), AVIO_FLAG_WRITE);
             if (r < 0)
@@ -936,6 +947,15 @@ namespace tl
                 throw std::runtime_error(string::Format("{0}: Incompatible pixel type").arg(p.fileName));
                 break;
             default: break;
+            }
+
+            int r = av_frame_make_writable(p.avFrame);
+            if (r < 0)
+            {
+                throw std::runtime_error(
+                    string::Format(
+                        "Could not video frame writable at time {0}.")
+                        .arg(time));
             }
 
             sws_scale(
@@ -1114,13 +1134,14 @@ namespace tl
                             AVPacket* packet)
         {
             TLRENDER_P();
-                
+            
             int r = avcodec_send_frame(context, frame);
             if (r < 0)
             {
                 throw std::runtime_error(
-                    string::Format("{0}: Cannot send frame")
-                        .arg(p.fileName));
+                    string::Format("{0}: Cannot send frame - {1}")
+                        .arg(p.fileName)
+                        .arg(getErrorLabel(r)));
             }
 
             while (r >= 0)
@@ -1133,8 +1154,9 @@ namespace tl
                 else if (r < 0) 
                 {
                     throw std::runtime_error(
-                        string::Format("{0}: Cannot receive packet")
-                            .arg(p.fileName));
+                        string::Format("{0}: Cannot receive packet - {1}")
+                            .arg(p.fileName)
+                            .arg(getErrorLabel(r)));
                 }
 
 
@@ -1144,8 +1166,9 @@ namespace tl
                 if (r < 0)
                 {
                     throw std::runtime_error(
-                        string::Format("{0}: Cannot write frame")
-                        .arg(p.fileName));
+                        string::Format("{0}: Cannot write frame - {1}")
+                        .arg(p.fileName)
+                        .arg(getErrorLabel(r)));
                 }
                 av_packet_unref(packet);
             }

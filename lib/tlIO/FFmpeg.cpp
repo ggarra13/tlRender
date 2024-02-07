@@ -34,7 +34,8 @@ namespace tl
             "ProRes_LT",
             "ProRes_HQ",
             "ProRes_4444",
-            "ProRes_XQ");
+            "ProRes_XQ",
+            "VP9");
         TLRENDER_ENUM_SERIALIZE_IMPL(Profile);
     
         TLRENDER_ENUM_IMPL(
