@@ -976,7 +976,7 @@ namespace tl
             {
                 throw std::runtime_error(
                     string::Format(
-                        "Could not video frame writable at time {0}.")
+                        "Could not make video frame writable at time {0}.")
                         .arg(time));
             }
 
