@@ -651,9 +651,6 @@ namespace tl
                 }
                 p.avCodecContext->thread_count = 0;
                 p.avCodecContext->thread_type = FF_THREAD_FRAME;
-                // p.avCodecContext->bit_rate = 2000000;
-                // p.avCodecContext->gop_size = 10;
-                // p.avCodecContext->max_b_frames = 1;
                 
                 AVDictionary *codecOptions = NULL;
                 if (avCodecID == AV_CODEC_ID_VP9)
