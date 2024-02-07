@@ -661,9 +661,11 @@ namespace tl
                     // These settings were mostly taken from:
                     // https://www.reddit.com/r/AV1/comments/k7colv/encoder_tuning_part_1_tuning_libvpxvp9_be_more/
                     av_dict_set(&codecOptions, "deadline", "good", 0);
+
                     // this should be used for better encoding, but not sure
                     // how to do it from C code.
                     // av_dict_set(&codecOptions, "pass", "2", 0);
+                    
                     // this chokes avcodec_open2, same as FF_PROFILE_VP9_2
                     // av_dict_set(&codecOptions, "profile", "2", 0);
                     av_dict_set(&codecOptions, "tile-columns", "1", 0);;
