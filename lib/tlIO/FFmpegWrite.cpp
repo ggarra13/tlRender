@@ -651,11 +651,32 @@ namespace tl
                 }
                 p.avCodecContext->thread_count = 0;
                 p.avCodecContext->thread_type = FF_THREAD_FRAME;
-                p.avCodecContext->bit_rate = 400000;
-                p.avCodecContext->gop_size = 10;
-                p.avCodecContext->max_b_frames = 1;
+                // p.avCodecContext->bit_rate = 2000000;
+                // p.avCodecContext->gop_size = 10;
+                // p.avCodecContext->max_b_frames = 1;
                 
-                r = avcodec_open2(p.avCodecContext, avCodec, NULL);
+                AVDictionary *codecOptions = NULL;
+                if (avCodecID == AV_CODEC_ID_VP9)
+                {
+                    // These settings were mostly taken from:
+                    // https://www.reddit.com/r/AV1/comments/k7colv/encoder_tuning_part_1_tuning_libvpxvp9_be_more/
+                    av_dict_set(&codecOptions, "deadline", "good", 0);
+                    // this should be used for better encoding, but not sure
+                    // how to do it from C code.
+                    // av_dict_set(&codecOptions, "pass", "2", 0);
+                    // this chokes avcodec_open2, same as FF_PROFILE_VP9_2
+                    // av_dict_set(&codecOptions, "profile", "2", 0);
+                    av_dict_set(&codecOptions, "tile-columns", "1", 0);;
+                    av_dict_set(&codecOptions, "tile-rows", "0", 0);;
+                    av_dict_set(&codecOptions, "webm", "", 0);;
+                    av_dict_set(&codecOptions, "aq-mode", "2", 0);;
+                    av_dict_set(&codecOptions, "row-mt", "1", 0);
+                    av_dict_set(&codecOptions, "lag-in-frames", "25", 0);
+                    av_dict_set(&codecOptions, "end-usage", "q", 0);
+                    av_dict_set(&codecOptions, "cq-level", "25", 0);
+                }
+                
+                r = avcodec_open2(p.avCodecContext, avCodec, &codecOptions);
                 if (r < 0)
                 {
                     throw std::runtime_error(
@@ -663,6 +684,8 @@ namespace tl
                             .arg(p.fileName)
                             .arg(getErrorLabel(r)));
                 }
+
+                av_dict_free(&codecOptions);
 
                 r = avcodec_parameters_from_context(p.avVideoStream->codecpar, p.avCodecContext);
                 if (r < 0)
