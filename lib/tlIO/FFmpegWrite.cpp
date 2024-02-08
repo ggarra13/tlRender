@@ -612,7 +612,9 @@ namespace tl
                 const AVCodec* avCodec = avcodec_find_encoder(avCodecID);
                 if (avCodecID == AV_CODEC_ID_VP9)
                 {
-                    avCodec = avcodec_find_encoder_by_name("libvpx-vp9");
+                    avCodec = avcodec_find_encoder_by_name("vp9_qsv");
+                    if (!avCodec)
+                        avCodec = avcodec_find_encoder_by_name("libvpx-vp9");
                 }
                 if (!avCodec)
                 {
