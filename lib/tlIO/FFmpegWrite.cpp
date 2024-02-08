@@ -609,13 +609,19 @@ namespace tl
                 default: break;
                 }
                 
-                const AVCodec* avCodec = avcodec_find_encoder(avCodecID);
+                const AVCodec* avCodec = nullptr;
                 if (avCodecID == AV_CODEC_ID_VP9)
                 {
                     avCodec = avcodec_find_encoder_by_name("vp9_qsv");
                     if (!avCodec)
                         avCodec = avcodec_find_encoder_by_name("libvpx-vp9");
                 }
+                if (avCodecID == AV_CODEC_ID_H264)
+                {
+                    avCodec = avcodec_find_encoder_by_name("h264_nvenc");
+                }
+                if (!avCodec)
+                    avCodec = avcodec_find_encoder(avCodecID);
                 if (!avCodec)
                 {
                     throw std::runtime_error(string::Format("{0}: Cannot find encoder").arg(p.fileName));
@@ -687,6 +693,18 @@ namespace tl
                 }
 
                 av_dict_free(&codecOptions);
+
+                if (p.avCodecContext->codec && p.avCodecContext->codec->name)
+                {
+                    if (auto logSystem = _logSystem.lock())
+                    {
+                        logSystem->print(
+                            "tl::io::ffmpeg::Plugin::Write",
+                            string::Format("{0}: Opened codec {1}.")
+                            .arg(p.fileName)
+                            .arg(p.avCodecContext->codec->name));
+                    }
+                }
 
                 r = avcodec_parameters_from_context(p.avVideoStream->codecpar, p.avCodecContext);
                 if (r < 0)
