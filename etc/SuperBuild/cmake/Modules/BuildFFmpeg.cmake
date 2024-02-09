@@ -16,16 +16,31 @@ else()
 
     if(TLRENDER_VPX)
 	list(APPEND FFmpeg_LDFLAGS
-	    --extra-ldflags="-L${CMAKE_INSTALL_PREFIX}/lib/"
 	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libvpx.a")
 	list(APPEND FFmpeg_DEPS VPX)
+    endif()
+    if(TLRENDER_AV1)
+	list(APPEND FFmpeg_LDFLAGS
+	  --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libdav1d.a")
+	if(EXISTS ${CMAKE_INSTALL_PREFIX}/lib64/libSvtAv1Enc.a)
+	  list(APPEND FFmpeg_LDFLAGS
+	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib64/libSvtAv1Enc.a")
+	else()
+	  list(APPEND FFmpeg_LDFLAGS
+	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libSvtAv1Enc.a")
+	endif()
+	if (UNIX AND NOT APPLE)
+	  list(APPEND FFmpeg_LDFLAGS
+	    --extra-libs=-lm
+	    --extra-libs=-lpthread)
+	endif()
+	list(APPEND FFmpeg_DEPS SvtAV1 dav1d)
     endif()
     if(TLRENDER_X264)
 	#
 	# Make sure we pick the static libx264 we compiled, not the system one
 	#
 	list(APPEND FFmpeg_LDFLAGS
-	    --extra-ldflags="-L${CMAKE_INSTALL_PREFIX}/lib/"
 	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libx264.a")
 	list(APPEND FFmpeg_DEPS X264)
     endif()
@@ -55,6 +70,7 @@ else()
     endif()
     set(FFmpeg_CONFIGURE_ARGS
 	--prefix=${CMAKE_INSTALL_PREFIX}
+	--pkg-config-flags=--static
 	--disable-programs
 	--disable-doc
 	--disable-postproc
@@ -327,6 +343,11 @@ else()
 	list(APPEND FFmpeg_CONFIGURE_ARGS
 	    --enable-libvpx)
     endif()
+    if(TLRENDER_AV1)
+	list(APPEND FFmpeg_CONFIGURE_ARGS
+	    --enable-libdav1d
+	    --enable-libsvtav1)
+    endif()
     if(TLRENDER_X264)
 	list(APPEND FFmpeg_CONFIGURE_ARGS
 	    --enable-libx264 --enable-gpl)
@@ -348,7 +369,7 @@ else()
             --assert-level=2)
     endif()
 
-    set(FFmpeg_CONFIGURE ./configure ${FFmpeg_CONFIGURE_ARGS})
+    set(FFmpeg_CONFIGURE ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${CMAKE_INSTALL_PREFIX}/lib64/pkgconfig:${CMAKE_INSTALL_PREFIX}/lib/pkgconfig -- ./configure ${FFmpeg_CONFIGURE_ARGS})
     set(FFmpeg_BUILD make -j 4)
     set(FFmpeg_INSTALL make install)
 

@@ -135,6 +135,16 @@ namespace tl
                 }
                 _avCodecContext[_avStream]->thread_count = options.threadCount;
                 _avCodecContext[_avStream]->thread_type = FF_THREAD_FRAME;
+                
+                // libdav1d codec does not decode properly when thread count is
+                // 0.  We must set it to 1.
+                if (avVideoCodecParameters->codec_id == AV_CODEC_ID_AV1 &&
+                    options.threadCount == 0)
+                {
+                    _avCodecContext[_avStream]->thread_count = 1;
+                }
+                
+                _avCodecContext[_avStream]->thread_type = FF_THREAD_FRAME;
                 r = avcodec_open2(_avCodecContext[_avStream], avVideoCodec, 0);
                 if (r < 0)
                 {

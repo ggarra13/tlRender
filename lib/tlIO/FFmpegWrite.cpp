@@ -606,6 +606,9 @@ namespace tl
                     avCodecID = AV_CODEC_ID_VP9;
                     avProfile = FF_PROFILE_VP9_0;
                     break;
+                case Profile::AV1:
+                    avCodecID = AV_CODEC_ID_AV1;
+                    break;
                 default: break;
                 }
                 

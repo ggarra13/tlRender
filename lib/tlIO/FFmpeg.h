@@ -34,7 +34,8 @@ namespace tl
             ProRes_4444,
             ProRes_XQ,
             VP9,
-
+            AV1,
+            
             Count
         };
         TLRENDER_ENUM(Profile);
