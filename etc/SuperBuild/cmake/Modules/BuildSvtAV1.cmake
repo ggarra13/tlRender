@@ -1,11 +1,13 @@
 include(ExternalProject)
 
+include(GNUInstallDirs)
 
 set(SvtAV1_TAG v1.8.0)
 set(SvtAV1_ARGS ${TLRENDER_EXTERNAL_ARGS})
 
 list(APPEND SvtAV1_ARGS
-  -DENABLE_NASM=ON
+    -DENABLE_NASM=ON
+    -DCMAKE_INSTALL_LIBDIR=lib
     )
 
 
