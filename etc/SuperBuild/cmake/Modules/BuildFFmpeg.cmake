@@ -1,5 +1,7 @@
 include(ExternalProject)
 
+include(ProcessorCount)
+ProcessorCount(NPROCS)
 
 set(FFmpeg_DEPS)
 if(WIN32)
@@ -364,7 +366,7 @@ else()
     endif()
 
     set(FFmpeg_CONFIGURE ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${CMAKE_INSTALL_PREFIX}/lib64/pkgconfig:${CMAKE_INSTALL_PREFIX}/lib/pkgconfig -- ./configure ${FFmpeg_CONFIGURE_ARGS})
-    set(FFmpeg_BUILD make -j 4)
+    set(FFmpeg_BUILD make -j ${NPROCS})
     set(FFmpeg_INSTALL make install)
 
     ExternalProject_Add(
