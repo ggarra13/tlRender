@@ -22,7 +22,7 @@ else()
     if(TLRENDER_AV1)
 	list(APPEND FFmpeg_LDFLAGS
 	  --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libdav1d.a")
-	if(EXISTS ${CMAKE_INSTALL_PREFIX}/lib64/libSvtAv1Enc.a)
+	if(EXISTS "${CMAKE_INSTALL_PREFIX}/lib64/libSvtAv1Enc.a")
 	  list(APPEND FFmpeg_LDFLAGS
 	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib64/libSvtAv1Enc.a")
 	else()
