@@ -21,16 +21,13 @@ else()
     endif()
     if(TLRENDER_AV1)
 	list(APPEND FFmpeg_LDFLAGS
-	  --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libdav1d.a")
-	if(EXISTS "${CMAKE_INSTALL_PREFIX}/lib64/libSvtAv1Enc.a")
-	  list(APPEND FFmpeg_LDFLAGS
-	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib64/libSvtAv1Enc.a")
- 	elseif(EXISTS "${CMAKE_INSTALL_PREFIX}/lib/libSvtAv1Enc.a") 
-	  list(APPEND FFmpeg_LDFLAGS
-	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libSvtAv1Enc.a")
-	else()
-	  list(APPEND FFmpeg_LDFLAGS
-	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib64/libSvtAv1Enc.a")
+	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libdav1d.a")
+	if(EXISTS "/lib64" AND NOT APPLE)
+	    list(APPEND FFmpeg_LDFLAGS
+		--extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib64/libSvtAv1Enc.a")
+ 	else()
+	    list(APPEND FFmpeg_LDFLAGS
+		--extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libSvtAv1Enc.a")
 	endif()
 	if (UNIX AND NOT APPLE)
 	  list(APPEND FFmpeg_LDFLAGS
