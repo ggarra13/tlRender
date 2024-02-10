@@ -35,7 +35,7 @@ elseif(APPLE)
     if(CMAKE_OSX_DEPLOYMENT_TARGET)
         list(APPEND OpenSSL_CONFIGURE -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET})
     endif()
-    set(OpenSSL_BUILD make)
+    set(OpenSSL_BUILD make $(nproc))
     set(OpenSSL_INSTALL make install)
 else()
     set(OpenSSL_CONFIGURE
@@ -45,7 +45,7 @@ else()
         no-external-tests
         no-tests
         no-unit-test)
-    set(OpenSSL_BUILD make)
+    set(OpenSSL_BUILD make -j $(nproc))
     set(OpenSSL_INSTALL make install)
 
 endif()
