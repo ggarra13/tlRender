@@ -25,7 +25,7 @@ else()
 	if(EXISTS "${CMAKE_INSTALL_PREFIX}/lib64/libSvtAv1Enc.a")
 	  list(APPEND FFmpeg_LDFLAGS
 	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib64/libSvtAv1Enc.a")
-	elseif(EXISTS "${CMAKE_INSTALL_PREFIX}/lib/libSvtAv1Enc.a") 
+ 	elseif(EXISTS "${CMAKE_INSTALL_PREFIX}/lib/libSvtAv1Enc.a") 
 	  list(APPEND FFmpeg_LDFLAGS
 	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libSvtAv1Enc.a")
 	else()
