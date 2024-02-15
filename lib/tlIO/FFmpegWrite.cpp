@@ -148,6 +148,7 @@ namespace tl
             AVFrame* avFrame2 = nullptr;
             SwsContext* swsContext = nullptr;
             otime::RationalTime videoStartTime = time::invalidTime;
+            double              speed = 24.F;
 
             // Audio
             AVCodecContext* avAudioCodecContext = nullptr;
@@ -190,7 +191,7 @@ namespace tl
                     .arg(p.fileName));
             
             AVCodec* avCodec = nullptr;
-            AVCodecID avCodecID = AV_CODEC_ID_AAC;
+            AVCodecID avAudioCodecID = AV_CODEC_ID_AAC;
             auto option = options.find("FFmpeg/AudioCodec");
             if (option != options.end())
             {
@@ -200,25 +201,25 @@ namespace tl
                 switch (audioCodec)
                 {
                 case AudioCodec::None:
-                    avCodecID = AV_CODEC_ID_NONE;
+                    avAudioCodecID = AV_CODEC_ID_NONE;
                     break;
                 case AudioCodec::AAC:
-                    avCodecID = AV_CODEC_ID_AAC;
+                    avAudioCodecID = AV_CODEC_ID_AAC;
                     break;
                 case AudioCodec::AC3:
-                    avCodecID = AV_CODEC_ID_AC3;
+                    avAudioCodecID = AV_CODEC_ID_AC3;
                     break;
                 case AudioCodec::True_HD:
-                    avCodecID = AV_CODEC_ID_TRUEHD;
+                    avAudioCodecID = AV_CODEC_ID_TRUEHD;
                     break;
                 case AudioCodec::MP2:
-                    avCodecID = AV_CODEC_ID_MP2;
+                    avAudioCodecID = AV_CODEC_ID_MP2;
                     break;
                 case AudioCodec::MP3:
-                    avCodecID = AV_CODEC_ID_MP3;
+                    avAudioCodecID = AV_CODEC_ID_MP3;
                     break;
                 case AudioCodec::PCM_S16LE:
-                    avCodecID = AV_CODEC_ID_PCM_S16LE;
+                    avAudioCodecID = AV_CODEC_ID_PCM_S16LE;
                     break;
                 default:
                 {
@@ -231,7 +232,7 @@ namespace tl
                             avcodec_descriptor_get_by_name(name);
                         if (desc)
                         {
-                            avCodecID = desc->id;
+                            avAudioCodecID = desc->id;
                         }
                     }
                     break;
@@ -243,9 +244,9 @@ namespace tl
                     string::toLower(path.getExtension());
                 if (extension == ".wav")
                 {
-                    if (avCodecID != AV_CODEC_ID_PCM_S16LE &&
-                        avCodecID != AV_CODEC_ID_MP3 &&
-                        avCodecID != AV_CODEC_ID_AAC)
+                    if (avAudioCodecID != AV_CODEC_ID_PCM_S16LE &&
+                        avAudioCodecID != AV_CODEC_ID_MP3 &&
+                        avAudioCodecID != AV_CODEC_ID_AAC)
                     {
                         if (auto logSystem = _logSystem.lock())
                         {
@@ -254,12 +255,12 @@ namespace tl
                                 "Invalid codec for .wav, switching to AAC",
                                 log::Type::Error);
                         }
-                        avCodecID = AV_CODEC_ID_AAC;
+                        avAudioCodecID = AV_CODEC_ID_AAC;
                     }
                 }
                 else if (extension == ".aiff")
                 {
-                    if (avCodecID != AV_CODEC_ID_PCM_S16LE)
+                    if (avAudioCodecID != AV_CODEC_ID_PCM_S16LE)
                     {
                         if (auto logSystem = _logSystem.lock())
                         {
@@ -268,12 +269,12 @@ namespace tl
                                 "Invalid codec for .aiff, switching to PCM_S16LE",
                                 log::Type::Error);
                         }
-                        avCodecID = AV_CODEC_ID_PCM_S16LE;
+                        avAudioCodecID = AV_CODEC_ID_PCM_S16LE;
                     }
                 }
                 else if (extension == ".mp3")
                 {
-                    if (avCodecID != AV_CODEC_ID_MP3)
+                    if (avAudioCodecID != AV_CODEC_ID_MP3)
                     {
                         if (auto logSystem = _logSystem.lock())
                         {
@@ -282,12 +283,12 @@ namespace tl
                                 "Invalid codec for .mp3, switching to MP3 (needs libmp3lame)",
                                 log::Type::Error);
                         }
-                        avCodecID = AV_CODEC_ID_MP3;
+                        avAudioCodecID = AV_CODEC_ID_MP3;
                     }
                 }
                 else if (extension == ".opus")
                 {
-                    if (avCodecID != AV_CODEC_ID_OPUS)
+                    if (avAudioCodecID != AV_CODEC_ID_OPUS)
                     {
                         if (auto logSystem = _logSystem.lock())
                         {
@@ -299,13 +300,13 @@ namespace tl
                                     .arg(extension),
                                 log::Type::Error);
                         }
-                        avCodecID = AV_CODEC_ID_OPUS;
+                        avAudioCodecID = AV_CODEC_ID_OPUS;
                     }
                 }
                 else if (extension == ".vorbis" ||
                          extension == ".ogg")
                 {
-                    if (avCodecID != AV_CODEC_ID_VORBIS)
+                    if (avAudioCodecID != AV_CODEC_ID_VORBIS)
                     {
                         if (auto logSystem = _logSystem.lock())
                         {
@@ -317,15 +318,15 @@ namespace tl
                                     .arg(extension),
                                 log::Type::Error);
                         }
-                        avCodecID = AV_CODEC_ID_VORBIS;
+                        avAudioCodecID = AV_CODEC_ID_VORBIS;
                     }
                 }
             }
                 
-            if (info.audio.isValid() && avCodecID != AV_CODEC_ID_NONE)
+            if (info.audio.isValid() && avAudioCodecID != AV_CODEC_ID_NONE)
             {
                 if (!avCodec)
-                    avCodec = const_cast<AVCodec*>(avcodec_find_encoder(avCodecID));
+                    avCodec = const_cast<AVCodec*>(avcodec_find_encoder(avAudioCodecID));
                 if (!avCodec)
                     throw std::runtime_error("Could not find audio encoder");
                 
@@ -478,7 +479,7 @@ namespace tl
                     p.avAudioCodecContext->codec_id == AV_CODEC_ID_MP3)
                     p.avAudioCodecContext->block_align = 0;
 
-                if (avCodecID == AV_CODEC_ID_AC3)
+                if (avAudioCodecID == AV_CODEC_ID_AC3)
                     p.avAudioCodecContext->block_align = 0;
 
                 r = avcodec_open2(p.avAudioCodecContext, avCodec, NULL);
@@ -611,6 +612,19 @@ namespace tl
                     break;
                 default: break;
                 }
+
+                p.speed = info.videoTime.duration().rate();
+
+                // Allow setting the speed if not saving audio
+                if (!info.audio.isValid() || avAudioCodecID == AV_CODEC_ID_NONE)
+                {
+                    option = options.find("FFmpeg/Speed");
+                    if (option != options.end())
+                    {
+                        std::stringstream ss(option->second);
+                        ss >> p.speed;
+                    }
+                }
                 
                 const AVCodec* avCodec = nullptr;
                 if (avCodecID == AV_CODEC_ID_VP9)
@@ -652,7 +666,7 @@ namespace tl
                 p.avCodecContext->height = videoInfo.size.h;
                 p.avCodecContext->sample_aspect_ratio = AVRational({ 1, 1 });
                 p.avCodecContext->pix_fmt = avCodec->pix_fmts[0];
-                const auto rational = time::toRational(info.videoTime.duration().rate());
+                const auto rational = time::toRational(p.speed);
                 p.avCodecContext->time_base = { rational.second, rational.first };
                 p.avCodecContext->framerate = { rational.first, rational.second };
                 p.avCodecContext->profile = avProfile;
@@ -1012,7 +1026,7 @@ namespace tl
                 p.avFrame->data,
                 p.avFrame->linesize);
 
-            const auto timeRational = time::toRational(time.rate());
+            const auto timeRational = time::toRational(p.speed);
             p.avFrame->pts = av_rescale_q(
                 time.value() - p.videoStartTime.value(),
                 { timeRational.second, timeRational.first },
