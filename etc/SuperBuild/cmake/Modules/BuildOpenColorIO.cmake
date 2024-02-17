@@ -28,5 +28,6 @@ ExternalProject_Add(
     DEPENDS Imath yaml-cpp expat pystring minizip-ng ZLIB
     GIT_REPOSITORY ${OpenColorIO_GIT_REPOSITORY}
     GIT_TAG ${OpenColorIO_GIT_TAG}
+    GIT_SHALLOW 1
     LIST_SEPARATOR |
     CMAKE_ARGS ${OpenColorIO_ARGS})

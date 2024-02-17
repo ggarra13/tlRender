@@ -13,5 +13,6 @@ ExternalProject_Add(
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/SampleRate
     GIT_REPOSITORY ${SampleRate_GIT_REPOSITORY}
     GIT_TAG ${SampleRate_GIT_TAG}
+    GIT_SHALLOW 1
     LIST_SEPARATOR |
     CMAKE_ARGS ${SampleRate_ARGS})

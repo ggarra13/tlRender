@@ -13,6 +13,7 @@ ExternalProject_Add(
     DEPENDS NASM
     GIT_REPOSITORY "https://code.videolan.org/videolan/dav1d.git"
     GIT_TAG ${dav1d_TAG}
+    GIT_SHALLOW 1
     CONFIGURE_COMMAND ${dav1d_CONFIGURE}
     BUILD_COMMAND ${dav1d_BUILD}
     INSTALL_COMMAND ${dav1d_INSTALL}

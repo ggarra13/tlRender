@@ -23,5 +23,6 @@ ExternalProject_Add(
     DEPENDS ZLIB
     GIT_REPOSITORY ${minizip-ng_GIT_REPOSITORY}
     GIT_TAG ${minizip-ng_GIT_TAG}
+    GIT_SHALLOW 1
     LIST_SEPARATOR |
     CMAKE_ARGS ${minizip-ng_ARGS})

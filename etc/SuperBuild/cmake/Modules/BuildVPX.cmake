@@ -52,6 +52,7 @@ else()
         DEPENDS ${TLRENDER_YASM_DEP} NASM
         GIT_REPOSITORY "https://github.com/webmproject/libvpx.git"
         GIT_TAG ${VPX_TAG}
+	GIT_SHALLOW 1
 	CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env PATH=${YASM_BIN_PATH} -- ./configure ${VPX_CONFIGURE_ARGS}
 	BUILD_COMMAND ${CMAKE_COMMAND} -E env PATH=${YASM_BIN_PATH} -- make
         BUILD_IN_SOURCE 1

@@ -7,9 +7,11 @@ set(nlohmann_json_ARGS ${TLRENDER_EXTERNAL_ARGS})
 list(APPEND nlohmann_json_ARGS -DJSON_BuildTests=OFF)
 
 ExternalProject_Add(
-	nlohmann_json
-	PREFIX ${CMAKE_CURRENT_BINARY_DIR}/nlohmann_json
-	GIT_REPOSITORY ${nlohmann_json_GIT_REPOSITORY}
+    nlohmann_json
+    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/nlohmann_json
+    GIT_REPOSITORY ${nlohmann_json_GIT_REPOSITORY}
     GIT_TAG ${nlohmann_json_GIT_TAG}
+    GIT_SHALLOW 1
     LIST_SEPARATOR |
-	CMAKE_ARGS ${nlohmann_json_ARGS})
+    CMAKE_ARGS ${nlohmann_json_ARGS}
+)
