@@ -70,7 +70,6 @@ else()
 	--disable-programs
 	--disable-doc
 	--disable-postproc
-	--disable-avfilter
 	--disable-hwaccels
 	--disable-devices
 	--disable-filters
@@ -107,6 +106,7 @@ else()
 	--disable-vdpau
 	--disable-videotoolbox
 	--enable-pic
+	--enable-filter=scale
 	${FFmpeg_CFLAGS}
 	${FFmpeg_CXXFLAGS}
 	${FFmpeg_OBJCFLAGS}
