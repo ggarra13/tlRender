@@ -30,7 +30,6 @@ ExternalProject_Add(
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/glfw3
     GIT_REPOSITORY ${glfw3_GIT_REPOSITORY}
     GIT_TAG ${glfw3_GIT_TAG}
-    GIT_SHALLOW 1
     LIST_SEPARATOR |
     CMAKE_ARGS ${glfw3_ARGS})
 
