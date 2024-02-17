@@ -31,7 +31,7 @@ jobs:
       TLRENDER_GCOV: ON
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: recursive
     - uses: actions/setup-python@v5
@@ -91,7 +91,7 @@ jobs:
       TLRENDER_TESTS: ON
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: recursive
     - uses: actions/setup-python@v5
@@ -142,7 +142,7 @@ jobs:
       CMAKE_OSX_ARCHITECTURES: x86_64
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: recursive
     - uses: actions/setup-python@v5
@@ -197,7 +197,7 @@ jobs:
       CMAKE_OSX_ARCHITECTURES: arm64
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: recursive
     - uses: actions/setup-python@v5
@@ -249,7 +249,7 @@ jobs:
       TLRENDER_TESTS: ON
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: recursive
     - uses: actions/setup-python@v5
