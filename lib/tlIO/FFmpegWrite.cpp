@@ -2,6 +2,13 @@
 // Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <unordered_map>
+#include <filesystem>
+namespace fs = std::filesystem;
+
 #include <tlCore/StringFormat.h>
 #include <tlCore/AudioResample.h>
 #include <tlCore/LogSystem.h>
@@ -26,6 +33,49 @@ namespace tl
     {
         namespace
         {
+            void parsePresets(AVDictionary*& codecOptions,
+                              const std::string& presetFile)
+            {
+                std::ifstream file(presetFile);
+                if (!file.is_open())
+                {
+                    throw std::runtime_error(
+                        string::Format("Unable to open preset file '{0}'.")
+                        .arg(presetFile));
+                }
+
+                std::string line;
+                std::unordered_map<std::string, std::string> settings;
+                while (std::getline(file, line)) {
+                    // Ignore lines starting with #
+                    if (line.empty() || line[0] == '#')
+                        continue;
+
+                    // Find the position of the colon
+                    size_t colonPos = line.find(':');
+                    if (colonPos == std::string::npos)
+                        continue;
+
+                    // Extract option and value
+                    std::string option = line.substr(0, colonPos);
+                    std::string value = line.substr(colonPos + 1);
+
+                    // Remove leading and trailing whitespaces from option and value
+                    option.erase(0, option.find_first_not_of(" \t"));
+                    option.erase(option.find_last_not_of(" \t#") + 1);
+                    value.erase(0, value.find_first_not_of(" \t"));
+                    value.erase(value.find_last_not_of(" \t#") + 1);
+
+                    settings[option] = value;
+                }
+                file.close();
+
+                for (const auto& pair : settings)
+                {
+                    av_dict_set(&codecOptions, pair.first.c_str(),
+                                pair.second.c_str(), 0);
+                }
+            }
 
             //! Return the equivalent planar format if available.
             AVSampleFormat toPlanarFormat(const enum AVSampleFormat s)
@@ -677,27 +727,19 @@ namespace tl
                 p.avCodecContext->thread_count = 0;
                 p.avCodecContext->thread_type = FF_THREAD_FRAME;
                 
-                AVDictionary *codecOptions = NULL;
-                if (avCodecID == AV_CODEC_ID_VP9)
-                {
-                    // These settings were mostly taken from:
-                    // https://www.reddit.com/r/AV1/comments/k7colv/encoder_tuning_part_1_tuning_libvpxvp9_be_more/
-                    av_dict_set(&codecOptions, "deadline", "good", 0);
+                AVDictionary* codecOptions = NULL;
 
-                    // this should be used for better encoding, but not sure
-                    // how to do it from C code.
-                    // av_dict_set(&codecOptions, "pass", "2", 0);
+                std::string presetFile;
+                option = options.find("FFmpeg/PresetFile");
+                if (option != options.end())
+                {
+                    std::stringstream ss(option->second);
+                    ss >> presetFile;
+                }
                     
-                    // this chokes avcodec_open2, same as FF_PROFILE_VP9_2
-                    // av_dict_set(&codecOptions, "profile", "2", 0);
-                    av_dict_set(&codecOptions, "tile-columns", "1", 0);;
-                    av_dict_set(&codecOptions, "tile-rows", "0", 0);;
-                    av_dict_set(&codecOptions, "webm", "", 0);;
-                    av_dict_set(&codecOptions, "aq-mode", "2", 0);;
-                    av_dict_set(&codecOptions, "row-mt", "1", 0);
-                    av_dict_set(&codecOptions, "lag-in-frames", "25", 0);
-                    av_dict_set(&codecOptions, "end-usage", "q", 0);
-                    av_dict_set(&codecOptions, "cq-level", "25", 0);
+                if (!presetFile.empty())
+                {
+                    parsePresets(codecOptions, presetFile);
                 }
                 
                 r = avcodec_open2(p.avCodecContext, avCodec, &codecOptions);
