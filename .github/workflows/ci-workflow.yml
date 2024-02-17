@@ -7,9 +7,10 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      TLRENDER_API: GL_4_1
       TLRENDER_PYTHON: OFF
+      TLRENDER_API: GL_4_1
       TLRENDER_GLFW: ON
+      TLRENDER_NET: OFF
       TLRENDER_OCIO: ON
       TLRENDER_AUDIO: ON
       TLRENDER_ASAN: OFF
@@ -33,6 +34,9 @@ jobs:
     - uses: actions/checkout@v3
       with:
         submodules: recursive
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
 
     - name: Setup environment
       run: |
@@ -61,7 +65,7 @@ jobs:
       uses: codecov/codecov-action@v3
       with:
         files: ${{ github.workspace }}/build/tlRender/src/tlRender-build/coverage_filtered.info
-        fail_ci_if_error: false
+        fail_ci_if_error: true
 
   linux-minimal-build:
     runs-on: ubuntu-latest
@@ -90,7 +94,10 @@ jobs:
     - uses: actions/checkout@v3
       with:
         submodules: recursive
-      
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
     - name: Setup environment
       run: |
         echo "$PWD/build/install/bin" >> $GITHUB_PATH
@@ -108,14 +115,14 @@ jobs:
         cd tlRender/src/tlRender-build
         xvfb-run tests/tltest/tltest
 
-  macos-build:
+  macos-12-build:
     runs-on: macos-12
 
     env:
-      CMAKE_OSX_DEPLOYMENT_TARGET: 10.15
-      TLRENDER_API: GL_4_1
       TLRENDER_PYTHON: OFF
+      TLRENDER_API: GL_4_1
       TLRENDER_GLFW: ON
+      TLRENDER_NET: OFF
       TLRENDER_OCIO: ON
       TLRENDER_AUDIO: ON
       TLRENDER_JPEG: ON
@@ -131,11 +138,71 @@ jobs:
       TLRENDER_EXAMPLES: ON
       TLRENDER_TESTS: ON
       TLRENDER_GCOV: OFF
+      CMAKE_OSX_DEPLOYMENT_TARGET: 10.15
+      CMAKE_OSX_ARCHITECTURES: x86_64
 
     steps:
     - uses: actions/checkout@v3
       with:
         submodules: recursive
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    # \bug DYLD_LIBRARY_PATH is not being set here?
+    - name: Setup environment
+      run: |
+        echo "$PWD/build/install/bin" >> $GITHUB_PATH
+        echo "DYLD_LIBRARY_PATH=$PWD/build/install/lib:$DYLD_LIBRARY_PATH" >> $GITHUB_ENV
+        echo "PYTHONPATH=$PWD/build/install/lib:$PYTHONPATH" >> $GITHUB_ENV
+        cmake --version
+        python --version
+
+    - name: Build tlRender
+      run: |
+        export DYLD_LIBRARY_PATH=$PWD/build/install/lib:$DYLD_LIBRARY_PATH
+        bash etc/macOS/macos-build-gha.sh Debug
+
+    - name: Run tests
+      run: |
+        export DYLD_LIBRARY_PATH=$PWD/build/install/lib:$DYLD_LIBRARY_PATH
+        cd build
+        cd tlRender/src/tlRender-build
+        tests/tltest/tltest
+
+  macos-14-build:
+    runs-on: macos-14
+
+    env:
+      TLRENDER_PYTHON: OFF
+      TLRENDER_API: GL_4_1
+      TLRENDER_GLFW: ON
+      TLRENDER_NET: OFF
+      TLRENDER_OCIO: ON
+      TLRENDER_AUDIO: ON
+      TLRENDER_JPEG: ON
+      TLRENDER_TIFF: ON
+      TLRENDER_STB: ON
+      TLRENDER_PNG: ON
+      TLRENDER_EXR: ON
+      TLRENDER_FFMPEG: ON
+      TLRENDER_USD: OFF
+      TLRENDER_NFD: OFF
+      TLRENDER_QT5: OFF
+      TLRENDER_PROGRAMS: ON
+      TLRENDER_EXAMPLES: ON
+      TLRENDER_TESTS: ON
+      TLRENDER_GCOV: OFF
+      CMAKE_OSX_DEPLOYMENT_TARGET: 14
+      CMAKE_OSX_ARCHITECTURES: arm64
+
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
 
     # \bug DYLD_LIBRARY_PATH is not being set here?
     - name: Setup environment
@@ -165,6 +232,7 @@ jobs:
       TLRENDER_API: GL_4_1
       TLRENDER_PYTHON: OFF
       TLRENDER_GLFW: ON
+      TLRENDER_NET: OFF
       TLRENDER_OCIO: ON
       TLRENDER_AUDIO: ON
       TLRENDER_JPEG: ON
@@ -184,6 +252,10 @@ jobs:
     - uses: actions/checkout@v3
       with:
         submodules: recursive
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - uses: ilammy/setup-nasm@v1
 
     # \bug Any spaces before the ">>" will be considered part of the path.
     - name: Setup environment
