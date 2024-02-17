@@ -3,7 +3,13 @@ include(ExternalProject)
 
 set(dav1d_GIT_TAG 1.3.0)
 
-set(dav1d_CONFIGURE ${CMAKE_COMMAND} -E env PYTHONPATH="" "CXXFLAGS=${CMAKE_CXX_FLAGS}" "CFLAGS=${CMAKE_C_FLAGS}" "LDFLAGS=${CMAKE_SHARED_LINKER_FLAGS}" -- meson setup -Denable_tools=false -Denable_tests=false --default-library=static -Dlibdir=${CMAKE_INSTALL_PREFIX}/lib --prefix=${CMAKE_INSTALL_PREFIX} build)
+if(APPLE AND CMAKE_OSX_DEPLOYMENT_TARGET)
+    set(dav1d_CFLAGS -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET})
+    set(dav1d_CXXFLAGS -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET})
+    set(dav1d_LDFLAGS -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET})
+endif()
+
+set(dav1d_CONFIGURE ${CMAKE_COMMAND} -E env PYTHONPATH="" "CXXFLAGS=${dav1d_CXXFLAGS}" "CFLAGS=${dav1d_CFLAGS}" "LDFLAGS=${dav1d_LDFLAGS}" -- meson setup -Denable_tools=false -Denable_tests=false --default-library=static -Dlibdir=${CMAKE_INSTALL_PREFIX}/lib --prefix=${CMAKE_INSTALL_PREFIX} build)
 set(dav1d_BUILD export PYTHONPATH="" && cd build && ninja)
 set(dav1d_INSTALL export PYTHONPATH="" && cd build && ninja install)
 
