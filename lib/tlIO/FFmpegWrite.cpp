@@ -6,8 +6,6 @@
 #include <sstream>
 #include <string>
 #include <unordered_map>
-#include <filesystem>
-namespace fs = std::filesystem;
 
 #include <tlCore/StringFormat.h>
 #include <tlCore/AudioResample.h>
