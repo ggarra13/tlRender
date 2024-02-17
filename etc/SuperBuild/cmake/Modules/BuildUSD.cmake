@@ -35,9 +35,10 @@ endif()
 list(APPEND USD_ARGS --no-python --no-examples --no-tutorials --no-tools)
 list(APPEND USD_ARGS --verbose)
 
-set(USD_PATCH_COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    ${CMAKE_CURRENT_SOURCE_DIR}/USD-patch/build_scripts/build_usd.py
-    build_scripts/build_usd.py)
+# I had to set this up as jfrog was failing.
+#set(USD_PATCH_COMMAND ${CMAKE_COMMAND} -E copy_if_different
+#    ${CMAKE_CURRENT_SOURCE_DIR}/USD-patch/build_scripts/build_usd.py
+#    build_scripts/build_usd.py)
     
 set(USD_INSTALL_COMMAND )
 if(WIN32)
