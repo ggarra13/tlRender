@@ -22,10 +22,6 @@ extern "C"
 #include <libavutil/timestamp.h>
     
 #include <libavcodec/avcodec.h>
-
-#include <libavfilter/avfilter.h>
-#include <libavfilter/buffersink.h>
-#include <libavfilter/buffersrc.h>
     
 }
 
@@ -35,6 +31,33 @@ namespace tl
     {
         namespace
         {
+
+            const int* parseYUVType(const char *s, enum AVColorSpace colorspace)
+            {
+                if (!s)
+                    s = "bt601";
+
+                if (s && strstr(s, "bt709")) {
+                    colorspace = AVCOL_SPC_BT709;
+                } else if (s && strstr(s, "fcc")) {
+                    colorspace = AVCOL_SPC_FCC;
+                } else if (s && strstr(s, "smpte240m")) {
+                    colorspace = AVCOL_SPC_SMPTE240M;
+                } else if (s && (strstr(s, "bt601") || strstr(s, "bt470") || strstr(s, "smpte170m"))) {
+                    colorspace = AVCOL_SPC_BT470BG;
+                } else if (s && strstr(s, "bt2020")) {
+                    colorspace = AVCOL_SPC_BT2020_NCL;
+                }
+                
+                if (colorspace < 1 || colorspace > 10 || colorspace == 8) {
+                    colorspace = AVCOL_SPC_BT470BG;
+                }
+
+                return sws_getCoefficients(colorspace);
+            }
+
+            
+            //! Parse preset file and extract the video codec settings
             void parsePresets(AVDictionary*& codecOptions,
                               const std::string& presetFile)
             {
@@ -201,12 +224,6 @@ namespace tl
             SwsContext* swsContext = nullptr;
             otime::RationalTime videoStartTime = time::invalidTime;
             double              speed = 24.F;
-
-            // Video Filter parameters 
-            AVFrame* avFilteredFrame = nullptr;
-            AVFilterGraph* filterGraph = nullptr;
-            AVFilterContext* buffersrcCtx = nullptr;
-            AVFilterContext* buffersinkCtx = nullptr;
 
             // Audio
             AVCodecContext* avAudioCodecContext = nullptr;
@@ -728,6 +745,12 @@ namespace tl
                 p.avCodecContext->time_base = { rational.second, rational.first };
                 p.avCodecContext->framerate = { rational.first, rational.second };
                 p.avCodecContext->profile = avProfile;
+                
+                p.avCodecContext->color_range = AVCOL_RANGE_MPEG;  // Equivalent to -color_range tv
+                p.avCodecContext->colorspace = AVCOL_SPC_BT709;    // Equivalent to -colorspace bt709
+                p.avCodecContext->color_primaries = AVCOL_PRI_BT709; // Equivalent to -color_primaries bt709
+                p.avCodecContext->color_trc = AVCOL_TRC_IEC61966_2_1; // Equivalent to -color_trc iec61966-2-1
+
                 if (p.avFormatContext->oformat->flags & AVFMT_GLOBALHEADER)
                 {
                     p.avCodecContext->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
@@ -885,6 +908,21 @@ namespace tl
                 {
                     throw std::runtime_error(string::Format("{0}: Cannot initialize sws context").arg(p.fileName));
                 }
+
+                // Handle matrices and color space details
+                int in_full = 1, out_full = 1, brightness, contrast, saturation;
+                const int *inv_table, *table;
+
+                sws_getColorspaceDetails(p.swsContext, (int **)&inv_table, &in_full,
+                                         (int **)&table, &out_full,
+                                         &brightness, &contrast, &saturation);
+        
+                inv_table = parseYUVType("bt709", p.avCodecContext->colorspace);
+                table     = parseYUVType("bt709", AVCOL_SPC_UNSPECIFIED);
+                
+                sws_setColorspaceDetails(p.swsContext, inv_table, in_full,
+                                         table, out_full,
+                                         brightness, contrast, saturation);
             }
             
             if (p.avFormatContext->nb_streams == 0)
@@ -913,112 +951,6 @@ namespace tl
                         .arg(getErrorLabel(r)));
             }
 
-            bool filter = true;
-            if (filter)
-            {
-                // Allocate scaled frame
-                p.avFilteredFrame = av_frame_alloc();
-                if (!p.avFilteredFrame)
-                {
-                    throw std::runtime_error(
-                        string::Format("{0}: Cannot allocate filtered frame")
-                            .arg(p.fileName));
-                }
-    
-                // Initialize filter graph
-                p.filterGraph = avfilter_graph_alloc();
-                if (!p.filterGraph)
-                {
-                    throw std::runtime_error(
-                        string::Format("{0}: avfilter_graph_alloc - Could not "
-                                       "allocate filter graph")
-                            .arg(p.fileName));
-                }
-
-                // Initialize filter parameters
-                char args[512];
-                snprintf(args, sizeof(args),
-                         "video_size=%dx%d:pix_fmt=%d:time_base=%d/%d:pixel_aspect=%d/%d",
-                         p.avCodecContext->width, p.avCodecContext->height,
-                         p.avCodecContext->pix_fmt,
-                         p.avVideoStream->time_base.num,
-                         p.avVideoStream->time_base.den,
-                         p.avCodecContext->sample_aspect_ratio.num,
-                         p.avCodecContext->sample_aspect_ratio.den);
-
-                std::cerr << args << std::endl;
-                
-                // Create input filter
-                const AVFilter* buffersrc = avfilter_get_by_name("buffer");
-                avfilter_graph_create_filter(
-                    &p.buffersrcCtx, buffersrc, "in", args, NULL,
-                    p.filterGraph);
-                if (!p.buffersrcCtx)
-                {
-                    throw std::runtime_error(
-                        string::Format("{0}: Could not create input filter")
-                            .arg(p.fileName));
-                }
-
-                // Create output filter
-                const AVFilter* buffersink =
-                    avfilter_get_by_name("buffersink");
-                avfilter_graph_create_filter(
-                    &p.buffersinkCtx, buffersink, "out", NULL, NULL,
-                    p.filterGraph);
-                if (!p.buffersinkCtx)
-                {
-                    throw std::runtime_error(
-                        string::Format("{0}: Could not create output filter")
-                            .arg(p.fileName));
-                }
-                
-                // Specify scale filter options
-                AVDictionary *options_dict = NULL;
-                av_dict_set(&options_dict, "scale", "in_range=full:in_color_matrix=bt709:out_range=full:out_color_matrix=bt709", 0);
-
-                // Initialize the filter link
-                AVFilterInOut *outputs = avfilter_inout_alloc();
-                AVFilterInOut *inputs  = avfilter_inout_alloc();
-                outputs->name       = av_strdup("in");
-                outputs->filter_ctx = p.buffersrcCtx;
-                outputs->pad_idx    = 0;
-                outputs->next       = NULL;
-                inputs->name        = av_strdup("out");
-                inputs->filter_ctx  = p.buffersinkCtx;
-                inputs->pad_idx     = 0;
-                inputs->next        = NULL;
-                
-                // Configuring the filter context with the provided parameters
-                const char* filterParams = "scale=in_range=full:in_color_matrix=bt709:out_range=full:out_color_matrix=bt709";
-
-                int ret = avfilter_graph_parse_ptr(p.filterGraph, filterParams,
-                                                   &inputs, &outputs, NULL);
-                if (ret < 0)
-                {
-                    avfilter_inout_free(&outputs);
-                    avfilter_inout_free(&inputs);
-                    throw std::runtime_error(
-                         string::Format("{0}: avfilter_graph_parse_ptr - {1}")
-                         .arg(p.fileName)
-                         .arg(getErrorLabel(r)));
-                }
-
-                // Configure the filtergraph
-                ret = avfilter_graph_config(p.filterGraph, NULL);
-                if (ret < 0)
-                {
-                    avfilter_inout_free(&outputs);
-                    avfilter_inout_free(&inputs);
-                    throw std::runtime_error(
-                         string::Format("{0}: avfilter_graph_config - {1}")
-                         .arg(p.fileName)
-                         .arg(getErrorLabel(r)));
-                }
-                
-                avfilter_inout_free(&outputs);
-                avfilter_inout_free(&inputs);
-            }
             
             p.opened = true;
         }
@@ -1074,10 +1006,6 @@ namespace tl
             {
                 av_frame_free(&p.avAudioFrame);
             }
-            if (p.avFilteredFrame)
-            {
-                av_frame_free(&p.avFilteredFrame);
-            }
             if (p.avPacket)
             {
                 av_packet_free(&p.avPacket);
@@ -1106,18 +1034,6 @@ namespace tl
             if (p.avFormatContext)
             {
                 avformat_free_context(p.avFormatContext);
-            }
-            if (p.buffersrcCtx)
-            {
-                avfilter_free(p.buffersrcCtx);
-            }
-            if (p.buffersinkCtx)
-            {
-                avfilter_free(p.buffersinkCtx);
-            }
-            if (p.filterGraph)
-            {
-                avfilter_graph_free(&p.filterGraph);
             }
         }
 
@@ -1199,50 +1115,14 @@ namespace tl
                 p.avFrame->data,
                 p.avFrame->linesize);
 
-            if (p.buffersrcCtx)
-            {
-                // Apply the filter graph to the input video
-                r = av_buffersrc_add_frame_flags(
-                    p.buffersrcCtx, p.avFrame, AV_BUFFERSRC_FLAG_KEEP_REF);
-                if (r)
-                {
-                    throw std::runtime_error(
-                        string::Format("{0}: avbuffersrc_add_frame_flags - {1}")
-                            .arg(p.fileName)
-                            .arg(getErrorLabel(r)));
-                }
-
-                // r = av_frame_make_writable(p.avFilteredFrame);
-                // if (r < 0)
-                // {
-                //     throw std::runtime_error(
-                //         string::Format("Could not make filtered frame writable "
-                //                        "at time {0}.")
-                //             .arg(time));
-                // }
-
-                r = av_buffersink_get_frame(p.buffersinkCtx, p.avFilteredFrame);
-                if (r)
-                {
-                    throw std::runtime_error(
-                        string::Format("{0}: av_buffersink_get_frame - {1}")
-                            .arg(p.fileName)
-                            .arg(getErrorLabel(r)));
-                }
-            }
-            else
-            {
-                p.avFilteredFrame = p.avFrame;
-            }
-
             const auto timeRational = time::toRational(p.speed);
-            p.avFilteredFrame->pts = av_rescale_q(
+            p.avFrame->pts = av_rescale_q(
                 time.value() - p.videoStartTime.value(),
                 { timeRational.second, timeRational.first },
                 p.avVideoStream->time_base);
 
             _encode(
-                    p.avCodecContext, p.avVideoStream, p.avFilteredFrame,
+                    p.avCodecContext, p.avVideoStream, p.avFrame,
                     p.avPacket);
         }
 

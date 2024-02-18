@@ -68,6 +68,7 @@ else()
 	--prefix=${CMAKE_INSTALL_PREFIX}
 	--pkg-config-flags=--static
 	--disable-programs
+	--disable-avfilter
 	--disable-doc
 	--disable-postproc
 	--disable-hwaccels
