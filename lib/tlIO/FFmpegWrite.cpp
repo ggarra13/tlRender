@@ -35,18 +35,38 @@ namespace tl
             AVPixelFormat parsePixelFormat(const std::string& s)
             {
                 AVPixelFormat o = AV_PIX_FMT_YUV420P;
-                if (s == "YUV422P")
+
+                if (s == "YUV420P")
+                    o = AV_PIX_FMT_YUV420P;
+                else if (s == "YUVA420P")
+                    o = AV_PIX_FMT_YUVA420P;
+                else if (s == "YUV422P")
                     o = AV_PIX_FMT_YUV422P;
                 else if (s == "YUV444P")
                     o = AV_PIX_FMT_YUV444P;
+
                 else if (s == "YUV420P10LE")
                     o = AV_PIX_FMT_YUV420P10LE;
                 else if (s == "YUV422P10LE")
                     o = AV_PIX_FMT_YUV422P10LE;
                 else if (s == "YUV444P10LE")
                     o = AV_PIX_FMT_YUV444P10LE;
-                else if (s == "RGB")
-                    o = AV_PIX_FMT_RGB24;
+                else if (s == "YUV420P10LE")
+                    o = AV_PIX_FMT_YUV420P10LE;
+                else if (s == "YUV422P10LE")
+                    o = AV_PIX_FMT_YUV422P10LE;
+                else if (s == "YUV444P10LE")
+                    o = AV_PIX_FMT_YUV444P10LE;
+                
+                else if (s == "GBRP")
+                    o = AV_PIX_FMT_GBRP;
+                else if (s == "GBRP10LE")
+                    o = AV_PIX_FMT_GBRP10LE;
+                else if (s == "GBRP")
+                    o = AV_PIX_FMT_GBRP12LE;
+                else
+                    throw std::runtime_error(
+                        string::Format("Unknown pixel format {0}").arg(s));
                 // else if (s == "RGB10")
                 //     return AV_PIX_FMT_RGB10;
                 // else if (s == "RGB12")
@@ -791,7 +811,6 @@ namespace tl
                 const auto rational = time::toRational(p.speed);
                 p.avCodecContext->time_base = { rational.second, rational.first };
                 p.avCodecContext->framerate = { rational.first, rational.second };
-                p.avCodecContext->profile = avProfile;
                 
                 p.avCodecContext->color_range = AVCOL_RANGE_MPEG;  // Equivalent to -color_range tv
                 p.avCodecContext->colorspace = AVCOL_SPC_BT709;    // Equivalent to -colorspace bt709
@@ -818,7 +837,26 @@ namespace tl
                 AVPixelFormat pix_fmt = parsePixelFormat(pixelFormat);
                 pix_fmt = choosePixelFormat(avCodec, pix_fmt);
                 p.avCodecContext->pix_fmt = pix_fmt;
+
+                if (profile == Profile::H264)
+                {
+                    switch(pix_fmt)
+                    {
+                    case AV_PIX_FMT_YUV420P10LE:
+                        avProfile = FF_PROFILE_H264_HIGH_10;
+                        break;
+                    case AV_PIX_FMT_YUV422P10LE:
+                        avProfile = FF_PROFILE_H264_HIGH_422;
+                        break;
+                    case AV_PIX_FMT_YUV444P10LE:
+                        avProfile = FF_PROFILE_H264_HIGH_444;
+                        break;
+                    default:
+                        avProfile = FF_PROFILE_H264_HIGH;
+                    }
+                }
                 
+                p.avCodecContext->profile = avProfile;
                 AVDictionary* codecOptions = NULL;
 
                 std::string presetFile;
@@ -939,17 +977,6 @@ namespace tl
                     throw std::runtime_error(string::Format("{0}: Incompatible pixel type").arg(p.fileName));
                     break;
                 }
-                /*p.swsContext = sws_getContext(
-                  videoInfo.size.w,
-                  videoInfo.size.h,
-                  p.avPixelFormatIn,
-                  videoInfo.size.w,
-                  videoInfo.size.h,
-                  p.avCodecContext->pix_fmt,
-                  swsScaleFlags,
-                  0,
-                  0,
-                  0);*/
                 p.swsContext = sws_alloc_context();
                 if (!p.swsContext)
                 {
