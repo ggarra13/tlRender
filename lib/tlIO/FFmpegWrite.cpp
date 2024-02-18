@@ -53,6 +53,35 @@ namespace tl
                 //     return AV_PIX_FMT_RGB12;
                 return o;
             }
+    
+            enum AVPixelFormat
+            choosePixelFormat(const AVCodec *codec, enum AVPixelFormat target)
+            {
+                if (codec && codec->pix_fmts) {
+                    const enum AVPixelFormat *p = codec->pix_fmts;
+                    const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(target);
+                    int has_alpha = desc ? desc->nb_components % 2 == 0 : 0;
+                    enum AVPixelFormat best= AV_PIX_FMT_NONE;
+
+                    for (; *p != AV_PIX_FMT_NONE; p++) {
+                        best = av_find_best_pix_fmt_of_2(best, *p, target,
+                                                         has_alpha, NULL);
+                        if (*p == target)
+                            break;
+                    }
+                    if (*p == AV_PIX_FMT_NONE)
+                    {
+                        if (target != AV_PIX_FMT_NONE)
+                            av_log(NULL, AV_LOG_WARNING,
+                                   "Incompatible pixel format '%s' for codec '%s', auto-selecting format '%s'\n",
+                                   av_get_pix_fmt_name(target),
+                                   codec->name,
+                                   av_get_pix_fmt_name(best));
+                        return best;
+                    }
+                }
+                return target;
+            }
             
             //! Return the color space matrix coefficients for a string.
             const int* parseYUVType(const char *s, enum AVColorSpace colorspace)
@@ -791,7 +820,8 @@ namespace tl
 
                 // Parse the pixel format and check that it is a valid one.
                 AVPixelFormat pix_fmt = parsePixelFormat(pixelFormat);
-                p.avCodecContext->pix_fmt = avCodec->pix_fmts[0];
+                pix_fmt = choosePixelFormat(avCodec, pix_fmt);
+                p.avCodecContext->pix_fmt = pix_fmt;
                 
                 AVDictionary* codecOptions = NULL;
 
