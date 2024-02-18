@@ -205,8 +205,8 @@ namespace tl
             // Video Filter parameters 
             AVFrame* avFilteredFrame = nullptr;
             AVFilterGraph* filterGraph = nullptr;
-            AVFilterContext* inputFilterCtx = nullptr;
-            AVFilterContext* outputFilterCtx = nullptr;
+            AVFilterContext* buffersrcCtx = nullptr;
+            AVFilterContext* buffersinkCtx = nullptr;
 
             // Audio
             AVCodecContext* avAudioCodecContext = nullptr;
@@ -945,16 +945,15 @@ namespace tl
                          p.avVideoStream->time_base.den,
                          p.avCodecContext->sample_aspect_ratio.num,
                          p.avCodecContext->sample_aspect_ratio.den);
+
+                std::cerr << args << std::endl;
                 
                 // Create input filter
-                const AVFilter* inputFilter = avfilter_get_by_name("buffer");
+                const AVFilter* buffersrc = avfilter_get_by_name("buffer");
                 avfilter_graph_create_filter(
-                    &p.inputFilterCtx, inputFilter, "in", args, NULL,
+                    &p.buffersrcCtx, buffersrc, "in", args, NULL,
                     p.filterGraph);
-                // p.inputFilterCtx = avfilter_graph_alloc_filter(p.filterGraph,
-                //                                                inputFilter,
-                //                                                "in");
-                if (!p.inputFilterCtx)
+                if (!p.buffersrcCtx)
                 {
                     throw std::runtime_error(
                         string::Format("{0}: Could not create input filter")
@@ -962,14 +961,12 @@ namespace tl
                 }
 
                 // Create output filter
-                const AVFilter* outputFilter =
+                const AVFilter* buffersink =
                     avfilter_get_by_name("buffersink");
                 avfilter_graph_create_filter(
-                    &p.outputFilterCtx, outputFilter, "out", NULL, NULL,
+                    &p.buffersinkCtx, buffersink, "out", NULL, NULL,
                     p.filterGraph);
-                // p.outputFilterCtx = avfilter_graph_alloc_filter(
-                //     p.filterGraph, outputFilter, "out");
-                if (!p.outputFilterCtx)
+                if (!p.buffersinkCtx)
                 {
                     throw std::runtime_error(
                         string::Format("{0}: Could not create output filter")
@@ -984,41 +981,23 @@ namespace tl
                 AVFilterInOut *outputs = avfilter_inout_alloc();
                 AVFilterInOut *inputs  = avfilter_inout_alloc();
                 outputs->name       = av_strdup("in");
-                outputs->filter_ctx = p.inputFilterCtx;
+                outputs->filter_ctx = p.buffersrcCtx;
                 outputs->pad_idx    = 0;
                 outputs->next       = NULL;
                 inputs->name        = av_strdup("out");
-                inputs->filter_ctx  = p.outputFilterCtx;
+                inputs->filter_ctx  = p.buffersinkCtx;
                 inputs->pad_idx     = 0;
                 inputs->next        = NULL;
-
-                // Link filters
-                // r = avfilter_link(p.inputFilterCtx, 0, p.outputFilterCtx, 0);
-                // if (r)
-                // {
-                //     throw std::runtime_error(
-                //         string::Format("{0}: avfilter_link - {1}")
-                //             .arg(p.fileName)
-                //             .arg(getErrorLabel(r)));
-                // }
-
+                
                 // Configuring the filter context with the provided parameters
                 const char* filterParams = "scale=in_range=full:in_color_matrix=bt709:out_range=full:out_color_matrix=bt709";
 
-                // r = avfilter_init_str(p.outputFilterCtx, filterParams);
-                // if (r < 0)
-                // {
-                //     throw std::runtime_error(
-                //         string::Format("{0}: avfilter_init_str - {1}")
-                //             .arg(p.fileName)
-                //             .arg(getErrorLabel(r)));
-                // }// Parse the filtergraph specification and create a link
-
                 int ret = avfilter_graph_parse_ptr(p.filterGraph, filterParams,
                                                    &inputs, &outputs, NULL);
-                if (ret < 0) {
-                    // Handle error
-                    // Handle error
+                if (ret < 0)
+                {
+                    avfilter_inout_free(&outputs);
+                    avfilter_inout_free(&inputs);
                     throw std::runtime_error(
                          string::Format("{0}: avfilter_graph_parse_ptr - {1}")
                          .arg(p.fileName)
@@ -1027,13 +1006,18 @@ namespace tl
 
                 // Configure the filtergraph
                 ret = avfilter_graph_config(p.filterGraph, NULL);
-                if (ret < 0) {
-                    // Handle error
+                if (ret < 0)
+                {
+                    avfilter_inout_free(&outputs);
+                    avfilter_inout_free(&inputs);
                     throw std::runtime_error(
                          string::Format("{0}: avfilter_graph_config - {1}")
                          .arg(p.fileName)
                          .arg(getErrorLabel(r)));
                 }
+                
+                avfilter_inout_free(&outputs);
+                avfilter_inout_free(&inputs);
             }
             
             p.opened = true;
@@ -1123,13 +1107,13 @@ namespace tl
             {
                 avformat_free_context(p.avFormatContext);
             }
-            if (p.inputFilterCtx)
+            if (p.buffersrcCtx)
             {
-                avfilter_free(p.inputFilterCtx);
+                avfilter_free(p.buffersrcCtx);
             }
-            if (p.outputFilterCtx)
+            if (p.buffersinkCtx)
             {
-                avfilter_free(p.outputFilterCtx);
+                avfilter_free(p.buffersinkCtx);
             }
             if (p.filterGraph)
             {
@@ -1215,11 +1199,11 @@ namespace tl
                 p.avFrame->data,
                 p.avFrame->linesize);
 
-            if (p.inputFilterCtx)
+            if (p.buffersrcCtx)
             {
                 // Apply the filter graph to the input video
                 r = av_buffersrc_add_frame_flags(
-                    p.inputFilterCtx, p.avFrame, AV_BUFFERSRC_FLAG_KEEP_REF);
+                    p.buffersrcCtx, p.avFrame, AV_BUFFERSRC_FLAG_KEEP_REF);
                 if (r)
                 {
                     throw std::runtime_error(
@@ -1237,8 +1221,7 @@ namespace tl
                 //             .arg(time));
                 // }
 
-                r = av_buffersink_get_frame(
-                    p.outputFilterCtx, p.avFilteredFrame);
+                r = av_buffersink_get_frame(p.buffersinkCtx, p.avFilteredFrame);
                 if (r)
                 {
                     throw std::runtime_error(
