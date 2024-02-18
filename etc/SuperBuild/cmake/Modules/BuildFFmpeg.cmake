@@ -107,7 +107,6 @@ else()
 	--disable-vdpau
 	--disable-videotoolbox
 	--enable-pic
-	--enable-filter=scale
 	${FFmpeg_CFLAGS}
 	${FFmpeg_CXXFLAGS}
 	${FFmpeg_OBJCFLAGS}

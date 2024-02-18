@@ -760,10 +760,6 @@ namespace tl
                     if (!avCodec)
                         avCodec = avcodec_find_encoder_by_name("libvpx-vp9");
                 }
-                if (avCodecID == AV_CODEC_ID_H264)
-                {
-                    avCodec = avcodec_find_encoder_by_name("h264_nvenc");
-                }
                 if (!avCodec)
                     avCodec = avcodec_find_encoder(avCodecID);
                 if (!avCodec)
@@ -832,7 +828,7 @@ namespace tl
                     std::stringstream ss(option->second);
                     ss >> presetFile;
                 }
-                    
+                
                 if (!presetFile.empty())
                 {
                     parsePresets(codecOptions, presetFile);
@@ -975,13 +971,13 @@ namespace tl
                 }
 
                 // Handle matrices and color space details
-                int in_full = 1, out_full = 1, brightness, contrast, saturation;
+                int in_full, out_full, brightness, contrast, saturation;
                 const int *inv_table, *table;
 
-                sws_getColorspaceDetails(p.swsContext, (int **)&inv_table, &in_full,
-                                         (int **)&table, &out_full,
-                                         &brightness, &contrast, &saturation);
-        
+                sws_getColorspaceDetails(
+                    p.swsContext, (int**)&inv_table, &in_full, (int**)&table,
+                    &out_full, &brightness, &contrast, &saturation);
+
                 inv_table = parseYUVType("bt709", p.avCodecContext->colorspace);
                 table     = parseYUVType("bt709", AVCOL_SPC_UNSPECIFIED);
                 
