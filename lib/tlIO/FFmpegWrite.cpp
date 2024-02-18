@@ -935,30 +935,6 @@ namespace tl
                             .arg(p.fileName));
                 }
 
-                // Create input filter
-                const AVFilter* inputFilter = avfilter_get_by_name("buffer");
-                p.inputFilterCtx = avfilter_graph_alloc_filter(p.filterGraph,
-                                                               inputFilter,
-                                                               "in");
-                if (!p.inputFilterCtx)
-                {
-                    throw std::runtime_error(
-                        string::Format("{0}: Could not create input filter")
-                            .arg(p.fileName));
-                }
-
-                // Create output filter
-                const AVFilter* outputFilter =
-                    avfilter_get_by_name("buffersink");
-                p.outputFilterCtx = avfilter_graph_alloc_filter(
-                    p.filterGraph, outputFilter, "out");
-                if (!p.outputFilterCtx)
-                {
-                    throw std::runtime_error(
-                        string::Format("{0}: Could not create output filter")
-                            .arg(p.fileName));
-                }
-
                 // Initialize filter parameters
                 char args[512];
                 snprintf(args, sizeof(args),
@@ -969,37 +945,94 @@ namespace tl
                          p.avVideoStream->time_base.den,
                          p.avCodecContext->sample_aspect_ratio.num,
                          p.avCodecContext->sample_aspect_ratio.den);
-
-                r = avfilter_init_str(p.inputFilterCtx, args);
-                if (r)
+                
+                // Create input filter
+                const AVFilter* inputFilter = avfilter_get_by_name("buffer");
+                avfilter_graph_create_filter(
+                    &p.inputFilterCtx, inputFilter, "in", args, NULL,
+                    p.filterGraph);
+                // p.inputFilterCtx = avfilter_graph_alloc_filter(p.filterGraph,
+                //                                                inputFilter,
+                //                                                "in");
+                if (!p.inputFilterCtx)
                 {
                     throw std::runtime_error(
-                        string::Format(
-                            "{0}: Could not initialize input filter paramters")
-                            .arg(p.fileName)
-                            .arg(getErrorLabel(r)));
+                        string::Format("{0}: Could not create input filter")
+                            .arg(p.fileName));
                 }
+
+                // Create output filter
+                const AVFilter* outputFilter =
+                    avfilter_get_by_name("buffersink");
+                avfilter_graph_create_filter(
+                    &p.outputFilterCtx, outputFilter, "out", NULL, NULL,
+                    p.filterGraph);
+                // p.outputFilterCtx = avfilter_graph_alloc_filter(
+                //     p.filterGraph, outputFilter, "out");
+                if (!p.outputFilterCtx)
+                {
+                    throw std::runtime_error(
+                        string::Format("{0}: Could not create output filter")
+                            .arg(p.fileName));
+                }
+                
+                // Specify scale filter options
+                AVDictionary *options_dict = NULL;
+                av_dict_set(&options_dict, "scale", "in_range=full:in_color_matrix=bt709:out_range=full:out_color_matrix=bt709", 0);
+
+                // Initialize the filter link
+                AVFilterInOut *outputs = avfilter_inout_alloc();
+                AVFilterInOut *inputs  = avfilter_inout_alloc();
+                outputs->name       = av_strdup("in");
+                outputs->filter_ctx = p.inputFilterCtx;
+                outputs->pad_idx    = 0;
+                outputs->next       = NULL;
+                inputs->name        = av_strdup("out");
+                inputs->filter_ctx  = p.outputFilterCtx;
+                inputs->pad_idx     = 0;
+                inputs->next        = NULL;
 
                 // Link filters
-                r = avfilter_link(p.inputFilterCtx, 0, p.outputFilterCtx, 0);
-                if (r)
-                {
-                    throw std::runtime_error(
-                        string::Format("{0}: avfilter_link - {1}")
-                            .arg(p.fileName)
-                            .arg(getErrorLabel(r)));
-                }
+                // r = avfilter_link(p.inputFilterCtx, 0, p.outputFilterCtx, 0);
+                // if (r)
+                // {
+                //     throw std::runtime_error(
+                //         string::Format("{0}: avfilter_link - {1}")
+                //             .arg(p.fileName)
+                //             .arg(getErrorLabel(r)));
+                // }
 
                 // Configuring the filter context with the provided parameters
-                char *filterParams = "scale=in_range=full:in_color_matrix=bt709:out_range=full:out_color_matrix=bt709";
+                const char* filterParams = "scale=in_range=full:in_color_matrix=bt709:out_range=full:out_color_matrix=bt709";
 
-                r = avfilter_init_str(p.outputFilterCtx, filterParams);
-                if (r)
-                {
+                // r = avfilter_init_str(p.outputFilterCtx, filterParams);
+                // if (r < 0)
+                // {
+                //     throw std::runtime_error(
+                //         string::Format("{0}: avfilter_init_str - {1}")
+                //             .arg(p.fileName)
+                //             .arg(getErrorLabel(r)));
+                // }// Parse the filtergraph specification and create a link
+
+                int ret = avfilter_graph_parse_ptr(p.filterGraph, filterParams,
+                                                   &inputs, &outputs, NULL);
+                if (ret < 0) {
+                    // Handle error
+                    // Handle error
                     throw std::runtime_error(
-                        string::Format("{0}: avfilter_init_str - {1}")
-                            .arg(p.fileName)
-                            .arg(getErrorLabel(r)));
+                         string::Format("{0}: avfilter_graph_parse_ptr - {1}")
+                         .arg(p.fileName)
+                         .arg(getErrorLabel(r)));
+                }
+
+                // Configure the filtergraph
+                ret = avfilter_graph_config(p.filterGraph, NULL);
+                if (ret < 0) {
+                    // Handle error
+                    throw std::runtime_error(
+                         string::Format("{0}: avfilter_graph_config - {1}")
+                         .arg(p.fileName)
+                         .arg(getErrorLabel(r)));
                 }
             }
             
@@ -1195,14 +1228,14 @@ namespace tl
                             .arg(getErrorLabel(r)));
                 }
 
-                r = av_frame_make_writable(p.avFilteredFrame);
-                if (r < 0)
-                {
-                    throw std::runtime_error(
-                        string::Format("Could not make filtered frame writable "
-                                       "at time {0}.")
-                            .arg(time));
-                }
+                // r = av_frame_make_writable(p.avFilteredFrame);
+                // if (r < 0)
+                // {
+                //     throw std::runtime_error(
+                //         string::Format("Could not make filtered frame writable "
+                //                        "at time {0}.")
+                //             .arg(time));
+                // }
 
                 r = av_buffersink_get_frame(
                     p.outputFilterCtx, p.avFilteredFrame);
