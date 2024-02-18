@@ -64,10 +64,10 @@ else()
 	list(APPEND FFmpeg_OBJCFLAGS "--extra-objcflags=-g")
 	list(APPEND FFmpeg_LDFLAGS "--extra-ldflags=-g")
     endif()
-#	--disable-programs
     set(FFmpeg_CONFIGURE_ARGS
 	--prefix=${CMAKE_INSTALL_PREFIX}
 	--pkg-config-flags=--static
+	--disable-programs
 	--disable-avfilter
 	--disable-doc
 	--disable-postproc
