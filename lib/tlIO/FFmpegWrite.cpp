@@ -32,6 +32,29 @@ namespace tl
         namespace
         {
 
+            AVPixelFormat parsePixelFormat(const std::string& s)
+            {
+                AVPixelFormat o = AV_PIX_FMT_YUV420P;
+                if (s == "YUV422P")
+                    o = AV_PIX_FMT_YUV422P;
+                else if (s == "YUV444P")
+                    o = AV_PIX_FMT_YUV444P;
+                else if (s == "YUV420P10LE")
+                    o = AV_PIX_FMT_YUV420P10LE;
+                else if (s == "YUV422P10LE")
+                    o = AV_PIX_FMT_YUV422P10LE;
+                else if (s == "YUV444P10LE")
+                    o = AV_PIX_FMT_YUV444P10LE;
+                else if (s == "RGB")
+                    o = AV_PIX_FMT_RGB24;
+                // else if (s == "RGB10")
+                //     return AV_PIX_FMT_RGB10;
+                // else if (s == "RGB12")
+                //     return AV_PIX_FMT_RGB12;
+                return o;
+            }
+            
+            //! Return the color space matrix coefficients for a string.
             const int* parseYUVType(const char *s, enum AVColorSpace colorspace)
             {
                 if (!s)
@@ -740,7 +763,6 @@ namespace tl
                 p.avCodecContext->width = videoInfo.size.w;
                 p.avCodecContext->height = videoInfo.size.h;
                 p.avCodecContext->sample_aspect_ratio = AVRational({ 1, 1 });
-                p.avCodecContext->pix_fmt = avCodec->pix_fmts[0];
                 const auto rational = time::toRational(p.speed);
                 p.avCodecContext->time_base = { rational.second, rational.first };
                 p.avCodecContext->framerate = { rational.first, rational.second };
@@ -757,6 +779,19 @@ namespace tl
                 }
                 p.avCodecContext->thread_count = 0;
                 p.avCodecContext->thread_type = FF_THREAD_FRAME;
+
+                // Get the pixel format from the options.
+                std::string pixelFormat = "YUV420P";
+                option = options.find("FFmpeg/PixelFormat");
+                if (option != options.end())
+                {
+                    std::stringstream ss(option->second);
+                    ss >> pixelFormat;
+                }
+
+                // Parse the pixel format and check that it is a valid one.
+                AVPixelFormat pix_fmt = parsePixelFormat(pixelFormat);
+                p.avCodecContext->pix_fmt = avCodec->pix_fmts[0];
                 
                 AVDictionary* codecOptions = NULL;
 
