@@ -67,10 +67,6 @@ namespace tl
                 else
                     throw std::runtime_error(
                         string::Format("Unknown pixel format {0}").arg(s));
-                // else if (s == "RGB10")
-                //     return AV_PIX_FMT_RGB10;
-                // else if (s == "RGB12")
-                //     return AV_PIX_FMT_RGB12;
                 return o;
             }
     
@@ -109,15 +105,25 @@ namespace tl
                 if (!s)
                     s = "bt601";
 
-                if (s && strstr(s, "bt709")) {
+                if (s && strstr(s, "bt709"))
+                {
                     colorspace = AVCOL_SPC_BT709;
-                } else if (s && strstr(s, "fcc")) {
+                }
+                else if (s && strstr(s, "fcc"))
+                {
                     colorspace = AVCOL_SPC_FCC;
-                } else if (s && strstr(s, "smpte240m")) {
+                }
+                else if (s && strstr(s, "smpte240m"))
+                {
                     colorspace = AVCOL_SPC_SMPTE240M;
-                } else if (s && (strstr(s, "bt601") || strstr(s, "bt470") || strstr(s, "smpte170m"))) {
+                }
+                else if (s && (strstr(s, "bt601") || strstr(s, "bt470") ||
+                               strstr(s, "smpte170m")))
+                {
                     colorspace = AVCOL_SPC_BT470BG;
-                } else if (s && strstr(s, "bt2020")) {
+                }
+                else if (s && strstr(s, "bt2020"))
+                {
                     colorspace = AVCOL_SPC_BT2020_NCL;
                 }
                 
