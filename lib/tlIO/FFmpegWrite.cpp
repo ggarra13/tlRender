@@ -958,13 +958,26 @@ namespace tl
 
                 p.avVideoStream->time_base = { rational.second, rational.first };
                 p.avVideoStream->avg_frame_rate = { rational.first, rational.second };
-                // \bug: this does not add alpha_mode to the .webm container
                 if (profile == Profile::VP9)
                 {
+
                     if (pix_fmt == AV_PIX_FMT_YUVA420P)
                     {
                         av_dict_set(
                             &p.avVideoStream->metadata, "alpha_mode", "1", 0);
+
+                        const std::string& extension =
+                            string::toLower(path.getExtension());
+
+                        // \bug: this does not add alpha_mode to the .webm
+                        //       or .mp4 container
+                        if (extension != ".mkv" && extension != ".mk3d")
+                        {
+                            throw
+                                std::runtime_error("To save with an alpha "
+                                                   "channel you need a .mkv "
+                                                   "or .mk3d movie extension");
+                        }
                     }
                 }
                 
