@@ -199,6 +199,7 @@ namespace tl
                     { ".flv", io::FileType::Movie },
                     { ".m4v", io::FileType::Movie },
                     { ".mkv", io::FileType::Movie },
+                    { ".mk3d", io::FileType::Movie },
                     { ".mov", io::FileType::Movie },
                     { ".mp4", io::FileType::Movie },
                     { ".mpg", io::FileType::Movie },
@@ -215,6 +216,7 @@ namespace tl
 
                     // Audio Formats
                     { ".aiff", io::FileType::Audio },
+                    { ".mka", io::FileType::Audio },
                     { ".mp3", io::FileType::Audio },
                     { ".ogg", io::FileType::Audio },
                     { ".opus", io::FileType::Audio },

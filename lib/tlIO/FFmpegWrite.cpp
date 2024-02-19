@@ -958,7 +958,16 @@ namespace tl
 
                 p.avVideoStream->time_base = { rational.second, rational.first };
                 p.avVideoStream->avg_frame_rate = { rational.first, rational.second };
-
+                // \bug: this does not add alpha_mode to the .webm container
+                if (profile == Profile::VP9)
+                {
+                    if (pix_fmt == AV_PIX_FMT_YUVA420P)
+                    {
+                        av_dict_set(
+                            &p.avVideoStream->metadata, "alpha_mode", "1", 0);
+                    }
+                }
+                
                 for (const auto& i : info.tags)
                 {
                     av_dict_set(&p.avFormatContext->metadata, i.first.c_str(), i.second.c_str(), 0);

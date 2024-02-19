@@ -171,7 +171,7 @@ namespace tl
                     if (string::compare(
                         key,
                         "alpha_mode",
-                        string::Compare::CaseSensitive))
+                        string::Compare::CaseInsensitive))
                     {
                         if (value == "1" && _avInputPixelFormat == AV_PIX_FMT_YUV420P)
                         {
