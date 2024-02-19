@@ -66,6 +66,7 @@ else()
     endif()
     set(FFmpeg_CONFIGURE_ARGS
 	--prefix=${CMAKE_INSTALL_PREFIX}
+	--enable-pic
 	--pkg-config-flags=--static
 	--disable-programs
 	--disable-avfilter
@@ -105,12 +106,14 @@ else()
 	--disable-v4l2-m2m
 	--disable-vaapi
 	--disable-vdpau
-	--disable-videotoolbox
-	--enable-pic
 	${FFmpeg_CFLAGS}
 	${FFmpeg_CXXFLAGS}
 	${FFmpeg_OBJCFLAGS}
 	${FFmpeg_LDFLAGS})
+    if(NOT APPLE)
+	list(APPEND FFmpeg_CONFIGURE_ARGS
+	    --disable-videotoolbox)
+    endif()
     if(TLRENDER_FFMPEG_MINIMAL)
 	list(APPEND FFmpeg_CONFIGURE_ARGS
             --disable-decoders

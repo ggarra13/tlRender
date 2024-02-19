@@ -36,28 +36,29 @@ namespace tl
             {
                 AVPixelFormat o = AV_PIX_FMT_YUV420P;
 
+                // Most common formats
                 if (s == "YUV420P")
                     o = AV_PIX_FMT_YUV420P;
-                else if (s == "YUVA420P")
-                    o = AV_PIX_FMT_YUVA420P;
                 else if (s == "YUV422P")
                     o = AV_PIX_FMT_YUV422P;
                 else if (s == "YUV444P")
                     o = AV_PIX_FMT_YUV444P;
 
+                // 10-bits pixel formats
                 else if (s == "YUV420P10LE")
                     o = AV_PIX_FMT_YUV420P10LE;
                 else if (s == "YUV422P10LE")
                     o = AV_PIX_FMT_YUV422P10LE;
                 else if (s == "YUV444P10LE")
                     o = AV_PIX_FMT_YUV444P10LE;
-                else if (s == "YUV420P10LE")
-                    o = AV_PIX_FMT_YUV420P10LE;
-                else if (s == "YUV422P10LE")
-                    o = AV_PIX_FMT_YUV422P10LE;
-                else if (s == "YUV444P10LE")
-                    o = AV_PIX_FMT_YUV444P10LE;
-                
+
+                // With alpha
+                else if (s == "YUVA420P")
+                    o = AV_PIX_FMT_YUVA420P;
+                else if (s == "YUVA444P16LE")
+                    o = AV_PIX_FMT_YUVA444P16LE;
+
+                // RGB formats
                 else if (s == "GBRP")
                     o = AV_PIX_FMT_GBRP;
                 else if (s == "GBRP10LE")
@@ -301,7 +302,7 @@ namespace tl
             AVFrame* avFrame2 = nullptr;
             SwsContext* swsContext = nullptr;
             otime::RationalTime videoStartTime = time::invalidTime;
-            double              speed = 24.F;
+            double              avSpeed = 24.F;
 
             // Audio
             AVCodecContext* avAudioCodecContext = nullptr;
@@ -766,7 +767,7 @@ namespace tl
                 default: break;
                 }
 
-                p.speed = info.videoTime.duration().rate();
+                p.avSpeed = info.videoTime.duration().rate();
 
                 // Allow setting the speed if not saving audio
                 if (!info.audio.isValid() || avAudioCodecID == AV_CODEC_ID_NONE)
@@ -775,16 +776,30 @@ namespace tl
                     if (option != options.end())
                     {
                         std::stringstream ss(option->second);
-                        ss >> p.speed;
+                        ss >> p.avSpeed;
                     }
                 }
                 
                 const AVCodec* avCodec = nullptr;
-                if (avCodecID == AV_CODEC_ID_VP9)
+                if (avCodecID == AV_CODEC_ID_H264)
                 {
+                    avCodec = avcodec_find_encoder_by_name("h264_videotoolbox");
+                }
+                else if (avCodecID == AV_CODEC_ID_VP9)
+                {
+#ifdef __APPLE__
+                    avCodec = avcodec_find_encoder_by_name("videotoolbox_vp9");
+#else
                     avCodec = avcodec_find_encoder_by_name("vp9_qsv");
+#endif
                     if (!avCodec)
                         avCodec = avcodec_find_encoder_by_name("libvpx-vp9");
+                }
+                else if (avCodecID == AV_CODEC_ID_PRORES)
+                {
+                    avCodec = avcodec_find_encoder_by_name("prores_videotoolbox");
+                    if (!avCodec)
+                        avCodec = avcodec_find_encoder_by_name("prores_ks");
                 }
                 if (!avCodec)
                     avCodec = avcodec_find_encoder(avCodecID);
@@ -814,7 +829,7 @@ namespace tl
                 p.avCodecContext->width = videoInfo.size.w;
                 p.avCodecContext->height = videoInfo.size.h;
                 p.avCodecContext->sample_aspect_ratio = AVRational({ 1, 1 });
-                const auto rational = time::toRational(p.speed);
+                const auto rational = time::toRational(p.avSpeed);
                 p.avCodecContext->time_base = { rational.second, rational.first };
                 p.avCodecContext->framerate = { rational.first, rational.second };
                 
@@ -863,6 +878,8 @@ namespace tl
                 }
                 
                 p.avCodecContext->profile = avProfile;
+
+                // Get codec options from preset file
                 AVDictionary* codecOptions = NULL;
 
                 std::string presetFile;
@@ -1209,7 +1226,7 @@ namespace tl
                 p.avFrame->data,
                 p.avFrame->linesize);
 
-            const auto timeRational = time::toRational(p.speed);
+            const auto timeRational = time::toRational(p.avSpeed);
             p.avFrame->pts = av_rescale_q(
                 time.value() - p.videoStartTime.value(),
                 { timeRational.second, timeRational.first },
