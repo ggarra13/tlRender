@@ -43,6 +43,12 @@ namespace tl
                     o = AV_PIX_FMT_YUV422P;
                 else if (s == "YUV444P")
                     o = AV_PIX_FMT_YUV444P;
+                else if (s == "YUV_420P")
+                    o = AV_PIX_FMT_YUV420P;
+                else if (s == "YUV_422P")
+                    o = AV_PIX_FMT_YUV422P;
+                else if (s == "YUV_444P")
+                    o = AV_PIX_FMT_YUV444P;
 
                 // 10-bits pixel formats
                 else if (s == "YUV420P10LE")
@@ -51,11 +57,29 @@ namespace tl
                     o = AV_PIX_FMT_YUV422P10LE;
                 else if (s == "YUV444P10LE")
                     o = AV_PIX_FMT_YUV444P10LE;
+                else if (s == "YUV_420P10LE")
+                    o = AV_PIX_FMT_YUV420P10LE;
+                else if (s == "YUV_422P10LE")
+                    o = AV_PIX_FMT_YUV422P10LE;
+                else if (s == "YUV_444P10LE")
+                    o = AV_PIX_FMT_YUV444P10LE;
+                else if (s == "YUV_420P_10LE")
+                    o = AV_PIX_FMT_YUV420P10LE;
+                else if (s == "YUV_422P_10LE")
+                    o = AV_PIX_FMT_YUV422P10LE;
+                else if (s == "YUV_444P_10LE")
+                    o = AV_PIX_FMT_YUV444P10LE;
 
                 // With alpha
                 else if (s == "YUVA420P")
                     o = AV_PIX_FMT_YUVA420P;
                 else if (s == "YUVA444P16LE")
+                    o = AV_PIX_FMT_YUVA444P16LE;
+                else if (s == "YUVA_420P")
+                    o = AV_PIX_FMT_YUVA420P;
+                else if (s == "YUVA_444P16LE")
+                    o = AV_PIX_FMT_YUVA444P16LE;
+                else if (s == "YUVA_444P_16LE")
                     o = AV_PIX_FMT_YUVA444P16LE;
 
                 // RGB formats
@@ -63,7 +87,11 @@ namespace tl
                     o = AV_PIX_FMT_GBRP;
                 else if (s == "GBRP10LE")
                     o = AV_PIX_FMT_GBRP10LE;
-                else if (s == "GBRP")
+                else if (s == "GBRP_10LE")
+                    o = AV_PIX_FMT_GBRP10LE;
+                else if (s == "GBRP12LE")
+                    o = AV_PIX_FMT_GBRP12LE;
+                else if (s == "GBRP_12LE")
                     o = AV_PIX_FMT_GBRP12LE;
                 else
                     throw std::runtime_error(
