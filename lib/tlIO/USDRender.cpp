@@ -295,10 +295,16 @@ namespace tl
                 const UsdStageRefPtr& stage,
                 const std::string& name = std::string())
             {
-                const TfToken primaryCameraName = UsdUtilsGetPrimaryCameraName();
-                UsdGeomCamera out = UsdAppUtilsGetCameraAtPath(
-                    stage,
-                    SdfPath(!name.empty() ? name : primaryCameraName));
+                UsdGeomCamera out;
+                if (!name.empty())
+                {
+                    out = UsdAppUtilsGetCameraAtPath(stage, SdfPath(name));
+                }
+                if (!out)
+                {
+                    const TfToken primaryCameraName = UsdUtilsGetPrimaryCameraName();
+                    out = UsdAppUtilsGetCameraAtPath(stage, SdfPath(primaryCameraName));
+                }
                 if (!out)
                 {
                     for (const auto& prim : stage->Traverse())
@@ -530,7 +536,7 @@ namespace tl
                 }
                 if (infoRequest)
                 {
-                    const std::string fileName = infoRequest->path.get();
+                    const std::string fileName = infoRequest->path.get(-1, file::PathType::Path);
                     Private::StageCacheItem stageCacheItem;
                     if (!p.thread.stageCache.get(fileName, stageCacheItem))
                     {
@@ -584,8 +590,8 @@ namespace tl
                 io::VideoData videoData;
                 if (request && p.cache)
                 {
-                    const std::string cacheKey = io::Cache::getVideoKey(
-                        request->path.get(),
+                    const std::string cacheKey = io::getCacheKey(
+                        request->path,
                         request->time,
                         ioOptions);
                     if (p.cache->getVideo(cacheKey, videoData))
@@ -598,10 +604,13 @@ namespace tl
                 // Check the disk cache.
                 if (request)
                 {
-                    const std::string fileName = request->path.get();
                     std::shared_ptr<Private::DiskCacheItem> diskCacheItem;
+                    const std::string cacheKey = io::getCacheKey(
+                        request->path,
+                        request->time,
+                        ioOptions);
                     if (diskCacheByteCount > 0 &&
-                        p.thread.diskCache.get(io::Cache::getVideoKey(fileName, request->time, ioOptions), diskCacheItem))
+                        p.thread.diskCache.get(cacheKey, diskCacheItem))
                     {
                         std::shared_ptr<image::Image> image;
                         try
@@ -635,10 +644,6 @@ namespace tl
 
                         if (p.cache)
                         {
-                            const std::string cacheKey = io::Cache::getVideoKey(
-                                fileName,
-                                request->time,
-                                ioOptions);
                             p.cache->addVideo(cacheKey, videoData);
                         }
 
@@ -649,11 +654,15 @@ namespace tl
                 // Handle requests.
                 if (request)
                 {
-                    const std::string fileName = request->path.get();
                     std::shared_ptr<image::Image> image;
+                    const std::string cacheKey = io::getCacheKey(
+                        request->path,
+                        request->time,
+                        ioOptions);
                     try
                     {
                         // Check the stage cache for a previously opened stage.
+                        const std::string fileName = request->path.get(-1, file::PathType::Path);
                         Private::StageCacheItem stageCacheItem;
                         if (!p.thread.stageCache.get(fileName, stageCacheItem))
                         {
@@ -860,10 +869,7 @@ namespace tl
                                 tempFile->writeU32(static_cast<uint32_t>(image->getPixelType()));
                                 const size_t byteCount = image->getDataByteCount();
                                 tempFile->write(image->getData(), byteCount);
-                                p.thread.diskCache.add(
-                                    io::Cache::getVideoKey(fileName, request->time, ioOptions),
-                                    diskCacheItem,
-                                    byteCount);
+                                p.thread.diskCache.add(cacheKey, diskCacheItem, byteCount);
                             }
                         }
                     }
@@ -885,10 +891,6 @@ namespace tl
 
                     if (p.cache)
                     {
-                        const std::string cacheKey = io::Cache::getVideoKey(
-                            fileName,
-                            request->time,
-                            ioOptions);
                         p.cache->addVideo(cacheKey, videoData);
                     }
                 }
