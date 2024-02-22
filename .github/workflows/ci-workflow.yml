@@ -226,7 +226,7 @@ jobs:
         tests/tltest/tltest
 
   windows-build:
-    runs-on: windows-2019  # was windows-latest
+    runs-on: windows-latest
 
     env:
       TLRENDER_API: GL_4_1

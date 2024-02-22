@@ -2,7 +2,7 @@ include(ExternalProject)
 
 
 set(jasper_GIT_REPOSITORY "https://github.com/jasper-software/jasper.git")
-set(jasper_GIT_TAG version-4.0.0)
+set(jasper_GIT_TAG version-4.2.1)
 
 set(jasper_ARGS
     ${TLRENDER_EXTERNAL_ARGS}
