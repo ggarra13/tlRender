@@ -18,6 +18,7 @@ namespace tl
             Transparent,
             Solid,
             Checkers,
+            Gradient,
 
             Count,
             First = Transparent
@@ -28,11 +29,10 @@ namespace tl
         //! Background options.
         struct BackgroundOptions
         {
-            Background     type           = Background::Transparent;
-            image::Color4f solidColor     = image::Color4f(0.F, 0.F, 0.F);
-            image::Color4f checkersColor0 = image::Color4f(1.F, 1.F, 1.F);
-            image::Color4f checkersColor1 = image::Color4f(0.F, 0.F, 0.F);
-            math::Size2i   checkersSize   = math::Size2i(100, 100);
+            Background     type         = Background::Solid;
+            image::Color4f color0       = image::Color4f(0.F, 0.F, 0.F);
+            image::Color4f color1       = image::Color4f(0.F, 0.F, 0.F);
+            math::Size2i   checkersSize = math::Size2i(100, 100);
 
             bool operator == (const BackgroundOptions&) const;
             bool operator != (const BackgroundOptions&) const;
