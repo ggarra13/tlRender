@@ -965,7 +965,7 @@ namespace tl
                 p.avCodecContext->time_base = { rational.second, rational.first };
                 p.avCodecContext->framerate = { rational.first, rational.second };
 
-                p.avCodecContext->color_range = AVCOL_RANGE_MPEG;  // Equivalent to -color_range tv
+                p.avCodecContext->color_range = AVCOL_RANGE_JPEG;  // Equivalent to -color_range pc (2)
                 p.avCodecContext->colorspace = AVCOL_SPC_BT709;    // Equivalent to -colorspace bt709
                 p.avCodecContext->color_primaries = AVCOL_PRI_BT709; // Equivalent to -color_primaries bt709
                 p.avCodecContext->color_trc = AVCOL_TRC_IEC61966_2_1; // Equivalent to -color_trc iec61966-2-1
@@ -1201,6 +1201,13 @@ namespace tl
                     inv_table =
                         parseYUVType("bt709", p.avCodecContext->colorspace);
                     table = parseYUVType("bt709", AVCOL_SPC_UNSPECIFIED);
+
+                    // We use the full range, and we set -color_range to 2
+                    // ( as we set AV_COL_RANGE_JPEG )
+                    in_full =
+                        p.avCodecContext->color_range == AVCOL_RANGE_JPEG;
+                    out_full =
+                        p.avCodecContext->color_range == AVCOL_RANGE_JPEG;
 
                     sws_setColorspaceDetails(
                         p.swsContext, inv_table, in_full, table, out_full,
