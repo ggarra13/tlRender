@@ -7,6 +7,7 @@
 #include <string>
 #include <unordered_map>
 
+#include <tlCore/Math.h>
 #include <tlCore/StringFormat.h>
 #include <tlCore/AudioResample.h>
 #include <tlCore/LogSystem.h>
@@ -31,7 +32,53 @@ namespace tl
     {
         namespace
         {
+            bool validateResolutions(const image::Info& info, const double fps)
+            {                
+                bool out = false;
+                if (info.size.w == 720 && info.size.h == 576 &&
+                    (math::fuzzyCompare(fps, 25.D) ||
+                     math::fuzzyCompare(fps, 50.D)))
+                    out = true;
+                else if (info.size.w == 1280 && info.size.h == 720 &&
+                         math::fuzzyCompare(fps, 25.D))
+                    out = true;
+                else if (info.size.w == 1440 && info.size.h == 1080 &&
+                         (math::fuzzyCompare(fps, 25.D) ||
+                          math::fuzzyCompare(fps, 50.D)))
+                    out = true;
+                else if (info.size.w == 1920 && info.size.h == 1080 &&
+                         (math::fuzzyCompare(fps, 25.D) ||
+                          math::fuzzyCompare(fps, 50.D)))
+                    out = true;
+                else if (info.size.w == 2048 && info.size.h == 1536 &&
+                         (math::fuzzyCompare(fps, 25.D) ||
+                          math::fuzzyCompare(fps, 50.D)))
+                    out = true;
+                else if (info.size.w == 3840 && info.size.h == 2160 &&
+                         (math::fuzzyCompare(fps, 25.D) ||
+                          math::fuzzyCompare(fps, 50.D)))
+                    out = true;
+                else if (info.size.w == 4096 && info.size.h == 2160 &&
+                         (math::fuzzyCompare(fps, 25.D) ||
+                          math::fuzzyCompare(fps, 50.D)))
+                    out = true;
+                else if (info.size.w == 5120 && info.size.h == 2880 &&
+                         (math::fuzzyCompare(fps, 25.D) ||
+                          math::fuzzyCompare(fps, 50.D)))
+                    out = true;
+                    
+                return out;
+            }
 
+            bool validateAppleProres(
+                const Profile profile, const image::Info& info,
+                const double fps)
+            {
+                // \todo: validate bit rate based on profile too?
+                bool out = validateResolutions(info, fps);
+                return out;
+            }
+            
             AVPixelFormat parsePixelFormat(const std::string& s)
             {
                 AVPixelFormat o = AV_PIX_FMT_YUV420P;
@@ -350,7 +397,7 @@ namespace tl
             AVFrame* avFrame2 = nullptr;
             SwsContext* swsContext = nullptr;
             otime::RationalTime videoStartTime = time::invalidTime;
-            double              avSpeed = 24.F;
+            double              avSpeed = 24.D;
 
             // Audio
             AVCodecContext* avAudioCodecContext = nullptr;
@@ -821,6 +868,7 @@ namespace tl
                 }
 
                 p.avSpeed = info.videoTime.duration().rate();
+                const auto& videoInfo = info.video[0];
 
                 // Allow setting the speed if not saving audio
                 if (!info.audio.isValid() || avAudioCodecID == AV_CODEC_ID_NONE)
@@ -851,8 +899,17 @@ namespace tl
                 else if (avCodecID == AV_CODEC_ID_PRORES)
                 {
                     avCodec = avcodec_find_encoder_by_name("prores_videotoolbox");
+                    if (avCodec)
+                    {
+                        if (!validateAppleProres(profile, videoInfo, p.avSpeed))
+                        {
+                            avCodec = nullptr;
+                        }
+                    }
                     if (!avCodec)
+                    {
                         avCodec = avcodec_find_encoder_by_name("prores_ks");
+                    }
                 }
                 if (!avCodec)
                     avCodec = avcodec_find_encoder(avCodecID);
@@ -878,7 +935,6 @@ namespace tl
 
                 p.avCodecContext->codec_id = avCodec->id;
                 p.avCodecContext->codec_type = AVMEDIA_TYPE_VIDEO;
-                const auto& videoInfo = info.video[0];
                 p.avCodecContext->width = videoInfo.size.w;
                 p.avCodecContext->height = videoInfo.size.h;
                 p.avCodecContext->sample_aspect_ratio = AVRational({ 1, 1 });
