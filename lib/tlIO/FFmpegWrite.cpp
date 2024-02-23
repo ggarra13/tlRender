@@ -140,12 +140,28 @@ namespace tl
                 // With alpha
                 else if (s == "YUVA420P")
                     o = AV_PIX_FMT_YUVA420P;
+                else if (s == "YUVA444P10LE")
+                    o = AV_PIX_FMT_YUVA444P10LE;
+                else if (s == "YUVA444P12LE")
+                    o = AV_PIX_FMT_YUVA444P12LE;
                 else if (s == "YUVA444P16LE")
                     o = AV_PIX_FMT_YUVA444P16LE;
+                
                 else if (s == "YUVA_420P")
                     o = AV_PIX_FMT_YUVA420P;
+                else if (s == "YUVA_444P10LE")
+                    o = AV_PIX_FMT_YUVA444P10LE;
+                else if (s == "YUVA_444P12LE")
+                    o = AV_PIX_FMT_YUVA444P12LE;
                 else if (s == "YUVA_444P16LE")
                     o = AV_PIX_FMT_YUVA444P16LE;
+                
+                else if (s == "YUVA444P")
+                    o = AV_PIX_FMT_YUVA444P;
+                else if (s == "YUVA_444P_10LE")
+                    o = AV_PIX_FMT_YUVA444P10LE;
+                else if (s == "YUVA_444P_12LE")
+                    o = AV_PIX_FMT_YUVA444P12LE;
                 else if (s == "YUVA_444P_16LE")
                     o = AV_PIX_FMT_YUVA444P16LE;
 
@@ -897,7 +913,9 @@ namespace tl
                     avCodec = avcodec_find_encoder_by_name("vp9_qsv");
 #endif
                     if (!avCodec)
+                    {
                         avCodec = avcodec_find_encoder_by_name("libvpx-vp9");
+                    }
                 }
                 else if (avCodecID == AV_CODEC_ID_PRORES)
                 {
@@ -946,7 +964,7 @@ namespace tl
                 const auto rational = time::toRational(p.avSpeed);
                 p.avCodecContext->time_base = { rational.second, rational.first };
                 p.avCodecContext->framerate = { rational.first, rational.second };
-                
+
                 p.avCodecContext->color_range = AVCOL_RANGE_MPEG;  // Equivalent to -color_range tv
                 p.avCodecContext->colorspace = AVCOL_SPC_BT709;    // Equivalent to -colorspace bt709
                 p.avCodecContext->color_primaries = AVCOL_PRI_BT709; // Equivalent to -color_primaries bt709
@@ -990,7 +1008,7 @@ namespace tl
                         avProfile = FF_PROFILE_H264_HIGH;
                     }
                 }
-                
+
                 p.avCodecContext->profile = avProfile;
 
                 // Get codec options from preset file
@@ -1162,20 +1180,32 @@ namespace tl
                     throw std::runtime_error(string::Format("{0}: Cannot initialize sws context").arg(p.fileName));
                 }
 
-                // Handle matrices and color space details
-                int in_full, out_full, brightness, contrast, saturation;
-                const int *inv_table, *table;
+                // If doing 8 bit conversions, rely on swscale to do the mapping as
+                // the libswscale filter.
+                if (p.avCodecContext->pix_fmt == AV_PIX_FMT_YUV420P  ||
+                    p.avCodecContext->pix_fmt == AV_PIX_FMT_YUVA420P ||
+                    p.avCodecContext->pix_fmt == AV_PIX_FMT_YUV422P  ||
+                    p.avCodecContext->pix_fmt == AV_PIX_FMT_YUVA422P ||
+                    p.avCodecContext->pix_fmt == AV_PIX_FMT_YUV444P  ||
+                    p.avCodecContext->pix_fmt == AV_PIX_FMT_YUVA444P)
+                {
+                    // Handle matrices and color space details
+                    int in_full, out_full, brightness, contrast, saturation;
+                    const int *inv_table, *table;
 
-                sws_getColorspaceDetails(
-                    p.swsContext, (int**)&inv_table, &in_full, (int**)&table,
-                    &out_full, &brightness, &contrast, &saturation);
+                    sws_getColorspaceDetails(
+                        p.swsContext, (int**)&inv_table, &in_full,
+                        (int**)&table, &out_full, &brightness, &contrast,
+                        &saturation);
 
-                inv_table = parseYUVType("bt709", p.avCodecContext->colorspace);
-                table     = parseYUVType("bt709", AVCOL_SPC_UNSPECIFIED);
-                
-                sws_setColorspaceDetails(p.swsContext, inv_table, in_full,
-                                         table, out_full,
-                                         brightness, contrast, saturation);
+                    inv_table =
+                        parseYUVType("bt709", p.avCodecContext->colorspace);
+                    table = parseYUVType("bt709", AVCOL_SPC_UNSPECIFIED);
+
+                    sws_setColorspaceDetails(
+                        p.swsContext, inv_table, in_full, table, out_full,
+                        brightness, contrast, saturation);
+                }
             }
             
             if (p.avFormatContext->nb_streams == 0)
