@@ -26,6 +26,8 @@ extern "C"
     
 }
 
+#define LOG_INFO(x) std::cout << "       [save] " << x << std::endl;
+
 namespace tl
 {
     namespace ffmpeg
@@ -210,6 +212,120 @@ namespace tl
                 }
                 return target;
             }
+
+            AVColorRange parseColorRange(const std::string& s)
+            {
+                AVColorRange out = AVCOL_RANGE_UNSPECIFIED;
+                if (s == "mpeg" || s == "tv")
+                    out = AVCOL_RANGE_MPEG;
+                else if (s == "jpeg" || s == "pc")
+                    out = AVCOL_RANGE_JPEG;
+                return out;
+            }
+            
+            AVColorPrimaries parseColorPrimaries(const std::string& s)
+            {
+                AVColorPrimaries out = AVCOL_PRI_BT709;
+                if (s == "unspecified")
+                    out = AVCOL_PRI_UNSPECIFIED;
+                else if (s == "reserved")
+                    out = AVCOL_PRI_RESERVED;
+                else if (s == "bt470m")
+                    out = AVCOL_PRI_BT470M;
+                else if (s == "bt470bg")
+                    out = AVCOL_PRI_BT470BG;
+                else if (s == "smpte170m")
+                    out = AVCOL_PRI_SMPTE170M;
+                else if (s == "smpte240m" || s == "smpte-c")
+                    out = AVCOL_PRI_SMPTE240M;
+                else if (s == "film")
+                    out = AVCOL_PRI_FILM;
+                else if (s == "bt2020")
+                    out = AVCOL_PRI_BT2020;
+                else if (s == "smpte428")
+                    out = AVCOL_PRI_SMPTE428;
+                else if (s == "smpte431")
+                    out = AVCOL_PRI_SMPTE431;
+                else if (s == "smpte432")
+                    out = AVCOL_PRI_SMPTE432;
+                else if (s == "ebu3213" || s == "jedec-p22")
+                    out = AVCOL_PRI_EBU3213;
+                return out;
+            }
+            
+            AVColorTransferCharacteristic parseColorTRC(const std::string& s)
+            {
+                AVColorTransferCharacteristic out = AVCOL_TRC_BT709;
+                if (s == "reserved")
+                    out = AVCOL_TRC_RESERVED;
+                else if (s == "unspecified")
+                    out = AVCOL_TRC_UNSPECIFIED;
+                else if (s == "gamma22")
+                    out = AVCOL_TRC_GAMMA22;
+                else if (s == "gamma28")
+                    out = AVCOL_TRC_GAMMA28;
+                else if (s == "smpte170m" || s == "bt601" || s == "bt1358")
+                    out = AVCOL_TRC_SMPTE170M;
+                else if (s == "smpte240m")
+                    out = AVCOL_TRC_SMPTE240M;
+                else if (s == "linear")
+                    out = AVCOL_TRC_LINEAR;
+                else if (s == "log")
+                    out = AVCOL_TRC_LOG;
+                else if (s == "logsqrt" || s == "log_sqrt")
+                    out = AVCOL_TRC_LOG_SQRT;
+                else if (s == "iec61966-2-4")
+                    out = AVCOL_TRC_IEC61966_2_4;
+                else if (s == "bt1361" || s == "bt1361-ecg")
+                    out = AVCOL_TRC_BT1361_ECG;
+                else if (s == "iec61966-2-1")
+                    out = AVCOL_TRC_IEC61966_2_1;
+                else if (s == "bt2020-10")
+                    out = AVCOL_TRC_BT2020_10;
+                else if (s == "bt2020-12")
+                    out = AVCOL_TRC_BT2020_12;
+                else if (s == "smpte2084")
+                    out = AVCOL_TRC_SMPTE2084;
+                else if (s == "arib-std-b67")
+                    out = AVCOL_TRC_ARIB_STD_B67;
+                
+                return out;
+            }
+
+            AVColorSpace parseColorSpace(const std::string& s)
+            {
+                AVColorSpace out = AVCOL_SPC_RGB;
+                if (s == "bt709")
+                {
+                    out = AVCOL_SPC_BT709;
+                }
+                else if (s == "fcc")
+                {
+                    out = AVCOL_SPC_FCC;
+                }
+                else if (s == "smpte240m")
+                {
+                    out = AVCOL_SPC_SMPTE240M;
+                }
+                else if (s == "bt601" || s == "bt470" ||
+                         s == "smpte170m")
+                {
+                    out = AVCOL_SPC_BT470BG;
+                }
+                else if (s == "bt2020")
+                {
+                    out = AVCOL_SPC_BT2020_NCL;
+                }
+                else if (s == "unspecified")
+                {
+                    out = AVCOL_SPC_UNSPECIFIED;
+                }
+                else if (s == "reserved")
+                {
+                    out = AVCOL_SPC_RESERVED;
+                }
+                return out;
+            }
             
             //! Return the color space matrix coefficients for a string.
             const int* parseYUVType(const char *s, enum AVColorSpace colorspace)
@@ -217,27 +333,7 @@ namespace tl
                 if (!s)
                     s = "bt601";
 
-                if (s && strstr(s, "bt709"))
-                {
-                    colorspace = AVCOL_SPC_BT709;
-                }
-                else if (s && strstr(s, "fcc"))
-                {
-                    colorspace = AVCOL_SPC_FCC;
-                }
-                else if (s && strstr(s, "smpte240m"))
-                {
-                    colorspace = AVCOL_SPC_SMPTE240M;
-                }
-                else if (s && (strstr(s, "bt601") || strstr(s, "bt470") ||
-                               strstr(s, "smpte170m")))
-                {
-                    colorspace = AVCOL_SPC_BT470BG;
-                }
-                else if (s && strstr(s, "bt2020"))
-                {
-                    colorspace = AVCOL_SPC_BT2020_NCL;
-                }
+                colorspace = parseColorSpace(s);
                 
                 if (colorspace < 1 || colorspace > 10 || colorspace == 8) {
                     colorspace = AVCOL_SPC_BT470BG;
@@ -587,7 +683,8 @@ namespace tl
                     }
                 }
             }
-                
+
+            std::string msg;
             if (info.audio.isValid() && avAudioCodecID != AV_CODEC_ID_NONE)
             {
                 if (!avCodec)
@@ -757,10 +854,10 @@ namespace tl
                 }
 
                 const std::string codecName = avCodec->name;
-                const std::string msg =
-                    string::Format("Saving audio with '{1}' codec.")
-                        .arg(codecName);
-                std::cout << "       [save] " << msg << std::endl;
+                msg = string::Format("Saving audio with '{1}' codec.")
+                          .arg(codecName);
+                LOG_INFO(msg);
+                
                 r = avcodec_parameters_from_context(
                     p.avAudioStream->codecpar, p.avAudioCodecContext);
                 if (r < 0)
@@ -965,10 +1062,59 @@ namespace tl
                 p.avCodecContext->time_base = { rational.second, rational.first };
                 p.avCodecContext->framerate = { rational.first, rational.second };
 
-                p.avCodecContext->color_range = AVCOL_RANGE_JPEG;  // Equivalent to -color_range pc (2)
-                p.avCodecContext->colorspace = AVCOL_SPC_BT709;    // Equivalent to -colorspace bt709
-                p.avCodecContext->color_primaries = AVCOL_PRI_BT709; // Equivalent to -color_primaries bt709
-                p.avCodecContext->color_trc = AVCOL_TRC_IEC61966_2_1; // Equivalent to -color_trc iec61966-2-1
+                if (avCodecID == AV_CODEC_ID_PRORES)
+                {
+                    // Equivalent to -color_range tv (1)
+                    p.avCodecContext->color_range = AVCOL_RANGE_MPEG;
+                }
+                else
+                {
+                    // Equivalent to -color_range pc (2)
+                    p.avCodecContext->color_range = AVCOL_RANGE_JPEG;
+                }
+                
+                option = options.find("FFmpeg/ColorRange");
+                if (option != options.end())
+                {
+                    std::string value;
+                    std::stringstream ss(option->second);
+                    ss >> value;
+                    p.avCodecContext->color_range = parseColorRange(value);
+                }
+
+                // Equivalent to -colorspace bt709
+                p.avCodecContext->colorspace = AVCOL_SPC_BT709;
+                option = options.find("FFmpeg/ColorSpace");
+                if (option != options.end())
+                {
+                    std::string value;
+                    std::stringstream ss(option->second);
+                    ss >> value;
+                    p.avCodecContext->colorspace = parseColorSpace(value);
+                }
+
+                // Equivalent to -color_primaries bt709
+                p.avCodecContext->color_primaries = AVCOL_PRI_BT709;
+                option = options.find("FFmpeg/ColorPrimaries");
+                if (option != options.end())
+                {
+                    std::string value;
+                    std::stringstream ss(option->second);
+                    ss >> value;
+                    p.avCodecContext->color_primaries =
+                        parseColorPrimaries(value);
+                }
+
+                // Equivalent to -color_trc iec61966-2-1 (ie. sRGB)
+                p.avCodecContext->color_trc = AVCOL_TRC_IEC61966_2_1;
+                option = options.find("FFmpeg/ColorTRC");
+                if (option != options.end())
+                {
+                    std::string value;
+                    std::stringstream ss(option->second);
+                    ss >> value;
+                    p.avCodecContext->color_trc = parseColorTRC(value);
+                }
 
                 if (p.avFormatContext->oformat->flags & AVFMT_GLOBALHEADER)
                 {
@@ -1028,10 +1174,9 @@ namespace tl
                 }
 
                 const std::string codecName = avCodec->name;
-                const std::string msg =
-                    string::Format("Saving video with '{1}' codec.")
-                    .arg(codecName);
-                std::cout << "       [save] " << msg << std::endl;
+                msg = string::Format("Saving video with '{1}' codec.")
+                          .arg(codecName);
+                LOG_INFO(msg);
                 
                 r = avcodec_open2(p.avCodecContext, avCodec, &codecOptions);
                 if (r < 0)
@@ -1180,15 +1325,12 @@ namespace tl
                     throw std::runtime_error(string::Format("{0}: Cannot initialize sws context").arg(p.fileName));
                 }
 
-                // If doing 8 bit conversions, rely on swscale to do the mapping as
-                // the libswscale filter.
-                if (p.avCodecContext->pix_fmt == AV_PIX_FMT_YUV420P  ||
-                    p.avCodecContext->pix_fmt == AV_PIX_FMT_YUVA420P ||
-                    p.avCodecContext->pix_fmt == AV_PIX_FMT_YUV422P  ||
-                    p.avCodecContext->pix_fmt == AV_PIX_FMT_YUVA422P ||
-                    p.avCodecContext->pix_fmt == AV_PIX_FMT_YUV444P  ||
-                    p.avCodecContext->pix_fmt == AV_PIX_FMT_YUVA444P)
+                // If doing 8 bit conversions, rely on swscale to do the
+                // mapping with libswscale (-vf scale filter emulated here).
+                if (avCodecID != AV_CODEC_ID_PRORES)
                 {
+                    msg = "Using full color matrices and color coefficients"; 
+
                     // Handle matrices and color space details
                     int in_full, out_full, brightness, contrast, saturation;
                     const int *inv_table, *table;
@@ -1205,14 +1347,20 @@ namespace tl
                     // We use the full range, and we set -color_range to 2
                     // ( as we set AV_COL_RANGE_JPEG )
                     in_full =
-                        p.avCodecContext->color_range == AVCOL_RANGE_JPEG;
+                        (p.avCodecContext->color_range == AVCOL_RANGE_JPEG);
                     out_full =
-                        p.avCodecContext->color_range == AVCOL_RANGE_JPEG;
+                        (p.avCodecContext->color_range == AVCOL_RANGE_JPEG);
 
                     sws_setColorspaceDetails(
                         p.swsContext, inv_table, in_full, table, out_full,
                         brightness, contrast, saturation);
                 }
+                else
+                {
+                    msg = "Not using full color matrices and color "
+                          "coefficients."; 
+                }
+                LOG_INFO(msg);
             }
             
             if (p.avFormatContext->nb_streams == 0)
