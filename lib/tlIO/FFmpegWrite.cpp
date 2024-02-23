@@ -1329,7 +1329,7 @@ namespace tl
                 // mapping with libswscale (-vf scale filter emulated here).
                 if (avCodecID != AV_CODEC_ID_PRORES)
                 {
-                    msg = "Using full color matrices and color coefficients"; 
+                    msg = "Using full color matrices and color coefficients."; 
 
                     // Handle matrices and color space details
                     int in_full, out_full, brightness, contrast, saturation;
