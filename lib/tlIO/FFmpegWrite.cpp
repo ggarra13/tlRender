@@ -36,35 +36,35 @@ namespace tl
             {                
                 bool out = false;
                 if (info.size.w == 720 && info.size.h == 576 &&
-                    (math::fuzzyCompare(fps, 25.D) ||
-                     math::fuzzyCompare(fps, 50.D)))
+                    (math::fuzzyCompare(fps, 25.0) ||
+                     math::fuzzyCompare(fps, 50.0)))
                     out = true;
                 else if (info.size.w == 1280 && info.size.h == 720 &&
-                         math::fuzzyCompare(fps, 25.D))
+                         math::fuzzyCompare(fps, 25.0))
                     out = true;
                 else if (info.size.w == 1440 && info.size.h == 1080 &&
-                         (math::fuzzyCompare(fps, 25.D) ||
-                          math::fuzzyCompare(fps, 50.D)))
+                         (math::fuzzyCompare(fps, 25.0) ||
+                          math::fuzzyCompare(fps, 50.0)))
                     out = true;
                 else if (info.size.w == 1920 && info.size.h == 1080 &&
-                         (math::fuzzyCompare(fps, 25.D) ||
-                          math::fuzzyCompare(fps, 50.D)))
+                         (math::fuzzyCompare(fps, 25.0) ||
+                          math::fuzzyCompare(fps, 50.0)))
                     out = true;
                 else if (info.size.w == 2048 && info.size.h == 1536 &&
-                         (math::fuzzyCompare(fps, 25.D) ||
-                          math::fuzzyCompare(fps, 50.D)))
+                         (math::fuzzyCompare(fps, 25.0) ||
+                          math::fuzzyCompare(fps, 50.0)))
                     out = true;
                 else if (info.size.w == 3840 && info.size.h == 2160 &&
-                         (math::fuzzyCompare(fps, 25.D) ||
-                          math::fuzzyCompare(fps, 50.D)))
+                         (math::fuzzyCompare(fps, 25.0) ||
+                          math::fuzzyCompare(fps, 50.0)))
                     out = true;
                 else if (info.size.w == 4096 && info.size.h == 2160 &&
-                         (math::fuzzyCompare(fps, 25.D) ||
-                          math::fuzzyCompare(fps, 50.D)))
+                         (math::fuzzyCompare(fps, 25.0) ||
+                          math::fuzzyCompare(fps, 50.0)))
                     out = true;
                 else if (info.size.w == 5120 && info.size.h == 2880 &&
-                         (math::fuzzyCompare(fps, 25.D) ||
-                          math::fuzzyCompare(fps, 50.D)))
+                         (math::fuzzyCompare(fps, 25.0) ||
+                          math::fuzzyCompare(fps, 50.0)))
                     out = true;
                     
                 return out;
@@ -397,7 +397,7 @@ namespace tl
             AVFrame* avFrame2 = nullptr;
             SwsContext* swsContext = nullptr;
             otime::RationalTime videoStartTime = time::invalidTime;
-            double              avSpeed = 24.D;
+            double              avSpeed = 24.0;
 
             // Audio
             AVCodecContext* avAudioCodecContext = nullptr;
