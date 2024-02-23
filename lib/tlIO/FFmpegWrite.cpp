@@ -70,6 +70,26 @@ namespace tl
                 else if (s == "YUV_444P_10LE")
                     o = AV_PIX_FMT_YUV444P10LE;
 
+                // 12-bits pixel formats
+                else if (s == "YUV420P12LE")
+                    o = AV_PIX_FMT_YUV420P12LE;
+                else if (s == "YUV422P12LE")
+                    o = AV_PIX_FMT_YUV422P12LE;
+                else if (s == "YUV444P12LE")
+                    o = AV_PIX_FMT_YUV444P12LE;
+                else if (s == "YUV_420P12LE")
+                    o = AV_PIX_FMT_YUV420P12LE;
+                else if (s == "YUV_422P12LE")
+                    o = AV_PIX_FMT_YUV422P12LE;
+                else if (s == "YUV_444P12LE")
+                    o = AV_PIX_FMT_YUV444P12LE;
+                else if (s == "YUV_420P_12LE")
+                    o = AV_PIX_FMT_YUV420P12LE;
+                else if (s == "YUV_422P_12LE")
+                    o = AV_PIX_FMT_YUV422P12LE;
+                else if (s == "YUV_444P_12LE")
+                    o = AV_PIX_FMT_YUV444P12LE;
+                
                 // With alpha
                 else if (s == "YUVA420P")
                     o = AV_PIX_FMT_YUVA420P;
@@ -511,7 +531,7 @@ namespace tl
                     avCodec = const_cast<AVCodec*>(avcodec_find_encoder(avAudioCodecID));
                 if (!avCodec)
                     throw std::runtime_error("Could not find audio encoder");
-                
+
                 p.avAudioStream = avformat_new_stream(p.avFormatContext,
                                                       avCodec);
                 if (!p.avAudioStream)
@@ -673,6 +693,11 @@ namespace tl
                             .arg(getErrorLabel(r)));
                 }
 
+                const std::string codecName = avCodec->name;
+                const std::string msg =
+                    string::Format("Saving audio with '{1}' codec.")
+                        .arg(codecName);
+                std::cout << "       [save] " << msg << std::endl;
                 r = avcodec_parameters_from_context(
                     p.avAudioStream->codecpar, p.avAudioCodecContext);
                 if (r < 0)
@@ -931,6 +956,12 @@ namespace tl
                             .arg(p.fileName)
                             .arg(getErrorLabel(r)));
                 }
+
+                const std::string codecName = avCodec->name;
+                const std::string msg =
+                    string::Format("Saving video with '{1}' codec.")
+                    .arg(codecName);
+                std::cout << "       [save] " << msg << std::endl;
 
                 av_dict_free(&codecOptions);
 
