@@ -859,10 +859,11 @@ namespace tl
                     break;
                 case Profile::VP9:
                     avCodecID = AV_CODEC_ID_VP9;
-                    avProfile = FF_PROFILE_VP9_0;
+                    avProfile = FF_PROFILE_UNKNOWN;
                     break;
                 case Profile::AV1:
                     avCodecID = AV_CODEC_ID_AV1;
+                    avProfile = FF_PROFILE_UNKNOWN;
                     break;
                 default: break;
                 }
@@ -884,7 +885,9 @@ namespace tl
                 const AVCodec* avCodec = nullptr;
                 if (avCodecID == AV_CODEC_ID_H264)
                 {
+#ifdef __APPLE__
                     avCodec = avcodec_find_encoder_by_name("h264_videotoolbox");
+#endif
                 }
                 else if (avCodecID == AV_CODEC_ID_VP9)
                 {
@@ -898,6 +901,7 @@ namespace tl
                 }
                 else if (avCodecID == AV_CODEC_ID_PRORES)
                 {
+#ifdef __APPLE__
                     avCodec = avcodec_find_encoder_by_name("prores_videotoolbox");
                     if (avCodec)
                     {
@@ -906,6 +910,7 @@ namespace tl
                             avCodec = nullptr;
                         }
                     }
+#endif
                     if (!avCodec)
                     {
                         avCodec = avcodec_find_encoder_by_name("prores_ks");
@@ -1003,6 +1008,12 @@ namespace tl
                 {
                     parsePresets(codecOptions, presetFile);
                 }
+
+                const std::string codecName = avCodec->name;
+                const std::string msg =
+                    string::Format("Saving video with '{1}' codec.")
+                    .arg(codecName);
+                std::cout << "       [save] " << msg << std::endl;
                 
                 r = avcodec_open2(p.avCodecContext, avCodec, &codecOptions);
                 if (r < 0)
@@ -1012,12 +1023,6 @@ namespace tl
                             .arg(p.fileName)
                             .arg(getErrorLabel(r)));
                 }
-
-                const std::string codecName = avCodec->name;
-                const std::string msg =
-                    string::Format("Saving video with '{1}' codec.")
-                    .arg(codecName);
-                std::cout << "       [save] " << msg << std::endl;
 
                 av_dict_free(&codecOptions);
 
