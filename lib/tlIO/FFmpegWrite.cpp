@@ -34,54 +34,7 @@ namespace tl
     namespace ffmpeg
     {
         namespace
-        {
-            bool validateResolutions(const image::Info& info, const double fps)
-            {                
-                bool out = false;
-                if (info.size.w == 720 && info.size.h == 576 &&
-                    (math::fuzzyCompare(fps, 25.0) ||
-                     math::fuzzyCompare(fps, 50.0)))
-                    out = true;
-                else if (info.size.w == 1280 && info.size.h == 720 &&
-                         math::fuzzyCompare(fps, 25.0))
-                    out = true;
-                else if (info.size.w == 1440 && info.size.h == 1080 &&
-                         (math::fuzzyCompare(fps, 25.0) ||
-                          math::fuzzyCompare(fps, 50.0)))
-                    out = true;
-                else if (info.size.w == 1920 && info.size.h == 1080 &&
-                         (math::fuzzyCompare(fps, 25.0) ||
-                          math::fuzzyCompare(fps, 50.0)))
-                    out = true;
-                else if (info.size.w == 2048 && info.size.h == 1536 &&
-                         (math::fuzzyCompare(fps, 25.0) ||
-                          math::fuzzyCompare(fps, 50.0)))
-                    out = true;
-                else if (info.size.w == 3840 && info.size.h == 2160 &&
-                         (math::fuzzyCompare(fps, 25.0) ||
-                          math::fuzzyCompare(fps, 50.0)))
-                    out = true;
-                else if (info.size.w == 4096 && info.size.h == 2160 &&
-                         (math::fuzzyCompare(fps, 25.0) ||
-                          math::fuzzyCompare(fps, 50.0)))
-                    out = true;
-                else if (info.size.w == 5120 && info.size.h == 2880 &&
-                         (math::fuzzyCompare(fps, 25.0) ||
-                          math::fuzzyCompare(fps, 50.0)))
-                    out = true;
-                    
-                return out;
-            }
-
-            bool validateAppleProres(
-                const Profile profile, const image::Info& info,
-                const double fps)
-            {
-                // \todo: validate bit rate based on profile too?
-                bool out = validateResolutions(info, fps);
-                return out;
-            }
-            
+        {   
             AVPixelFormat parsePixelFormat(const std::string& s)
             {
                 AVPixelFormat o = AV_PIX_FMT_YUV420P;
@@ -1029,13 +982,6 @@ namespace tl
                 {
 #ifdef __APPLE__
                     avCodec = avcodec_find_encoder_by_name("prores_videotoolbox");
-                    if (avCodec)
-                    {
-                        if (!validateAppleProres(profile, videoInfo, p.avSpeed))
-                        {
-                            avCodec = nullptr;
-                        }
-                    }
 #endif
                     if (!avCodec)
                     {
