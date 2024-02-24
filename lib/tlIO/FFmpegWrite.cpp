@@ -175,9 +175,10 @@ namespace tl
                 return target;
             }
 
-            AVColorRange parseColorRange(const std::string& s)
+            AVColorRange parseColorRange(const std::string& c)
             {
                 AVColorRange out = AVCOL_RANGE_UNSPECIFIED;
+                const std::string& s = string::toLower(c);
                 if (s == "mpeg" || s == "tv")
                     out = AVCOL_RANGE_MPEG;
                 else if (s == "jpeg" || s == "pc")
@@ -185,9 +186,10 @@ namespace tl
                 return out;
             }
             
-            AVColorPrimaries parseColorPrimaries(const std::string& s)
+            AVColorPrimaries parseColorPrimaries(const std::string& c)
             {
                 AVColorPrimaries out = AVCOL_PRI_BT709;
+                const std::string& s = string::toLower(c);
                 if (s == "unspecified")
                     out = AVCOL_PRI_UNSPECIFIED;
                 else if (s == "reserved")
@@ -215,9 +217,10 @@ namespace tl
                 return out;
             }
             
-            AVColorTransferCharacteristic parseColorTRC(const std::string& s)
+            AVColorTransferCharacteristic parseColorTRC(const std::string& c)
             {
                 AVColorTransferCharacteristic out = AVCOL_TRC_BT709;
+                const std::string& s = string::toLower(c);
                 if (s == "reserved")
                     out = AVCOL_TRC_RESERVED;
                 else if (s == "unspecified")
@@ -254,9 +257,10 @@ namespace tl
                 return out;
             }
 
-            AVColorSpace parseColorSpace(const std::string& s)
+            AVColorSpace parseColorSpace(const std::string& c)
             {
                 AVColorSpace out = AVCOL_SPC_RGB;
+                const std::string& s = string::toLower(c);
                 if (s == "bt709")
                 {
                     out = AVCOL_SPC_BT709;
