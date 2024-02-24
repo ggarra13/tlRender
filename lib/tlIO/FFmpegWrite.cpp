@@ -977,7 +977,7 @@ namespace tl
                 {
                     // Try hardware encoders first
 #ifdef __APPLE__
-                    avCodec = avcodec_find_encoder_by_name("videotoolbox_vp9");
+                    avCodec = avcodec_find_encoder_by_name("vp9_videotoolbox");
 #else
                     avCodec = avcodec_find_encoder_by_name("vp9_qsv");
 #endif
@@ -1030,7 +1030,7 @@ namespace tl
                 p.avCodecContext->time_base = { rational.second, rational.first };
                 p.avCodecContext->framerate = { rational.first, rational.second };
 
-                if (avCodecID == AV_CODEC_ID_PRORES)
+                if (avCodecID == AV_CODEC_ID_PRORES || videotoolbox)
                 {
                     // Equivalent to -color_range tv (1)
                     p.avCodecContext->color_range = AVCOL_RANGE_MPEG;
