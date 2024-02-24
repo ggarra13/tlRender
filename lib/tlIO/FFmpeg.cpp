@@ -21,6 +21,8 @@ extern "C"
 
 #include <array>
 
+#define LOG_ERROR(x) std::cerr << x << std::endl;
+
 namespace tl
 {
     namespace ffmpeg
@@ -313,6 +315,11 @@ namespace tl
             case AV_LOG_PANIC:
             case AV_LOG_FATAL:
             case AV_LOG_ERROR:
+            {
+                char buf[string::cBufferSize];
+                vsnprintf(buf, string::cBufferSize, fmt, vl);
+                LOG_ERROR(string::removeTrailingNewlines(buf));
+            }
             case AV_LOG_WARNING:
             case AV_LOG_INFO:
                 if (auto logSystem = _logSystemWeak.lock())
