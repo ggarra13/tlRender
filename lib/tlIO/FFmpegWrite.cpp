@@ -35,9 +35,10 @@ namespace tl
     {
         namespace
         {   
-            AVPixelFormat parsePixelFormat(const std::string& s)
+            AVPixelFormat parsePixelFormat(const std::string& c)
             {
                 AVPixelFormat o = AV_PIX_FMT_YUV420P;
+                const std::string s = string::toUpper(c);
 
                 // Most common formats
                 if (s == "YUV420P")
@@ -1051,6 +1052,7 @@ namespace tl
                     std::string value;
                     std::stringstream ss(option->second);
                     ss >> value;
+                    LOG_INFO("Parsing color range " << value);
                     p.avCodecContext->color_range = parseColorRange(value);
                 }
 
@@ -1062,6 +1064,7 @@ namespace tl
                     std::string value;
                     std::stringstream ss(option->second);
                     ss >> value;
+                    LOG_INFO("Parsing color space " << value);
                     p.avCodecContext->colorspace = parseColorSpace(value);
                 }
 
@@ -1073,6 +1076,7 @@ namespace tl
                     std::string value;
                     std::stringstream ss(option->second);
                     ss >> value;
+                    LOG_INFO("Parsing color primaries " << value);
                     p.avCodecContext->color_primaries =
                         parseColorPrimaries(value);
                 }
@@ -1088,6 +1092,7 @@ namespace tl
                     std::string value;
                     std::stringstream ss(option->second);
                     ss >> value;
+                    LOG_INFO("Parsing color trc " << value);
                     p.avCodecContext->color_trc = parseColorTRC(value);
                 }
 
@@ -1140,7 +1145,9 @@ namespace tl
                 if (option != options.end())
                 {
                     std::stringstream ss(option->second);
-                    ss >> presetFile;
+                    std::getline(ss, presetFile);
+                    presetFile =
+                        string::removeTrailingNewlines(presetFile.c_str());
                 }
                 
                 if (!presetFile.empty())
