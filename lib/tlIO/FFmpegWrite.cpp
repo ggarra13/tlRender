@@ -956,12 +956,21 @@ namespace tl
                         ss >> p.avSpeed;
                     }
                 }
-                
+
+#ifdef __APPLE__
+                bool videotoolbox = true;
+#else
+                bool videotoolbox = false;
+#endif
                 const AVCodec* avCodec = nullptr;
                 if (avCodecID == AV_CODEC_ID_H264)
                 {
 #ifdef __APPLE__
                     avCodec = avcodec_find_encoder_by_name("h264_videotoolbox");
+                    if (!avCodec)
+                    {
+                        videotoolbox = false;
+                    }
 #endif
                 }
                 else if (avCodecID == AV_CODEC_ID_VP9)
@@ -975,6 +984,7 @@ namespace tl
                     // If failed, use software encoder
                     if (!avCodec)
                     {
+                        videotoolbox = false;
                         avCodec = avcodec_find_encoder_by_name("libvpx-vp9");
                     }
                 }
@@ -985,6 +995,7 @@ namespace tl
 #endif
                     if (!avCodec)
                     {
+                        videotoolbox = false;
                         avCodec = avcodec_find_encoder_by_name("prores_ks");
                     }
                 }
@@ -1063,7 +1074,10 @@ namespace tl
                 }
 
                 // Equivalent to -color_trc iec61966-2-1 (ie. sRGB)
-                p.avCodecContext->color_trc = AVCOL_TRC_IEC61966_2_1;
+                if (!videotoolbox)
+                    p.avCodecContext->color_trc = AVCOL_TRC_IEC61966_2_1;
+                else
+                    p.avCodecContext->color_trc = AVCOL_TRC_BT709;
                 option = options.find("FFmpeg/ColorTRC");
                 if (option != options.end())
                 {
