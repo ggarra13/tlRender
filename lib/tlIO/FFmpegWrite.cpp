@@ -27,6 +27,7 @@ extern "C"
 }
 
 #define LOG_INFO(x) std::cout << "       [save] " << x << std::endl;
+#define LOG_WARNING(x) std::cerr << "       [save] " << x << std::endl;
 
 namespace tl
 {
@@ -202,11 +203,19 @@ namespace tl
                     if (*p == AV_PIX_FMT_NONE)
                     {
                         if (target != AV_PIX_FMT_NONE)
-                            av_log(NULL, AV_LOG_WARNING,
-                                   "Incompatible pixel format '%s' for codec '%s', auto-selecting format '%s'\n",
-                                   av_get_pix_fmt_name(target),
-                                   codec->name,
-                                   av_get_pix_fmt_name(best));
+                        {
+                            const char* targetFormat =
+                                av_get_pix_fmt_name(target);
+                            const char* bestFormat = av_get_pix_fmt_name(best);
+                            const std::string msg =
+                                string::Format(
+                                    "Incompatible pixel format '{0}' for codec "
+                                    "'{1}', auto-selecting format '{2}'.")
+                                    .arg(targetFormat)
+                                    .arg(codec->name)
+                                    .arg(bestFormat);
+                            LOG_WARNING(msg);
+                        }
                         return best;
                     }
                 }
@@ -854,7 +863,7 @@ namespace tl
                 }
 
                 const std::string codecName = avCodec->name;
-                msg = string::Format("Saving audio with '{1}' codec.")
+                msg = string::Format("Tring to save audio with '{1}' codec.")
                           .arg(codecName);
                 LOG_INFO(msg);
                 
@@ -1004,11 +1013,13 @@ namespace tl
                 }
                 else if (avCodecID == AV_CODEC_ID_VP9)
                 {
+                    // Try hardware encoders first
 #ifdef __APPLE__
                     avCodec = avcodec_find_encoder_by_name("videotoolbox_vp9");
 #else
                     avCodec = avcodec_find_encoder_by_name("vp9_qsv");
 #endif
+                    // If failed, use software encoder
                     if (!avCodec)
                     {
                         avCodec = avcodec_find_encoder_by_name("libvpx-vp9");
@@ -1174,7 +1185,7 @@ namespace tl
                 }
 
                 const std::string codecName = avCodec->name;
-                msg = string::Format("Saving video with '{1}' codec.")
+                msg = string::Format("Trying to save video with '{1}' codec.")
                           .arg(codecName);
                 LOG_INFO(msg);
                 
