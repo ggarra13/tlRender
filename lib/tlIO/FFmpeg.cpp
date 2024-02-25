@@ -21,7 +21,7 @@ extern "C"
 
 #include <array>
 
-#define LOG_ERROR(x) std::cerr << x << std::endl;
+#define LOG_ERROR(x) std::cerr << "       [ffmpeg] " << x << std::endl;
 
 namespace tl
 {
