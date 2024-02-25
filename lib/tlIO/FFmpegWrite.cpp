@@ -1022,6 +1022,9 @@ namespace tl
                 {
                     throw std::runtime_error(string::Format("{0}: Cannot find encoder").arg(p.fileName));
                 }
+                const std::string codecName = avCodec->name;
+                if (codecName.find("videotoolbox") != std::string::npos)
+                    hardwareEncode = true;
                 p.avCodecContext = avcodec_alloc_context3(avCodec);
                 if (!p.avCodecContext)
                 {
@@ -1167,11 +1170,19 @@ namespace tl
                     parsePresets(codecOptions, presetFile);
                 }
 
-                const std::string codecName = avCodec->name;
                 msg = string::Format("Trying to save video with '{1}' codec.")
                           .arg(codecName);
                 LOG_INFO(msg);
                 
+                if (hardwareEncode)
+                {
+                    LOG_INFO("Hardware encoding is on.");
+                }
+                else
+                {
+                    LOG_INFO("Hardware encoding is off.");
+                }
+                    
                 r = avcodec_open2(p.avCodecContext, avCodec, &codecOptions);
                 if (r < 0)
                 {
@@ -1322,9 +1333,9 @@ namespace tl
                 // If doing 8 bit conversions, rely on swscale to do the
                 // mapping with libswscale (-vf scale filter emulated here).
                 if (avCodecID != AV_CODEC_ID_PRORES)
-                {
-                    msg = "Using full color matrices and color coefficients."; 
+                { 
 
+                    
                     // Handle matrices and color space details
                     int in_full, out_full, brightness, contrast, saturation;
                     const int *inv_table, *table;
@@ -1345,6 +1356,10 @@ namespace tl
                     out_full =
                         (p.avCodecContext->color_range == AVCOL_RANGE_JPEG);
 
+                    msg = "Using ";
+                    if (in_full || out_full)
+                        msg += "color matrices and ";
+                    msg += "color coefficients.";
                     sws_setColorspaceDetails(
                         p.swsContext, inv_table, in_full, table, out_full,
                         brightness, contrast, saturation);
