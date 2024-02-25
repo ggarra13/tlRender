@@ -140,6 +140,23 @@ namespace tl
                     o = AV_PIX_FMT_P210LE;
                 else if (s == "P210_LE")
                     o = AV_PIX_FMT_P210LE;
+                
+                else if (s == "P216LE")
+                    o = AV_PIX_FMT_P216LE;
+                else if (s == "P216_LE")
+                    o = AV_PIX_FMT_P216LE;
+                
+                else if (s == "P416LE")
+                    o = AV_PIX_FMT_P416LE;
+                else if (s == "P416_LE")
+                    o = AV_PIX_FMT_P416LE;
+                
+                else if (s == "AYUV64LE")
+                    o = AV_PIX_FMT_AYUV64LE;
+                else if (s == "AYUV64_LE")
+                    o = AV_PIX_FMT_AYUV64LE;
+                else if (s == "AYUV_64_LE")
+                    o = AV_PIX_FMT_AYUV64LE;
 
 
                 
