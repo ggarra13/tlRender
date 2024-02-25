@@ -207,7 +207,7 @@ namespace tl
                                     file::Path path;
                                     {
                                         std::stringstream ss;
-                                        ss << fileName << '_' << size << '_' << pixelType << ".mp4";
+                                        ss << fileName << '_' << size << '_' << pixelType << ".mkv";
                                         _print(ss.str());
                                         path = file::Path(ss.str());
                                     }
