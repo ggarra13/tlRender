@@ -907,6 +907,13 @@ namespace tl
                     std::stringstream ss(option->second);
                     ss >> profile;
                 }
+                bool hardwareEncode = false,
+                option = options.find("FFmpeg/HardwareEncode");
+                if (option != options.end())
+                {
+                    std::stringstream ss(option->second);
+                    ss >> hardwareEncode;
+                }
                 switch (profile)
                 {
                 case Profile::H264:
@@ -962,45 +969,50 @@ namespace tl
                     }
                 }
 
-#ifdef __APPLE__
-                bool videotoolbox = true;
-#else
-                bool videotoolbox = false;
-#endif
                 const AVCodec* avCodec = nullptr;
                 if (avCodecID == AV_CODEC_ID_H264)
                 {
 #ifdef __APPLE__
-                    avCodec = avcodec_find_encoder_by_name("h264_videotoolbox");
-                    if (!avCodec)
+                    if (hardwareEncode)
                     {
-                        videotoolbox = false;
+                        avCodec =
+                            avcodec_find_encoder_by_name("h264_videotoolbox");
+                        if (!avCodec)
+                        {
+                            hardwareEncode = false;
+                        }
                     }
 #endif
                 }
                 else if (avCodecID == AV_CODEC_ID_VP9)
                 {
                     // Try hardware encoders first
+                    if (hardwareEncode)
+                    {
 #ifdef __APPLE__
-                    avCodec = avcodec_find_encoder_by_name("vp9_videotoolbox");
+                        avCodec = avcodec_find_encoder_by_name("vp9_videotoolbox");
 #else
-                    avCodec = avcodec_find_encoder_by_name("vp9_qsv");
+                        avCodec = avcodec_find_encoder_by_name("vp9_qsv");
 #endif
+                    }
                     // If failed, use software encoder
                     if (!avCodec)
                     {
-                        videotoolbox = false;
+                        hardwareEncode = false;
                         avCodec = avcodec_find_encoder_by_name("libvpx-vp9");
                     }
                 }
                 else if (avCodecID == AV_CODEC_ID_PRORES)
                 {
 #ifdef __APPLE__
-                    avCodec = avcodec_find_encoder_by_name("prores_videotoolbox");
+                    if (hardwareEncode)
+                    {
+                        avCodec = avcodec_find_encoder_by_name("prores_videotoolbox");
+                    }
 #endif
                     if (!avCodec)
                     {
-                        videotoolbox = false;
+                        hardwareEncode = false;
                         avCodec = avcodec_find_encoder_by_name("prores_ks");
                     }
                 }
@@ -1035,7 +1047,7 @@ namespace tl
                 p.avCodecContext->time_base = { rational.second, rational.first };
                 p.avCodecContext->framerate = { rational.first, rational.second };
 
-                if (avCodecID == AV_CODEC_ID_PRORES || videotoolbox)
+                if (avCodecID == AV_CODEC_ID_PRORES || hardwareEncode)
                 {
                     // Equivalent to -color_range tv (1)
                     p.avCodecContext->color_range = AVCOL_RANGE_MPEG;
@@ -1082,7 +1094,7 @@ namespace tl
                 }
 
                 // Equivalent to -color_trc iec61966-2-1 (ie. sRGB)
-                if (!videotoolbox)
+                if (!hardwareEncode)
                     p.avCodecContext->color_trc = AVCOL_TRC_IEC61966_2_1;
                 else
                     p.avCodecContext->color_trc = AVCOL_TRC_BT709;
