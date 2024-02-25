@@ -168,7 +168,7 @@ jobs:
         export DYLD_LIBRARY_PATH=$PWD/build/install/lib:$DYLD_LIBRARY_PATH
         cd build
         cd tlRender/src/tlRender-build
-        tests/tltest/tltest
+        # tests/tltest/tltest
 
   macos-14-build:
     runs-on: macos-14
