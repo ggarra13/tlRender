@@ -907,7 +907,7 @@ namespace tl
                     std::stringstream ss(option->second);
                     ss >> profile;
                 }
-                bool hardwareEncode = false,
+                bool hardwareEncode = false;
                 option = options.find("FFmpeg/HardwareEncode");
                 if (option != options.end())
                 {
