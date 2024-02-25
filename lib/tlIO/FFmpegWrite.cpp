@@ -374,10 +374,6 @@ namespace tl
                     settings[option] = value;
                 }
                 file.close();
-
-#ifdef __APPLE__
-                av_dict_set(&codecOptions, "allow_sw", "1", 0);
-#endif
                     
                 for (const auto& pair : settings)
                 {
