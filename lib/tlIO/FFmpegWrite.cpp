@@ -913,6 +913,10 @@ namespace tl
                 {
                     std::stringstream ss(option->second);
                     ss >> hardwareEncode;
+                    if (hardwareEncode)
+                    {
+                        LOG_INFO("Trying Hardware encoding.");
+                    }
                 }
                 switch (profile)
                 {
@@ -1182,7 +1186,7 @@ namespace tl
                 {
                     LOG_INFO("Hardware encoding is off.");
                 }
-                    
+
                 r = avcodec_open2(p.avCodecContext, avCodec, &codecOptions);
                 if (r < 0)
                 {
