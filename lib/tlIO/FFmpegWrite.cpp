@@ -133,6 +133,16 @@ namespace tl
                     o = AV_PIX_FMT_GBRP12LE;
                 else if (s == "GBRP_12LE")
                     o = AV_PIX_FMT_GBRP12LE;
+
+
+                // Hardware formats
+                else if (s == "P210LE")
+                    o = AV_PIX_FMT_P210LE;
+                else if (s == "P210_LE")
+                    o = AV_PIX_FMT_P210LE;
+
+
+                
                 else
                     throw std::runtime_error(
                         string::Format("Unknown pixel format {0}").arg(s));
