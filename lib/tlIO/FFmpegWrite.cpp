@@ -134,8 +134,10 @@ namespace tl
                 else if (s == "GBRP_12LE")
                     o = AV_PIX_FMT_GBRP12LE;
 
-
+                
                 // Hardware formats
+                else if (s == "NV12")
+                    o = AV_PIX_FMT_NV12;
                 else if (s == "P210LE")
                     o = AV_PIX_FMT_P210LE;
                 else if (s == "P210_LE")
