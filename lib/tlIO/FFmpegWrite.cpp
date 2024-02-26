@@ -1381,7 +1381,10 @@ namespace tl
 
                 // If doing 8 bit conversions, rely on swscale to do the
                 // mapping with libswscale (-vf scale filter emulated here).
-                if (avCodecID != AV_CODEC_ID_PRORES)
+                // That makes the conversion closer.
+                if (!hardwareEncode &&
+                    (p.avPixelFormatIn == AV_PIX_FMT_RGB24 ||
+                     p.avPixelFormatIn == AV_PIX_FMT_RGBA))
                 { 
 
                     
