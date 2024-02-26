@@ -287,6 +287,21 @@ namespace tl
                         _info.pixelType = image::PixelType::YUV_444P_U16;
                     }
                     break;
+                case AV_PIX_FMT_GBR24P:
+                    _avOutputPixelFormat = AV_PIX_FMT_RGB24;
+                    _info.pixelType = image::PixelType::RGB_U8;
+                    break;
+                case AV_PIX_FMT_GBRP9BE:
+                case AV_PIX_FMT_GBRP9LE:
+                case AV_PIX_FMT_GBRP10BE:
+                case AV_PIX_FMT_GBRP12LE:
+                case AV_PIX_FMT_GBRP12BE:
+                case AV_PIX_FMT_GBRP10LE:
+                case AV_PIX_FMT_GBRP16BE:
+                case AV_PIX_FMT_GBRP16LE:
+                    _avOutputPixelFormat = AV_PIX_FMT_RGB48;
+                    _info.pixelType = image::PixelType::RGB_U16;
+                    break;
                 case AV_PIX_FMT_YUVA420P:
                 case AV_PIX_FMT_YUVA422P:
                 case AV_PIX_FMT_YUVA444P:

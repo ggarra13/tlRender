@@ -26,8 +26,23 @@ extern "C"
     
 }
 
-#define LOG_INFO(x) std::cout << "       [save] " << x << std::endl;
-#define LOG_WARNING(x) std::cerr << "       [save] " << x << std::endl;
+#define LOG_INFO(x)                                                 \
+    if (auto logSystem = _logSystem.lock())                         \
+    {                                                               \
+        logSystem->print("tl::io::ffmpeg::Plugin", x);              \
+    }
+#define LOG_WARNING(x)                                              \
+    if (auto logSystem = _logSystem.lock())                         \
+    {                                                               \
+        logSystem->print("tl::io::ffmpeg::Plugin", x,               \
+                         log::Type::Warning);                       \
+    }
+#define LOG_STATUS(x)                                               \
+    if (auto logSystem = _logSystem.lock())                         \
+    {                                                               \
+        logSystem->print("tl::io::ffmpeg::Plugin", x,               \
+                         log::Type::Status);                        \
+    }
 
 namespace tl
 {
@@ -169,7 +184,8 @@ namespace tl
             }
     
             enum AVPixelFormat
-            choosePixelFormat(const AVCodec *codec, enum AVPixelFormat target)
+            choosePixelFormat(const AVCodec *codec, enum AVPixelFormat target,
+                              std::weak_ptr<log::System>& _logSystem)
             {
                 if (codec && codec->pix_fmts) {
                     const enum AVPixelFormat *p = codec->pix_fmts;
@@ -852,7 +868,7 @@ namespace tl
                 const std::string codecName = avCodec->name;
                 msg = string::Format("Tring to save audio with '{1}' codec.")
                           .arg(codecName);
-                LOG_INFO(msg);
+                LOG_STATUS(msg);
                 
                 r = avcodec_parameters_from_context(
                     p.avAudioStream->codecpar, p.avAudioCodecContext);
@@ -944,7 +960,7 @@ namespace tl
                     ss >> hardwareEncode;
                     if (hardwareEncode)
                     {
-                        LOG_INFO("Trying Hardware encoding.");
+                        LOG_STATUS("Trying Hardware encoding.");
                     }
                 }
                 switch (profile)
@@ -1100,7 +1116,7 @@ namespace tl
                     std::string value;
                     std::stringstream ss(option->second);
                     ss >> value;
-                    LOG_INFO("Parsing color range " << value);
+                    LOG_STATUS(string::Format("Parsing color range {0}").arg(value));
                     p.avCodecContext->color_range = parseColorRange(value);
                 }
 
@@ -1112,7 +1128,7 @@ namespace tl
                     std::string value;
                     std::stringstream ss(option->second);
                     ss >> value;
-                    LOG_INFO("Parsing color space " << value);
+                    LOG_STATUS(string::Format("Parsing color space {0}").arg(value));
                     p.avCodecContext->colorspace = parseColorSpace(value);
                 }
 
@@ -1124,7 +1140,7 @@ namespace tl
                     std::string value;
                     std::stringstream ss(option->second);
                     ss >> value;
-                    LOG_INFO("Parsing color primaries " << value);
+                    LOG_STATUS(string::Format("Parsing color primaries {0}").arg(value));
                     p.avCodecContext->color_primaries =
                         parseColorPrimaries(value);
                 }
@@ -1140,7 +1156,7 @@ namespace tl
                     std::string value;
                     std::stringstream ss(option->second);
                     ss >> value;
-                    LOG_INFO("Parsing color trc " << value);
+                    LOG_STATUS(string::Format("Parsing color trc {0}").arg(value));
                     p.avCodecContext->color_trc = parseColorTRC(value);
                 }
 
@@ -1162,7 +1178,7 @@ namespace tl
 
                 // Parse the pixel format and check that it is a valid one.
                 AVPixelFormat pix_fmt = parsePixelFormat(pixelFormat);
-                pix_fmt = choosePixelFormat(avCodec, pix_fmt);
+                pix_fmt = choosePixelFormat(avCodec, pix_fmt, _logSystem);
                 p.avCodecContext->pix_fmt = pix_fmt;
 
                 if (profile == Profile::H264)
@@ -1205,15 +1221,15 @@ namespace tl
 
                 msg = string::Format("Trying to save video with '{1}' codec.")
                           .arg(codecName);
-                LOG_INFO(msg);
+                LOG_STATUS(msg);
                 
                 if (hardwareEncode)
                 {
-                    LOG_INFO("Hardware encoding is on.");
+                    LOG_STATUS("Hardware encoding is on.");
                 }
                 else
                 {
-                    LOG_INFO("Hardware encoding is off.");
+                    LOG_STATUS("Hardware encoding is off.");
                 }
 
                 r = avcodec_open2(p.avCodecContext, avCodec, &codecOptions);
@@ -1402,7 +1418,7 @@ namespace tl
                     msg = "Not using full color matrices and color "
                           "coefficients."; 
                 }
-                LOG_INFO(msg);
+                LOG_STATUS(msg);
             }
             
             if (p.avFormatContext->nb_streams == 0)

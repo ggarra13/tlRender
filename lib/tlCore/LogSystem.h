@@ -19,7 +19,8 @@ namespace tl
         {
             Message,
             Warning,
-            Error
+            Error,
+            Status
         };
 
         //! Log item.

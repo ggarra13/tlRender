@@ -316,9 +316,15 @@ namespace tl
             case AV_LOG_FATAL:
             case AV_LOG_ERROR:
             {
-                char buf[string::cBufferSize];
-                vsnprintf(buf, string::cBufferSize, fmt, vl);
-                LOG_ERROR(string::removeTrailingNewlines(buf));
+                if (auto logSystem = _logSystemWeak.lock())
+                {
+                    char buf[string::cBufferSize];
+                    vsnprintf(buf, string::cBufferSize, fmt, vl);
+                    logSystem->print("tl::io::ffmpeg::Plugin", string::removeTrailingNewlines(buf),
+                                     log::Type::Error);
+                }
+                // LOG_ERROR(string::removeTrailingNewlines(buf));
+                break;
             }
             case AV_LOG_WARNING:
             case AV_LOG_INFO:

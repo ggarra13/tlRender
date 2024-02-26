@@ -41,8 +41,9 @@ namespace tl
             }
             switch (item.type)
             {
+            case Type::Status:
             case Type::Message:
-                 ss << item.message;
+                ss << item.message;
                 break;
             case Type::Warning:
                 ss << "Warning: " << item.message;
