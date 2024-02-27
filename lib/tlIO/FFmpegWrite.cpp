@@ -31,6 +31,12 @@ extern "C"
     {                                                               \
         logSystem->print("tl::io::ffmpeg::Plugin", x);              \
     }
+#define LOG_ERROR(x)                                                \
+    if (auto logSystem = _logSystem.lock())                         \
+    {                                                               \
+        logSystem->print("tl::io::ffmpeg::Plugin", x,               \
+                         log::Type::Error);                         \
+    }
 #define LOG_WARNING(x)                                              \
     if (auto logSystem = _logSystem.lock())                         \
     {                                                               \
@@ -1295,6 +1301,7 @@ namespace tl
                     av_dict_set(&p.avFormatContext->metadata, i.first.c_str(), i.second.c_str(), 0);
                 }
 
+                p.videoStartTime = info.videoTime.start_time();
                 // Set timecode
                 option = options.find("timecode");
                 if (option != options.end())
@@ -1431,7 +1438,7 @@ namespace tl
                         .arg(p.fileName));
             }
             
-            // av_dump_format(p.avFormatContext, 0, p.fileName.c_str(), 1);
+            av_dump_format(p.avFormatContext, 0, p.fileName.c_str(), 1);
 
             r = avio_open(&p.avFormatContext->pb, p.fileName.c_str(), AVIO_FLAG_WRITE);
             if (r < 0)
@@ -1461,7 +1468,7 @@ namespace tl
         Write::~Write()
         {
             TLRENDER_P();
-            
+
             if (p.opened)
             {
                 // We need to enclose this in a try block as _encode can throw
@@ -1483,10 +1490,20 @@ namespace tl
                             p.avPacket);
                     }
                 }
-                catch(const std::exception&)
+                catch(const std::exception& e)
                 {
+                    LOG_ERROR(e.what());
                 }
-                av_write_trailer(p.avFormatContext);
+
+                
+                int r = av_write_trailer(p.avFormatContext);
+                if (r != 0)
+                {
+                    throw std::runtime_error(
+                        string::Format("{0}: avformat_write_trailer - {1}")
+                        .arg(p.fileName)
+                        .arg(getErrorLabel(r)));
+                }
             }
 
             if (p.swsContext)
@@ -1553,10 +1570,7 @@ namespace tl
             const io::Options&)
         {
             TLRENDER_P();
-            if (!p.avCodecContext)
-                return;
             
-            const auto& info = image->getInfo();
             av_image_fill_arrays(
                 p.avFrame2->data,
                 p.avFrame2->linesize,
@@ -1591,9 +1605,15 @@ namespace tl
             case image::PixelType::YUV_422P_U16:
             case image::PixelType::YUV_444P_U16:
                 //! \bug How do we flip YUV data?
-                throw std::runtime_error(string::Format("{0}: Incompatible pixel type").arg(p.fileName));
+                throw std::runtime_error(
+                    string::Format("{0}: Incompatible pixel type")
+                        .arg(p.fileName));
                 break;
-            default: break;
+            default:
+                throw std::runtime_error(
+                    string::Format("{0}: Incompatible pixel type")
+                        .arg(p.fileName));
+                break;
             }
 
             int r = av_frame_make_writable(p.avFrame);
