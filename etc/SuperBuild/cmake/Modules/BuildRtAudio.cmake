@@ -6,11 +6,14 @@ set(RtAudio_GIT_TAG "5.2.0") # Nov. 16, 2021
 
 set(RtAudio_PATCH )
 
-# if (UNIX AND NOT APPLE)
-#     set(RtAudio_PATCH ${CMAKE_COMMAND} -E copy_if_different
-#         ${CMAKE_CURRENT_SOURCE_DIR}/RtAudio-patch/RtAudio.cpp
-#         ${CMAKE_CURRENT_BINARY_DIR}/RtAudio/src/RtAudio/RtAudio.cpp )
-# endif()
+#
+# \bug: this is needed to have Linux not hang when switching clips quickly.
+#
+if (UNIX AND NOT APPLE)
+    set(RtAudio_PATCH ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_CURRENT_SOURCE_DIR}/RtAudio-patch/RtAudio.cpp
+        ${CMAKE_CURRENT_BINARY_DIR}/RtAudio/src/RtAudio/RtAudio.cpp )
+endif()
 
 set(RtAudio_ARGS
     ${TLRENDER_EXTERNAL_ARGS}
