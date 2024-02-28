@@ -1571,6 +1571,7 @@ namespace tl
         {
             TLRENDER_P();
             
+            const auto& info = image->getInfo();
             av_image_fill_arrays(
                 p.avFrame2->data,
                 p.avFrame2->linesize,
