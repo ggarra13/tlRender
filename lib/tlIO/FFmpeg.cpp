@@ -323,43 +323,34 @@ namespace tl
                 format += fmt;
             }
             
-            switch (level)
-            {
-            case AV_LOG_PANIC:
-            case AV_LOG_FATAL:
-            case AV_LOG_ERROR:
+            if (level != AV_LOG_VERBOSE)
             {
                 if (auto logSystem = _logSystemWeak.lock())
                 {
                     char buf[string::cBufferSize];
                     vsnprintf(buf, string::cBufferSize, format.c_str(), vl);
-                    logSystem->print("tl::io::ffmpeg::Plugin",
-                                     string::removeTrailingNewlines(buf),
-                                     log::Type::Error);
+                    switch (level)
+                    {
+                    case AV_LOG_PANIC:
+                    case AV_LOG_FATAL:
+                    case AV_LOG_ERROR:
+                        logSystem->print("tl::io::ffmpeg::Plugin",
+                                         string::removeTrailingNewlines(buf),
+                                         log::Type::Error);
+                        break;
+                    case AV_LOG_WARNING:
+                        logSystem->print("tl::io::ffmpeg::Plugin",
+                                         string::removeTrailingNewlines(buf),
+                                         log::Type::Warning);
+                        break;
+                    case AV_LOG_INFO:
+                        logSystem->print("tl::io::ffmpeg::Plugin",
+                                         string::removeTrailingNewlines(buf));
+                        break;
+                    default:
+                        break;
+                    }
                 }
-                break;
-            }
-            case AV_LOG_WARNING:
-                if (auto logSystem = _logSystemWeak.lock())
-                {
-                    char buf[string::cBufferSize];
-                    vsnprintf(buf, string::cBufferSize, format.c_str(), vl);
-                    logSystem->print("tl::io::ffmpeg::Plugin",
-                                     string::removeTrailingNewlines(buf),
-                                     log::Type::Warning);
-                }
-                break;
-            case AV_LOG_INFO:
-                if (auto logSystem = _logSystemWeak.lock())
-                {
-                    char buf[string::cBufferSize];
-                    vsnprintf(buf, string::cBufferSize, format.c_str(), vl);
-                    logSystem->print("tl::io::ffmpeg::Plugin",
-                                     string::removeTrailingNewlines(buf));
-                }
-                break;
-            case AV_LOG_VERBOSE:
-            default: break;
             }
         }
     }
