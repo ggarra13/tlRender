@@ -55,6 +55,7 @@ namespace tl
             ReadVideo(
                 const std::string& fileName,
                 const std::vector<file::MemoryRead>& memory,
+                const std::weak_ptr<log::System>& logSystem,
                 const Options& options);
 
             ~ReadVideo();
@@ -96,6 +97,7 @@ namespace tl
             otime::TimeRange _timeRange = time::invalidTimeRange;
             image::Tags _tags;
             float _rotation = 0.F;
+            std::weak_ptr<log::System> _logSystem;
 
             AVFormatContext* _avFormatContext = nullptr;
             AVIOBufferData _avIOBufferData;
@@ -141,7 +143,7 @@ namespace tl
 
         private:
             int _decode(const otime::RationalTime& currentTime);
-
+            
             std::string _fileName;
             Options _options;
             audio::Info _info;

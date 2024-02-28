@@ -3,6 +3,7 @@
 // All rights reserved.
 
 #include <tlIO/FFmpegReadPrivate.h>
+#include <tlIO/FFmpegMacros.h>
 
 #include <tlCore/StringFormat.h>
 
@@ -21,8 +22,10 @@ namespace tl
         ReadVideo::ReadVideo(
             const std::string& fileName,
             const std::vector<file::MemoryRead>& memory,
+            const std::weak_ptr<log::System>& logSystem,
             const Options& options) :
             _fileName(fileName),
+            _logSystem(logSystem),
             _options(options)
         {
             if (!memory.empty())
@@ -162,7 +165,11 @@ namespace tl
 
                 _avInputPixelFormat = static_cast<AVPixelFormat>(_avCodecParameters[_avStream]->format);
 
-                // LibVPX returns AV_PIX_FMT_YUV420P with metadata "alpha_mode" set to 1.
+                _tags["FFmpeg Pixel Format"] =
+                    av_get_pix_fmt_name(_avInputPixelFormat);
+
+                // LibVPX returns AV_PIX_FMT_YUV420P with metadata
+                // "alpha_mode" set to 1.
                 AVDictionaryEntry* tag = nullptr;
                 while ((tag = av_dict_get(avVideoStream->metadata, "", tag, AV_DICT_IGNORE_SUFFIX)))
                 {
@@ -309,13 +316,21 @@ namespace tl
                     _avOutputPixelFormat = AV_PIX_FMT_RGBA;
                     _info.pixelType = image::PixelType::RGBA_U8;
                     break;
+                case AV_PIX_FMT_GBRAP10BE:
+                case AV_PIX_FMT_GBRAP12LE:
+                case AV_PIX_FMT_GBRAP12BE:
+                case AV_PIX_FMT_GBRAP10LE:
+                case AV_PIX_FMT_GBRAP16BE:
+                case AV_PIX_FMT_GBRAP16LE:
+                    _avOutputPixelFormat = AV_PIX_FMT_RGBA64;
+                    _info.pixelType = image::PixelType::RGBA_U16;
+                    break;
                 case AV_PIX_FMT_YUVA444P10BE:
                 case AV_PIX_FMT_YUVA444P10LE:
                 case AV_PIX_FMT_YUVA444P12BE:
                 case AV_PIX_FMT_YUVA444P12LE:
                 case AV_PIX_FMT_YUVA444P16BE:
-                case AV_PIX_FMT_YUVA444P16LE:
-                    //! \todo Support these formats natively.
+                case AV_PIX_FMT_YUVA444P16LE:;
                     _avOutputPixelFormat = AV_PIX_FMT_RGBA64;
                     _info.pixelType = image::PixelType::RGBA_U16;
                     break;
@@ -554,28 +569,24 @@ namespace tl
                         throw std::runtime_error(string::Format("{0}: Cannot allocate frame").arg(_fileName));
                     }
 
-                    /*_swsContext = sws_getContext(
-                        _avCodecParameters[_avStream]->width,
-                        _avCodecParameters[_avStream]->height,
-                        _avInputPixelFormat,
-                        _avCodecParameters[_avStream]->width,
-                        _avCodecParameters[_avStream]->height,
-                        _avOutputPixelFormat,
-                        swsScaleFlags,
-                        0,
-                        0,
-                        0);
-                    if (!_swsContext)
+                    int r;
+                    r = sws_isSupportedInput(_avInputPixelFormat);
+                    if (r == 0)
                     {
-                        throw std::runtime_error(string::Format("{0}: Cannot get context").arg(_fileName));
-                    }*/
+                        throw std::runtime_error(string::Format("{0}: Unsuported pixel input format").arg(_fileName));
+                    }
+                    r = sws_isSupportedOutput(_avOutputPixelFormat);
+                    if (r == 0)
+                    {
+                        throw std::runtime_error(string::Format("{0}: Unsuported pixel output format").arg(_fileName));
+                    }
                     _swsContext = sws_alloc_context();
                     if (!_swsContext)
                     {
                         throw std::runtime_error(string::Format("{0}: Cannot allocate context").arg(_fileName));
                     }
                     av_opt_set_defaults(_swsContext);
-                    int r = av_opt_set_int(_swsContext, "srcw", _avCodecParameters[_avStream]->width, AV_OPT_SEARCH_CHILDREN);
+                    r = av_opt_set_int(_swsContext, "srcw", _avCodecParameters[_avStream]->width, AV_OPT_SEARCH_CHILDREN);
                     r = av_opt_set_int(_swsContext, "srch", _avCodecParameters[_avStream]->height, AV_OPT_SEARCH_CHILDREN);
                     r = av_opt_set_int(_swsContext, "src_format", _avInputPixelFormat, AV_OPT_SEARCH_CHILDREN);
                     r = av_opt_set_int(_swsContext, "dstw", _avCodecParameters[_avStream]->width, AV_OPT_SEARCH_CHILDREN);
@@ -840,6 +851,7 @@ namespace tl
                     w,
                     h,
                     1);
+                
                 sws_scale(
                     _swsContext,
                     (uint8_t const* const*)_avFrame->data,

@@ -13,6 +13,7 @@
 #include <tlCore/LogSystem.h>
 
 #include <tlIO/FFmpeg.h>
+#include <tlIO/FFmpegMacros.h>
 
 extern "C"
 {
@@ -25,30 +26,6 @@ extern "C"
 #include <libavcodec/avcodec.h>
     
 }
-
-#define LOG_INFO(x)                                                 \
-    if (auto logSystem = _logSystem.lock())                         \
-    {                                                               \
-        logSystem->print("tl::io::ffmpeg::Plugin", x);              \
-    }
-#define LOG_ERROR(x)                                                \
-    if (auto logSystem = _logSystem.lock())                         \
-    {                                                               \
-        logSystem->print("tl::io::ffmpeg::Plugin", x,               \
-                         log::Type::Error);                         \
-    }
-#define LOG_WARNING(x)                                              \
-    if (auto logSystem = _logSystem.lock())                         \
-    {                                                               \
-        logSystem->print("tl::io::ffmpeg::Plugin", x,               \
-                         log::Type::Warning);                       \
-    }
-#define LOG_STATUS(x)                                               \
-    if (auto logSystem = _logSystem.lock())                         \
-    {                                                               \
-        logSystem->print("tl::io::ffmpeg::Plugin", x,               \
-                         log::Type::Status);                        \
-    }
 
 namespace tl
 {
@@ -76,18 +53,21 @@ namespace tl
                     o = AV_PIX_FMT_YUV444P;
 
                 // 10-bits pixel formats
+
                 else if (s == "YUV420P10LE")
                     o = AV_PIX_FMT_YUV420P10LE;
                 else if (s == "YUV422P10LE")
                     o = AV_PIX_FMT_YUV422P10LE;
                 else if (s == "YUV444P10LE")
                     o = AV_PIX_FMT_YUV444P10LE;
+
                 else if (s == "YUV_420P10LE")
                     o = AV_PIX_FMT_YUV420P10LE;
                 else if (s == "YUV_422P10LE")
                     o = AV_PIX_FMT_YUV422P10LE;
                 else if (s == "YUV_444P10LE")
                     o = AV_PIX_FMT_YUV444P10LE;
+
                 else if (s == "YUV_420P_10LE")
                     o = AV_PIX_FMT_YUV420P10LE;
                 else if (s == "YUV_422P_10LE")
@@ -143,7 +123,7 @@ namespace tl
                 else if (s == "YUVA_444P_16LE")
                     o = AV_PIX_FMT_YUVA444P16LE;
 
-                // RGB formats
+                // BGR formats
                 else if (s == "GBRP")
                     o = AV_PIX_FMT_GBRP;
                 else if (s == "GBRP10LE")
@@ -154,6 +134,18 @@ namespace tl
                     o = AV_PIX_FMT_GBRP12LE;
                 else if (s == "GBRP_12LE")
                     o = AV_PIX_FMT_GBRP12LE;
+                
+                // BGRA formats
+                else if (s == "GBRAP")
+                    o = AV_PIX_FMT_GBRAP;
+                else if (s == "GBRAP10LE")
+                    o = AV_PIX_FMT_GBRAP10LE;
+                else if (s == "GBRAP_10LE")
+                    o = AV_PIX_FMT_GBRAP10LE;
+                else if (s == "GBRAP12LE")
+                    o = AV_PIX_FMT_GBRAP12LE;
+                else if (s == "GBRAP_12LE")
+                    o = AV_PIX_FMT_GBRAP12LE;
 
                 
                 // Hardware formats
@@ -1001,6 +993,10 @@ namespace tl
                     break;
                 case Profile::VP9:
                     avCodecID = AV_CODEC_ID_VP9;
+                    avProfile = FF_PROFILE_UNKNOWN;
+                    break;
+                case Profile::GoPro_Cineform:
+                    avCodecID = AV_CODEC_ID_CFHD;
                     avProfile = FF_PROFILE_UNKNOWN;
                     break;
                 case Profile::AV1:

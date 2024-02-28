@@ -6,6 +6,7 @@
 
 #include <tlIO/Plugin.h>
 
+#include <tlCore/LogSystem.h>
 #include <tlCore/HDR.h>
 
 extern "C"
@@ -34,6 +35,7 @@ namespace tl
             ProRes_4444,
             ProRes_XQ,
             VP9,
+            GoPro_Cineform,
             AV1,
             
             Count
@@ -65,6 +67,8 @@ namespace tl
 
         //! Software scaler flags.
         // was SWS_FAST_BILINEAR;
+        //
+        //const int swsScaleFlags = SWS_FAST_BILINEAR;
         const int swsScaleFlags = SWS_SPLINE | SWS_ACCURATE_RND | SWS_FULL_CHR_H_INT | SWS_FULL_CHR_H_INP;
 
         //! Swap the numerator and denominator.

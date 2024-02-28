@@ -5,7 +5,6 @@
 #include <tlIO/FFmpegReadPrivate.h>
 
 #include <tlCore/Assert.h>
-#include <tlCore/LogSystem.h>
 #include <tlCore/StringFormat.h>
 
 extern "C"
@@ -134,6 +133,7 @@ namespace tl
                         p.readVideo = std::make_shared<ReadVideo>(
                             path.get(-1, path.isFileProtocol() ? file::PathType::Path : file::PathType::Full),
                             _memory,
+                            _logSystem,
                             p.options);
                         const auto& videoInfo = p.readVideo->getInfo();
                         if (videoInfo.isValid())

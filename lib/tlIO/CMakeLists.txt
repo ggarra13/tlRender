@@ -67,7 +67,7 @@ if(TLRENDER_EXR)
     list(APPEND LIBRARIES_PRIVATE OpenEXR::OpenEXR)
 endif()
 if(TLRENDER_FFMPEG)
-    list(APPEND HEADERS_PRIVATE FFmpeg.h FFmpegReadPrivate.h)
+    list(APPEND HEADERS_PRIVATE FFmpeg.h FFmpegMacros.h FFmpegReadPrivate.h)
     list(APPEND SOURCE FFmpeg.cpp FFmpegRead.cpp FFmpegReadAudio.cpp
         FFmpegReadVideo.cpp FFmpegWrite.cpp)
     list(APPEND LIBRARIES_PRIVATE FFmpeg)
