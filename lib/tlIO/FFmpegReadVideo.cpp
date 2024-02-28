@@ -718,12 +718,13 @@ namespace tl
                 const int64_t timestamp = _avFrame->pts != AV_NOPTS_VALUE ? _avFrame->pts : _avFrame->pkt_dts;
                 //std::cout << "video timestamp: " << timestamp << std::endl;
 
+                const auto& avVideoStream = _avFormatContext->streams[_avStream];
+
                 const otime::RationalTime time(
                     _timeRange.start_time().value() +
-                    av_rescale_q(
-                        timestamp,
-                        _avFormatContext->streams[_avStream]->time_base,
-                        swap(_avFormatContext->streams[_avStream]->r_frame_rate)),
+                        av_rescale_q(
+                            timestamp, avVideoStream->time_base,
+                            swap(avVideoStream->r_frame_rate)),
                     _timeRange.duration().rate());
                 //std::cout << "video time: " << time << std::endl;
 
@@ -734,6 +735,13 @@ namespace tl
                     
                     auto tags = _tags;
                     AVDictionaryEntry* tag = nullptr;
+                    while ((tag = av_dict_get(avVideoStream->metadata, "", tag, AV_DICT_IGNORE_SUFFIX)))
+                    {
+                        std::string key(string::Format("Video Stream #{0}: {1}")
+                                            .arg(_avStream)
+                                            .arg(tag->key));
+                        tags[key] = tag->value;
+                    }
                     while ((tag = av_dict_get(_avFrame->metadata, "", tag, AV_DICT_IGNORE_SUFFIX)))
                     {
                         tags[tag->key] = tag->value;

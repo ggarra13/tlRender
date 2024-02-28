@@ -299,7 +299,6 @@ namespace tl
                     
                     image::Info imageInfo = _info.video[layer];
                     out.image = image::Image::create(imageInfo);
-                    out.image->setTags(_info.tags);
                     const size_t channels = image::getChannelCount(imageInfo.pixelType);
                     const size_t channelByteCount = image::getBitDepth(imageInfo.pixelType) / 8;
                     const size_t cb = channels * channelByteCount;
@@ -415,9 +414,9 @@ namespace tl
                             
                             _info.tags["Display Window"] = serialize(display);
                             _info.tags["Data Window"] = serialize(data);
-                            out.image->setTags(_info.tags);
                         }
                     }
+                    out.image->setTags(_info.tags);
                     return out;
                 }
 

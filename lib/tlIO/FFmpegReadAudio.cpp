@@ -186,6 +186,13 @@ namespace tl
                         timeReference = otime::RationalTime(std::atoi(value.c_str()), sampleRate);
                     }
                 }
+                while ((tag = av_dict_get(avAudioStream->metadata, "", tag, AV_DICT_IGNORE_SUFFIX)))
+                {
+                    std::string key(string::Format("Audio Stream #{0}: {1}")
+                                    .arg(_avStream)
+                                    .arg(tag->key));
+                    tags[key] = tag->value;
+                }
 
                 otime::RationalTime startTime(0.0, sampleRate);
                 if (!time::compareExact(_options.startTime, time::invalidTime))
