@@ -31,6 +31,7 @@ set(HEADERS
     LRUCacheInline.h
     ListObserver.h
     ListObserverInline.h
+    Locale.h
     LogSystem.h
     MapObserver.h
     MapObserverInline.h
@@ -82,6 +83,7 @@ set(SOURCE
     ICoreSystem.cpp
     ISystem.cpp
     Image.cpp
+    Locale.cpp
     LogSystem.cpp
     Matrix.cpp
     Memory.cpp

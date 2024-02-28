@@ -1165,7 +1165,7 @@ namespace tl
                     LOG_STATUS(string::Format("Parsing color trc {0}").arg(value));
                     p.avCodecContext->color_trc = parseColorTRC(value);
                 }
-
+                
                 if (p.avFormatContext->oformat->flags & AVFMT_GLOBALHEADER)
                 {
                     p.avCodecContext->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
@@ -1387,10 +1387,11 @@ namespace tl
                 }
 
                 // If doing 8 bit conversions, rely on swscale to do the
-                // mapping with libswscale (-vf scale filter emulated here).
+                // mapping (ie. -vf scale filter emulated here).
                 // That makes the conversion closer.
                 if (!hardwareEncode &&
                     (p.avPixelFormatIn == AV_PIX_FMT_RGB24 ||
+                     p.avPixelFormatIn == AV_PIX_FMT_GRAY8 ||
                      p.avPixelFormatIn == AV_PIX_FMT_RGBA))
                 { 
 
@@ -1499,10 +1500,10 @@ namespace tl
                 int r = av_write_trailer(p.avFormatContext);
                 if (r != 0)
                 {
-                    throw std::runtime_error(
+                    LOG_ERROR(
                         string::Format("{0}: avformat_write_trailer - {1}")
-                        .arg(p.fileName)
-                        .arg(getErrorLabel(r)));
+                            .arg(p.fileName)
+                            .arg(getErrorLabel(r)));
                 }
             }
 

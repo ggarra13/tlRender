@@ -5,6 +5,7 @@
 #include <tlIO/OpenEXRPrivate.h>
 
 #include <tlCore/FileIO.h>
+#include <tlCore/Locale.h>
 #include <tlCore/LogSystem.h>
 #include <tlCore/StringFormat.h>
 
@@ -498,10 +499,8 @@ namespace tl
             const auto i = out.tags.find("Frame Per Second");
             if (i != out.tags.end())
             {
-                std::string savedLocale = std::setlocale(LC_NUMERIC, NULL);
-                std::setlocale(LC_NUMERIC, "C");
+                locale::SetAndRestore saved;
                 speed = std::stof(i->second);
-                std::setlocale(LC_NUMERIC, savedLocale.c_str());
             }
             out.videoTime = otime::TimeRange::range_from_start_end_time_inclusive(
                 otime::RationalTime(_startFrame, speed),

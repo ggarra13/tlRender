@@ -309,6 +309,7 @@ namespace tl
         void
         Plugin::_logCallback(void* avcl, int level, const char* fmt, va_list vl)
         {
+            static std::string lastMessage;
             std::string format;
 
             if (level != AV_LOG_VERBOSE)
@@ -316,9 +317,9 @@ namespace tl
                 AVClass* avc = avcl ? *(AVClass **) avcl : NULL;
                 if (avc)
                 {
-                    format = " [";
+                    format = "(";
                     format += avc->item_name(avcl);
-                    format += "] ";
+                    format += ") ";
                 }
                 format += fmt;
             }
@@ -329,23 +330,26 @@ namespace tl
                 {
                     char buf[string::cBufferSize];
                     vsnprintf(buf, string::cBufferSize, format.c_str(), vl);
+
+                    const std::string& message =
+                        string::removeTrailingNewlines(buf);
+
                     switch (level)
                     {
                     case AV_LOG_PANIC:
                     case AV_LOG_FATAL:
                     case AV_LOG_ERROR:
-                        logSystem->print("tl::io::ffmpeg::Plugin",
-                                         string::removeTrailingNewlines(buf),
-                                         log::Type::Error);
+                        logSystem->print(
+                            "tl::io::ffmpeg::Plugin", message,
+                            log::Type::Error);
                         break;
                     case AV_LOG_WARNING:
-                        logSystem->print("tl::io::ffmpeg::Plugin",
-                                         string::removeTrailingNewlines(buf),
-                                         log::Type::Warning);
+                        logSystem->print(
+                            "tl::io::ffmpeg::Plugin", message,
+                            log::Type::Warning);
                         break;
                     case AV_LOG_INFO:
-                        logSystem->print("tl::io::ffmpeg::Plugin",
-                                         string::removeTrailingNewlines(buf));
+                        logSystem->print("tl::io::ffmpeg::Plugin", message);
                         break;
                     default:
                         break;

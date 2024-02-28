@@ -76,6 +76,12 @@ namespace tl
                 std::stringstream ss(i->second);
                 ss >> _dwaCompressionLevel;
             }
+            i = options.find("OpenEXR/Speed");
+            if (i != options.end())
+            {
+                std::stringstream ss(i->second);
+                ss >> _speed;
+            }
         }
             
         Write::Write() :
@@ -154,7 +160,7 @@ namespace tl
             header.zipCompressionLevel() = _zipCompressionLevel;
             header.dwaCompressionLevel() = _dwaCompressionLevel;
             const auto tags = image->getTags();
-            writeTags(tags, io::sequenceDefaultSpeed, header);
+            writeTags(tags, _speed, header);
 
             const uint8_t channelCount = getChannelCount(p.pixelType);
             switch (channelCount)

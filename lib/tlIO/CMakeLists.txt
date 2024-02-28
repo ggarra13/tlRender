@@ -110,7 +110,7 @@ if(TLRENDER_NDI AND TLRENDER_FFMPEG)
 	)
     endif()
 endif()
-list(APPEND LIBRARIES tlGL)
+list(APPEND LIBRARIES tlGL tlCore)
 
 add_library(tlIO ${HEADERS} ${HEADERS_PRIVATE} ${SOURCE})
 target_link_libraries(tlIO PUBLIC ${LIBRARIES} PRIVATE ${LIBRARIES_PRIVATE})
