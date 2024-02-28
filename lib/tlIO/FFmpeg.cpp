@@ -309,15 +309,19 @@ namespace tl
         void
         Plugin::_logCallback(void* avcl, int level, const char* fmt, va_list vl)
         {
-            AVClass* avc = avcl ? *(AVClass **) avcl : NULL;
             std::string format;
-            if (avc)
+
+            if (level != AV_LOG_VERBOSE)
             {
-                format = " [";
-                format += avc->item_name(avcl);
-                format += "] ";
+                AVClass* avc = avcl ? *(AVClass **) avcl : NULL;
+                if (avc)
+                {
+                    format = " [";
+                    format += avc->item_name(avcl);
+                    format += "] ";
+                }
+                format += fmt;
             }
-            format += fmt;
             
             switch (level)
             {
