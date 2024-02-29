@@ -864,7 +864,7 @@ namespace tl
                 }
 
                 const std::string codecName = avCodec->name;
-                msg = string::Format("Tring to save audio with '{1}' codec.")
+                msg = string::Format("Tring to save audio with '{0}' codec.")
                           .arg(codecName);
                 LOG_STATUS(msg);
                 
@@ -1221,8 +1221,10 @@ namespace tl
                     parsePresets(codecOptions, presetFile);
                 }
 
-                msg = string::Format("Trying to save video with '{1}' codec.")
-                          .arg(codecName);
+                msg = string::Format("Trying to save video with '{0}' codec, "
+                                     "FFmpeg pixel format '{1}'.")
+                      .arg(codecName)
+                      .arg(av_get_pix_fmt_name(pix_fmt));
                 LOG_STATUS(msg);
                 
                 if (hardwareEncode)
