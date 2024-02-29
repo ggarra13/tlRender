@@ -184,7 +184,6 @@ if (NDI_FOUND)
     list(APPEND tlRender_tlIO_LIBRARIES NDI)
 endif()
 list(APPEND tlRender_tlIO_LIBRARIES tlRender::tlCore)
-message(STATUS ${tlRender_tlIO_LIBRARIES})
 
 set(tlRender_COMPILE_DEFINITIONS tlRender_FOUND)
 
