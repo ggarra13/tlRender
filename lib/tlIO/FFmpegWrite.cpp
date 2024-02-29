@@ -208,10 +208,10 @@ namespace tl
                                 string::Format(
                                     "Incompatible pixel format '{0}' for codec "
                                     "'{1}', auto-selecting format '{2}'.")
-                                    .arg(targetFormat)
+                                   .arg(targetFormat)
                                     .arg(codec->name)
                                     .arg(bestFormat);
-                            LOG_WARNING(msg);
+                            LOG_WARNING(msg, "save");
                         }
                         return best;
                     }
@@ -866,7 +866,7 @@ namespace tl
                 const std::string codecName = avCodec->name;
                 msg = string::Format("Tring to save audio with '{0}' codec.")
                           .arg(codecName);
-                LOG_STATUS(msg);
+                LOG_STATUS(msg, "save");
                 
                 r = avcodec_parameters_from_context(
                     p.avAudioStream->codecpar, p.avAudioCodecContext);
@@ -958,7 +958,7 @@ namespace tl
                     ss >> hardwareEncode;
                     if (hardwareEncode)
                     {
-                        LOG_STATUS("Trying Hardware encoding.");
+                        LOG_STATUS("Trying Hardware encoding.", "save");
                     }
                 }
                 switch (profile)
@@ -1008,6 +1008,7 @@ namespace tl
 
                 p.avSpeed = info.videoTime.duration().rate();
                 const auto& videoInfo = info.video[0];
+
 
                 // Allow setting the speed if not saving audio
                 if (!info.audio.isValid() || avAudioCodecID == AV_CODEC_ID_NONE)
@@ -1118,7 +1119,9 @@ namespace tl
                     std::string value;
                     std::stringstream ss(option->second);
                     ss >> value;
-                    LOG_STATUS(string::Format("Parsing color range {0}").arg(value));
+                    LOG_STATUS(
+                        string::Format("Parsing color range {0}").arg(value),
+                        "save");
                     p.avCodecContext->color_range = parseColorRange(value);
                 }
 
@@ -1130,7 +1133,9 @@ namespace tl
                     std::string value;
                     std::stringstream ss(option->second);
                     ss >> value;
-                    LOG_STATUS(string::Format("Parsing color space {0}").arg(value));
+                    LOG_STATUS(
+                        string::Format("Parsing color space {0}").arg(value),
+                        "save");
                     p.avCodecContext->colorspace = parseColorSpace(value);
                 }
 
@@ -1142,7 +1147,10 @@ namespace tl
                     std::string value;
                     std::stringstream ss(option->second);
                     ss >> value;
-                    LOG_STATUS(string::Format("Parsing color primaries {0}").arg(value));
+                    LOG_STATUS(
+                        string::Format("Parsing color primaries {0}")
+                            .arg(value),
+                        "save");
                     p.avCodecContext->color_primaries =
                         parseColorPrimaries(value);
                 }
@@ -1158,7 +1166,9 @@ namespace tl
                     std::string value;
                     std::stringstream ss(option->second);
                     ss >> value;
-                    LOG_STATUS(string::Format("Parsing color trc {0}").arg(value));
+                    LOG_STATUS(
+                        string::Format("Parsing color trc {0}").arg(value),
+                        "save");
                     p.avCodecContext->color_trc = parseColorTRC(value);
                 }
                 
@@ -1221,19 +1231,21 @@ namespace tl
                     parsePresets(codecOptions, presetFile);
                 }
 
-                msg = string::Format("Trying to save video with '{0}' codec, "
-                                     "FFmpeg pixel format '{1}'.")
-                      .arg(codecName)
+                msg = string::Format("Trying to save video with '{0}' codec.")
+                      .arg(codecName);
+                LOG_STATUS(msg, "save");
+                
+                msg = string::Format("FFmpeg pixel format '{0}'.")
                       .arg(av_get_pix_fmt_name(pix_fmt));
-                LOG_STATUS(msg);
+                LOG_STATUS(msg, "save");
                 
                 if (hardwareEncode)
                 {
-                    LOG_STATUS("Hardware encoding is on.");
+                    LOG_STATUS("Hardware encoding is on.", "save");
                 }
                 else
                 {
-                    LOG_STATUS("Hardware encoding is off.");
+                    LOG_STATUS("Hardware encoding is off.", "save");
                 }
 
                 r = avcodec_open2(p.avCodecContext, avCodec, &codecOptions);
@@ -1354,12 +1366,18 @@ namespace tl
                 }
                 switch (videoInfo.pixelType)
                 {
-                case image::PixelType::L_U8:     p.avPixelFormatIn = AV_PIX_FMT_GRAY8;  break;
-                case image::PixelType::RGB_U8:   p.avPixelFormatIn = AV_PIX_FMT_RGB24;  break;
-                case image::PixelType::RGBA_U8:  p.avPixelFormatIn = AV_PIX_FMT_RGBA;   break;
-                case image::PixelType::L_U16:    p.avPixelFormatIn = AV_PIX_FMT_GRAY16; break;
-                case image::PixelType::RGB_U16:  p.avPixelFormatIn = AV_PIX_FMT_RGB48;  break;
-                case image::PixelType::RGBA_U16: p.avPixelFormatIn = AV_PIX_FMT_RGBA64; break;
+                case image::PixelType::L_U8:
+                    p.avPixelFormatIn = AV_PIX_FMT_GRAY8;  break;
+                case image::PixelType::RGB_U8:
+                    p.avPixelFormatIn = AV_PIX_FMT_RGB24;  break;
+                case image::PixelType::RGBA_U8:
+                    p.avPixelFormatIn = AV_PIX_FMT_RGBA;   break;
+                case image::PixelType::L_U16:
+                    p.avPixelFormatIn = AV_PIX_FMT_GRAY16; break;
+                case image::PixelType::RGB_U16:
+                    p.avPixelFormatIn = AV_PIX_FMT_RGB48;  break;
+                case image::PixelType::RGBA_U16:
+                    p.avPixelFormatIn = AV_PIX_FMT_RGBA64; break;
                 default:
                     throw std::runtime_error(string::Format("{0}: Incompatible pixel type").arg(p.fileName));
                     break;
@@ -1427,7 +1445,7 @@ namespace tl
                     msg = "Not using full color matrices and color "
                           "coefficients."; 
                 }
-                LOG_STATUS(msg);
+                LOG_STATUS(msg, "save");
             }
             
             if (p.avFormatContext->nb_streams == 0)
@@ -1491,7 +1509,7 @@ namespace tl
                 }
                 catch(const std::exception& e)
                 {
-                    LOG_ERROR(e.what());
+                    LOG_ERROR(e.what(), "save");
                 }
 
                 
@@ -1500,8 +1518,8 @@ namespace tl
                 {
                     LOG_ERROR(
                         string::Format("{0}: avformat_write_trailer - {1}")
-                            .arg(p.fileName)
-                            .arg(getErrorLabel(r)));
+                        .arg(p.fileName)
+                        .arg(getErrorLabel(r)), "save");
                 }
             }
 

@@ -2,26 +2,27 @@
 // Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
-#define LOG_INFO(x)                                                 \
-    if (auto logSystem = _logSystem.lock())                         \
-    {                                                               \
-        logSystem->print("tl::io::ffmpeg::Plugin", x);              \
+#define LOG_INFO(x, module)                                             \
+    if (auto logSystem = _logSystem.lock())                             \
+    {                                                                   \
+    logSystem->print("tl::io::ffmpeg::Plugin", x,                       \
+                     log::Type::Message, module);                       \
     }
-#define LOG_ERROR(x)                                                \
+#define LOG_ERROR(x, module)                                        \
     if (auto logSystem = _logSystem.lock())                         \
     {                                                               \
         logSystem->print("tl::io::ffmpeg::Plugin", x,               \
-                         log::Type::Error);                         \
+                         log::Type::Error, module);                 \
     }
-#define LOG_WARNING(x)                                              \
+#define LOG_WARNING(x, module)                                      \
     if (auto logSystem = _logSystem.lock())                         \
     {                                                               \
         logSystem->print("tl::io::ffmpeg::Plugin", x,               \
-                         log::Type::Warning);                       \
+                         log::Type::Warning, module);               \
     }
-#define LOG_STATUS(x)                                               \
+#define LOG_STATUS(x, module)                                       \
     if (auto logSystem = _logSystem.lock())                         \
     {                                                               \
         logSystem->print("tl::io::ffmpeg::Plugin", x,               \
-                         log::Type::Status);                        \
+                         log::Type::Status, module);                \
     }

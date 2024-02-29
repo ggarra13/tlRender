@@ -229,7 +229,7 @@ namespace tl
 
             _logSystemWeak = logSystem;
             //av_log_set_level(AV_LOG_QUIET);
-            av_log_set_level(AV_LOG_VERBOSE);
+            av_log_set_level(AV_LOG_WARNING);
             av_log_set_callback(_logCallback);
 
             const AVCodec* avCodec = nullptr;
@@ -342,15 +342,17 @@ namespace tl
                     case AV_LOG_ERROR:
                         logSystem->print(
                             "tl::io::ffmpeg::Plugin", message,
-                            log::Type::Error);
+                            log::Type::Error, "ffmpeg");
                         break;
                     case AV_LOG_WARNING:
                         logSystem->print(
                             "tl::io::ffmpeg::Plugin", message,
-                            log::Type::Warning);
+                            log::Type::Warning, "ffmpeg");
                         break;
                     case AV_LOG_INFO:
-                        logSystem->print("tl::io::ffmpeg::Plugin", message);
+                        logSystem->print(
+                            "tl::io::ffmpeg::Plugin", message,
+                            log::Type::Message, "ffmpeg");
                         break;
                     default:
                         break;
