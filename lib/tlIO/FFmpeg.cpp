@@ -289,6 +289,14 @@ namespace tl
             case image::PixelType::RGBA_U16:
                 out.pixelType = info.pixelType;
                 break;
+            case image::PixelType::RGB_F16:
+            case image::PixelType::RGB_F32:
+                out.pixelType = image::PixelType::RGB_U16;
+                break;
+            case image::PixelType::RGBA_F16:
+            case image::PixelType::RGBA_F32:
+                out.pixelType = image::PixelType::RGBA_U16;
+                break;
             default: break;
             }
             return out;
