@@ -995,7 +995,7 @@ namespace tl
                     avCodecID = AV_CODEC_ID_VP9;
                     avProfile = FF_PROFILE_UNKNOWN;
                     break;
-                case Profile::GoPro_Cineform:
+                case Profile::Cineform:
                     avCodecID = AV_CODEC_ID_CFHD;
                     avProfile = FF_PROFILE_UNKNOWN;
                     break;

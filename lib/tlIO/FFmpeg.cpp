@@ -36,7 +36,7 @@ namespace tl
             "ProRes_4444",
             "ProRes_XQ",
             "VP9",
-            "GoPro_Cineform",
+            "Cineform",
             "AV1");
         TLRENDER_ENUM_SERIALIZE_IMPL(Profile);
     
