@@ -19,7 +19,7 @@ endif()
 set(USD_DEPS ${PYTHON_DEP})
 
 set(USD_GIT_REPOSITORY https://github.com/PixarAnimationStudios/OpenUSD.git)
-set(USD_GIT_TAG v23.11)
+set(USD_GIT_TAG v24.03)
 
 set(USD_ARGS)
 if(CMAKE_OSX_ARCHITECTURES)
@@ -32,13 +32,8 @@ if(CMAKE_OSX_DEPLOYMENT_TARGET)
     list(APPEND USD_ARGS MaterialX,"-DCMAKE_OSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET}")
     #list(APPEND USD_ARGS TBB,"CFLAGS=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET} CXXFLAGS=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
 endif()
-list(APPEND USD_ARGS --no-python --no-examples --no-tutorials --no-tools)
+list(APPEND USD_ARGS --cmake-build-args "-G Ninja" --no-python --no-examples --no-tutorials --no-tools)
 list(APPEND USD_ARGS --verbose)
-
-# I had to set this up as jfrog was failing on macOS 12.
-set(USD_PATCH_COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    ${CMAKE_CURRENT_SOURCE_DIR}/USD-patch/build_scripts/build_usd.py
-    build_scripts/build_usd.py)
     
 set(USD_INSTALL_COMMAND )
 if(WIN32)
@@ -60,7 +55,6 @@ ExternalProject_Add(
     GIT_TAG ${USD_GIT_TAG}
     GIT_SHALLOW 1
     CONFIGURE_COMMAND ""
-    PATCH_COMMAND ${USD_PATCH_COMMAND}
-    BUILD_COMMAND ${PYTHON_EXECUTABLE} build_scripts/build_usd.py ${USD_ARGS} ${CMAKE_INSTALL_PREFIX}
+    BUILD_COMMAND ${PYTHON_EXECUTABLE} build_scripts/build_usd.py ${CMAKE_INSTALL_PREFIX} ${USD_ARGS} 
     BUILD_IN_SOURCE 1
     INSTALL_COMMAND "${USD_INSTALL_COMMAND}")
