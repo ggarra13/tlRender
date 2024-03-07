@@ -356,9 +356,9 @@ else()
 	if(APPLE)
 	    list(APPEND FFmpeg_CONFIGURE_ARGS
 		--enable-encoder=pcm_alaw_at
-		--enable-deccoder=pcm_alaw_at
+		--enable-decoder=pcm_alaw_at
 		--enable-encoder=pcm_mulaw_at
-		--enable-deccoder=pcm_mulaw_at)
+		--enable-decoder=pcm_mulaw_at)
 	endif()
     endif()
     list(APPEND FFmpeg_CONFIGURE_ARGS
