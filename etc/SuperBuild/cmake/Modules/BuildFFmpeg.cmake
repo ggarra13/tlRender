@@ -135,6 +135,8 @@ else()
             --enable-decoder=mp3
             --enable-decoder=mpeg2video
             --enable-decoder=mpeg4
+            --enable-decoder=ogg
+            --enable-decoder=opus
             --enable-decoder=pcm_alaw
             --enable-decoder=pcm_alaw_at
             --enable-decoder=pcm_bluray
@@ -197,6 +199,8 @@ else()
             --enable-encoder=mjpeg
             --enable-encoder=mpeg2video
             --enable-encoder=mpeg4
+            --enable-encoder=ogg
+            --enable-encoder=opus
             --enable-encoder=pcm_alaw
             --enable-encoder=pcm_alaw_at
             --enable-encoder=pcm_bluray
@@ -260,6 +264,7 @@ else()
             --enable-demuxer=mp3
             --enable-demuxer=mxf
             --enable-demuxer=ogg
+            --enable-demuxer=opus
             --enable-demuxer=pcm_alaw
             --enable-demuxer=pcm_f32be
             --enable-demuxer=pcm_f32le
@@ -304,6 +309,7 @@ else()
             --enable-muxer=mpeg2video
             --enable-muxer=mxf
             --enable-muxer=ogg
+            --enable-muxer=opus
             --enable-muxer=pcm_alaw
             --enable-muxer=pcm_f32be
             --enable-muxer=pcm_f32le
