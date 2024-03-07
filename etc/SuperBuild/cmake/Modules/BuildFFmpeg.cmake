@@ -121,11 +121,15 @@ else()
             --enable-decoder=ac3
             --enable-decoder=av1
             --enable-decoder=ayuv
+            --enable-decoder=cfhd
             --enable-decoder=dnxhd
             --enable-decoder=eac3
             --enable-decoder=flac
             --enable-decoder=h264
             --enable-decoder=hevc
+            --enable-decoder=libdav1d
+            --enable-decoder=libvpx_vp8
+            --enable-decoder=libvpx_vp9
             --enable-decoder=mjpeg
             --enable-decoder=mp3
             --enable-decoder=mpeg2video
@@ -176,12 +180,19 @@ else()
             --enable-decoder=v410
             --enable-decoder=vp9
             --enable-decoder=yuv4
+            --enable-decoder=wmv1
+            --enable-decoder=wmv2
+            --enable-decoder=wmv3
             --disable-encoders
             --enable-encoder=aac
             --enable-encoder=ac3
             --enable-encoder=ayuv
+            --enable-encoder=cfhd
             --enable-encoder=dnxhd
             --enable-encoder=eac3
+            --enable-encoder=libsvtav1
+            --enable-encoder=libvpx_vp8
+            --enable-encoder=libvpx_vp9
             --enable-encoder=mjpeg
             --enable-encoder=mpeg2video
             --enable-encoder=mpeg4
@@ -219,12 +230,15 @@ else()
             --enable-encoder=pcm_u8
             --enable-encoder=pcm_vidc
             --enable-encoder=prores
+            --enable-encoder=prores_ks
             --enable-encoder=rawvideo
             --enable-encoder=v210
             --enable-encoder=v308
             --enable-encoder=v408
             --enable-encoder=v410
             --enable-encoder=yuv4
+            --enable-encoder=wmv1
+            --enable-encoder=wmv2
             --disable-demuxers
             --enable-demuxer=aac
             --enable-demuxer=ac3
@@ -239,6 +253,7 @@ else()
             --enable-demuxer=hevc
             --enable-demuxer=imf
             --enable-demuxer=m4v
+            --enable-demuxer=matroska
             --enable-demuxer=mjpeg
             --enable-demuxer=mov
             --enable-demuxer=mp3
@@ -279,6 +294,7 @@ else()
             --enable-muxer=h264
             --enable-muxer=hevc
             --enable-muxer=m4v
+            --enable-muxer=matroska
             --enable-muxer=mjpeg
             --enable-muxer=mov
             --enable-muxer=mp4
@@ -321,6 +337,8 @@ else()
             --enable-parser=mpeg4video
             --enable-parser=mpegaudio
             --enable-parser=mpegvideo
+            --enable-parser=opus
+            --enable-parser=vorbis
             --enable-parser=vp9
             --disable-protocols
             --enable-protocol=crypto
