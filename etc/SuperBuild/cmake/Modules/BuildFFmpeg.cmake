@@ -181,6 +181,7 @@ else()
             --enable-decoder=v308
             --enable-decoder=v408
             --enable-decoder=v410
+            --enable-decoder=vorbis
             --enable-decoder=vp9
             --enable-decoder=yuv4
             --enable-decoder=wmv1
@@ -242,6 +243,7 @@ else()
             --enable-encoder=v408
             --enable-encoder=v410
             --enable-encoder=yuv4
+            --enable-encoder=vorbis
             --enable-encoder=wmv1
             --enable-encoder=wmv2
             --disable-demuxers
@@ -290,6 +292,7 @@ else()
             --enable-demuxer=truehd
             --enable-demuxer=v210
             --enable-demuxer=v210x
+            --enable-demuxer=vorbis
             --enable-demuxer=wav
             --enable-demuxer=yuv4mpegpipe
             --disable-muxers
@@ -333,6 +336,7 @@ else()
             --enable-muxer=pcm_vidc
             --enable-muxer=rawvideo
             --enable-muxer=truehd
+            --enable-muxer=vorbis
             --enable-muxer=wav
             --enable-muxer=yuv4mpegpipe
             --disable-parsers
