@@ -258,6 +258,7 @@ else()
             --enable-demuxer=mov
             --enable-demuxer=mp3
             --enable-demuxer=mxf
+            --enable-demuxer=ogg
             --enable-demuxer=pcm_alaw
             --enable-demuxer=pcm_f32be
             --enable-demuxer=pcm_f32le
@@ -280,6 +281,7 @@ else()
             --enable-demuxer=pcm_u8
             --enable-demuxer=pcm_vidc
             --enable-demuxer=rawvideo
+            --enable-demuxer=truehd
             --enable-demuxer=v210
             --enable-demuxer=v210x
             --enable-demuxer=wav
@@ -300,6 +302,7 @@ else()
             --enable-muxer=mp4
             --enable-muxer=mpeg2video
             --enable-muxer=mxf
+            --enable-muxer=ogg
             --enable-muxer=pcm_alaw
             --enable-muxer=pcm_f32be
             --enable-muxer=pcm_f32le
@@ -322,6 +325,7 @@ else()
             --enable-muxer=pcm_u8
             --enable-muxer=pcm_vidc
             --enable-muxer=rawvideo
+            --enable-muxer=truehd
             --enable-muxer=wav
             --enable-muxer=yuv4mpegpipe
             --disable-parsers
@@ -338,6 +342,10 @@ else()
             --enable-parser=mpegaudio
             --enable-parser=mpegvideo
             --enable-parser=opus
+<<<<<<< Updated upstream
+=======
+            --enable-parser=truehd
+>>>>>>> Stashed changes
             --enable-parser=vorbis
             --enable-parser=vp9
             --disable-protocols
