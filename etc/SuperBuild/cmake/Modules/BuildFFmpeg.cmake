@@ -127,9 +127,6 @@ else()
             --enable-decoder=flac
             --enable-decoder=h264
             --enable-decoder=hevc
-            --enable-decoder=libdav1d
-            --enable-decoder=libvpx_vp8
-            --enable-decoder=libvpx_vp9
             --enable-decoder=mjpeg
             --enable-decoder=mp3
             --enable-decoder=mpeg2video
@@ -190,9 +187,6 @@ else()
             --enable-encoder=cfhd
             --enable-encoder=dnxhd
             --enable-encoder=eac3
-            --enable-encoder=libsvtav1
-            --enable-encoder=libvpx_vp8
-            --enable-encoder=libvpx_vp9
             --enable-encoder=mjpeg
             --enable-encoder=mpeg2video
             --enable-encoder=mpeg4
@@ -370,15 +364,23 @@ else()
 
     if(TLRENDER_VPX)
 	list(APPEND FFmpeg_CONFIGURE_ARGS
+            --enable-decoder=libvpx_vp8
+            --enable-decoder=libvpx_vp9
+            --enable-encoder=libvpx_vp8
+            --enable-encoder=libvpx_vp9
 	    --enable-libvpx)
     endif()
     if(TLRENDER_AV1)
 	list(APPEND FFmpeg_CONFIGURE_ARGS
+            --enable-encoder=libsvtav1
+            --enable-decoder=libdav1d
 	    --enable-libdav1d
 	    --enable-libsvtav1)
     endif()
     if(TLRENDER_X264)
 	list(APPEND FFmpeg_CONFIGURE_ARGS
+            --enable-encoder=libx264
+            --enable-decoder=libx264
 	    --enable-libx264 --enable-gpl)
 	if(TLRENDER_NET)
 	    list(APPEND FFmpeg_CONFIGURE_ARGS
