@@ -130,7 +130,7 @@ else()
             --enable-decoder=mjpeg
             --enable-decoder=mp3
             --enable-decoder=mpeg2video
-            --enable-decoder=mpeg
+            --enable-decoder=mpeg4
             --enable-decoder=opus
             --enable-decoder=pcm_alaw
             --enable-decoder=pcm_bluray
@@ -320,7 +320,6 @@ else()
             --enable-muxer=pcm_vidc
             --enable-muxer=rawvideo
             --enable-muxer=truehd
-            --enable-muxer=vorbis
             --enable-muxer=wav
             --enable-muxer=yuv4mpegpipe
             --disable-parsers
