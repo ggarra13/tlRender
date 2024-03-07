@@ -95,7 +95,6 @@ else()
 	--disable-xlib
 	--disable-zlib
 	--disable-amf
-	--disable-audiotoolbox
 	--disable-cuda-llvm
 	--disable-cuvid
 	--disable-d3d11va
@@ -112,10 +111,10 @@ else()
 	${FFmpeg_LDFLAGS})
     if(NOT APPLE)
 	list(APPEND FFmpeg_CONFIGURE_ARGS
+	    --disable-audiotoolbox
 	    --disable-videotoolbox)
     endif()
     if(TLRENDER_FFMPEG_MINIMAL)
-	message(STATUS "Compiling FFmpeg MINIMAL")
 	list(APPEND FFmpeg_CONFIGURE_ARGS
             --disable-decoders
             --enable-decoder=aac
@@ -134,11 +133,9 @@ else()
             --enable-decoder=mjpeg
             --enable-decoder=mp3
             --enable-decoder=mpeg2video
-            --enable-decoder=mpeg4
-            --enable-decoder=ogg
+            --enable-decoder=mpeg
             --enable-decoder=opus
             --enable-decoder=pcm_alaw
-            --enable-decoder=pcm_alaw_at
             --enable-decoder=pcm_bluray
             --enable-decoder=pcm_dvd
             --enable-decoder=pcm_f16le
@@ -149,7 +146,6 @@ else()
             --enable-decoder=pcm_f64le
             --enable-decoder=pcm_lxf
             --enable-decoder=pcm_mulaw
-            --enable-decoder=pcm_mulaw_at
             --enable-decoder=pcm_s16be
             --enable-decoder=pcm_s16be_planar
             --enable-decoder=pcm_s16le
@@ -200,10 +196,8 @@ else()
             --enable-encoder=mjpeg
             --enable-encoder=mpeg2video
             --enable-encoder=mpeg4
-            --enable-encoder=ogg
             --enable-encoder=opus
             --enable-encoder=pcm_alaw
-            --enable-encoder=pcm_alaw_at
             --enable-encoder=pcm_bluray
             --enable-encoder=pcm_dvd
             --enable-encoder=pcm_f32be
@@ -211,7 +205,6 @@ else()
             --enable-encoder=pcm_f64be
             --enable-encoder=pcm_f64le
             --enable-encoder=pcm_mulaw
-            --enable-encoder=pcm_mulaw_at
             --enable-encoder=pcm_s16be
             --enable-encoder=pcm_s16be_planar
             --enable-encoder=pcm_s16le
@@ -258,7 +251,6 @@ else()
             --enable-demuxer=flac
             --enable-demuxer=h264
             --enable-demuxer=hevc
-            --enable-demuxer=imf
             --enable-demuxer=m4v
             --enable-demuxer=matroska
             --enable-demuxer=mjpeg
@@ -266,7 +258,6 @@ else()
             --enable-demuxer=mp3
             --enable-demuxer=mxf
             --enable-demuxer=ogg
-            --enable-demuxer=opus
             --enable-demuxer=pcm_alaw
             --enable-demuxer=pcm_f32be
             --enable-demuxer=pcm_f32le
@@ -292,7 +283,6 @@ else()
             --enable-demuxer=truehd
             --enable-demuxer=v210
             --enable-demuxer=v210x
-            --enable-demuxer=vorbis
             --enable-demuxer=wav
             --enable-demuxer=yuv4mpegpipe
             --disable-muxers
@@ -353,7 +343,6 @@ else()
             --enable-parser=mpegaudio
             --enable-parser=mpegvideo
             --enable-parser=opus
-            --enable-parser=truehd
             --enable-parser=vorbis
             --enable-parser=vp9
             --disable-protocols
@@ -364,6 +353,13 @@ else()
             --enable-protocol=httpproxy
             --enable-protocol=https
             --enable-protocol=md5)
+	if(APPLE)
+	    list(APPEND FFmpeg_CONFIGURE_ARGS
+		--enable-encoder=pcm_alaw_at
+		--enable-deccoder=pcm_alaw_at
+		--enable-encoder=pcm_mulaw_at
+		--enable-deccoder=pcm_mulaw_at)
+	endif()
     endif()
     list(APPEND FFmpeg_CONFIGURE_ARGS
 	--x86asmexe=${CMAKE_INSTALL_PREFIX}/bin/nasm)
