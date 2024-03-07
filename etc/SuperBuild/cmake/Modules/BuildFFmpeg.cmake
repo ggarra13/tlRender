@@ -115,6 +115,7 @@ else()
 	    --disable-videotoolbox)
     endif()
     if(TLRENDER_FFMPEG_MINIMAL)
+	message(STATUS "Compiling FFmpeg MINIMAL")
 	list(APPEND FFmpeg_CONFIGURE_ARGS
             --disable-decoders
             --enable-decoder=aac
