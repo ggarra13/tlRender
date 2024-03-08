@@ -343,6 +343,14 @@ namespace tl
                     const std::string& message =
                         string::removeTrailingNewlines(buf);
 
+                    if (level < AV_LOG_INFO)
+                    {
+                        if (message == lastMessage)
+                            return;
+
+                        lastMessage = message;
+                    }
+                    
                     switch (level)
                     {
                     case AV_LOG_PANIC:
