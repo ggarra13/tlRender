@@ -27,9 +27,7 @@ namespace tl
         enum class Profile
         {
             None,
-#ifdef TLRENDER_X264
             H264,
-#endif
             ProRes,
             ProRes_Proxy,
             ProRes_LT,
