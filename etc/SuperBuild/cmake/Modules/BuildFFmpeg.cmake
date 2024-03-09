@@ -169,6 +169,7 @@ else()
             --enable-decoder=pcm_vidc
             --enable-decoder=prores
             --enable-decoder=rawvideo
+            --enable-decoder=truehd
             --enable-decoder=v210
             --enable-decoder=v210x
             --enable-decoder=v308
@@ -220,6 +221,7 @@ else()
             --enable-encoder=pcm_vidc
             --enable-encoder=prores
             --enable-encoder=rawvideo
+            --enable-encoder=truehd
             --enable-encoder=v210
             --enable-encoder=v308
             --enable-encoder=v408
@@ -265,6 +267,7 @@ else()
             --enable-demuxer=pcm_u8
             --enable-demuxer=pcm_vidc
             --enable-demuxer=rawvideo
+            --enable-demuxer=truehd
             --enable-demuxer=v210
             --enable-demuxer=v210x
             --enable-demuxer=wav
@@ -306,6 +309,7 @@ else()
             --enable-muxer=pcm_u8
             --enable-muxer=pcm_vidc
             --enable-muxer=rawvideo
+            --enable-muxer=truehd
             --enable-muxer=wav
             --enable-muxer=yuv4mpegpipe
             --disable-parsers
@@ -321,6 +325,7 @@ else()
             --enable-parser=mpeg4video
             --enable-parser=mpegaudio
             --enable-parser=mpegvideo
+            --enable-parser=truehd
             --enable-parser=vp9
             --disable-protocols
             --enable-protocol=crypto
