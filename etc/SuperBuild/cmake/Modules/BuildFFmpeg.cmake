@@ -95,7 +95,6 @@ else()
 	--disable-xlib
 	--disable-zlib
 	--disable-amf
-	--disable-audiotoolbox
 	--disable-cuda-llvm
 	--disable-cuvid
 	--disable-d3d11va
@@ -117,11 +116,7 @@ else()
     else()
 	list(APPEND FFmpeg_CONFIGURE_ARGS
 	    --enable-videotoolbox
-	    --enable-audiotoolbox
-            --enable-decoder=pcm_alaw_at
-            --enable-decoder=pcm_mulaw_at
-            --enable-encoder=pcm_alaw_at
-            --enable-encoder=pcm_mulaw_at)
+	    --enable-audiotoolbox)
     endif()
     if(TLRENDER_FFMPEG_MINIMAL)
 	list(APPEND FFmpeg_CONFIGURE_ARGS
@@ -130,6 +125,7 @@ else()
             --enable-decoder=ac3
             --enable-decoder=av1
             --enable-decoder=ayuv
+            --enable-decoder=cfhd
             --enable-decoder=dnxhd
             --enable-decoder=eac3
             --enable-decoder=flac
@@ -139,6 +135,7 @@ else()
             --enable-decoder=mp3
             --enable-decoder=mpeg2video
             --enable-decoder=mpeg4
+            --enable-decoder=opus
             --enable-decoder=pcm_alaw
             --enable-decoder=pcm_bluray
             --enable-decoder=pcm_dvd
@@ -182,17 +179,23 @@ else()
             --enable-decoder=v308
             --enable-decoder=v408
             --enable-decoder=v410
+            --enable-decoder=vorbis
             --enable-decoder=vp9
             --enable-decoder=yuv4
+            --enable-decoder=wmv1
+            --enable-decoder=wmv2
+            --enable-decoder=wmv3
             --disable-encoders
             --enable-encoder=aac
             --enable-encoder=ac3
             --enable-encoder=ayuv
+            --enable-encoder=cfhd
             --enable-encoder=dnxhd
             --enable-encoder=eac3
             --enable-encoder=mjpeg
             --enable-encoder=mpeg2video
             --enable-encoder=mpeg4
+            --enable-encoder=opus
             --enable-encoder=pcm_alaw
             --enable-encoder=pcm_bluray
             --enable-encoder=pcm_dvd
@@ -225,6 +228,7 @@ else()
             --enable-encoder=pcm_u8
             --enable-encoder=pcm_vidc
             --enable-encoder=prores
+            --enable-encoder=prores_ks
             --enable-encoder=rawvideo
             --enable-encoder=truehd
             --enable-encoder=v210
@@ -232,6 +236,9 @@ else()
             --enable-encoder=v408
             --enable-encoder=v410
             --enable-encoder=yuv4
+            --enable-encoder=vorbis
+            --enable-encoder=wmv1
+            --enable-encoder=wmv2
             --disable-demuxers
             --enable-demuxer=aac
             --enable-demuxer=ac3
@@ -245,10 +252,12 @@ else()
             --enable-demuxer=h264
             --enable-demuxer=hevc
             --enable-demuxer=m4v
+            --enable-demuxer=matroska
             --enable-demuxer=mjpeg
             --enable-demuxer=mov
             --enable-demuxer=mp3
             --enable-demuxer=mxf
+            --enable-demuxer=ogg
             --enable-demuxer=pcm_alaw
             --enable-demuxer=pcm_f32be
             --enable-demuxer=pcm_f32le
@@ -286,11 +295,14 @@ else()
             --enable-muxer=h264
             --enable-muxer=hevc
             --enable-muxer=m4v
+            --enable-muxer=matroska
             --enable-muxer=mjpeg
             --enable-muxer=mov
             --enable-muxer=mp4
             --enable-muxer=mpeg2video
             --enable-muxer=mxf
+            --enable-muxer=ogg
+            --enable-muxer=opus
             --enable-muxer=pcm_alaw
             --enable-muxer=pcm_f32be
             --enable-muxer=pcm_f32le
@@ -329,7 +341,9 @@ else()
             --enable-parser=mpeg4video
             --enable-parser=mpegaudio
             --enable-parser=mpegvideo
+            --enable-parser=opus
             --enable-parser=truehd
+            --enable-parser=vorbis
             --enable-parser=vp9
             --disable-protocols
             --enable-protocol=crypto
@@ -339,6 +353,13 @@ else()
             --enable-protocol=httpproxy
             --enable-protocol=https
             --enable-protocol=md5)
+	if(APPLE)
+	    list(APPEND FFmpeg_CONFIGURE_ARGS
+		--enable-encoder=pcm_alaw_at
+		--enable-decoder=pcm_alaw_at
+		--enable-encoder=pcm_mulaw_at
+		--enable-decoder=pcm_mulaw_at)
+	endif()
     endif()
     list(APPEND FFmpeg_CONFIGURE_ARGS
 	--x86asmexe=${CMAKE_INSTALL_PREFIX}/bin/nasm)
@@ -349,15 +370,23 @@ else()
 
     if(TLRENDER_VPX)
 	list(APPEND FFmpeg_CONFIGURE_ARGS
+            --enable-decoder=libvpx_vp8
+            --enable-decoder=libvpx_vp9
+            --enable-encoder=libvpx_vp8
+            --enable-encoder=libvpx_vp9
 	    --enable-libvpx)
     endif()
     if(TLRENDER_AV1)
 	list(APPEND FFmpeg_CONFIGURE_ARGS
+            --enable-encoder=libsvtav1
+            --enable-decoder=libdav1d
 	    --enable-libdav1d
 	    --enable-libsvtav1)
     endif()
     if(TLRENDER_X264)
 	list(APPEND FFmpeg_CONFIGURE_ARGS
+            --enable-encoder=libx264
+            --enable-decoder=libx264
 	    --enable-libx264 --enable-gpl)
 	if(TLRENDER_NET)
 	    list(APPEND FFmpeg_CONFIGURE_ARGS

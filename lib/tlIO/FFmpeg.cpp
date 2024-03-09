@@ -36,7 +36,7 @@ namespace tl
             "ProRes_4444",
             "ProRes_XQ",
             "VP9",
-            "GoPro_Cineform",
+            "Cineform",
             "AV1");
         TLRENDER_ENUM_SERIALIZE_IMPL(Profile);
     
@@ -289,6 +289,14 @@ namespace tl
             case image::PixelType::RGBA_U16:
                 out.pixelType = info.pixelType;
                 break;
+            case image::PixelType::RGB_F16:
+            case image::PixelType::RGB_F32:
+                out.pixelType = image::PixelType::RGB_U16;
+                break;
+            case image::PixelType::RGBA_F16:
+            case image::PixelType::RGBA_F32:
+                out.pixelType = image::PixelType::RGBA_U16;
+                break;
             default: break;
             }
             return out;
@@ -335,6 +343,14 @@ namespace tl
                     const std::string& message =
                         string::removeTrailingNewlines(buf);
 
+                    if (level < AV_LOG_INFO)
+                    {
+                        if (message == lastMessage)
+                            return;
+
+                        lastMessage = message;
+                    }
+                    
                     switch (level)
                     {
                     case AV_LOG_PANIC:
