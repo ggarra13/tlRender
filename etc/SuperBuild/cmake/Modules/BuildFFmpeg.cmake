@@ -112,7 +112,16 @@ else()
 	${FFmpeg_LDFLAGS})
     if(NOT APPLE)
 	list(APPEND FFmpeg_CONFIGURE_ARGS
-	    --disable-videotoolbox)
+	    --disable-videotoolbox
+	    --disable-audiotoolbox)
+    else()
+	list(APPEND FFmpeg_CONFIGURE_ARGS
+	    --enable-videotoolbox
+	    --enable-audiotoolbox
+            --enable-decoder=pcm_alaw_at
+            --enable-decoder=pcm_mulaw_at
+            --enable-encoder=pcm_alaw_at
+            --enable-encoder=pcm_mulaw_at)
     endif()
     if(TLRENDER_FFMPEG_MINIMAL)
 	list(APPEND FFmpeg_CONFIGURE_ARGS
@@ -131,7 +140,6 @@ else()
             --enable-decoder=mpeg2video
             --enable-decoder=mpeg4
             --enable-decoder=pcm_alaw
-            --enable-decoder=pcm_alaw_at
             --enable-decoder=pcm_bluray
             --enable-decoder=pcm_dvd
             --enable-decoder=pcm_f16le
@@ -142,7 +150,6 @@ else()
             --enable-decoder=pcm_f64le
             --enable-decoder=pcm_lxf
             --enable-decoder=pcm_mulaw
-            --enable-decoder=pcm_mulaw_at
             --enable-decoder=pcm_s16be
             --enable-decoder=pcm_s16be_planar
             --enable-decoder=pcm_s16le
@@ -187,7 +194,6 @@ else()
             --enable-encoder=mpeg2video
             --enable-encoder=mpeg4
             --enable-encoder=pcm_alaw
-            --enable-encoder=pcm_alaw_at
             --enable-encoder=pcm_bluray
             --enable-encoder=pcm_dvd
             --enable-encoder=pcm_f32be
@@ -195,7 +201,6 @@ else()
             --enable-encoder=pcm_f64be
             --enable-encoder=pcm_f64le
             --enable-encoder=pcm_mulaw
-            --enable-encoder=pcm_mulaw_at
             --enable-encoder=pcm_s16be
             --enable-encoder=pcm_s16be_planar
             --enable-encoder=pcm_s16le
@@ -239,7 +244,6 @@ else()
             --enable-demuxer=flac
             --enable-demuxer=h264
             --enable-demuxer=hevc
-            --enable-demuxer=imf
             --enable-demuxer=m4v
             --enable-demuxer=mjpeg
             --enable-demuxer=mov
