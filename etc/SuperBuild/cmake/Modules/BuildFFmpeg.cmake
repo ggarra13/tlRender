@@ -342,7 +342,6 @@ else()
             --enable-parser=mpegaudio
             --enable-parser=mpegvideo
             --enable-parser=opus
-            --enable-parser=truehd
             --enable-parser=vorbis
             --enable-parser=vp9
             --disable-protocols
