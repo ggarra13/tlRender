@@ -120,7 +120,8 @@ else()
     endif()
     if(TLRENDER_FFMPEG_MINIMAL)
 	list(APPEND FFmpeg_CONFIGURE_ARGS
-            --disable-decoders
+	    --disable-decoders
+	    
             --enable-decoder=aac
             --enable-decoder=ac3
             --enable-decoder=av1
@@ -173,7 +174,6 @@ else()
             --enable-decoder=pcm_vidc
             --enable-decoder=prores
             --enable-decoder=rawvideo
-            --enable-decoder=truehd
             --enable-decoder=v210
             --enable-decoder=v210x
             --enable-decoder=v308
@@ -182,11 +182,16 @@ else()
             --enable-decoder=vorbis
             --enable-decoder=vp9
             --enable-decoder=yuv4
+            --enable-decoder=wmalossless
+            --enable-decoder=wmapro
             --enable-decoder=wmav1
             --enable-decoder=wmav2
+            --enable-decoder=wmavoice
             --enable-decoder=wmv1
             --enable-decoder=wmv2
-	    
+            --enable-decoder=wmv3
+            --enable-decoder=wmv3image
+
             --disable-encoders
             --enable-encoder=aac
             --enable-encoder=ac3
@@ -232,7 +237,6 @@ else()
             --enable-encoder=prores
             --enable-encoder=prores_ks
             --enable-encoder=rawvideo
-            --enable-encoder=truehd
             --enable-encoder=v210
             --enable-encoder=v308
             --enable-encoder=v408
@@ -243,11 +247,12 @@ else()
             --enable-encoder=wmav2
             --enable-encoder=wmv1
             --enable-encoder=wmv2
-	    
+
             --disable-demuxers
             --enable-demuxer=aac
             --enable-demuxer=ac3
             --enable-demuxer=aiff
+            --enable-demuxer=asf
             --enable-demuxer=av1
             --enable-demuxer=dnxhd
             --enable-demuxer=dts
@@ -294,6 +299,7 @@ else()
             --disable-muxers
             --enable-muxer=ac3
             --enable-muxer=aiff
+            --enable-muxer=asf
             --enable-muxer=dnxhd
             --enable-muxer=dts
             --enable-muxer=eac3
@@ -335,7 +341,6 @@ else()
             --enable-muxer=wav
             --enable-muxer=yuv4mpegpipe
 
-
             --disable-parsers
             --enable-parser=aac
             --enable-parser=ac3
@@ -352,7 +357,6 @@ else()
             --enable-parser=opus
             --enable-parser=vorbis
             --enable-parser=vp9
-
 
             --disable-protocols
             --enable-protocol=crypto
