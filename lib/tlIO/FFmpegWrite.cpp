@@ -336,23 +336,7 @@ namespace tl
                 }
                 return out;
             }
-            
-            //! Return the color space matrix coefficients for a string.
-            const int* parseYUVType(const char *s, enum AVColorSpace colorspace)
-            {
-                if (!s)
-                    s = "bt601";
 
-                colorspace = parseColorSpace(s);
-                
-                if (colorspace < 1 || colorspace > 10 || colorspace == 8) {
-                    colorspace = AVCOL_SPC_BT470BG;
-                }
-
-                return sws_getCoefficients(colorspace);
-            }
-
-            
             //! Parse preset file and extract the video codec settings
             void parsePresets(AVDictionary*& codecOptions,
                               const std::string& presetFile)
@@ -1402,49 +1386,33 @@ namespace tl
                     throw std::runtime_error(string::Format("{0}: Cannot initialize sws context").arg(p.fileName));
                 }
 
-                // If doing 8 bit conversions, rely on swscale to do the
-                // mapping (ie. -vf scale filter emulated here).
-                // That makes the conversion closer.
-                if (!hardwareEncode &&
-                    (p.avPixelFormatIn == AV_PIX_FMT_RGB24 ||
-                     p.avPixelFormatIn == AV_PIX_FMT_GRAY8 ||
-                     p.avPixelFormatIn == AV_PIX_FMT_RGBA))
-                { 
-
                     
-                    // Handle matrices and color space details
-                    int in_full, out_full, brightness, contrast, saturation;
-                    const int *inv_table, *table;
+                // Handle matrices and color space details
+                int in_full, out_full, brightness, contrast, saturation;
+                const int *inv_table, *table;
 
-                    sws_getColorspaceDetails(
-                        p.swsContext, (int**)&inv_table, &in_full,
-                        (int**)&table, &out_full, &brightness, &contrast,
-                        &saturation);
+                sws_getColorspaceDetails(
+                    p.swsContext, (int**)&inv_table, &in_full,
+                    (int**)&table, &out_full, &brightness, &contrast,
+                    &saturation);
 
-                    inv_table = sws_getCoefficients(p.avCodecContext->colorspace);
-                    table = parseYUVType("bt709", AVCOL_SPC_UNSPECIFIED);
+                inv_table = sws_getCoefficients(p.avCodecContext->colorspace);
+                table = sws_getCoefficients(AVCOL_SPC_BT709);
 
-                    // We use the full range, and we set -color_range to 2
-                    // ( as we set AV_COL_RANGE_JPEG )
-                    in_full =
-                        (p.avCodecContext->color_range == AVCOL_RANGE_JPEG);
-                    out_full =
-                        (p.avCodecContext->color_range == AVCOL_RANGE_JPEG);
+                // We use the full range, and we set -color_range to 2
+                // ( as we set AV_COL_RANGE_JPEG )
+                in_full =
+                    (p.avCodecContext->color_range == AVCOL_RANGE_JPEG);
+                out_full =
+                    (p.avCodecContext->color_range == AVCOL_RANGE_JPEG);
 
-                    msg = "Using ";
-                    if (in_full || out_full)
-                        msg += "color matrices and ";
-                    msg += "color coefficients.";
-                    sws_setColorspaceDetails(
-                        p.swsContext, inv_table, in_full, table, out_full,
-                        brightness, contrast, saturation);
-                }
-                else
-                {
-                    msg = "Not using full color matrices and color "
-                          "coefficients."; 
-                }
-                LOG_STATUS(msg, "save");
+                msg = "Using ";
+                if (in_full || out_full)
+                    msg += "color matrices and ";
+                msg += "color coefficients.";
+                sws_setColorspaceDetails(
+                    p.swsContext, inv_table, in_full, table, out_full,
+                    brightness, contrast, saturation);
             }
             
             if (p.avFormatContext->nb_streams == 0)
