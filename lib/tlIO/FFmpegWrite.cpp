@@ -1406,10 +1406,6 @@ namespace tl
                 out_full =
                     (p.avCodecContext->color_range == AVCOL_RANGE_JPEG);
 
-                msg = "Using ";
-                if (in_full || out_full)
-                    msg += "color matrices and ";
-                msg += "color coefficients.";
                 sws_setColorspaceDetails(
                     p.swsContext, inv_table, in_full, table, out_full,
                     brightness, contrast, saturation);
