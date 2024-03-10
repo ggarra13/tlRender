@@ -1421,8 +1421,7 @@ namespace tl
                         (int**)&table, &out_full, &brightness, &contrast,
                         &saturation);
 
-                    inv_table =
-                        parseYUVType("bt709", p.avCodecContext->colorspace);
+                    inv_table = sws_getCoefficients(p.avCodecContext->colorspace);
                     table = parseYUVType("bt709", AVCOL_SPC_UNSPECIFIED);
 
                     // We use the full range, and we set -color_range to 2

@@ -347,11 +347,12 @@ namespace tl
                     }
                     break;
                 }
-                if (_avCodecContext[_avStream]->color_range != AVCOL_RANGE_JPEG)
+                const auto params = _avCodecParameters[_avStream];
+                if (params->color_range != AVCOL_RANGE_JPEG)
                 {
                     _info.videoLevels = image::VideoLevels::LegalRange;
                 }
-                switch (_avCodecParameters[_avStream]->color_space)
+                switch (params->color_space)
                 {
                 case AVCOL_SPC_BT2020_NCL:
                     _info.yuvCoefficients = image::YUVCoefficients::BT2020;
@@ -455,6 +456,18 @@ namespace tl
                 {
                     _tags["Video Codec"] =
                         avcodec_get_name(_avCodecContext[_avStream]->codec_id);
+                }
+                {
+                    _tags["Video Color Primaries"] =
+                        av_color_primaries_name(params->color_primaries);
+                }
+                {
+                    _tags["Video Color TRC"] =
+                        av_color_transfer_name(params->color_trc);
+                }
+                {
+                    _tags["Video Color Space"] =
+                        av_color_space_name(params->color_space);
                 }
                 {
                     std::stringstream ss;
@@ -599,6 +612,25 @@ namespace tl
                     {
                         throw std::runtime_error(string::Format("{0}: Cannot initialize sws context").arg(_fileName));
                     }
+                    
+                    const auto params = _avCodecParameters[_avStream];
+                    int in_full, out_full, brightness, contrast, saturation;
+                    const int *inv_table, *table;
+
+                    sws_getColorspaceDetails(
+                        _swsContext, (int**)&inv_table, &in_full,
+                        (int**)&table, &out_full, &brightness, &contrast,
+                        &saturation);
+                    
+                    inv_table = sws_getCoefficients(params->color_space);
+                    table = sws_getCoefficients(AVCOL_SPC_BT709);
+                
+                    in_full = (params->color_range == AVCOL_RANGE_JPEG);
+                    out_full = (params->color_range == AVCOL_RANGE_JPEG);
+
+                    sws_setColorspaceDetails(
+                        _swsContext, inv_table, in_full, table, out_full,
+                        brightness, contrast, saturation);
                 }
             }
         }
@@ -851,7 +883,7 @@ namespace tl
                     w,
                     h,
                     1);
-                
+                    
                 sws_scale(
                     _swsContext,
                     (uint8_t const* const*)_avFrame->data,

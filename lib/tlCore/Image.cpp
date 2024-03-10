@@ -7,6 +7,7 @@
 #include <tlCore/Assert.h>
 #include <tlCore/Error.h>
 #include <tlCore/String.h>
+#include <tlCore/Locale.h>
 
 #include <algorithm>
 #include <array>
@@ -92,7 +93,10 @@ namespace tl
             const std::array<math::Vector4f, static_cast<size_t>(YUVCoefficients::Count)> data =
             {
                 math::Vector4f(1.79274, 2.1124, 0.213242, 0.532913),
-                math::Vector4f(1.67867, 2.14177, 0.187332, 0.650421)
+                // Is BT2020 right?  These are the coeffs I got:
+                // math::Vector4f(1.4746, 2.0184, 1.5958, 0.0);  // chatgpt3.5
+                // math::Vector4f(1.8556, 2.14101, 0.2124, 0.6301), // gemini
+                math::Vector4f(1.67867, 2.14177, 0.187332, 0.650421) // darby
             };
             return data[static_cast<size_t>(value)];
         }
@@ -355,10 +359,8 @@ namespace tl
             }
             if (2 == split.size())
             {
-                std::string savedLocale = std::setlocale(LC_NUMERIC, NULL);
-                std::setlocale(LC_NUMERIC, "C");
+                locale::SetAndRestore saved;
                 out.pixelAspectRatio = std::stof(split[1]);
-                std::setlocale(LC_NUMERIC, savedLocale.c_str());
             }
             split = string::split(split[0], 'x');
             if (split.size() != 2)
