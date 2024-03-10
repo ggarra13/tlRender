@@ -381,10 +381,10 @@ namespace tl
                         y + std::max(labelSizeHint.h, durationSizeHint.h),
                         sizeHint.w,
                         sizeHint.h));
-                    transitionH = sizeHint.h + durationSizeHint.h;
+                    transitionH = sizeHint.h; // + durationSizeHint.h;
                 }
                 
-                y += transitionH;
+                y += labelSizeHint.h + transitionH;
                 
             }
 

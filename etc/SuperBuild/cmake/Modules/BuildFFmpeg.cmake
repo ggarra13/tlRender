@@ -111,8 +111,12 @@ else()
 	${FFmpeg_LDFLAGS})
     if(NOT APPLE)
 	list(APPEND FFmpeg_CONFIGURE_ARGS
-	    --disable-audiotoolbox
-	    --disable-videotoolbox)
+	    --disable-videotoolbox
+	    --disable-audiotoolbox)
+    else()
+	list(APPEND FFmpeg_CONFIGURE_ARGS
+	    --enable-videotoolbox
+	    --enable-audiotoolbox)
     endif()
     if(TLRENDER_FFMPEG_MINIMAL)
 	list(APPEND FFmpeg_CONFIGURE_ARGS
@@ -169,6 +173,7 @@ else()
             --enable-decoder=pcm_vidc
             --enable-decoder=prores
             --enable-decoder=rawvideo
+            --enable-decoder=truehd
             --enable-decoder=v210
             --enable-decoder=v210x
             --enable-decoder=v308
@@ -225,6 +230,7 @@ else()
             --enable-encoder=prores
             --enable-encoder=prores_ks
             --enable-encoder=rawvideo
+            --enable-encoder=truehd
             --enable-encoder=v210
             --enable-encoder=v308
             --enable-encoder=v408
