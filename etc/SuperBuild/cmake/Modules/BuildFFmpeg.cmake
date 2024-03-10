@@ -185,6 +185,7 @@ else()
             --enable-decoder=wmv1
             --enable-decoder=wmv2
             --enable-decoder=wmv3
+	    --enable-decoder=wwma
             --disable-encoders
             --enable-encoder=aac
             --enable-encoder=ac3
@@ -284,6 +285,7 @@ else()
             --enable-demuxer=v210
             --enable-demuxer=v210x
             --enable-demuxer=wav
+            --enable-demuxer=wmva
             --enable-demuxer=yuv4mpegpipe
             --disable-muxers
             --enable-muxer=ac3
@@ -327,6 +329,7 @@ else()
             --enable-muxer=rawvideo
             --enable-muxer=truehd
             --enable-muxer=wav
+            --enable-muxer=wmv
             --enable-muxer=yuv4mpegpipe
             --disable-parsers
             --enable-parser=aac
@@ -344,6 +347,8 @@ else()
             --enable-parser=opus
             --enable-parser=vorbis
             --enable-parser=vp9
+	    --enable-parser=wmv
+	    --enable-parser=wmva
             --disable-protocols
             --enable-protocol=crypto
             --enable-protocol=file
