@@ -253,10 +253,10 @@ namespace tl
         inline Vector4<T> operator * (const Matrix4x4<T>& a, const Vector4<T>& v)
         {
             Vector4<T> out;
-            T x = T (v[0] * a.e[0] + v[1] * a.e[4] + v[2] * a.e[8]  + v[3] * a.e[12]);
-            T y = T (v[0] * a.e[1] + v[1] * a.e[5] + v[2] * a.e[9]  + v[3] * a.e[13]);
-            T z = T (v[0] * a.e[2] + v[1] * a.e[6] + v[2] * a.e[10] + v[3] * a.e[14]);
-            T w = T (v[0] * a.e[3] + v[1] * a.e[7] + v[2] * a.e[11] + v[3] * a.e[15]);
+            out.x = T (v[0] * a.e[0] + v[1] * a.e[4] + v[2] * a.e[8]  + v[3] * a.e[12]);
+            out.y = T (v[0] * a.e[1] + v[1] * a.e[5] + v[2] * a.e[9]  + v[3] * a.e[13]);
+            out.z = T (v[0] * a.e[2] + v[1] * a.e[6] + v[2] * a.e[10] + v[3] * a.e[14]);
+            out.w = T (v[0] * a.e[3] + v[1] * a.e[7] + v[2] * a.e[11] + v[3] * a.e[15]);
             return out;
         }
     };
