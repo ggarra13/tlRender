@@ -182,10 +182,11 @@ else()
             --enable-decoder=vorbis
             --enable-decoder=vp9
             --enable-decoder=yuv4
+            --enable-decoder=wmav1
+            --enable-decoder=wmav2
             --enable-decoder=wmv1
             --enable-decoder=wmv2
-            --enable-decoder=wmv3
-	    --enable-decoder=wwma
+	    
             --disable-encoders
             --enable-encoder=aac
             --enable-encoder=ac3
@@ -238,8 +239,11 @@ else()
             --enable-encoder=v410
             --enable-encoder=yuv4
             --enable-encoder=vorbis
+            --enable-encoder=wmav1
+            --enable-encoder=wmav2
             --enable-encoder=wmv1
             --enable-encoder=wmv2
+	    
             --disable-demuxers
             --enable-demuxer=aac
             --enable-demuxer=ac3
@@ -285,8 +289,8 @@ else()
             --enable-demuxer=v210
             --enable-demuxer=v210x
             --enable-demuxer=wav
-            --enable-demuxer=wmva
             --enable-demuxer=yuv4mpegpipe
+
             --disable-muxers
             --enable-muxer=ac3
             --enable-muxer=aiff
@@ -329,8 +333,9 @@ else()
             --enable-muxer=rawvideo
             --enable-muxer=truehd
             --enable-muxer=wav
-            --enable-muxer=wmv
             --enable-muxer=yuv4mpegpipe
+
+
             --disable-parsers
             --enable-parser=aac
             --enable-parser=ac3
@@ -347,8 +352,8 @@ else()
             --enable-parser=opus
             --enable-parser=vorbis
             --enable-parser=vp9
-	    --enable-parser=wmv
-	    --enable-parser=wmva
+
+
             --disable-protocols
             --enable-protocol=crypto
             --enable-protocol=file
