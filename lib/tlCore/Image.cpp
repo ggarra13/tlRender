@@ -93,10 +93,9 @@ namespace tl
             const std::array<math::Vector4f, static_cast<size_t>(YUVCoefficients::Count)> data =
             {
                 math::Vector4f(1.79274, 2.1124, 0.213242, 0.532913),
-                // Is BT2020 right?  These are the coeffs I got:
-                // math::Vector4f(1.4746, 2.0184, 1.5958, 0.0);  // chatgpt3.5
-                // math::Vector4f(1.8556, 2.14101, 0.2124, 0.6301), // gemini
-                math::Vector4f(1.67867, 2.14177, 0.187332, 0.650421) // darby
+                // Is Darby's BT2020 right?  These are the coeffs I got:
+                math::Vector4f(1.8556, 2.14101, 0.2124, 0.6301), // gemini
+                //math::Vector4f(1.67867, 2.14177, 0.187332, 0.650421) // darby
             };
             return data[static_cast<size_t>(value)];
         }

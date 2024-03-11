@@ -606,25 +606,31 @@ namespace tl
                     {
                         throw std::runtime_error(string::Format("{0}: Cannot initialize sws context").arg(_fileName));
                     }
-                    
+
                     const auto params = _avCodecParameters[_avStream];
-                    int in_full, out_full, brightness, contrast, saturation;
-                    const int *inv_table, *table;
 
-                    sws_getColorspaceDetails(
-                        _swsContext, (int**)&inv_table, &in_full,
-                        (int**)&table, &out_full, &brightness, &contrast,
-                        &saturation);
-                    
-                    inv_table = sws_getCoefficients(params->color_space);
-                    table = sws_getCoefficients(AVCOL_SPC_BT709);
+                    // We should not do a BT2020_NCL to BT709 conversion in
+                    // software which is slow.
+                    if (params->color_space != AVCOL_SPC_BT2020_NCL)
+                    {
+                        int in_full, out_full, brightness, contrast, saturation;
+                        const int *inv_table, *table;
+
+                        sws_getColorspaceDetails(
+                            _swsContext, (int**)&inv_table, &in_full,
+                            (int**)&table, &out_full, &brightness, &contrast,
+                            &saturation);
+                        
+                        inv_table = sws_getCoefficients(params->color_space);
+                        table = sws_getCoefficients(AVCOL_SPC_BT709);
                 
-                    in_full = (params->color_range == AVCOL_RANGE_JPEG);
-                    out_full = (params->color_range == AVCOL_RANGE_JPEG);
+                        in_full = (params->color_range == AVCOL_RANGE_JPEG);
+                        out_full = (params->color_range == AVCOL_RANGE_JPEG);
 
-                    sws_setColorspaceDetails(
-                        _swsContext, inv_table, in_full, table, out_full,
-                        brightness, contrast, saturation);
+                        sws_setColorspaceDetails(
+                            _swsContext, inv_table, in_full, table, out_full,
+                            brightness, contrast, saturation);
+                    }
                 }
             }
         }
