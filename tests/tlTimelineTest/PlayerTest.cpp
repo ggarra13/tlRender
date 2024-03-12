@@ -39,7 +39,6 @@ namespace tl
             _enums();
             _loop();
             _player();
-            _externalTime();
         }
 
         void PlayerTest::_enums()
@@ -308,6 +307,32 @@ namespace tl
             TLRENDER_ASSERT(ioOptions2 == ioOptions);
             player->setIOOptions({});
 
+            // Test the video layers.
+            int videoLayer = 0;
+            std::vector<int> compareVideoLayers;
+            auto videoLayerObserver = observer::ValueObserver<int>::create(
+                player->observeVideoLayer(),
+                [&videoLayer](int value)
+                {
+                    videoLayer = value;
+                });
+            auto compareVideoLayersObserver = observer::ListObserver<int>::create(
+                player->observeCompareVideoLayers(),
+                [&compareVideoLayers](const std::vector<int>& value)
+                {
+                    compareVideoLayers = value;
+                });
+            int videoLayer2 = 1;
+            player->setVideoLayer(videoLayer2);
+            TLRENDER_ASSERT(videoLayer2 == player->getVideoLayer());
+            TLRENDER_ASSERT(videoLayer2 == videoLayer);
+            std::vector<int> compareVideoLayers2 = { 2, 3 };
+            player->setCompareVideoLayers(compareVideoLayers2);
+            TLRENDER_ASSERT(compareVideoLayers2 == player->getCompareVideoLayers());
+            TLRENDER_ASSERT(compareVideoLayers2 == compareVideoLayers);
+            player->setVideoLayer(0);
+            player->setCompareVideoLayers({});
+
             // Test audio.
             float volume = 1.F;
             auto volumeObserver = observer::ValueObserver<float>::create(
@@ -356,12 +381,16 @@ namespace tl
                 player->setCacheOptions(cacheOptions);
                 TLRENDER_ASSERT(cacheOptions == player->getCacheOptions());
 
-                auto currentVideoObserver = observer::ValueObserver<timeline::VideoData>::create(
+                auto currentVideoObserver = observer::ListObserver<timeline::VideoData>::create(
                     player->observeCurrentVideo(),
-                    [this](const timeline::VideoData& value)
+                    [this](const std::vector<timeline::VideoData>& value)
                     {
                         std::stringstream ss;
-                        ss << "Video time: " << value.time;
+                        ss << "Video time: ";
+                        if (!value.empty())
+                        {
+                            ss << value.front().time;
+                        }
                         _print(ss.str());
                     });
                 auto currentAudioObserver = observer::ListObserver<timeline::AudioData>::create(
@@ -437,29 +466,6 @@ namespace tl
                 player->setPlayback(Playback::Stop);
                 player->clearCache();
             }
-        }
-
-        void PlayerTest::_externalTime()
-        {
-            const file::Path path(TLRENDER_SAMPLE_DATA, "MultipleClips.otio");
-            auto timeline = Timeline::create(path, _context);
-            auto player = Player::create(timeline, _context);
-            const otime::TimeRange& timeRange = player->getTimeRange();
-
-            const file::Path path2(TLRENDER_SAMPLE_DATA, "SingleClip.otio");
-            auto timeline2 = Timeline::create(path2, _context);
-            auto player2 = Player::create(timeline2, _context);
-            player2->setExternalTime(player);
-            player2->setExternalTime(player);
-
-            player->setPlayback(Playback::Forward);
-            for (size_t i = 0; i < timeRange.duration().rate(); ++i)
-            {
-                player->tick();
-                time::sleep(std::chrono::milliseconds(1));
-            }
-
-            player2->setExternalTime(nullptr);
         }
     }
 }

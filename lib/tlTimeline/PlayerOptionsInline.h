@@ -26,8 +26,7 @@ namespace tl
                 audioBufferFrameCount == other.audioBufferFrameCount &&
                 muteTimeout == other.muteTimeout &&
                 sleepTimeout == other.sleepTimeout &&
-                currentTime == other.currentTime &&
-                externalTimeMode == other.externalTimeMode;
+                currentTime == other.currentTime;
         }
 
         inline bool PlayerOptions::operator != (const PlayerOptions& other) const
