@@ -352,6 +352,7 @@ else()
             --enable-parser=dnxhd
             --enable-parser=dolby_e
             --enable-parser=flac
+            --enable-parser=gif
             --enable-parser=h264
             --enable-parser=hevc
             --enable-parser=mjpeg
