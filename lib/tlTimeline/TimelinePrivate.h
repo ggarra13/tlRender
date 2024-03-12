@@ -6,6 +6,10 @@
 
 #include <tlTimeline/Timeline.h>
 
+#include <tlIO/Plugin.h>
+
+#include <tlCore/LRUCache.h>
+
 #include <opentimelineio/clip.h>
 
 #include <atomic>
@@ -28,7 +32,7 @@ namespace tl
             void requests();
             void finishRequests();
 
-            ReadCacheItem getRead(
+            std::shared_ptr<io::IRead> getRead(
                 const otio::Clip*,
                 const io::Options&);
             std::future<io::VideoData> readVideo(
@@ -51,9 +55,10 @@ namespace tl
             file::Path path;
             file::Path audioPath;
             Options options;
-            std::shared_ptr<ReadCache> readCache;
+            memory::LRUCache<std::string, std::shared_ptr<io::IRead> > readCache;
             otime::TimeRange timeRange = time::invalidTimeRange;
             io::Info ioInfo;
+            uint64_t requestId = 0;
 
             struct VideoLayerData
             {
@@ -70,6 +75,7 @@ namespace tl
                 VideoRequest() {};
                 VideoRequest(VideoRequest&&) = default;
 
+                uint64_t id = 0;
                 otime::RationalTime time = time::invalidTime;
                 io::Options options;
                 std::promise<VideoData> promise;
@@ -94,6 +100,7 @@ namespace tl
                 AudioRequest() {};
                 AudioRequest(AudioRequest&&) = default;
 
+                uint64_t id = 0;
                 double seconds = -1.0;
                 io::Options options;
                 std::promise<AudioData> promise;

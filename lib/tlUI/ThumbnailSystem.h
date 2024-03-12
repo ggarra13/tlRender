@@ -27,14 +27,14 @@ namespace tl
         //! Information request.
         struct InfoRequest
         {
-            uint64_t id;
+            uint64_t id = 0;
             std::future<io::Info> future;
         };
 
         //! Video thumbnail request.
         struct ThumbnailRequest
         {
-            uint64_t id;
+            uint64_t id = 0;
             int height = 0;
             otime::RationalTime time = time::invalidTime;
             std::future<std::shared_ptr<image::Image> > future;
@@ -43,7 +43,7 @@ namespace tl
         //! Audio waveform request.
         struct WaveformRequest
         {
-            uint64_t id;
+            uint64_t id = 0;
             math::Size2i size;
             otime::TimeRange timeRange = time::invalidTimeRange;
             std::future<std::shared_ptr<geom::TriangleMesh2> > future;
@@ -196,7 +196,7 @@ namespace tl
                 const io::Options& = io::Options());
 
             //! Cancel pending requests.
-            void cancelRequests(std::vector<uint64_t>);
+            void cancelRequests(const std::vector<uint64_t>&);
 
         private:
             void _run();
