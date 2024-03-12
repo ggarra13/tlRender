@@ -198,6 +198,7 @@ namespace tl
                     { ".divx", io::FileType::Movie },
                     { ".dv", io::FileType::Movie },
                     { ".flv", io::FileType::Movie },
+                    { ".gif", io::FileType::Movie },
                     { ".m4v", io::FileType::Movie },
                     { ".mkv", io::FileType::Movie },
                     { ".mk3d", io::FileType::Movie },
