@@ -570,7 +570,7 @@ namespace tl
             {
                 std::unique_lock<std::mutex> lock(p->audioMutex.mutex);
                 speed = p->audioMutex.speed;
-                defaultSpeed = p->audioMutex.defaultSpeed;
+                defaultSpeed = p->timeline->getTimeRange().duration().rate();
                 speedMultiplier = defaultSpeed / speed;
                 volume = p->audioMutex.volume;
                 mute = p->audioMutex.mute;
@@ -580,7 +580,6 @@ namespace tl
             }
             //std::cout << "playback: " << playback << std::endl;
             //std::cout << "playbackStartTime: " << playbackStartTime << std::endl;
-            //std::cout << "reset: " << reset << std::endl;
 
             // Zero output audio data.
             std::memset(outputBuffer, 0, nFrames * p->audioThread.info.getByteCount());
@@ -665,7 +664,7 @@ namespace tl
                     int64_t offset = frame - seconds * infoSampleRate;
 
                     
-
+                    
                     // std::cout << "frame:       " << frame   << std::endl;
                     // std::cout << "seconds:     " << seconds << std::endl;
                     // std::cout << "offset:      " << offset  << std::endl;
@@ -761,7 +760,6 @@ namespace tl
                                     audios.push_back(audio);
                                 }
                                 audioDataP.push_back(audio->getData() + dataOffset);
-                                // std::cerr << "volume=" << volumeMultiplier << std::endl;
                                 volumeScale.push_back(volumeMultiplier);
                             }
                         }
@@ -774,7 +772,7 @@ namespace tl
                         size_t size = std::min(
                             p->playerOptions.audioBufferFrameCount,
                             static_cast<size_t>(maxOffset - offset));
-                        
+
                         if (backwards)
                         {
                             if ( p->audioThread.backwardsSize < size )
@@ -839,7 +837,7 @@ namespace tl
 
                 // Send audio data to RtAudio.
                 const auto now = std::chrono::steady_clock::now();
-                if (speed == p->timeline->getTimeRange().duration().rate() &&
+                if (defaultSpeed == p->timeline->getTimeRange().duration().rate() &&
                     !mute &&
                     now >= muteTimeout &&
                     nFrames <= getSampleCount(p->audioThread.buffer))

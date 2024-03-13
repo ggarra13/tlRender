@@ -97,7 +97,6 @@ namespace tl
             struct AudioMutex
             {
                 double speed = 0.0;
-                double defaultSpeed = 0.0;
                 float volume = 1.F;
                 bool mute = false;
                 std::chrono::steady_clock::time_point muteTimeout;
