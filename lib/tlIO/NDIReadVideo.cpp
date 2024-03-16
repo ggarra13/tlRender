@@ -323,47 +323,6 @@ namespace tl
                     }
                     break;
                 }
-                case AV_PIX_FMT_UYVY422:
-                {
-                    size_t numPixels = linesize0 * h;
-                    size_t index = 0;
-                    
-                    for (size_t i = 0; i < numPixels; i += 4, index += 6)
-                    {
-                        uint8_t Y0 = data0[i];
-                        uint8_t U = data0[i + 1];
-                        uint8_t Y1 = data0[i + 2];
-                        uint8_t V = data0[i + 3];
-
-                        int R0 = std::max(
-                            0, std::min(255, int(Y0 + 1.402 * (V - 128))));
-                        int G0 = std::max(
-                            0, std::min(
-                                   255, int(Y0 - 0.344136 * (U - 128) -
-                                            0.714136 * (V - 128))));
-                        int B0 = std::max(
-                            0, std::min(255, int(Y0 + 1.772 * (U - 128))));
-
-                        int R1 = std::max(
-                            0, std::min(255, int(Y1 + 1.402 * (V - 128))));
-                        int G1 = std::max(
-                            0, std::min(
-                                   255, int(Y1 - 0.344136 * (U - 128) -
-                                            0.714136 * (V - 128))));
-                        int B1 = std::max(
-                            0, std::min(255, int(Y1 + 1.772 * (U - 128))));
-
-                        data[index]     = R0;
-                        data[index + 1] = G0;
-                        data[index + 2] = B0;
-                        
-                        data[index + 3] = R1;
-                        data[index + 4] = G1;
-                        data[index + 5] = B1;
-                    }
-                    
-                    break;
-                }
                 default: break;
                 }
             }
