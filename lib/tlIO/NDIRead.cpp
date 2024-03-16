@@ -94,7 +94,18 @@ namespace tl
             // We now have at least one source,
             // so we create a receiver to look at it.
             NDIlib_recv_create_v3_t recv_desc;
+            
+            // @bug: minor color shift
             recv_desc.color_format = NDIlib_recv_color_format_fastest;
+
+
+            // // @bug: broken? this gives me negative color bars
+            // recv_desc.color_format = NDIlib_recv_color_format_best;
+            
+            // // @bug: broken (crashes)
+            // recv_desc.color_format = NDIlib_recv_color_format_BGRX_BGRA;
+            // recv_desc.color_format = NDIlib_recv_color_format_RGBX_RGBA;
+            
             recv_desc.bandwidth = NDIlib_recv_bandwidth_highest;
             recv_desc.allow_video_fields = false;
             recv_desc.source_to_connect_to = NDIsource;
@@ -149,7 +160,8 @@ namespace tl
                                 {
                                     p.videoThread.running = true;
                                     p.readVideo = std::make_shared<ReadVideo>(
-                                        p.options.sourceName, v, p.options);
+                                        p.options.sourceName, v,
+                                        _logSystem, p.options);
                                     const auto& videoInfo = p.readVideo->getInfo();
                                     if (videoInfo.isValid())
                                     {

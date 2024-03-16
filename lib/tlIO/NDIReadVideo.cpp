@@ -2,6 +2,7 @@
 // Copyright (c) 2024 Gonzalo Garramuño
 // All rights reserved.
 
+#include <tlIO/FFmpegMacros.h>
 #include <tlIO/NDIReadPrivate.h>
 
 #include <tlCore/StringFormat.h>
@@ -14,13 +15,6 @@ extern "C"
 }
 
 
-#if 0
-#  define DBG(x) \
-    std::cerr << x << " " << __FUNCTION__ << " " << __LINE__ << std::endl;
-#else
-#  define DBG(x)
-#endif
-
 namespace tl
 {
     namespace ndi
@@ -29,23 +23,22 @@ namespace tl
         {
             bool canCopy(AVPixelFormat in, AVPixelFormat out)
             {
-                return in == out &&
-                    (AV_PIX_FMT_RGB24   == in ||
-                     AV_PIX_FMT_GRAY8   == in ||
-                     AV_PIX_FMT_RGBA    == in ||
-                     AV_PIX_FMT_YUV420P == in);
+                return (in == out &&
+                        (AV_PIX_FMT_RGB24   == in ||
+                         AV_PIX_FMT_RGBA    == in ||
+                         AV_PIX_FMT_YUV420P == in));
             }
         }
 
         ReadVideo::ReadVideo(
             const std::string& fileName,
             const NDIlib_video_frame_t& v,
+            const std::weak_ptr<log::System>& logSystem,
             const Options& options) :
             _fileName(fileName),
+            _logSystem(logSystem),
             _options(options)
-        {
-            DBG("");
-
+        {   
             double fps = v.frame_rate_N /
                          static_cast<double>(v.frame_rate_D);
             double start = 0.0;
@@ -64,79 +57,56 @@ namespace tl
             switch(v.FourCC)
             {
             case NDIlib_FourCC_type_UYVY:
-                DBG("UYVY");
-                // YCbCr color space using 4:2:2.
+                // YCbCr color space packed, not planar using 4:2:2.
                 _avInputPixelFormat = AV_PIX_FMT_UYVY422;
-                _info.pixelType = image::PixelType::YUV_422P_U8;
-                _avOutputPixelFormat = AV_PIX_FMT_YUV422P;
+                _avOutputPixelFormat = AV_PIX_FMT_RGB24;
+                _info.pixelType = image::PixelType::RGB_U8;
                 break;
             case NDIlib_FourCC_type_P216:
-                DBG("P216");
-                // YCbCr color space using 4:2:2 in 16bpp.
-                _avInputPixelFormat = AV_PIX_FMT_YUV422P16LE;
-                if (options.yuvToRGBConversion)
-                {
-                    _avOutputPixelFormat = AV_PIX_FMT_RGB48;
-                    _info.pixelType = image::PixelType::RGB_U16;
-                }
-                else
-                {
-                    _avOutputPixelFormat = AV_PIX_FMT_YUV422P16LE;
-                    _info.pixelType = image::PixelType::YUV_422P_U16;
-                }
+                // this is a 16bpp version of NV12 (semi-planar 4:2:2).
+                _avInputPixelFormat = AV_PIX_FMT_P016LE;
+                _avOutputPixelFormat = AV_PIX_FMT_YUV422P16LE;
+                _info.pixelType = image::PixelType::YUV_422P_U16;
                 break;
             case NDIlib_FourCC_type_PA16:
-                DBG("PA16");
                 // YCbCr color space using 4:2:2 in 16bpp.
                 _avInputPixelFormat = AV_PIX_FMT_YUVA422P16LE;
                 _avOutputPixelFormat = AV_PIX_FMT_RGBA64;
                 _info.pixelType = image::PixelType::RGBA_U16;
                 break;
             case NDIlib_FourCC_type_YV12:
-                DBG("YV12");
                 // Planar 8bit 4:2:0 video format.
                 _avInputPixelFormat = AV_PIX_FMT_YUV420P;
-                _avOutputPixelFormat = AV_PIX_FMT_RGBA;
                 _info.pixelType = image::PixelType::YUV_420P_U8;
+                _avOutputPixelFormat = _avInputPixelFormat;
                 break;
             case NDIlib_FourCC_type_RGBA:
-                DBG("RGBA");
                 _avInputPixelFormat = AV_PIX_FMT_RGBA;
                 _info.pixelType = image::PixelType::RGBA_U8;
                 _avOutputPixelFormat = _avInputPixelFormat;
                 break;
             case NDIlib_FourCC_type_RGBX:
-                DBG("RGBX");
                 _avInputPixelFormat = AV_PIX_FMT_RGB24;
                 _info.pixelType = image::PixelType::RGB_U8;
                 _avOutputPixelFormat = _avInputPixelFormat;
                 break;
             case NDIlib_FourCC_type_BGRX:
-                DBG("BGRX");
                 _avInputPixelFormat = AV_PIX_FMT_BGR24;
                 _info.pixelType = image::PixelType::RGB_U8;
                 _avOutputPixelFormat = AV_PIX_FMT_RGB24;
                 break;
             case NDIlib_FourCC_type_I420:
-                DBG("I420");
+                // @todo: Not supported yet, this is YUV with UV reversed
+                LOG_ERROR("NDI I420 pixel format not supported yet", "ndi");
                 _avInputPixelFormat = AV_PIX_FMT_YUV420P;
-                if (options.yuvToRGBConversion)
-                {
-                    _avOutputPixelFormat = AV_PIX_FMT_RGB24;
-                    _info.pixelType = image::PixelType::RGB_U8;
-                }
-                else
-                {
-                    _avOutputPixelFormat = _avInputPixelFormat;
-                    _info.pixelType = image::PixelType::YUV_420P_U8;
-                }
+                _avOutputPixelFormat = _avInputPixelFormat;
+                _info.pixelType = image::PixelType::YUV_420P_U8;
                 break;
             default:
                 throw std::runtime_error("Unsupported pixel type");
             }
-
-            DBG(_info.size << " " << _info.size.pixelAspectRatio);
-            DBG(_info.pixelType);
+            
+            _info.videoLevels = image::VideoLevels::FullRange;
         }
 
         ReadVideo::~ReadVideo()
@@ -193,8 +163,6 @@ namespace tl
                 
             if (1) //time >= currentTime)
             {
-                DBG("VIDEO time=" << time << " currentTime=" << currentTime);
-            
                 // Fill source avFrame
                 av_image_fill_arrays(
                     _avFrame->data,
@@ -275,6 +243,25 @@ namespace tl
                 {
                     throw std::runtime_error(string::Format("{0}: Cannot initialize sws context").arg(_fileName));
                 }
+
+                // Handle matrices and color space details
+                int in_full, out_full, brightness, contrast, saturation;
+                const int *inv_table, *table;
+
+                sws_getColorspaceDetails(
+                    _swsContext, (int**)&inv_table, &in_full,
+                    (int**)&table, &out_full, &brightness, &contrast,
+                    &saturation);
+                
+                inv_table = sws_getCoefficients(SWS_CS_ITU709);
+                table     = sws_getCoefficients(SWS_CS_ITU709);
+                        
+                in_full = 0;
+                out_full = 1;
+
+                sws_setColorspaceDetails(
+                    _swsContext, inv_table, in_full, table, out_full,
+                    brightness, contrast, saturation);
             }
         }        
 
@@ -336,6 +323,47 @@ namespace tl
                     }
                     break;
                 }
+                case AV_PIX_FMT_UYVY422:
+                {
+                    size_t numPixels = linesize0 * h;
+                    size_t index = 0;
+                    
+                    for (size_t i = 0; i < numPixels; i += 4, index += 6)
+                    {
+                        uint8_t Y0 = data0[i];
+                        uint8_t U = data0[i + 1];
+                        uint8_t Y1 = data0[i + 2];
+                        uint8_t V = data0[i + 3];
+
+                        int R0 = std::max(
+                            0, std::min(255, int(Y0 + 1.402 * (V - 128))));
+                        int G0 = std::max(
+                            0, std::min(
+                                   255, int(Y0 - 0.344136 * (U - 128) -
+                                            0.714136 * (V - 128))));
+                        int B0 = std::max(
+                            0, std::min(255, int(Y0 + 1.772 * (U - 128))));
+
+                        int R1 = std::max(
+                            0, std::min(255, int(Y1 + 1.402 * (V - 128))));
+                        int G1 = std::max(
+                            0, std::min(
+                                   255, int(Y1 - 0.344136 * (U - 128) -
+                                            0.714136 * (V - 128))));
+                        int B1 = std::max(
+                            0, std::min(255, int(Y1 + 1.772 * (U - 128))));
+
+                        data[index]     = R0;
+                        data[index + 1] = G0;
+                        data[index + 2] = B0;
+                        
+                        data[index + 3] = R1;
+                        data[index + 4] = G1;
+                        data[index + 5] = B1;
+                    }
+                    
+                    break;
+                }
                 default: break;
                 }
             }
@@ -361,6 +389,24 @@ namespace tl
                     _avFrame2->data,
                     _avFrame2->linesize);
             }
+        }
+
+        void ReadVideo::_printTable(const std::string& name,
+                                    const int32_t* table)
+        {
+            char msg[256];
+            if (!table)
+            {
+                snprintf(msg, 256, "%s = nullptr", name.c_str());
+                
+                LOG_STATUS(msg, "ndi");
+                return;
+            }
+            
+            snprintf(msg, 256, "%s = %d %d %d %d",
+                     name.c_str(), table[0], table[1], table[2], table[3]);
+            
+            LOG_STATUS(msg, "ndi");
         }
     }
 }

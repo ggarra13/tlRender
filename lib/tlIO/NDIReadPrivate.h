@@ -30,6 +30,7 @@ namespace tl
             ReadVideo(
                 const std::string& fileName,
                 const NDIlib_video_frame_t& video_frame,
+                const std::weak_ptr<log::System>& logSystem,
                 const Options& options);
 
             ~ReadVideo();
@@ -49,7 +50,9 @@ namespace tl
         private:
             int _decode(const otime::RationalTime& currentTime);
             void _copy(std::shared_ptr<image::Image>&);
+            void _printTable(const std::string& name, const int32_t* table);
             
+            std::weak_ptr<log::System> _logSystem;
             Options _options;
             image::Info _info;
             otime::TimeRange _timeRange = time::invalidTimeRange;
@@ -65,6 +68,7 @@ namespace tl
             AVPixelFormat _avInputPixelFormat = AV_PIX_FMT_NONE;
             AVPixelFormat _avOutputPixelFormat = AV_PIX_FMT_NONE;
             SwsContext* _swsContext = nullptr;
+            bool        _swapUV = false;
         };
 
         class ReadAudio
