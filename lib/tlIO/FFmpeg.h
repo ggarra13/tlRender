@@ -66,7 +66,7 @@ namespace tl
         const size_t threadCount = 0;
 
         //! Software scaler flags.
-        const int swsScaleFlags = SWS_FAST_BILINEAR | SWS_FULL_CHR_H_INT | SWS_FULL_CHR_H_INP;
+        const int swsScaleFlags = SWS_SPLINE | SWS_ACCURATE_RND | SWS_FULL_CHR_H_INT | SWS_FULL_CHR_H_INP;
 
         //! Swap the numerator and denominator.
         AVRational swap(AVRational);
