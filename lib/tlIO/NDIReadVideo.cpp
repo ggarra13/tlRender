@@ -25,15 +25,13 @@ namespace tl
     {
         namespace
         {
-            bool canCopy(AVPixelFormat in, AVPixelFormat out,
-                         NDIlib_FourCC_video_type_e FourCC)
+            bool canCopy(AVPixelFormat in, AVPixelFormat out)
             {
                 return (in == out &&
                         (AV_PIX_FMT_RGB24   == in ||
                          AV_PIX_FMT_RGBA    == in ||
                          AV_PIX_FMT_YUV420P == in));
             }
-            
         }
 
         ReadVideo::ReadVideo(
@@ -82,54 +80,55 @@ namespace tl
                 _info.pixelType = image::PixelType::RGBA_U8;
                 break;
             case NDIlib_FourCC_type_P216:
-                LOG_ERROR("P216 pixel format not supported yet");
+                LOG_ERROR("P216 pixel format is buggy");
                 // This is a 16bpp version of NV12 (semi-planar 4:2:2).
                 _avInputPixelFormat = AV_PIX_FMT_P016LE;
                 _avOutputPixelFormat = AV_PIX_FMT_YUV422P16LE;
                 _info.pixelType = image::PixelType::YUV_422P_U16;
+                // _avOutputPixelFormat = AV_PIX_FMT_RGB48;
+                // _info.pixelType = image::PixelType::RGB_U16;
                 break;
             case NDIlib_FourCC_type_PA16:
-                LOG_ERROR("PA16 pixel format not supported yet");
+                LOG_ERROR("PA16 pixel format is buggy and not supported yet");
                 // This is 4:2:2:4 in 16bpp.
                 _avInputPixelFormat = AV_PIX_FMT_P016LE;
-                _avOutputPixelFormat = AV_PIX_FMT_YUV422P16LE;
                 _avOutputPixelFormat = AV_PIX_FMT_RGBA64;
                 _info.pixelType = image::PixelType::RGBA_U16;
                 break;
             case NDIlib_FourCC_type_YV12:
-                LOG_STATUS("YV12");
+                LOG_STATUS("NDI Stream is YV12");
                 // Planar 8bit 4:2:0 YUV video format.
                 _avInputPixelFormat = AV_PIX_FMT_YUV420P;
                 _info.pixelType = image::PixelType::YUV_420P_U8;
                 _avOutputPixelFormat = _avInputPixelFormat;
                 break;
             case NDIlib_FourCC_type_RGBA:
-                LOG_STATUS("RGBA");
+                LOG_STATUS("NDI Stream is RGBA");
                 _avInputPixelFormat = AV_PIX_FMT_RGBA;
                 _info.pixelType = image::PixelType::RGBA_U8;
                 _avOutputPixelFormat = _avInputPixelFormat;
                 break;
             case NDIlib_FourCC_type_BGRA:
-                LOG_STATUS("BGRA");
+                LOG_STATUS("NDI Stream is BGRA");
                 _avInputPixelFormat = AV_PIX_FMT_BGRA;
                 _avOutputPixelFormat = AV_PIX_FMT_RGBA;
                 _info.pixelType = image::PixelType::RGBA_U8;
                 break;
             case NDIlib_FourCC_type_RGBX:
-                LOG_STATUS("RGBX");
+                LOG_STATUS("NDI Stream is RGBX");
                 _avInputPixelFormat = AV_PIX_FMT_RGB24;
                 _info.pixelType = image::PixelType::RGB_U8;
                 _avOutputPixelFormat = _avInputPixelFormat;
                 break;
             case NDIlib_FourCC_type_BGRX:
-                LOG_STATUS("BGRX");
+                LOG_STATUS("NDI Stream is BGRX");
                 _avInputPixelFormat = AV_PIX_FMT_BGR24;
                 _info.pixelType = image::PixelType::RGB_U8;
                 _avOutputPixelFormat = AV_PIX_FMT_RGB24;
                 break;
             case NDIlib_FourCC_type_I420:
-                // @todo: Not supported yet, this is 4:2:0 YUV with UV reversed
-                LOG_ERROR("I420 pixel format not supported yet");
+                // @todo: Not tested yet, this is 4:2:0 YUV with UV reversed
+                LOG_WARNING("I420 pixel format not tested");
                 _avInputPixelFormat = AV_PIX_FMT_YUV420P;
                 _avOutputPixelFormat = _avInputPixelFormat;
                 _info.pixelType = image::PixelType::YUV_420P_U8;
@@ -196,6 +195,8 @@ namespace tl
             if (1) //time >= currentTime)
             {
                 // Fill source avFrame
+                _p_data = video_frame.p_data;
+                
                 av_image_fill_arrays(
                     _avFrame->data,
                     _avFrame->linesize,
@@ -238,7 +239,7 @@ namespace tl
                 throw std::runtime_error(string::Format("{0}: Cannot allocate frame").arg(_fileName));
             }
 
-            if (!canCopy(_avInputPixelFormat, _avOutputPixelFormat, _ndiFourCC))
+            if (!canCopy(_avInputPixelFormat, _avOutputPixelFormat))
             {
                 _avFrame2 = av_frame_alloc();
                 if (!_avFrame2)
@@ -315,7 +316,7 @@ namespace tl
             const std::size_t w = info.size.w;
             const std::size_t h = info.size.h;
             uint8_t* const data = image->getData();
-            if (canCopy(_avInputPixelFormat, _avOutputPixelFormat, _ndiFourCC))
+            if (canCopy(_avInputPixelFormat, _avOutputPixelFormat))
             {
                 const uint8_t* const data0 = _avFrame->data[0];
                 const int linesize0 = _avFrame->linesize[0];
@@ -375,13 +376,8 @@ namespace tl
             {
                 // Fill destination avFrame
                 av_image_fill_arrays(
-                    _avFrame2->data,
-                    _avFrame2->linesize,
-                    data,
-                    _avOutputPixelFormat,
-                    w,
-                    h,
-                    1);
+                    _avFrame2->data, _avFrame2->linesize, data,
+                    _avOutputPixelFormat, w, h, 1);
 
                 // Do some NDI conversion that FFmpeg does not support.
                 if (_ndiFourCC == NDIlib_FourCC_type_I420)
@@ -393,12 +389,8 @@ namespace tl
 
                 // Do the conversion with FFmpeg
                 sws_scale(
-                    _swsContext,
-                    (uint8_t const* const*)_avFrame->data,
-                    _avFrame->linesize,
-                    0,
-                    _info.size.h,
-                    _avFrame2->data,
+                    _swsContext, (uint8_t const* const*)_avFrame->data,
+                    _avFrame->linesize, 0, h, _avFrame2->data,
                     _avFrame2->linesize);
             }
         }
