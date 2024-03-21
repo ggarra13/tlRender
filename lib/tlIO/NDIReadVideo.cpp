@@ -33,26 +33,6 @@ namespace tl
                          AV_PIX_FMT_RGBA    == in ||
                          AV_PIX_FMT_YUV420P == in));
             }
-
-            //! Function to demux NDI's P216 UV buffer into separate U and V buffers
-            void demuxP216UV(const uint16_t* p_uv, int stride, size_t width, size_t height,
-                             uint16_t* p_u, uint16_t* p_v)
-            {
-                for (size_t y = 0; y < height; ++y)
-                {
-                    for (size_t x = 0; x < width; x += 2)
-                    {
-                        // Extract U value (assuming little-endian)
-                        uint16_t uv_value = *p_uv++;
-                        *p_u++ = uv_value;
-
-                        // Extract V value (assuming little-endian)
-                        *p_v++ = uv_value >> 8;
-                    }
-                    // Move to the next UV row considering the stride
-                    p_uv += stride / sizeof(uint16_t) - width;
-                }
-            }
             
         }
 
