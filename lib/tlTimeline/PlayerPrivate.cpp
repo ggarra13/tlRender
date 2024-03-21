@@ -298,10 +298,11 @@ namespace tl
                                 if (j == thread.videoDataRequests.end())
                                 {
                                     //std::cout << this << " video request: " << time << std::endl;
-                                    thread.videoDataRequests[time].clear();
+                                    auto& request = thread.videoDataRequests[time];
+                                    request.clear();
                                     io::Options ioOptions2 = thread.ioOptions;
                                     ioOptions2["Layer"] = string::Format("{0}").arg(thread.videoLayer);
-                                    thread.videoDataRequests[time].push_back(timeline->getVideo(time, ioOptions2));
+                                    request.push_back(timeline->getVideo(time, ioOptions2));
                                     for (size_t i = 0; i < thread.compare.size(); ++i)
                                     {
                                         const otime::RationalTime time2 = timeline::getCompareTime(
@@ -313,8 +314,7 @@ namespace tl
                                             arg(i < thread.compareVideoLayers.size() ?
                                                 thread.compareVideoLayers[i] :
                                                 thread.videoLayer);
-                                        thread.videoDataRequests[time].push_back(
-                                            thread.compare[i]->getVideo(time2, ioOptions2));
+                                        request.push_back(thread.compare[i]->getVideo(time2, ioOptions2));
                                     }
                                 }
                             }
@@ -335,10 +335,11 @@ namespace tl
                                 if (j == thread.videoDataRequests.end())
                                 {
                                     //std::cout << this << " video request: " << time << std::endl;
-                                    thread.videoDataRequests[time].clear();
+                                    auto& request = thread.videoDataRequests[time];
+                                    request.clear();
                                     io::Options ioOptions2 = thread.ioOptions;
                                     ioOptions2["Layer"] = string::Format("{0}").arg(thread.videoLayer);
-                                    thread.videoDataRequests[time].push_back(timeline->getVideo(time, ioOptions2));
+                                    request.push_back(timeline->getVideo(time, ioOptions2));
                                     for (size_t i = 0; i < thread.compare.size(); ++i)
                                     {
                                         const otime::RationalTime time2 = timeline::getCompareTime(
@@ -350,8 +351,7 @@ namespace tl
                                             arg(i < thread.compareVideoLayers.size() ?
                                                 thread.compareVideoLayers[i] :
                                                 thread.videoLayer);
-                                        thread.videoDataRequests[time].push_back(
-                                            thread.compare[i]->getVideo(time2, ioOptions2));
+                                        request.push_back(thread.compare[i]->getVideo(time2, ioOptions2));
                                     }
                                 }
                             }
@@ -436,14 +436,15 @@ namespace tl
                 if (ready)
                 {
                     const otime::RationalTime time = videoDataRequestsIt->first;
-                    thread.videoDataCache[time].clear();
+                    auto& videoDataCache = thread.videoDataCache[time];
+                    videoDataCache.clear();
                     for (auto videoDataRequestIt = videoDataRequestsIt->second.begin();
                         videoDataRequestIt != videoDataRequestsIt->second.end();
                         ++videoDataRequestIt)
                     {
-                        auto data = videoDataRequestIt->future.get();
-                        data.time = time;
-                        thread.videoDataCache[data.time].push_back(data);
+                        auto videoData = videoDataRequestIt->future.get();
+                        videoData.time = time;
+                        videoDataCache.push_back(videoData);
                     }
                     videoDataRequestsIt = thread.videoDataRequests.erase(videoDataRequestsIt);
                 }
