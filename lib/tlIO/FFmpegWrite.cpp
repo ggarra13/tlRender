@@ -27,6 +27,11 @@ extern "C"
     
 }
 
+namespace
+{
+    const char* kModule = "save";
+}
+
 namespace tl
 {
     namespace ffmpeg
@@ -211,7 +216,7 @@ namespace tl
                                    .arg(targetFormat)
                                     .arg(codec->name)
                                     .arg(bestFormat);
-                            LOG_WARNING(msg, "save");
+                            LOG_WARNING(msg);
                         }
                         return best;
                     }
@@ -850,7 +855,7 @@ namespace tl
                 const std::string codecName = avCodec->name;
                 msg = string::Format("Tring to save audio with '{0}' codec.")
                           .arg(codecName);
-                LOG_STATUS(msg, "save");
+                LOG_STATUS(msg);
                 
                 r = avcodec_parameters_from_context(
                     p.avAudioStream->codecpar, p.avAudioCodecContext);
@@ -942,7 +947,7 @@ namespace tl
                     ss >> hardwareEncode;
                     if (hardwareEncode)
                     {
-                        LOG_STATUS("Trying Hardware encoding.", "save");
+                        LOG_STATUS("Trying Hardware encoding.");
                     }
                 }
                 switch (profile)
@@ -1104,8 +1109,7 @@ namespace tl
                     std::stringstream ss(option->second);
                     ss >> value;
                     LOG_STATUS(
-                        string::Format("Parsing color range {0}").arg(value),
-                        "save");
+                        string::Format("Parsing color range {0}").arg(value));
                     p.avCodecContext->color_range = parseColorRange(value);
                 }
 
@@ -1118,8 +1122,7 @@ namespace tl
                     std::stringstream ss(option->second);
                     ss >> value;
                     LOG_STATUS(
-                        string::Format("Parsing color space {0}").arg(value),
-                        "save");
+                        string::Format("Parsing color space {0}").arg(value));
                     p.avCodecContext->colorspace = parseColorSpace(value);
                 }
 
@@ -1133,8 +1136,7 @@ namespace tl
                     ss >> value;
                     LOG_STATUS(
                         string::Format("Parsing color primaries {0}")
-                            .arg(value),
-                        "save");
+                        .arg(value));
                     p.avCodecContext->color_primaries =
                         parseColorPrimaries(value);
                 }
@@ -1151,8 +1153,7 @@ namespace tl
                     std::stringstream ss(option->second);
                     ss >> value;
                     LOG_STATUS(
-                        string::Format("Parsing color trc {0}").arg(value),
-                        "save");
+                        string::Format("Parsing color trc {0}").arg(value));
                     p.avCodecContext->color_trc = parseColorTRC(value);
                 }
                 
@@ -1217,19 +1218,19 @@ namespace tl
 
                 msg = string::Format("Trying to save video with '{0}' codec.")
                       .arg(codecName);
-                LOG_STATUS(msg, "save");
+                LOG_STATUS(msg);
                 
                 msg = string::Format("FFmpeg pixel format '{0}'.")
                       .arg(av_get_pix_fmt_name(pix_fmt));
-                LOG_STATUS(msg, "save");
+                LOG_STATUS(msg);
                 
                 if (hardwareEncode)
                 {
-                    LOG_STATUS("Hardware encoding is on.", "save");
+                    LOG_STATUS("Hardware encoding is on.");
                 }
                 else
                 {
-                    LOG_STATUS("Hardware encoding is off.", "save");
+                    LOG_STATUS("Hardware encoding is off.");
                 }
 
                 r = avcodec_open2(p.avCodecContext, avCodec, &codecOptions);
@@ -1472,7 +1473,7 @@ namespace tl
                 }
                 catch(const std::exception& e)
                 {
-                    LOG_ERROR(e.what(), "save");
+                    LOG_ERROR(e.what());
                 }
 
                 
@@ -1482,7 +1483,7 @@ namespace tl
                     LOG_ERROR(
                         string::Format("{0}: avformat_write_trailer - {1}")
                         .arg(p.fileName)
-                        .arg(getErrorLabel(r)), "save");
+                        .arg(getErrorLabel(r)));
                 }
             }
 

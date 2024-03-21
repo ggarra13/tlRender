@@ -65,6 +65,8 @@ namespace tl
             // FFmpeg conversion variables
             AVFrame* _avFrame = nullptr;
             AVFrame* _avFrame2 = nullptr;
+            NDIlib_FourCC_video_type_e _ndiFourCC =	NDIlib_FourCC_type_UYVY;
+            size_t _ndiStride = 0;
             AVPixelFormat _avInputPixelFormat = AV_PIX_FMT_NONE;
             AVPixelFormat _avOutputPixelFormat = AV_PIX_FMT_NONE;
             SwsContext* _swsContext = nullptr;

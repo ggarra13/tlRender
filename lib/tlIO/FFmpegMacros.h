@@ -2,27 +2,27 @@
 // Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
-#define LOG_INFO(x, module)                                             \
+#define LOG_INFO(x)                                                     \
     if (auto logSystem = _logSystem.lock())                             \
     {                                                                   \
-    logSystem->print("tl::io::ffmpeg::Plugin", x,                       \
-                     log::Type::Message, module);                       \
+        logSystem->print("tl::io::ffmpeg::Plugin", x,                   \
+                         log::Type::Message, kModule);                  \
     }
-#define LOG_ERROR(x, module)                                        \
+#define LOG_ERROR(x)                                                \
     if (auto logSystem = _logSystem.lock())                         \
     {                                                               \
         logSystem->print("tl::io::ffmpeg::Plugin", x,               \
-                         log::Type::Error, module);                 \
+                         log::Type::Error, kModule);                \
     }
-#define LOG_WARNING(x, module)                                      \
+#define LOG_WARNING(x)                                              \
     if (auto logSystem = _logSystem.lock())                         \
     {                                                               \
         logSystem->print("tl::io::ffmpeg::Plugin", x,               \
-                         log::Type::Warning, module);               \
+                         log::Type::Warning, kModule);              \
     }
-#define LOG_STATUS(x, module)                                       \
+#define LOG_STATUS(x)                                               \
     if (auto logSystem = _logSystem.lock())                         \
     {                                                               \
         logSystem->print("tl::io::ffmpeg::Plugin", x,               \
-                         log::Type::Status, module);                \
+                         log::Type::Status, kModule);               \
     }

@@ -14,6 +14,10 @@ extern "C"
 #include <libswscale/swscale.h>
 }
 
+namespace
+{
+    const char* kModule = "ndi";
+}
 
 namespace tl
 {
@@ -21,13 +25,35 @@ namespace tl
     {
         namespace
         {
-            bool canCopy(AVPixelFormat in, AVPixelFormat out)
+            bool canCopy(AVPixelFormat in, AVPixelFormat out,
+                         NDIlib_FourCC_video_type_e FourCC)
             {
                 return (in == out &&
                         (AV_PIX_FMT_RGB24   == in ||
                          AV_PIX_FMT_RGBA    == in ||
                          AV_PIX_FMT_YUV420P == in));
             }
+
+            //! Function to demux NDI's P216 UV buffer into separate U and V buffers
+            void demuxP216UV(const uint16_t* p_uv, int stride, size_t width, size_t height,
+                             uint16_t* p_u, uint16_t* p_v)
+            {
+                for (size_t y = 0; y < height; ++y)
+                {
+                    for (size_t x = 0; x < width; x += 2)
+                    {
+                        // Extract U value (assuming little-endian)
+                        uint16_t uv_value = *p_uv++;
+                        *p_u++ = uv_value;
+
+                        // Extract V value (assuming little-endian)
+                        *p_v++ = uv_value >> 8;
+                    }
+                    // Move to the next UV row considering the stride
+                    p_uv += stride / sizeof(uint16_t) - width;
+                }
+            }
+            
         }
 
         ReadVideo::ReadVideo(
@@ -54,50 +80,76 @@ namespace tl
                 _info.size.pixelAspectRatio = 1.0;
             _info.layout.mirror.y = true;
 
+            _ndiFourCC = v.FourCC;
+            _ndiStride = v.line_stride_in_bytes;
+            
             switch(v.FourCC)
             {
             case NDIlib_FourCC_type_UYVY:
-                // YCbCr color space packed, not planar using 4:2:2.
+                // YCbCr color space packed, not planar using 4:2:2. (works)
+                LOG_STATUS("UVYV");
                 _avInputPixelFormat = AV_PIX_FMT_UYVY422;
                 _avOutputPixelFormat = AV_PIX_FMT_RGB24;
                 _info.pixelType = image::PixelType::RGB_U8;
                 break;
+            case NDIlib_FourCC_type_UYVA:
+                // @todo: This is 4:2:2:4 YUV with an alpha plane following.
+                LOG_ERROR("UVYVA pixel format not supported yet.  "
+                          "No alpha channel.");
+                // YCbCr color space packed, not planar using 4:2:2:4.
+                _avInputPixelFormat = AV_PIX_FMT_UYVY422;
+                _avOutputPixelFormat = AV_PIX_FMT_RGBA;
+                _info.pixelType = image::PixelType::RGBA_U8;
+                break;
             case NDIlib_FourCC_type_P216:
-                // this is a 16bpp version of NV12 (semi-planar 4:2:2).
+                LOG_ERROR("P216 pixel format not supported yet");
+                // This is a 16bpp version of NV12 (semi-planar 4:2:2).
                 _avInputPixelFormat = AV_PIX_FMT_P016LE;
                 _avOutputPixelFormat = AV_PIX_FMT_YUV422P16LE;
                 _info.pixelType = image::PixelType::YUV_422P_U16;
                 break;
             case NDIlib_FourCC_type_PA16:
-                // YCbCr color space using 4:2:2 in 16bpp.
-                _avInputPixelFormat = AV_PIX_FMT_YUVA422P16LE;
+                LOG_ERROR("PA16 pixel format not supported yet");
+                // This is 4:2:2:4 in 16bpp.
+                _avInputPixelFormat = AV_PIX_FMT_P016LE;
+                _avOutputPixelFormat = AV_PIX_FMT_YUV422P16LE;
                 _avOutputPixelFormat = AV_PIX_FMT_RGBA64;
                 _info.pixelType = image::PixelType::RGBA_U16;
                 break;
             case NDIlib_FourCC_type_YV12:
-                // Planar 8bit 4:2:0 video format.
+                LOG_STATUS("YV12");
+                // Planar 8bit 4:2:0 YUV video format.
                 _avInputPixelFormat = AV_PIX_FMT_YUV420P;
                 _info.pixelType = image::PixelType::YUV_420P_U8;
                 _avOutputPixelFormat = _avInputPixelFormat;
                 break;
             case NDIlib_FourCC_type_RGBA:
+                LOG_STATUS("RGBA");
                 _avInputPixelFormat = AV_PIX_FMT_RGBA;
                 _info.pixelType = image::PixelType::RGBA_U8;
                 _avOutputPixelFormat = _avInputPixelFormat;
                 break;
+            case NDIlib_FourCC_type_BGRA:
+                LOG_STATUS("BGRA");
+                _avInputPixelFormat = AV_PIX_FMT_BGRA;
+                _avOutputPixelFormat = AV_PIX_FMT_RGBA;
+                _info.pixelType = image::PixelType::RGBA_U8;
+                break;
             case NDIlib_FourCC_type_RGBX:
+                LOG_STATUS("RGBX");
                 _avInputPixelFormat = AV_PIX_FMT_RGB24;
                 _info.pixelType = image::PixelType::RGB_U8;
                 _avOutputPixelFormat = _avInputPixelFormat;
                 break;
             case NDIlib_FourCC_type_BGRX:
+                LOG_STATUS("BGRX");
                 _avInputPixelFormat = AV_PIX_FMT_BGR24;
                 _info.pixelType = image::PixelType::RGB_U8;
                 _avOutputPixelFormat = AV_PIX_FMT_RGB24;
                 break;
             case NDIlib_FourCC_type_I420:
-                // @todo: Not supported yet, this is YUV with UV reversed
-                LOG_ERROR("NDI I420 pixel format not supported yet", "ndi");
+                // @todo: Not supported yet, this is 4:2:0 YUV with UV reversed
+                LOG_ERROR("I420 pixel format not supported yet");
                 _avInputPixelFormat = AV_PIX_FMT_YUV420P;
                 _avOutputPixelFormat = _avInputPixelFormat;
                 _info.pixelType = image::PixelType::YUV_420P_U8;
@@ -206,7 +258,7 @@ namespace tl
                 throw std::runtime_error(string::Format("{0}: Cannot allocate frame").arg(_fileName));
             }
 
-            if (!canCopy(_avInputPixelFormat, _avOutputPixelFormat))
+            if (!canCopy(_avInputPixelFormat, _avOutputPixelFormat, _ndiFourCC))
             {
                 _avFrame2 = av_frame_alloc();
                 if (!_avFrame2)
@@ -252,8 +304,20 @@ namespace tl
                     _swsContext, (int**)&inv_table, &in_full,
                     (int**)&table, &out_full, &brightness, &contrast,
                     &saturation);
+
+                if (_info.size.w > 1920 || _info.size.h > 1080)
+                {
+                    inv_table = sws_getCoefficients(SWS_CS_BT2020);
+                }
+                else if (_info.size.w > 720 || _info.size.h > 576)
+                {
+                    inv_table = sws_getCoefficients(SWS_CS_ITU709);
+                }
+                else
+                {
+                    inv_table = sws_getCoefficients(SWS_CS_ITU601);
+                }
                 
-                inv_table = sws_getCoefficients(SWS_CS_ITU709);
                 table     = sws_getCoefficients(SWS_CS_ITU709);
                         
                 in_full = 0;
@@ -263,7 +327,7 @@ namespace tl
                     _swsContext, inv_table, in_full, table, out_full,
                     brightness, contrast, saturation);
             }
-        }        
+        }     
 
         void ReadVideo::_copy(std::shared_ptr<image::Image>& image)
         {
@@ -271,7 +335,7 @@ namespace tl
             const std::size_t w = info.size.w;
             const std::size_t h = info.size.h;
             uint8_t* const data = image->getData();
-            if (canCopy(_avInputPixelFormat, _avOutputPixelFormat))
+            if (canCopy(_avInputPixelFormat, _avOutputPixelFormat, _ndiFourCC))
             {
                 const uint8_t* const data0 = _avFrame->data[0];
                 const int linesize0 = _avFrame->linesize[0];
@@ -323,7 +387,8 @@ namespace tl
                     }
                     break;
                 }
-                default: break;
+                default:
+                    break;
                 }
             }
             else
@@ -337,6 +402,14 @@ namespace tl
                     w,
                     h,
                     1);
+
+                // Do some NDI conversion that FFmpeg does not support.
+                if (_ndiFourCC == NDIlib_FourCC_type_I420)
+                {
+                    size_t tmp = _avFrame->linesize[1];
+                    _avFrame->linesize[1] = _avFrame->linesize[2];
+                    _avFrame->linesize[2] = tmp;
+                }
 
                 // Do the conversion with FFmpeg
                 sws_scale(
@@ -357,15 +430,13 @@ namespace tl
             if (!table)
             {
                 snprintf(msg, 256, "%s = nullptr", name.c_str());
-                
-                LOG_STATUS(msg, "ndi");
+                LOG_STATUS(msg);
                 return;
             }
             
             snprintf(msg, 256, "%s = %d %d %d %d",
                      name.c_str(), table[0], table[1], table[2], table[3]);
-            
-            LOG_STATUS(msg, "ndi");
+            LOG_STATUS(msg);
         }
     }
 }

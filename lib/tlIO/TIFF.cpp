@@ -79,6 +79,18 @@ namespace tl
             case image::PixelType::RGBA_F32:
                 out.pixelType = info.pixelType;
                 break;
+            case image::PixelType::L_F16:
+                out.pixelType = image::PixelType::L_F32;
+                break;
+            case image::PixelType::LA_F16:
+                out.pixelType = image::PixelType::LA_F32;
+                break;
+            case image::PixelType::RGB_F16:
+                out.pixelType = image::PixelType::RGBA_F32;
+                break;
+            case image::PixelType::RGBA_F16:
+                out.pixelType = image::PixelType::RGBA_F32;
+                break;
             default: break;
             }
             out.layout.mirror.y = true;

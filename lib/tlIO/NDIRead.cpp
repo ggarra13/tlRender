@@ -95,16 +95,31 @@ namespace tl
             // so we create a receiver to look at it.
             NDIlib_recv_create_v3_t recv_desc;
             
-            // @bug: minor color shift
-            recv_desc.color_format = NDIlib_recv_color_format_fastest;
-
-
-            // // @bug: broken? this gives me negative color bars
-            // recv_desc.color_format = NDIlib_recv_color_format_best;
+            //      No alpha channel : UYVY
+            //      Alpha channel    : UYVA
+            // recv_desc.color_format = NDIlib_recv_color_format_fastest;
             
-            // // @bug: broken (crashes)
+            //      No alpha channel : BGRX.
+            //      Alpha channel    : BGRA.
             // recv_desc.color_format = NDIlib_recv_color_format_BGRX_BGRA;
+            
+            //      No alpha channel : UYVY.
+            //      Alpha channel    : BGRA.
+            // recv_desc.color_format = NDIlib_recv_color_format_UYVY_BGRA;
+            
+            //      No alpha channel : RGBX.
+            //      Alpha channel    : RGBA.
             // recv_desc.color_format = NDIlib_recv_color_format_RGBX_RGBA;
+            
+            //      No alpha channel : UYVY.
+            //      Alpha channel    : RGBA.
+            // this is the best 8-bit format so far.
+            recv_desc.color_format = NDIlib_recv_color_format_UYVY_RGBA;
+
+            
+            //      No alpha channel : P216, or UYVY
+            //      Alpha channel    : PA16 or UYVA
+            // recv_desc.color_format = NDIlib_recv_color_format_best;
             
             recv_desc.bandwidth = NDIlib_recv_bandwidth_highest;
             recv_desc.allow_video_fields = false;
