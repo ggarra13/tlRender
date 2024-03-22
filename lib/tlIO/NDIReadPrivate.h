@@ -55,6 +55,7 @@ namespace tl
             std::weak_ptr<log::System> _logSystem;
             Options _options;
             image::Info _info;
+            otime::RationalTime _currentTime = time::invalidTime;
             otime::TimeRange _timeRange = time::invalidTimeRange;
             std::list<std::shared_ptr<image::Image> > _buffer;
 
@@ -71,7 +72,6 @@ namespace tl
             AVPixelFormat _avInputPixelFormat = AV_PIX_FMT_NONE;
             AVPixelFormat _avOutputPixelFormat = AV_PIX_FMT_NONE;
             SwsContext* _swsContext = nullptr;
-            bool        _swapUV = false;
         };
 
         class ReadAudio
@@ -85,12 +85,11 @@ namespace tl
 
             ~ReadAudio();
 
-            bool isValid() const;
             const audio::Info& getInfo() const;
             const otime::TimeRange& getTimeRange() const;
 
-            void start();
-
+            void seek(const otime::RationalTime&);
+            
             bool
             process(const otime::RationalTime& currentTime, size_t sampleCount);
 
@@ -109,7 +108,7 @@ namespace tl
             otime::TimeRange _timeRange = time::invalidTimeRange;
             std::list<std::shared_ptr<audio::Audio> > _buffer;
         };
-
+        
         struct Read::Private
         {
             Options options;

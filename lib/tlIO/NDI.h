@@ -24,7 +24,8 @@
 #define NDI_TIME_BASE 10000000
 #define NDI_TIME_BASE_Q (AVRational){1, NDI_TIME_BASE}
 
-#define kNDI_MOVIE_DURATION 60.0 * 60.0 * 3.0   // in seconds (3 hours)
+//#define kNDI_MOVIE_DURATION 60.0 * 60.0 * 3.0   // in seconds (3 hours)
+#define kNDI_MOVIE_DURATION 30.0   // in seconds
  
 extern "C"
 {
@@ -47,10 +48,7 @@ namespace tl
     {
         //! Software scaler flags.
         const int swsScaleFlags = SWS_SPLINE | SWS_ACCURATE_RND | SWS_FULL_CHR_H_INT | SWS_FULL_CHR_H_INP;
-        
-        //! Convert to FFmpeg.
-        AVSampleFormat fromAudioType(audio::DataType);
-        
+
         //! NDI reader
         class Read : public io::IRead
         {

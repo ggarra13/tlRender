@@ -40,18 +40,14 @@ namespace tl
             NDI_recv = NDIlib_recv_create(&recv_desc);
             if (!NDI_recv)
                 throw std::runtime_error("Could not create NDI audio receiver");
-
+            
             _from_ndi(audio_frame);
         }
 
         ReadAudio::~ReadAudio()
         {
-            NDIlib_recv_destroy(NDI_recv);
-        }
-        
-        bool ReadAudio::isValid() const
-        {
-            return true;
+            if (NDI_recv)
+                NDIlib_recv_destroy(NDI_recv);
         }
 
         const audio::Info& ReadAudio::getInfo() const
@@ -64,29 +60,27 @@ namespace tl
             return _timeRange;
         }
 
-        void ReadAudio::start()
+        void ReadAudio::seek(const otime::RationalTime& time)
         {
+            _buffer.clear();
         }
         
-
         bool ReadAudio::process(
             const otime::RationalTime& currentTime,
             size_t sampleCount)
         {
-            bool out = false;
-            const size_t bufferSampleCount = audio::getSampleCount(_buffer);
-            while (bufferSampleCount < sampleCount)
+            bool out = true;
+            const size_t bufferSampleCount = getBufferSize();
+            if (bufferSampleCount < sampleCount)
             {
                 int decoding = _decode(currentTime);
-                if (1 == decoding)
+                if (decoding < 0)
                 {
-                    out = true;
-                    break;
+                    //! \todo error out.
+                    out = false;
+                    NDI_recv = nullptr;
                 }
-                else if (0 < decoding)
-                {
-                    // \todo: how this should be handled
-                }
+                // std::cout << "audio buffer size: " << audio::getSampleCount(_buffer) << std::endl;
             }
             return out;
         }
@@ -105,21 +99,20 @@ namespace tl
             int out = 0;
             NDIlib_audio_frame_t a;
             NDIlib_frame_type_e type_e;
-            type_e = NDIlib_recv_capture(NDI_recv, nullptr, &a, nullptr, 50);
-            if (type_e == NDIlib_frame_type_error)
+
+            while (out == 0 && NDI_recv)
             {
-                out = -1;
+                type_e = NDIlib_recv_capture(NDI_recv, nullptr, &a, nullptr, 50);
+                if (type_e == NDIlib_frame_type_error)
+                {
+                    out = -1;
+                }
+                else if (type_e == NDIlib_frame_type_audio)
+                {
+                    _from_ndi(a);
+                    out = 1;
+                }
             }
-            else if (type_e == NDIlib_frame_type_audio)
-            {
-                _from_ndi(a);
-                out = 1;
-            }
-            else
-            {
-                out = 0;
-            }
-            
             return out;
         }
 

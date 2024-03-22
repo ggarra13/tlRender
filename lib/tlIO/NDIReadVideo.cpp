@@ -61,11 +61,12 @@ namespace tl
             _ndiFourCC = v.FourCC;
             _ndiStride = v.line_stride_in_bytes;
             
+            _currentTime = _timeRange.start_time();
+            
             switch(v.FourCC)
             {
             case NDIlib_FourCC_type_UYVY:
                 // YCbCr color space packed, not planar using 4:2:2. (works)
-                LOG_STATUS("UVYV");
                 _avInputPixelFormat = AV_PIX_FMT_UYVY422;
                 _avOutputPixelFormat = AV_PIX_FMT_RGB24;
                 _info.pixelType = image::PixelType::RGB_U8;
@@ -175,41 +176,39 @@ namespace tl
                                 const NDIlib_video_frame_t& video_frame)
         {
             bool out = true;
-
-            AVRational r;
-            r.num = 1;
-            r.den = _timeRange.duration().rate();
-
-            AVRational time_base;
-            time_base.num = 1;
-            time_base.den = NDI_TIME_BASE;
-
-            const int64_t dts =
-                av_rescale_q(video_frame.timecode, time_base, r);
-
-            const otime::RationalTime time(
-                _timeRange.start_time().value() + dts,
-                _timeRange.duration().rate());
-                
-                
-            if (1) //time >= currentTime)
+            
+            if (_buffer.size() < _options.videoBufferSize)
             {
-                // Fill source avFrame
-                _p_data = video_frame.p_data;
+                AVRational r;
+                r.num = 1;
+                r.den = _timeRange.duration().rate();
+
+                AVRational time_base;
+                time_base.num = 1;
+                time_base.den = NDI_TIME_BASE;
+
+                const int64_t dts =
+                    av_rescale_q(video_frame.timecode, time_base, r);
+
+                if (1) //time >= currentTime)
+                {
+                    // Fill source avFrame
+                    _p_data = video_frame.p_data;
                 
-                av_image_fill_arrays(
-                    _avFrame->data,
-                    _avFrame->linesize,
-                    video_frame.p_data,
-                    _avInputPixelFormat,
-                    _info.size.w,
-                    _info.size.h,
-                    1);
-                
-                auto image = image::Image::create(_info);
-                _copy(image);
-                _buffer.push_back(image);
-                out = false;
+                    av_image_fill_arrays(
+                        _avFrame->data,
+                        _avFrame->linesize,
+                        video_frame.p_data,
+                        _avInputPixelFormat,
+                        _info.size.w,
+                        _info.size.h,
+                        1);
+
+                    auto image = image::Image::create(_info);
+                    _copy(image);
+                    _buffer.push_back(image);
+                    out = false;
+                }
             }
             
             return out;

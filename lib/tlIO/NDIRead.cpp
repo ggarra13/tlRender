@@ -28,13 +28,6 @@ namespace tl
 
             TLRENDER_P();
 
-            auto i = options.find("FFmpeg/YUVToRGBConversion");
-            if (i != options.end())
-            {
-                std::stringstream ss(i->second);
-                ss >> p.options.yuvToRGBConversion;
-            }
-
             std::ifstream s(path.get());
 
             if (s.is_open())
@@ -138,111 +131,127 @@ namespace tl
             NDIlib_recv_set_tally(p.NDI_recv, &tally_state);
             
             
+                        
+            double fps = 24.0;
+            NDIlib_video_frame_t v;
+            NDIlib_audio_frame_t a;
+            NDIlib_frame_type_e type_e = NDIlib_frame_type_none;
+
+            p.audioThread.currentTime =
+                otime::RationalTime(0.0, 48000.0);
+            p.videoThread.currentTime =
+                otime::RationalTime(0.0, fps);
+
+            // Preroll to find video and (potentially) audio stream
+            unsigned videoCounter = 0;
+            bool hasStreams = false;
+            while (type_e != NDIlib_frame_type_error && !hasStreams)
+            {
+                type_e = NDIlib_recv_capture(
+                    p.NDI_recv, &v, &a, nullptr, 50);
+                if (type_e == NDIlib_frame_type_video)
+                {
+                    if (!p.readVideo)
+                    {
+                        p.videoThread.running = true;
+                        p.readVideo = std::make_shared<ReadVideo>(
+                            p.options.sourceName, v,
+                            _logSystem, p.options);
+                        const auto& videoInfo = p.readVideo->getInfo();
+                        if (videoInfo.isValid())
+                        {
+                            p.info.video.push_back(videoInfo);
+                            p.info.videoTime = p.readVideo->getTimeRange();
+                        }
+                        p.readVideo->start();
+                        p.videoThread.currentTime =
+                            p.info.videoTime.start_time();
+
+                        p.videoThread.logTimer = std::chrono::steady_clock::now();
+                        fps = p.info.videoTime.duration().rate();
+                    }
+
+                    ++videoCounter;
+                    if (videoCounter > 60 && !p.readAudio)
+                        p.options.noAudio = true;
+                    
+                    // Release this video frame
+                    NDIlib_recv_free_video(p.NDI_recv, &v);
+                }
+                else if (type_e == NDIlib_frame_type_audio)
+                {
+                    if (!p.options.noAudio)
+                    {
+                        if (!p.readAudio)
+                        {
+                            p.readAudio =
+                                std::make_shared<ReadAudio>(
+                                    p.options.sourceName, NDIsource,
+                                    a, p.options);
+                            p.info.audio = p.readAudio->getInfo();
+                            p.info.audioTime = p.readAudio->getTimeRange();
+                            p.audioThread.currentTime =
+                                p.info.audioTime.start_time();
+                            p.audioThread.logTimer = std::chrono::steady_clock::now();
+
+                            p.audioThread.running = true;
+                            p.audioThread.thread =
+                                std::thread(
+                                    [this]
+                                        {
+                                            TLRENDER_P();
+                                            
+                                            _audioThread();
+                                            
+                                            {
+                                                std::unique_lock<std::mutex> lock(p.audioMutex.mutex);
+                                                p.audioMutex.stopped = true;
+                                            }
+                                            _cancelAudioRequests();
+                                        });
+                        }
+                    }
+
+                    NDIlib_recv_free_audio(p.NDI_recv, &a);
+                }
+
+                hasStreams = p.readVideo && (p.readAudio || p.options.noAudio);
+            }
             
-            // The descriptors
+            // The actual decode thread
             p.decodeThread.running = true;
             p.decodeThread.thread = std::thread(
                 [this, NDIsource]
                     {
                         TLRENDER_P();
-                        
-                        double fps = 24.0;
+
                         NDIlib_video_frame_t v;
                         NDIlib_audio_frame_t a;
                         NDIlib_frame_type_e type_e = NDIlib_frame_type_none;
 
                         p.audioThread.currentTime =
-                            otime::RationalTime(0.0, 48000.0);
+                            otime::RationalTime(0.0, p.info.audioTime.duration().rate());
                         p.videoThread.currentTime =
-                            otime::RationalTime(0.0, fps);
-
+                            otime::RationalTime(0.0, p.info.videoTime.duration().rate());
+            
                         while (type_e != NDIlib_frame_type_error &&
                                p.decodeThread.running)
                         {
-                            if (p.readAudio)
-                            {
-                                type_e = NDIlib_recv_capture(
-                                    p.NDI_recv, &v, nullptr, nullptr, 50);
-                            }
-                            else
-                            {
-                                type_e = NDIlib_recv_capture(
-                                    p.NDI_recv, &v, &a, nullptr, 50);
-                            }
+                            // const auto audio = p.audioThread.currentTime;
+                            // auto video = p.videoThread.currentTime;
+                            // video = video.rescaled_to(audio.rate());
+                            // if (audio.value() < video.value())
+                            //     continue;
+                            
+                            // Audio is handled by audio thread we started
+                            // before
+                            type_e = NDIlib_recv_capture(
+                                p.NDI_recv, &v, nullptr, nullptr, 50);
                             if (type_e == NDIlib_frame_type_video)
                             {
-                                if (!p.readVideo)
-                                {
-                                    p.videoThread.running = true;
-                                    p.readVideo = std::make_shared<ReadVideo>(
-                                        p.options.sourceName, v,
-                                        _logSystem, p.options);
-                                    const auto& videoInfo = p.readVideo->getInfo();
-                                    if (videoInfo.isValid())
-                                    {
-                                        p.info.video.push_back(videoInfo);
-                                        p.info.videoTime = p.readVideo->getTimeRange();
-                                    }
-                                    p.readVideo->start();
-                                    p.videoThread.currentTime =
-                                        p.info.videoTime.start_time();
-                                    p.videoThread.logTimer = std::chrono::steady_clock::now();
-                                    fps = p.info.videoTime.duration().rate();
-                                }
-                                else
-                                {
-                                    const auto audio = p.audioThread.currentTime;
-                                    auto video = p.videoThread.currentTime;
-                                    if (p.readAudio)
-                                        video = video.rescaled_to(audio.rate());
-                                    if ((p.readAudio && (video <= audio)) ||
-                                        p.options.noAudio)
-                                    {
-                                        // We should not process the first
-                                        // video frame until p.readAudio has
-                                        // been created or p.info.audio will
-                                        // not be set.
-                                        _videoThread(v);
-                                    }
-                                }
-                                
+                                _videoThread(v);
                                 // Release this video frame
                                 NDIlib_recv_free_video(p.NDI_recv, &v);
-                            }
-                            else if (type_e == NDIlib_frame_type_audio)
-                            {
-                                if (!p.options.noAudio)
-                                {
-                                    if (!p.readAudio)
-                                    {
-                                        // p.readAudio will release the audio
-                                        // frame for us.
-                                        p.readAudio =
-                                            std::make_shared<ReadAudio>(
-                                                p.options.sourceName, NDIsource,
-                                                a, p.options);
-                                        p.info.audio = p.readAudio->getInfo();
-                                        p.info.audioTime = p.readAudio->getTimeRange();
-                                        p.readAudio->start();
-                                        p.audioThread.currentTime =
-                                            p.info.audioTime.start_time();
-                                        p.audioThread.logTimer = std::chrono::steady_clock::now();
-
-                                        p.audioThread.running = true;
-                                        p.audioThread.thread =
-                                            std::thread(
-                                                [this]
-                                                    {
-                                                        _audioThread();
-                                                    });
-                                    
-                                    }
-                                }
-                                else
-                                {
-                                    p.audioThread.currentTime =
-                                        p.videoThread.currentTime;
-                                }
                             }
                         }
             
@@ -251,11 +260,6 @@ namespace tl
                             p.videoMutex.stopped = true;
                         }
                         _cancelVideoRequests();
-                        {
-                            std::unique_lock<std::mutex> lock(p.audioMutex.mutex);
-                            p.audioMutex.stopped = true;
-                        }
-                        _cancelAudioRequests();
                     });
         }
 
@@ -266,12 +270,13 @@ namespace tl
         Read::~Read()
         {
             TLRENDER_P();
-
+            
             p.audioThread.running = false;
             if (p.audioThread.thread.joinable())
             {
                 p.audioThread.thread.join();
             }
+            
             p.videoThread.running = false;
             p.decodeThread.running = false;
             if (p.decodeThread.thread.joinable())
@@ -397,7 +402,7 @@ namespace tl
             _cancelVideoRequests();
             _cancelAudioRequests();
         }
-
+        
         void Read::_videoThread(const NDIlib_video_frame_t& v)
         {
             TLRENDER_P();
@@ -451,7 +456,7 @@ namespace tl
                     }
                 }
 
-                // No seeking allowed
+                // Seek.
                 if (videoRequest &&
                     !time::compareExact(videoRequest->time, p.videoThread.currentTime))
                 {
@@ -460,7 +465,6 @@ namespace tl
 
                 // Process.
                 while (videoRequest && p.readVideo->isBufferEmpty() &&
-                       p.readVideo->isValid() &&
                        p.readVideo->process(p.videoThread.currentTime, v))
                     ;
 
@@ -521,7 +525,9 @@ namespace tl
             while (p.audioThread.running)
             {
                 std::shared_ptr<Private::AudioRequest> request;
+                const double sampleRate = p.info.audioTime.duration().rate();
                 size_t requestSampleCount = 0;
+                bool seek = false;
                 // Check requests.
                 {
                     std::unique_lock<std::mutex> lock(p.audioMutex.mutex);
@@ -536,10 +542,20 @@ namespace tl
                         if (!p.audioMutex.requests.empty())
                         {
                             request = p.audioMutex.requests.front();
+                            requestSampleCount = request->timeRange.duration().rescaled_to(p.info.audio.sampleRate).value();
                             p.audioMutex.requests.pop_front();
+                            if (!time::compareExact(
+                                request->timeRange.start_time(),
+                                p.audioThread.currentTime))
+                            {
+                                seek = true;
+                                p.audioThread.currentTime = request->timeRange.start_time();
+                            }
                         }
                     }
                 }
+
+                
 
                 // Check the cache.
                 io::AudioData audioData;
@@ -556,25 +572,34 @@ namespace tl
                     }
                 }
 
-                // No Seek.
+                // Seek.
+                if (seek)
+                {
+                    p.readAudio->seek(p.audioThread.currentTime);
+                }
+
+                const size_t sampleCount = 
+                    requestSampleCount ?
+                    requestSampleCount :
+                    p.options.audioBufferSize.rescaled_to(p.info.audio.sampleRate).value();
 
                 // Process.
                 bool intersects = false;
+                size_t duration = sampleCount;
                 if (request)
                 {
                     intersects = request->timeRange.intersects(p.info.audioTime);
+                    duration = request->timeRange.duration().rescaled_to(p.info.audio.sampleRate).value();
                 }
+                
                 while (
+                    p.audioThread.running &&
                     request &&
                     intersects &&
-                    p.readAudio->getBufferSize() < request->timeRange.duration().rescaled_to(p.info.audio.sampleRate).value() &&
-                    p.readAudio->isValid() &&
-                    p.readAudio->process(
-                        p.audioThread.currentTime,
-                        requestSampleCount ?
-                        requestSampleCount :
-                        p.options.audioBufferSize.rescaled_to(p.info.audio.sampleRate).value()))
+                    p.readAudio->getBufferSize() < duration  &&
+                    p.readAudio->process(p.audioThread.currentTime, sampleCount))
                     ;
+                
                 
                 // Handle request.
                 if (request)
