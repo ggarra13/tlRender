@@ -252,7 +252,6 @@ namespace tl
                 }
                 else if (type == NDIlib_frame_type_status_change)
                 {
-                    std::cerr << "Video status change" << std::endl;
                 }
             }
             return out;
