@@ -149,7 +149,6 @@ namespace tl
                 std::chrono::steady_clock::time_point logTimer;
                 std::condition_variable cv;
                 std::thread thread;
-                std::atomic<bool> decoded;
                 std::atomic<bool> running;
             };
             VideoThread videoThread;
@@ -173,7 +172,6 @@ namespace tl
                 std::chrono::steady_clock::time_point logTimer;
                 std::condition_variable cv;
                 std::thread thread;
-                std::atomic<bool> decoded;
                 std::atomic<bool> running;
             };
             AudioThread audioThread;
