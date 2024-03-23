@@ -73,15 +73,13 @@ namespace tl
             {
                 av_frame_free(&_avFrame);
             }
-            if (NDI_recv)
-            {
-                NDIlib_recv_destroy(NDI_recv);
-            }
+
+            stop();
         }
 
-        bool ReadVideo::isValid() const
+        const bool ReadVideo::isValid() const
         {
-            return true;
+            return NDI_recv;
         }
 
         const image::Info& ReadVideo::getInfo() const
@@ -133,8 +131,7 @@ namespace tl
                     break;
                 case NDIlib_FourCC_type_UYVA:
                     // @todo: This is 4:2:2:4 YUV with an alpha plane following.
-                    LOG_ERROR("UVYVA pixel format not supported yet.  "
-                              "No alpha channel.");
+                    LOG_ERROR("UVYVA pixel format will not have an alpha channel.");
                     // YCbCr color space packed, not planar using 4:2:2:4.
                     _avInputPixelFormat = AV_PIX_FMT_UYVY422;
                     _avOutputPixelFormat = AV_PIX_FMT_RGBA;
@@ -240,7 +237,7 @@ namespace tl
             NDIlib_video_frame_t v;
             NDIlib_frame_type_e type;
 
-            while (out == 0)
+            while (out == 0 && NDI_recv)
             {
                 type = NDIlib_recv_capture(NDI_recv, &v, nullptr, nullptr, 50);
                 if (type == NDIlib_frame_type_error)
@@ -252,6 +249,10 @@ namespace tl
                     _from_ndi(v);
                     NDIlib_recv_free_video(NDI_recv, &v);
                     out = 1;
+                }
+                else if (type == NDIlib_frame_type_status_change)
+                {
+                    std::cerr << "Video status change" << std::endl;
                 }
             }
             return out;
@@ -273,9 +274,15 @@ namespace tl
             return out;
         }
         
+        void ReadVideo::stop()
+        {
+            if (NDI_recv)
+                NDIlib_recv_destroy(NDI_recv);
+            NDI_recv = nullptr;
+        }
+        
         void ReadVideo::start()
         {
-            std::cerr << this << " start" << std::endl;
             if (_avFrame)
             {
                 av_frame_free(&_avFrame);

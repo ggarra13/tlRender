@@ -88,6 +88,8 @@ namespace tl
             // so we create a receiver to look at it.
             NDIlib_recv_create_v3_t recv_desc;
             
+            // Currently, tlRender does not support YUVA so we cannot use this.
+            // We use NDIlib_recv_color_format_UYVY_RGBA instead.
             //      No alpha channel : UYVY
             //      Alpha channel    : UYVA
             // recv_desc.color_format = NDIlib_recv_color_format_fastest;
@@ -110,6 +112,9 @@ namespace tl
             recv_desc.color_format = NDIlib_recv_color_format_UYVY_RGBA;
 
             
+            // These are 16-bit formats, but they seem broken.
+            // I tried them both with FFmpeg's libswscale and with my own
+            // code:
             //      No alpha channel : P216, or UYVY
             //      Alpha channel    : PA16 or UYVA
             // recv_desc.color_format = NDIlib_recv_color_format_best;
@@ -144,6 +149,7 @@ namespace tl
 
             // Preroll to find video and (potentially) audio stream
             unsigned videoCounter = 0;
+            bool noAudio = false;
             bool hasStreams = false;
             while (type_e != NDIlib_frame_type_error && !hasStreams)
             {
@@ -185,48 +191,45 @@ namespace tl
 
                     ++videoCounter;
                     if (videoCounter > 60 && !p.readAudio)
-                        p.options.noAudio = true;
+                        noAudio = true;
                     
                     // Release this video frame
                     NDIlib_recv_free_video(p.NDI_recv, &v);
                 }
                 else if (type_e == NDIlib_frame_type_audio)
                 {
-                    if (!p.options.noAudio)
+                    if (!p.readAudio && !noAudio)
                     {
-                        if (!p.readAudio)
-                        {
-                            p.readAudio =
-                                std::make_shared<ReadAudio>(
-                                    p.options.sourceName, NDIsource,
-                                    a, _logSystem, p.options);
-                            p.info.audio = p.readAudio->getInfo();
-                            p.info.audioTime = p.readAudio->getTimeRange();
-                            p.audioThread.currentTime =
-                                p.info.audioTime.start_time();
-                            p.audioThread.logTimer = std::chrono::steady_clock::now();
+                        p.readAudio =
+                            std::make_shared<ReadAudio>(
+                                p.options.sourceName, NDIsource,
+                                a, _logSystem, p.options);
+                        p.info.audio = p.readAudio->getInfo();
+                        p.info.audioTime = p.readAudio->getTimeRange();
+                        p.audioThread.currentTime =
+                            p.info.audioTime.start_time();
+                        p.audioThread.logTimer = std::chrono::steady_clock::now();
 
-                            p.audioThread.thread =
-                                std::thread(
-                                    [this]
+                        p.audioThread.thread =
+                            std::thread(
+                                [this]
+                                    {
+                                        TLRENDER_P();
+                                            
+                                        _audioThread();
+                                            
                                         {
-                                            TLRENDER_P();
-                                            
-                                            _audioThread();
-                                            
-                                            {
-                                                std::unique_lock<std::mutex> lock(p.audioMutex.mutex);
-                                                p.audioMutex.stopped = true;
-                                            }
-                                            _cancelAudioRequests();
-                                        });
-                        }
+                                            std::unique_lock<std::mutex> lock(p.audioMutex.mutex);
+                                            p.audioMutex.stopped = true;
+                                        }
+                                        _cancelAudioRequests();
+                                    });
                     }
 
                     NDIlib_recv_free_audio(p.NDI_recv, &a);
                 }
 
-                hasStreams = p.readVideo && (p.readAudio || p.options.noAudio);
+                hasStreams = p.readVideo && (p.readAudio || noAudio);
             }
             
             // We destroy receiver
@@ -247,12 +250,14 @@ namespace tl
             TLRENDER_P();
             
             p.audioThread.running = false;
+            if (p.readAudio) p.readAudio->stop();
             if (p.audioThread.thread.joinable())
             {
                 p.audioThread.thread.join();
             }
-            
+
             p.videoThread.running = false;
+            if (p.readVideo) p.readVideo->stop();
             if (p.videoThread.thread.joinable())
             {
                 p.videoThread.thread.join();
@@ -374,7 +379,6 @@ namespace tl
         void Read::_videoThread()
         {
             TLRENDER_P();
-
             p.videoThread.running = true;
             while(p.videoThread.running)
             {

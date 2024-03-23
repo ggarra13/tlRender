@@ -27,15 +27,6 @@ namespace tl
             _logSystem(logSystem),
             _options(options)
         {
-            _info.channelCount = audio_frame.no_channels;
-            _info.sampleRate   = audio_frame.sample_rate;
-            _info.dataType     = audio::DataType::F32;
-
-            double start = 0.0;
-            double last = kNDI_MOVIE_DURATION;
-            _timeRange = otime::TimeRange(
-                otime::RationalTime(start, 1.0).rescaled_to(_info.sampleRate),
-                otime::RationalTime(last, 1.0).rescaled_to(_info.sampleRate));
 
             // We now have at least one source,
             // so we create a receiver to look at it.
@@ -50,14 +41,36 @@ namespace tl
                 throw std::runtime_error("Could not create NDI audio receiver");
             
             _from_ndi(audio_frame);
+            _info.dataType     = audio::DataType::F32;
+            
+            double startTime = 0.0;
+            double lastTime = kNDI_MOVIE_DURATION;
+            _timeRange = otime::TimeRange(
+                otime::RationalTime(startTime, 1.0).rescaled_to(_info.sampleRate),
+                otime::RationalTime(lastTime, 1.0).rescaled_to(_info.sampleRate));
         }
 
         ReadAudio::~ReadAudio()
         {
-            if (NDI_recv)
-                NDIlib_recv_destroy(NDI_recv);
+            stop();
         }
 
+        void ReadAudio::stop()
+        {
+            if (NDI_recv)
+                NDIlib_recv_destroy(NDI_recv);
+            NDI_recv = nullptr;
+        }
+
+        void ReadAudio::start()
+        {
+        }
+        
+        const bool ReadAudio::isValid() const
+        {
+            return NDI_recv;
+        }
+        
         const audio::Info& ReadAudio::getInfo() const
         {
             return _info;
@@ -93,6 +106,9 @@ namespace tl
 
         void ReadAudio::_from_ndi(const NDIlib_audio_frame_t& a)
         {
+            _info.channelCount = a.no_channels;
+            _info.sampleRate   = a.sample_rate;
+            
             auto tmp = audio::Audio::create(_info, a.no_samples);
             memcpy(tmp->getData(), a.p_data, tmp->getByteCount());
             tmp = audio::planarInterleave(tmp);
@@ -118,6 +134,10 @@ namespace tl
                     _from_ndi(a);
                     NDIlib_recv_free_audio(NDI_recv, &a);
                     out = 1;
+                }
+                else if (type == NDIlib_frame_type_status_change)
+                {
+                    std::cerr << "Audio status change" << std::endl;
                 }
             }
             return out;

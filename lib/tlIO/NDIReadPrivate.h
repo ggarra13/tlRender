@@ -36,11 +36,14 @@ namespace tl
 
             ~ReadVideo();
 
-            bool isValid() const;
+
+            
+            const bool isValid() const;
             const image::Info& getInfo() const;
             const otime::TimeRange& getTimeRange() const;
 
             void start();
+            void stop();
             
             bool process(const otime::RationalTime& currentTime);
 
@@ -85,6 +88,10 @@ namespace tl
 
             ~ReadAudio();
 
+            void start();
+            void stop();
+            
+            const bool isValid() const;
             const audio::Info& getInfo() const;
             const otime::TimeRange& getTimeRange() const;
 
