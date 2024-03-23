@@ -4,9 +4,11 @@
 
 #pragma once
 
+#include <tlCore/LogSystem.h>
+#include <tlCore/NDIOptions.h>
+
 #include <tlIO/Plugin.h>
 
-#include <tlCore/LogSystem.h>
 
 #include <Processing.NDI.Lib.h>
 
@@ -24,8 +26,8 @@
 #define NDI_TIME_BASE 10000000
 #define NDI_TIME_BASE_Q (AVRational){1, NDI_TIME_BASE}
 
-#define kNDI_MOVIE_DURATION 60.0 * 60.0 * 3.0   // in seconds (3 hours)
-//#define kNDI_MOVIE_DURATION 30.0   // in seconds
+//#define kNDI_MOVIE_DURATION 60.0 * 60.0 * 3.0   // in seconds (3 hours)
+#define kNDI_MOVIE_DURATION 60.0   // in seconds
  
 extern "C"
 {

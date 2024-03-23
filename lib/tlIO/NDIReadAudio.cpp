@@ -2,9 +2,15 @@
 // Copyright (c) 2024 Gonzalo Garramuño
 // All rights reserved.
 
+#include <tlIO/FFmpegMacros.h>
 #include <tlIO/NDIReadPrivate.h>
 
 #include <tlCore/StringFormat.h>
+
+namespace
+{
+    const char* kModule = "ndi";
+}
 
 namespace tl
 {
@@ -78,9 +84,8 @@ namespace tl
                 int decoding = _decode(currentTime);
                 if (decoding < 0)
                 {
-                    //! \todo error out.
+                    LOG_ERROR("Error decoding video stream");
                     out = false;
-                    NDI_recv = nullptr;
                 }
             }
             return out;
@@ -98,16 +103,17 @@ namespace tl
         {
             int out = 0;
             NDIlib_audio_frame_t a;
-            NDIlib_frame_type_e type_e;
+            NDIlib_frame_type_e type;
 
             while (out == 0)
             {
-                type_e = NDIlib_recv_capture(NDI_recv, nullptr, &a, nullptr, 50);
-                if (type_e == NDIlib_frame_type_error)
+                type= NDIlib_recv_capture(NDI_recv, nullptr, &a, nullptr, 50);
+                if (type == NDIlib_frame_type_error)
                 {
                     out = -1;
+                    LOG_ERROR("Error decoding audio stream"); 
                 }
-                else if (type_e == NDIlib_frame_type_audio)
+                else if (type == NDIlib_frame_type_audio)
                 {
                     _from_ndi(a);
                     NDIlib_recv_free_audio(NDI_recv, &a);

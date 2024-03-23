@@ -378,6 +378,7 @@ namespace tl
             p.videoThread.running = true;
             while(p.videoThread.running)
             {
+                p.videoThread.decoded = false;
                 // Check requests.
                 std::shared_ptr<Private::VideoRequest> videoRequest;
                 std::list<std::shared_ptr<Private::InfoRequest> > infoRequests;
@@ -418,6 +419,7 @@ namespace tl
                         videoRequest->options);
                     if (_cache->getVideo(cacheKey, videoData))
                     {
+                        p.videoThread.decoded = true;
                         p.videoThread.currentTime = videoRequest->time;
                         videoRequest->promise.set_value(videoData);
                         videoRequest.reset();
@@ -439,6 +441,8 @@ namespace tl
                 // Video request.
                 if (videoRequest)
                 {
+                    p.videoThread.decoded = true;
+                    
                     io::VideoData data;
                     data.time = videoRequest->time;
                     if (!p.readVideo->isBufferEmpty())
@@ -466,6 +470,10 @@ namespace tl
                     if (diff.count() > 10.F)
                     {
                         p.videoThread.logTimer = now;
+
+                        if (!p.videoThread.decoded)
+                            p.videoThread.running = false;
+                        
                         if (auto logSystem = _logSystem.lock())
                         {
                             const std::string id = string::Format("tl::io::ndi::Read {0}").arg(this);
@@ -492,6 +500,7 @@ namespace tl
             p.audioThread.running = true;
             while (p.audioThread.running)
             {
+                p.audioThread.decoded = false;
                 std::shared_ptr<Private::AudioRequest> request;
                 const double sampleRate = p.info.audioTime.duration().rate();
                 size_t requestSampleCount = 0;
@@ -567,6 +576,8 @@ namespace tl
                 // Handle request.
                 if (request)
                 {
+                    p.audioThread.decoded = true;
+
                     io::AudioData audioData;
                     audioData.time = request->timeRange.start_time();
                     audioData.audio = audio::Audio::create(
@@ -606,6 +617,10 @@ namespace tl
                     if (diff.count() > 10.F)
                     {
                         p.audioThread.logTimer = now;
+
+                        if (!p.audioThread.decoded)
+                            p.audioThread.running = false;
+                        
                         if (auto logSystem = _logSystem.lock())
                         {
                             const std::string id = string::Format("tl::io::ndi::Read {0}").arg(this);

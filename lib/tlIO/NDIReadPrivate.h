@@ -5,7 +5,6 @@
 #pragma once
 
 #include <tlIO/NDI.h>
-#include <tlCore/NDI.h>
 
 extern "C"
 {
@@ -52,7 +51,6 @@ namespace tl
             int _decode(const otime::RationalTime& currentTime);
             void _from_ndi(const NDIlib_video_frame_t& video_frame);
             void _copy(std::shared_ptr<image::Image>&);
-            void _printTable(const std::string& name, const int32_t* table);
             
             std::weak_ptr<log::System> _logSystem;
             Options _options;
@@ -68,7 +66,6 @@ namespace tl
             // FFmpeg conversion variables
             AVFrame* _avFrame = nullptr;
             AVFrame* _avFrame2 = nullptr;
-            uint8_t* _p_data = nullptr;
             NDIlib_FourCC_video_type_e _ndiFourCC =	NDIlib_FourCC_type_UYVY;
             size_t _ndiStride = 0;
             AVPixelFormat _avInputPixelFormat = AV_PIX_FMT_NONE;
@@ -152,6 +149,7 @@ namespace tl
                 std::chrono::steady_clock::time_point logTimer;
                 std::condition_variable cv;
                 std::thread thread;
+                std::atomic<bool> decoded;
                 std::atomic<bool> running;
             };
             VideoThread videoThread;
@@ -175,6 +173,7 @@ namespace tl
                 std::chrono::steady_clock::time_point logTimer;
                 std::condition_variable cv;
                 std::thread thread;
+                std::atomic<bool> decoded;
                 std::atomic<bool> running;
             };
             AudioThread audioThread;

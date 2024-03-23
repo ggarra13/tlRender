@@ -121,13 +121,6 @@ namespace tl
                 std::stringstream ss(i->second);
                 ss >> p.options.audioBufferSize;
             }
-
-            std::cerr << "requestTimeout=" << p.options.requestTimeout
-                      << std::endl;
-            std::cerr << "videoBufferSize=" << p.options.videoBufferSize
-                      << std::endl;
-            std::cerr << "audioBufferSize=" << p.options.audioBufferSize
-                      << std::endl;
                 
             p.videoThread.running = true;
             p.audioThread.running = true;

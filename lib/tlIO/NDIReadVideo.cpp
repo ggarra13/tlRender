@@ -52,99 +52,10 @@ namespace tl
             _timeRange = otime::TimeRange(otime::RationalTime(startTime, fps),
                                           otime::RationalTime(lastTime, fps));
             
-            _info.size.w = v.xres;
-            _info.size.h = v.yres;
-            if (v.picture_aspect_ratio == 0.F)
-                _info.size.pixelAspectRatio = 1.0 / _info.size.w * _info.size.h;
-            else
-                _info.size.pixelAspectRatio = 1.0;
-            _info.layout.mirror.y = true;
-
-            _ndiFourCC = v.FourCC;
-            _ndiStride = v.line_stride_in_bytes;
-            
-            switch(v.FourCC)
-            {
-            case NDIlib_FourCC_type_UYVY:
-                // YCbCr color space packed, not planar using 4:2:2. (works)
-                _avInputPixelFormat = AV_PIX_FMT_UYVY422;
-                _avOutputPixelFormat = AV_PIX_FMT_RGB24;
-                _info.pixelType = image::PixelType::RGB_U8;
-                break;
-            case NDIlib_FourCC_type_UYVA:
-                // @todo: This is 4:2:2:4 YUV with an alpha plane following.
-                LOG_ERROR("UVYVA pixel format not supported yet.  "
-                          "No alpha channel.");
-                // YCbCr color space packed, not planar using 4:2:2:4.
-                _avInputPixelFormat = AV_PIX_FMT_UYVY422;
-                _avOutputPixelFormat = AV_PIX_FMT_RGBA;
-                _info.pixelType = image::PixelType::RGBA_U8;
-                break;
-            case NDIlib_FourCC_type_P216:
-                LOG_ERROR("P216 pixel format is buggy");
-                // This is a 16bpp version of NV12 (semi-planar 4:2:2).
-                _avInputPixelFormat = AV_PIX_FMT_P016LE;
-                _avOutputPixelFormat = AV_PIX_FMT_YUV422P16LE;
-                _info.pixelType = image::PixelType::YUV_422P_U16;
-                // _avOutputPixelFormat = AV_PIX_FMT_RGB48;
-                // _info.pixelType = image::PixelType::RGB_U16;
-                break;
-            case NDIlib_FourCC_type_PA16:
-                LOG_ERROR("PA16 pixel format is buggy and not supported yet");
-                // This is 4:2:2:4 in 16bpp.
-                _avInputPixelFormat = AV_PIX_FMT_P016LE;
-                _avOutputPixelFormat = AV_PIX_FMT_RGBA64;
-                _info.pixelType = image::PixelType::RGBA_U16;
-                break;
-            case NDIlib_FourCC_type_YV12:
-                LOG_STATUS("NDI Stream is YV12");
-                // Planar 8bit 4:2:0 YUV video format.
-                _avInputPixelFormat = AV_PIX_FMT_YUV420P;
-                _info.pixelType = image::PixelType::YUV_420P_U8;
-                _avOutputPixelFormat = _avInputPixelFormat;
-                break;
-            case NDIlib_FourCC_type_RGBA:
-                LOG_STATUS("NDI Stream is RGBA");
-                _avInputPixelFormat = AV_PIX_FMT_RGBA;
-                _info.pixelType = image::PixelType::RGBA_U8;
-                _avOutputPixelFormat = _avInputPixelFormat;
-                break;
-            case NDIlib_FourCC_type_BGRA:
-                LOG_STATUS("NDI Stream is BGRA");
-                _avInputPixelFormat = AV_PIX_FMT_BGRA;
-                _avOutputPixelFormat = AV_PIX_FMT_RGBA;
-                _info.pixelType = image::PixelType::RGBA_U8;
-                break;
-            case NDIlib_FourCC_type_RGBX:
-                LOG_STATUS("NDI Stream is RGBX");
-                _avInputPixelFormat = AV_PIX_FMT_RGB24;
-                _info.pixelType = image::PixelType::RGB_U8;
-                _avOutputPixelFormat = _avInputPixelFormat;
-                break;
-            case NDIlib_FourCC_type_BGRX:
-                LOG_STATUS("NDI Stream is BGRX");
-                _avInputPixelFormat = AV_PIX_FMT_BGR24;
-                _info.pixelType = image::PixelType::RGB_U8;
-                _avOutputPixelFormat = AV_PIX_FMT_RGB24;
-                break;
-            case NDIlib_FourCC_type_I420:
-                // @todo: Not tested yet, this is 4:2:0 YUV with UV reversed
-                LOG_WARNING("I420 pixel format not tested");
-                _avInputPixelFormat = AV_PIX_FMT_YUV420P;
-                _avOutputPixelFormat = _avInputPixelFormat;
-                _info.pixelType = image::PixelType::YUV_420P_U8;
-                break;
-            default:
-                throw std::runtime_error("Unsupported pixel type");
-            }
-            
-            _info.videoLevels = image::VideoLevels::FullRange;
-            
             NDI_recv = NDIlib_recv_create(&recv_desc);
             if (!NDI_recv)
                 throw std::runtime_error("Could not create NDI audio receiver");
-
-            start();
+            
             _from_ndi(v);
         }
 
@@ -185,7 +96,114 @@ namespace tl
 
         
         void ReadVideo::_from_ndi(const NDIlib_video_frame_t& v)
-        {                
+        {
+            
+            bool init = false;
+
+            float pixelAspectRatio = 1.F;
+            if (v.picture_aspect_ratio == 0.F)
+                pixelAspectRatio = 1.F / v.xres * v.yres;
+                
+            if (_info.size.w != v.xres || _info.size.h != v.yres ||
+                _info.size.pixelAspectRatio != pixelAspectRatio)
+            {
+                init = true;
+            }
+
+            _info.size.w = v.xres;
+            _info.size.h = v.yres;
+            _info.size.pixelAspectRatio = pixelAspectRatio;
+            _info.layout.mirror.y = true;
+            _info.videoLevels = image::VideoLevels::FullRange;
+                
+            if (_ndiFourCC != v.FourCC ||
+                _ndiStride != v.line_stride_in_bytes)
+            {
+                init = true;
+                _ndiFourCC = v.FourCC;
+                _ndiStride = v.line_stride_in_bytes;
+            
+                switch(v.FourCC)
+                {
+                case NDIlib_FourCC_type_UYVY:
+                    // YCbCr color space packed, not planar using 4:2:2. (works)
+                    _avInputPixelFormat = AV_PIX_FMT_UYVY422;
+                    _avOutputPixelFormat = AV_PIX_FMT_RGB24;
+                    _info.pixelType = image::PixelType::RGB_U8;
+                    break;
+                case NDIlib_FourCC_type_UYVA:
+                    // @todo: This is 4:2:2:4 YUV with an alpha plane following.
+                    LOG_ERROR("UVYVA pixel format not supported yet.  "
+                              "No alpha channel.");
+                    // YCbCr color space packed, not planar using 4:2:2:4.
+                    _avInputPixelFormat = AV_PIX_FMT_UYVY422;
+                    _avOutputPixelFormat = AV_PIX_FMT_RGBA;
+                    _info.pixelType = image::PixelType::RGBA_U8;
+                    break;
+                case NDIlib_FourCC_type_P216:
+                    LOG_ERROR("P216 pixel format is buggy");
+                    // This is a 16bpp version of NV12 (semi-planar 4:2:2).
+                    _avInputPixelFormat = AV_PIX_FMT_P016LE;
+                    _avOutputPixelFormat = AV_PIX_FMT_YUV422P16LE;
+                    _info.pixelType = image::PixelType::YUV_422P_U16;
+                    // _avOutputPixelFormat = AV_PIX_FMT_RGB48;
+                    // _info.pixelType = image::PixelType::RGB_U16;
+                    break;
+                case NDIlib_FourCC_type_PA16:
+                    LOG_ERROR("PA16 pixel format is buggy and not supported yet");
+                    // This is 4:2:2:4 in 16bpp.
+                    _avInputPixelFormat = AV_PIX_FMT_P016LE;
+                    _avOutputPixelFormat = AV_PIX_FMT_RGBA64;
+                    _info.pixelType = image::PixelType::RGBA_U16;
+                    break;
+                case NDIlib_FourCC_type_YV12:
+                    LOG_STATUS("NDI Stream is YV12");
+                    // Planar 8bit 4:2:0 YUV video format.
+                    _avInputPixelFormat = AV_PIX_FMT_YUV420P;
+                    _info.pixelType = image::PixelType::YUV_420P_U8;
+                    _avOutputPixelFormat = _avInputPixelFormat;
+                    break;
+                case NDIlib_FourCC_type_RGBA:
+                    LOG_STATUS("NDI Stream is RGBA");
+                    _avInputPixelFormat = AV_PIX_FMT_RGBA;
+                    _info.pixelType = image::PixelType::RGBA_U8;
+                    _avOutputPixelFormat = _avInputPixelFormat;
+                    break;
+                case NDIlib_FourCC_type_BGRA:
+                    LOG_STATUS("NDI Stream is BGRA");
+                    _avInputPixelFormat = AV_PIX_FMT_BGRA;
+                    _avOutputPixelFormat = AV_PIX_FMT_RGBA;
+                    _info.pixelType = image::PixelType::RGBA_U8;
+                    break;
+                case NDIlib_FourCC_type_RGBX:
+                    LOG_STATUS("NDI Stream is RGBX");
+                    _avInputPixelFormat = AV_PIX_FMT_RGB24;
+                    _info.pixelType = image::PixelType::RGB_U8;
+                    _avOutputPixelFormat = _avInputPixelFormat;
+                    break;
+                case NDIlib_FourCC_type_BGRX:
+                    LOG_STATUS("NDI Stream is BGRX");
+                    _avInputPixelFormat = AV_PIX_FMT_BGR24;
+                    _info.pixelType = image::PixelType::RGB_U8;
+                    _avOutputPixelFormat = AV_PIX_FMT_RGB24;
+                    break;
+                case NDIlib_FourCC_type_I420:
+                    // @todo: Not tested yet, this is 4:2:0 YUV with UV reversed
+                    LOG_WARNING("I420 pixel format not tested");
+                    _avInputPixelFormat = AV_PIX_FMT_YUV420P;
+                    _avOutputPixelFormat = _avInputPixelFormat;
+                    _info.pixelType = image::PixelType::YUV_420P_U8;
+                    break;
+                default:
+                    throw std::runtime_error("Unsupported pixel type");
+                }
+            }
+            
+            if (init)
+            {
+                start();
+            }
+            
             av_image_fill_arrays(
                 _avFrame->data,
                 _avFrame->linesize,
@@ -207,7 +225,9 @@ namespace tl
             
             if (_buffer.size() < _options.videoBufferSize)
             {
-                _decode(currentTime);
+                int decoding = _decode(currentTime);
+                if (decoding < 0)
+                    LOG_ERROR("Error decoding video stream"); 
                 out = false;
             }
             
@@ -218,16 +238,16 @@ namespace tl
         {
             int out = 0;
             NDIlib_video_frame_t v;
-            NDIlib_frame_type_e type_e;
+            NDIlib_frame_type_e type;
 
-            while (out == 0 && NDI_recv)
+            while (out == 0)
             {
-                type_e = NDIlib_recv_capture(NDI_recv, &v, nullptr, nullptr, 50);
-                if (type_e == NDIlib_frame_type_error)
+                type = NDIlib_recv_capture(NDI_recv, &v, nullptr, nullptr, 50);
+                if (type == NDIlib_frame_type_error)
                 {
                     out = -1;
                 }
-                else if (type_e == NDIlib_frame_type_video)
+                else if (type == NDIlib_frame_type_video)
                 {
                     _from_ndi(v);
                     NDIlib_recv_free_video(NDI_recv, &v);
@@ -255,19 +275,38 @@ namespace tl
         
         void ReadVideo::start()
         {
-            _avFrame = av_frame_alloc();
+            std::cerr << this << " start" << std::endl;
+            if (_avFrame)
+            {
+                av_frame_free(&_avFrame);
+            }
             if (!_avFrame)
             {
-                throw std::runtime_error(string::Format("{0}: Cannot allocate frame").arg(_fileName));
+                _avFrame = av_frame_alloc();
+                if (!_avFrame)
+                {
+                    throw std::runtime_error(string::Format("{0}: Cannot allocate frame").arg(_fileName));
+                }
             }
-
+            
             if (!canCopy(_avInputPixelFormat, _avOutputPixelFormat))
             {
+                if (_avFrame2)
+                {
+                    av_frame_free(&_avFrame2);
+                }
+
                 _avFrame2 = av_frame_alloc();
                 if (!_avFrame2)
                 {
                     throw std::runtime_error(string::Format("{0}: Cannot allocate frame").arg(_fileName));
                 }
+                
+                if (_swsContext)
+                {
+                    sws_freeContext(_swsContext);
+                }
+
                 _swsContext = sws_alloc_context();
                 if (!_swsContext)
                 {
@@ -415,22 +454,6 @@ namespace tl
                     _avFrame->linesize, 0, h, _avFrame2->data,
                     _avFrame2->linesize);
             }
-        }
-
-        void ReadVideo::_printTable(const std::string& name,
-                                    const int32_t* table)
-        {
-            char msg[256];
-            if (!table)
-            {
-                snprintf(msg, 256, "%s = nullptr", name.c_str());
-                LOG_STATUS(msg);
-                return;
-            }
-            
-            snprintf(msg, 256, "%s = %d %d %d %d",
-                     name.c_str(), table[0], table[1], table[2], table[3]);
-            LOG_STATUS(msg);
         }
     }
 }
