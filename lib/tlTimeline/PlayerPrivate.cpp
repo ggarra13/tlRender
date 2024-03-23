@@ -840,11 +840,7 @@ namespace tl
 
                 // Send audio data to RtAudio.
                 const auto now = std::chrono::steady_clock::now();
-<<<<<<< HEAD
-                if (!externalTime &&
-=======
                 if (speed == p->timeline->getTimeRange().duration().rate() &&
->>>>>>> 7ddaed7355b0ffa73b983c27c04a326dcce3aac2
                     !mute &&
                     now >= muteTimeout &&
                     nFrames <= getSampleCount(p->audioThread.buffer))
