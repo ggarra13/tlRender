@@ -15,8 +15,10 @@ namespace tl
             const std::string& fileName,
             const NDIlib_source_t& NDIsource,
             const NDIlib_audio_frame_t& audio_frame,
+            const std::weak_ptr<log::System>& logSystem,
             const Options& options) :
             _fileName(fileName),
+            _logSystem(logSystem),
             _options(options)
         {
             _info.channelCount = audio_frame.no_channels;
@@ -80,7 +82,6 @@ namespace tl
                     out = false;
                     NDI_recv = nullptr;
                 }
-                // std::cout << "audio buffer size: " << audio::getSampleCount(_buffer) << std::endl;
             }
             return out;
         }
@@ -91,16 +92,15 @@ namespace tl
             memcpy(tmp->getData(), a.p_data, tmp->getByteCount());
             tmp = audio::planarInterleave(tmp);
             _buffer.push_back(tmp);
-            NDIlib_recv_free_audio(NDI_recv, &a);
         }
         
-        int    ReadAudio::_decode(const otime::RationalTime& time)
+        int ReadAudio::_decode(const otime::RationalTime& time)
         {
             int out = 0;
             NDIlib_audio_frame_t a;
             NDIlib_frame_type_e type_e;
 
-            while (out == 0 && NDI_recv)
+            while (out == 0)
             {
                 type_e = NDIlib_recv_capture(NDI_recv, nullptr, &a, nullptr, 50);
                 if (type_e == NDIlib_frame_type_error)
@@ -110,6 +110,7 @@ namespace tl
                 else if (type_e == NDIlib_frame_type_audio)
                 {
                     _from_ndi(a);
+                    NDIlib_recv_free_audio(NDI_recv, &a);
                     out = 1;
                 }
             }

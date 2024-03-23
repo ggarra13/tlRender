@@ -24,8 +24,8 @@
 #define NDI_TIME_BASE 10000000
 #define NDI_TIME_BASE_Q (AVRational){1, NDI_TIME_BASE}
 
-//#define kNDI_MOVIE_DURATION 60.0 * 60.0 * 3.0   // in seconds (3 hours)
-#define kNDI_MOVIE_DURATION 30.0   // in seconds
+#define kNDI_MOVIE_DURATION 60.0 * 60.0 * 3.0   // in seconds (3 hours)
+//#define kNDI_MOVIE_DURATION 30.0   // in seconds
  
 extern "C"
 {
@@ -90,7 +90,7 @@ namespace tl
             void cancelRequests() override;
 
         private:
-            void _videoThread(const NDIlib_video_frame_t& video_frame);
+            void _videoThread();
             void _audioThread();
             void _cancelVideoRequests();
             void _cancelAudioRequests();

@@ -153,9 +153,8 @@ namespace tl
                 {
                     if (!p.readVideo)
                     {
-                        p.videoThread.running = true;
                         p.readVideo = std::make_shared<ReadVideo>(
-                            p.options.sourceName, v,
+                            p.options.sourceName, NDIsource, recv_desc, v,
                             _logSystem, p.options);
                         const auto& videoInfo = p.readVideo->getInfo();
                         if (videoInfo.isValid())
@@ -163,12 +162,25 @@ namespace tl
                             p.info.video.push_back(videoInfo);
                             p.info.videoTime = p.readVideo->getTimeRange();
                         }
-                        p.readVideo->start();
                         p.videoThread.currentTime =
                             p.info.videoTime.start_time();
 
                         p.videoThread.logTimer = std::chrono::steady_clock::now();
-                        fps = p.info.videoTime.duration().rate();
+                        
+                        p.videoThread.thread =
+                            std::thread(
+                                [this]
+                                    {
+                                        TLRENDER_P();
+                                            
+                                        _videoThread();
+                                            
+                                        {
+                                            std::unique_lock<std::mutex> lock(p.videoMutex.mutex);
+                                            p.videoMutex.stopped = true;
+                                        }
+                                        _cancelVideoRequests();
+                                    });
                     }
 
                     ++videoCounter;
@@ -187,14 +199,13 @@ namespace tl
                             p.readAudio =
                                 std::make_shared<ReadAudio>(
                                     p.options.sourceName, NDIsource,
-                                    a, p.options);
+                                    a, _logSystem, p.options);
                             p.info.audio = p.readAudio->getInfo();
                             p.info.audioTime = p.readAudio->getTimeRange();
                             p.audioThread.currentTime =
                                 p.info.audioTime.start_time();
                             p.audioThread.logTimer = std::chrono::steady_clock::now();
 
-                            p.audioThread.running = true;
                             p.audioThread.thread =
                                 std::thread(
                                     [this]
@@ -218,49 +229,13 @@ namespace tl
                 hasStreams = p.readVideo && (p.readAudio || p.options.noAudio);
             }
             
-            // The actual decode thread
-            p.decodeThread.running = true;
-            p.decodeThread.thread = std::thread(
-                [this, NDIsource]
-                    {
-                        TLRENDER_P();
+            // We destroy receiver
+            NDIlib_recv_destroy(p.NDI_recv);
+            p.NDI_recv = nullptr;
 
-                        NDIlib_video_frame_t v;
-                        NDIlib_audio_frame_t a;
-                        NDIlib_frame_type_e type_e = NDIlib_frame_type_none;
-
-                        p.audioThread.currentTime =
-                            otime::RationalTime(0.0, p.info.audioTime.duration().rate());
-                        p.videoThread.currentTime =
-                            otime::RationalTime(0.0, p.info.videoTime.duration().rate());
-            
-                        while (type_e != NDIlib_frame_type_error &&
-                               p.decodeThread.running)
-                        {
-                            // const auto audio = p.audioThread.currentTime;
-                            // auto video = p.videoThread.currentTime;
-                            // video = video.rescaled_to(audio.rate());
-                            // if (audio.value() < video.value())
-                            //     continue;
-                            
-                            // Audio is handled by audio thread we started
-                            // before
-                            type_e = NDIlib_recv_capture(
-                                p.NDI_recv, &v, nullptr, nullptr, 50);
-                            if (type_e == NDIlib_frame_type_video)
-                            {
-                                _videoThread(v);
-                                // Release this video frame
-                                NDIlib_recv_free_video(p.NDI_recv, &v);
-                            }
-                        }
-            
-                        {
-                            std::unique_lock<std::mutex> lock(p.videoMutex.mutex);
-                            p.videoMutex.stopped = true;
-                        }
-                        _cancelVideoRequests();
-                    });
+            // We destroy the finder
+            NDIlib_find_destroy(p.NDI_find);
+            p.NDI_find = nullptr;
         }
 
         Read::Read() :
@@ -278,17 +253,10 @@ namespace tl
             }
             
             p.videoThread.running = false;
-            p.decodeThread.running = false;
-            if (p.decodeThread.thread.joinable())
+            if (p.videoThread.thread.joinable())
             {
-                p.decodeThread.thread.join();
+                p.videoThread.thread.join();
             }
-            
-            // We destroy receiver (video)
-            NDIlib_recv_destroy(p.NDI_recv);
-
-            // We destroy the finder
-            NDIlib_find_destroy(p.NDI_find);
         }
 
         std::shared_ptr<Read> Read::create(
@@ -403,10 +371,11 @@ namespace tl
             _cancelAudioRequests();
         }
         
-        void Read::_videoThread(const NDIlib_video_frame_t& v)
+        void Read::_videoThread()
         {
             TLRENDER_P();
 
+            p.videoThread.running = true;
             while(p.videoThread.running)
             {
                 // Check requests.
@@ -452,7 +421,6 @@ namespace tl
                         p.videoThread.currentTime = videoRequest->time;
                         videoRequest->promise.set_value(videoData);
                         videoRequest.reset();
-                        return;
                     }
                 }
 
@@ -465,7 +433,7 @@ namespace tl
 
                 // Process.
                 while (videoRequest && p.readVideo->isBufferEmpty() &&
-                       p.readVideo->process(p.videoThread.currentTime, v))
+                       p.readVideo->process(p.videoThread.currentTime))
                     ;
 
                 // Video request.
@@ -489,7 +457,6 @@ namespace tl
                     }
 
                     p.videoThread.currentTime += otime::RationalTime(1.0, p.info.videoTime.duration().rate());
-                    return;
                 }
 
                 // Logging.
@@ -522,6 +489,7 @@ namespace tl
         void Read::_audioThread()
         {
             TLRENDER_P();
+            p.audioThread.running = true;
             while (p.audioThread.running)
             {
                 std::shared_ptr<Private::AudioRequest> request;
@@ -555,8 +523,6 @@ namespace tl
                     }
                 }
 
-                
-
                 // Check the cache.
                 io::AudioData audioData;
                 if (request && _cache)
@@ -585,18 +551,15 @@ namespace tl
 
                 // Process.
                 bool intersects = false;
-                size_t duration = sampleCount;
                 if (request)
                 {
                     intersects = request->timeRange.intersects(p.info.audioTime);
-                    duration = request->timeRange.duration().rescaled_to(p.info.audio.sampleRate).value();
                 }
                 
                 while (
-                    p.audioThread.running &&
                     request &&
                     intersects &&
-                    p.readAudio->getBufferSize() < duration  &&
+                    p.readAudio->getBufferSize() < request->timeRange.duration().rescaled_to(p.info.audio.sampleRate).value() &&
                     p.readAudio->process(p.audioThread.currentTime, sampleCount))
                     ;
                 
@@ -630,7 +593,7 @@ namespace tl
                             request->options);
                         _cache->addAudio(cacheKey, audioData);
                     }
-                    
+
                     p.audioThread.currentTime += request->timeRange.duration();
                 }
 

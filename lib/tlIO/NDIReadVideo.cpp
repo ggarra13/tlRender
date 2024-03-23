@@ -36,6 +36,8 @@ namespace tl
 
         ReadVideo::ReadVideo(
             const std::string& fileName,
+            const NDIlib_source_t& NDIsource,
+            const NDIlib_recv_create_v3_t& recv_desc,
             const NDIlib_video_frame_t& v,
             const std::weak_ptr<log::System>& logSystem,
             const Options& options) :
@@ -45,10 +47,10 @@ namespace tl
         {   
             double fps = v.frame_rate_N /
                          static_cast<double>(v.frame_rate_D);
-            double start = 0.0;
-            double last = kNDI_MOVIE_DURATION * fps; 
-            _timeRange = otime::TimeRange(otime::RationalTime(start, fps),
-                                          otime::RationalTime(last, fps));
+            double startTime = 0.0;
+            double lastTime = kNDI_MOVIE_DURATION * fps; 
+            _timeRange = otime::TimeRange(otime::RationalTime(startTime, fps),
+                                          otime::RationalTime(lastTime, fps));
             
             _info.size.w = v.xres;
             _info.size.h = v.yres;
@@ -60,8 +62,6 @@ namespace tl
 
             _ndiFourCC = v.FourCC;
             _ndiStride = v.line_stride_in_bytes;
-            
-            _currentTime = _timeRange.start_time();
             
             switch(v.FourCC)
             {
@@ -139,6 +139,13 @@ namespace tl
             }
             
             _info.videoLevels = image::VideoLevels::FullRange;
+            
+            NDI_recv = NDIlib_recv_create(&recv_desc);
+            if (!NDI_recv)
+                throw std::runtime_error("Could not create NDI audio receiver");
+
+            start();
+            _from_ndi(v);
         }
 
         ReadVideo::~ReadVideo()
@@ -154,6 +161,10 @@ namespace tl
             if (_avFrame)
             {
                 av_frame_free(&_avFrame);
+            }
+            if (NDI_recv)
+            {
+                NDIlib_recv_destroy(NDI_recv);
             }
         }
 
@@ -172,45 +183,57 @@ namespace tl
             return _timeRange;
         }
 
-        bool ReadVideo::process(const otime::RationalTime& currentTime,
-                                const NDIlib_video_frame_t& video_frame)
+        
+        void ReadVideo::_from_ndi(const NDIlib_video_frame_t& v)
+        {                
+            av_image_fill_arrays(
+                _avFrame->data,
+                _avFrame->linesize,
+                v.p_data,
+                _avInputPixelFormat,
+                _info.size.w,
+                _info.size.h,
+                1);
+
+            auto image = image::Image::create(_info);
+            _copy(image);
+            _buffer.push_back(image);
+        }
+        
+
+        bool ReadVideo::process(const otime::RationalTime& currentTime)
         {
             bool out = true;
             
             if (_buffer.size() < _options.videoBufferSize)
             {
-                AVRational r;
-                r.num = 1;
-                r.den = _timeRange.duration().rate();
-
-                AVRational time_base;
-                time_base.num = 1;
-                time_base.den = NDI_TIME_BASE;
-
-                const int64_t dts =
-                    av_rescale_q(video_frame.timecode, time_base, r);
-
-                if (1) //time >= currentTime)
-                {
-                    // Fill source avFrame
-                    _p_data = video_frame.p_data;
-                
-                    av_image_fill_arrays(
-                        _avFrame->data,
-                        _avFrame->linesize,
-                        video_frame.p_data,
-                        _avInputPixelFormat,
-                        _info.size.w,
-                        _info.size.h,
-                        1);
-
-                    auto image = image::Image::create(_info);
-                    _copy(image);
-                    _buffer.push_back(image);
-                    out = false;
-                }
+                _decode(currentTime);
+                out = false;
             }
             
+            return out;
+        }
+        
+        int ReadVideo::_decode(const otime::RationalTime& time)
+        {
+            int out = 0;
+            NDIlib_video_frame_t v;
+            NDIlib_frame_type_e type_e;
+
+            while (out == 0 && NDI_recv)
+            {
+                type_e = NDIlib_recv_capture(NDI_recv, &v, nullptr, nullptr, 50);
+                if (type_e == NDIlib_frame_type_error)
+                {
+                    out = -1;
+                }
+                else if (type_e == NDIlib_frame_type_video)
+                {
+                    _from_ndi(v);
+                    NDIlib_recv_free_video(NDI_recv, &v);
+                    out = 1;
+                }
+            }
             return out;
         }
         

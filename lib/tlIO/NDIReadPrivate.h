@@ -29,6 +29,8 @@ namespace tl
         public:
             ReadVideo(
                 const std::string& fileName,
+                const NDIlib_source_t& NDIsource,
+                const NDIlib_recv_create_v3_t& recv_desc,
                 const NDIlib_video_frame_t& video_frame,
                 const std::weak_ptr<log::System>& logSystem,
                 const Options& options);
@@ -41,26 +43,26 @@ namespace tl
 
             void start();
             
-            bool process(const otime::RationalTime& currentTime,
-                         const NDIlib_video_frame_t& video_frame);
+            bool process(const otime::RationalTime& currentTime);
 
             bool isBufferEmpty() const;
             std::shared_ptr<image::Image> popBuffer();
 
         private:
             int _decode(const otime::RationalTime& currentTime);
+            void _from_ndi(const NDIlib_video_frame_t& video_frame);
             void _copy(std::shared_ptr<image::Image>&);
             void _printTable(const std::string& name, const int32_t* table);
             
             std::weak_ptr<log::System> _logSystem;
             Options _options;
             image::Info _info;
-            otime::RationalTime _currentTime = time::invalidTime;
             otime::TimeRange _timeRange = time::invalidTimeRange;
             std::list<std::shared_ptr<image::Image> > _buffer;
 
             // NDI structs
             const std::string _fileName;
+            NDIlib_recv_instance_t NDI_recv = nullptr;
             int frame_rate_N = 30000, frame_rate_D = 1001;
 
             // FFmpeg conversion variables
@@ -81,6 +83,7 @@ namespace tl
                 const std::string& fileName,
                 const NDIlib_source_t& NDIsource,
                 const NDIlib_audio_frame_t& audio_frame,
+                const std::weak_ptr<log::System>& logSystem,
                 const Options&);
 
             ~ReadAudio();
@@ -101,6 +104,8 @@ namespace tl
             void _from_ndi(const NDIlib_audio_frame_t& audio_frame);
 
             const std::string _fileName;
+            std::weak_ptr<log::System> _logSystem;
+            
             NDIlib_recv_instance_t NDI_recv = nullptr;
             
             Options _options;
@@ -146,6 +151,7 @@ namespace tl
                 otime::RationalTime currentTime = time::invalidTime;
                 std::chrono::steady_clock::time_point logTimer;
                 std::condition_variable cv;
+                std::thread thread;
                 std::atomic<bool> running;
             };
             VideoThread videoThread;
@@ -172,14 +178,6 @@ namespace tl
                 std::atomic<bool> running;
             };
             AudioThread audioThread;
-            
-            struct DecodeThread
-            {
-                std::chrono::steady_clock::time_point logTimer;
-                std::thread thread;
-                std::atomic<bool> running;
-            };
-            DecodeThread decodeThread;
         };
     }
 }
