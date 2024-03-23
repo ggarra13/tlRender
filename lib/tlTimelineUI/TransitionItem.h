@@ -47,7 +47,7 @@ namespace tl
             
         private:
 
-            void _timeUnitsUpdate();
+            void _timeUnitsUpdate() override;
             void _textUpdate();
             
             TLRENDER_PRIVATE();
