@@ -360,6 +360,10 @@ namespace tl
                 if (valid)
                 {
                     VideoData data;
+                    if (!ioInfo.video.empty())
+                    {
+                        data.size = ioInfo.video.front().size;
+                    }
                     data.time = (*videoRequestIt)->time;
                     try
                     {

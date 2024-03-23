@@ -98,7 +98,7 @@ namespace tl
             static std::shared_ptr<Player> create(
                 const std::shared_ptr<Timeline>&,
                 const std::shared_ptr<system::Context>&,
-                const PlayerOptions & = PlayerOptions());
+                const PlayerOptions& = PlayerOptions());
 
             //! Get the context.
             const std::weak_ptr<system::Context>& getContext() const;
@@ -127,9 +127,6 @@ namespace tl
             //! Get the I/O information. This information is retrieved from
             //! the first clip in the timeline.
             const io::Info& getIOInfo() const;
-
-            //! Get the timeline sizes.
-            std::vector<image::Size> getSizes() const;
 
             ///@}
 

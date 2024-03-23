@@ -199,6 +199,7 @@ namespace tl
                         const auto t0 = std::chrono::steady_clock::now();
 
                         // Get mutex protected values.
+                        std::vector<std::shared_ptr<Timeline> > compare;
                         bool clearRequests = false;
                         bool clearCache = false;
                         {
@@ -206,7 +207,7 @@ namespace tl
                             p.thread.playback = p.mutex.playback;
                             p.thread.currentTime = p.mutex.currentTime;
                             p.thread.inOutRange = p.mutex.inOutRange;
-                            p.thread.compare = p.mutex.compare;
+                            compare = p.mutex.compare;
                             p.thread.compareTime = p.mutex.compareTime;
                             p.thread.ioOptions = p.mutex.ioOptions;
                             p.thread.videoLayer = p.mutex.videoLayer;
@@ -225,6 +226,7 @@ namespace tl
                         {
                             p.clearRequests();
                         }
+                        p.thread.compare = compare;
 
                         // Clear the cache.
                         if (clearCache)
@@ -392,22 +394,6 @@ namespace tl
         const io::Info& Player::getIOInfo() const
         {
             return _p->ioInfo;
-        }
-
-        std::vector<image::Size> Player::getSizes() const
-        {
-            TLRENDER_P();
-            std::vector<image::Size> out;
-            out.push_back(!_p->ioInfo.video.empty() ?
-                _p->ioInfo.video.front().size :
-                image::Size());
-            for (const auto& compare : p.compare->get())
-            {
-                out.push_back(compare && !compare->getIOInfo().video.empty() ?
-                    compare->getIOInfo().video.front().size :
-                    image::Size());
-            }
-            return out;
         }
 
         double Player::getDefaultSpeed() const
