@@ -43,6 +43,7 @@ namespace tl
             otime::RationalTime startTime = time::invalidTime;
             bool yuvToRGBConversion = false;
             audio::Info audioConvertInfo;
+            int    audioTrack = -1;
             size_t threadCount = ffmpeg::threadCount;
             size_t requestTimeout = 5;
             size_t videoBufferSize = 4;

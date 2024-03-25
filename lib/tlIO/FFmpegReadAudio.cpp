@@ -59,15 +59,56 @@ namespace tl
             {
                 throw std::runtime_error(string::Format("{0}: {1}").arg(fileName).arg(getErrorLabel(r)));
             }
+
+            // Count the tracks
+            int trackCount = 0;
             for (unsigned int i = 0; i < _avFormatContext->nb_streams; ++i)
             {
-                if (AVMEDIA_TYPE_AUDIO == _avFormatContext->streams[i]->codecpar->codec_type &&
-                    AV_DISPOSITION_DEFAULT == _avFormatContext->streams[i]->disposition)
+                if (AVMEDIA_TYPE_AUDIO ==
+                    _avFormatContext->streams[i]->codecpar->codec_type)
                 {
-                    _avStream = i;
-                    break;
+                    if (options.audioTrack == trackCount)
+                    {
+                        _avStream = i;
+                    }
+                    ++trackCount;
                 }
             }
+
+            // If user selected specific track, use it.
+            if (options.audioTrack >= 0)
+            {
+                int idx = 0;
+                for (unsigned int i = 0; i < _avFormatContext->nb_streams; ++i)
+                {
+                    if (AVMEDIA_TYPE_AUDIO ==
+                        _avFormatContext->streams[i]->codecpar->codec_type)
+                    {
+                        if (options.audioTrack == idx)
+                        {
+                            _avStream = i;
+                            break;
+                        }
+                        ++idx;
+                    }
+                }
+            }
+
+            // Else, use the disposition track.
+            if (-1 == _avStream)
+            {
+                for (unsigned int i = 0; i < _avFormatContext->nb_streams; ++i)
+                {
+                    if (AVMEDIA_TYPE_AUDIO == _avFormatContext->streams[i]->codecpar->codec_type &&
+                        AV_DISPOSITION_DEFAULT == _avFormatContext->streams[i]->disposition)
+                    {
+                        _avStream = i;
+                        break;
+                    }
+                }
+            }
+
+            // If all failed, use the first track we find.
             if (-1 == _avStream)
             {
                 for (unsigned int i = 0; i < _avFormatContext->nb_streams; ++i)
@@ -140,6 +181,7 @@ namespace tl
                 _info.channelCount = channelCount;
                 _info.dataType = dataType;
                 _info.sampleRate = sampleRate;
+                _info.trackCount = trackCount;
 
                 int64_t sampleCount = 0;
                 if (avAudioStream->duration != AV_NOPTS_VALUE)

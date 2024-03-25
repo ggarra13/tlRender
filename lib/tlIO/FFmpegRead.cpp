@@ -97,6 +97,12 @@ namespace tl
                 std::stringstream ss(i->second);
                 ss >> p.options.audioConvertInfo.sampleRate;
             }
+            i = options.find("FFmpeg/AudioTrack");
+            if (i != options.end())
+            {
+                std::stringstream ss(i->second);
+                ss >> p.options.audioTrack;
+            }
             i = options.find("FFmpeg/ThreadCount");
             if (i != options.end())
             {
