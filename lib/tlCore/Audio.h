@@ -111,6 +111,7 @@ namespace tl
             DataType    dataType     = DataType::None;
             size_t      sampleRate   = 0;
             unsigned    trackCount   = 1;
+            std::vector<Info> audioInfo;
 
             //! Is the audio valid?
             bool isValid() const;

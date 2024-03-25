@@ -100,6 +100,16 @@ namespace tl
                 auto avVideoCodecParameters = avVideoStream->codecpar;
                 auto avVideoCodec = avcodec_find_decoder(avVideoCodecParameters->codec_id);
                 
+                AVDictionaryEntry* tag = nullptr;
+                unsigned trackNumber = 1; // we only support one video stream
+                while ((tag = av_dict_get(avVideoStream->metadata, "",
+                                              tag, AV_DICT_IGNORE_SUFFIX)))
+                    {
+                        std::string key(string::Format("Video Stream #{0}: {1}")
+                                        .arg(trackNumber)
+                                        .arg(tag->key));
+                        _tags[key] = tag->value;
+                    }
                 // If we are reading VPX, use libvpx-vp9 external lib if available so
                 // we can read an alpha channel.
                 if (avVideoCodecParameters->codec_id == AV_CODEC_ID_VP9)
@@ -170,7 +180,6 @@ namespace tl
 
                 // LibVPX returns AV_PIX_FMT_YUV420P with metadata
                 // "alpha_mode" set to 1.
-                AVDictionaryEntry* tag = nullptr;
                 while ((tag = av_dict_get(avVideoStream->metadata, "", tag, AV_DICT_IGNORE_SUFFIX)))
                 {
                     const std::string key(tag->key);

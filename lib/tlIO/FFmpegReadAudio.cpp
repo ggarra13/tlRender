@@ -60,21 +60,46 @@ namespace tl
                 throw std::runtime_error(string::Format("{0}: {1}").arg(fileName).arg(getErrorLabel(r)));
             }
 
-            // Count the tracks
-            int trackCount = 0;
+            // Count the tracks and get the metadata for each audio track
+            image::Tags tags;
             for (unsigned int i = 0; i < _avFormatContext->nb_streams; ++i)
             {
-                if (AVMEDIA_TYPE_AUDIO ==
-                    _avFormatContext->streams[i]->codecpar->codec_type)
+                const auto& avAudioStream = _avFormatContext->streams[i];
+                const auto& avAudioCodecParameters = avAudioStream->codecpar;
+
+                if (AVMEDIA_TYPE_AUDIO == avAudioCodecParameters->codec_type)
                 {
-                    if (options.audioTrack == trackCount)
+                    if (options.audioTrack == _info.audioInfo.size())
                     {
                         _avStream = i;
                     }
-                    ++trackCount;
+                    
+                    AVDictionaryEntry* tag = nullptr;
+                    unsigned trackNumber = _info.audioInfo.size() + 1;
+                    while ((tag = av_dict_get(avAudioStream->metadata, "",
+                                              tag, AV_DICT_IGNORE_SUFFIX)))
+                    {
+                        std::string key(string::Format("Audio Stream #{0}: {1}")
+                                        .arg(trackNumber)
+                                        .arg(tag->key));
+                        tags[key] = tag->value;
+                    }
+
+                    const size_t fileChannelCount =
+                        avAudioCodecParameters->ch_layout.nb_channels;
+                    const audio::DataType fileDataType =
+                        toAudioType(static_cast<AVSampleFormat>(
+                            avAudioCodecParameters->format));
+                    const size_t fileSampleRate =
+                        avAudioCodecParameters->sample_rate;
+                    audio::Info info;
+                    info.channelCount = fileChannelCount;
+                    info.dataType = fileDataType;
+                    info.sampleRate = fileSampleRate;
+                    _info.audioInfo.push_back(info);
                 }
             }
-
+            
             // If user selected specific track, use it.
             if (options.audioTrack >= 0)
             {
@@ -181,7 +206,7 @@ namespace tl
                 _info.channelCount = channelCount;
                 _info.dataType = dataType;
                 _info.sampleRate = sampleRate;
-                _info.trackCount = trackCount;
+                _info.trackCount = _info.audioInfo.size();
 
                 int64_t sampleCount = 0;
                 if (avAudioStream->duration != AV_NOPTS_VALUE)
@@ -206,7 +231,6 @@ namespace tl
                 }
 
                 otime::RationalTime timeReference = time::invalidTime;
-                image::Tags tags;
                 AVDictionaryEntry* tag = nullptr;
                 while ((tag = av_dict_get(_avFormatContext->metadata, "", tag, AV_DICT_IGNORE_SUFFIX)))
                 {
@@ -227,13 +251,6 @@ namespace tl
                     {
                         timeReference = otime::RationalTime(std::atoi(value.c_str()), sampleRate);
                     }
-                }
-                while ((tag = av_dict_get(avAudioStream->metadata, "", tag, AV_DICT_IGNORE_SUFFIX)))
-                {
-                    std::string key(string::Format("Audio Stream #{0}: {1}")
-                                    .arg(_avStream)
-                                    .arg(tag->key));
-                    tags[key] = tag->value;
                 }
 
                 otime::RationalTime startTime(0.0, sampleRate);
