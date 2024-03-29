@@ -15,6 +15,7 @@
 
 #include <array>
 #include <cstring>
+#include <sstream>
 
 namespace tl
 {
@@ -495,11 +496,20 @@ namespace tl
         {
             io::Info out = File(fileName, memory, _channelGrouping, _ignoreDisplayWindow, _logSystem.lock()).getInfo();
             float speed = _defaultSpeed;
-            const auto i = out.tags.find("Frame Per Second");
+            auto i = out.tags.find("Frame Per Second");
             if (i != out.tags.end())
             {
                 locale::SetAndRestore saved;
                 speed = std::stof(i->second);
+            }
+            i = out.tags.find("FramesPerSecond");
+            if (i != out.tags.end())
+            {
+                int num = 1;
+                int den = 24;
+                std::stringstream s(i->second);
+                s >> num >> den;
+                speed = static_cast<double>(num) / static_cast<double>(den);
             }
             out.videoTime = otime::TimeRange::range_from_start_end_time_inclusive(
                 otime::RationalTime(_startFrame, speed),
