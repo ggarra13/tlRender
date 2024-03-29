@@ -37,7 +37,7 @@ else()
         DEPENDS NASM
         GIT_REPOSITORY "https://code.videolan.org/videolan/x264.git"
         GIT_TAG ${X264_TAG}
-	
+	GIT_SHALLOW 1
         CONFIGURE_COMMAND ./configure ${X264_CONFIGURE_ARGS}
         BUILD_IN_SOURCE 1
     )
