@@ -10,7 +10,6 @@ ExternalProject_Add(
     LibRaw_cmake
     GIT_REPOSITORY "https://github.com/LibRaw/LibRaw-cmake"
     GIT_TAG ${LibRaw_cmake_TAG}
-    GIT_SHALLOW 1
     BUILD_IN_SOURCE 0
     BUILD_ALWAYS 0
     UPDATE_COMMAND ""
