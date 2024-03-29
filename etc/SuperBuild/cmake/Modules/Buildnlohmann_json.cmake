@@ -11,7 +11,7 @@ ExternalProject_Add(
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/nlohmann_json
     GIT_REPOSITORY ${nlohmann_json_GIT_REPOSITORY}
     GIT_TAG ${nlohmann_json_GIT_TAG}
-    GIT_SHALLOW 1
+    
     LIST_SEPARATOR |
     CMAKE_ARGS ${nlohmann_json_ARGS}
 )

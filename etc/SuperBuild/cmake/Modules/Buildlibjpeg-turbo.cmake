@@ -30,6 +30,6 @@ ExternalProject_Add(
     DEPENDS ${libjpeg-turbo_DEPS}
     GIT_REPOSITORY ${libjpeg-turbo_GIT_REPOSITORY}
     GIT_TAG ${libjpeg-turbo_GIT_TAG}
-    GIT_SHALLOW 1
+    
     LIST_SEPARATOR |
     CMAKE_ARGS ${libjpeg-turbo_ARGS})

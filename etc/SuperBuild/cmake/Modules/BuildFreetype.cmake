@@ -18,6 +18,6 @@ ExternalProject_Add(
     DEPENDS ZLIB
     GIT_REPOSITORY ${Freetype_GIT_REPOSITORY}
     GIT_TAG ${Freetype_GIT_TAG}
-    GIT_SHALLOW 1
+    
     LIST_SEPARATOR |
     CMAKE_ARGS ${Freetype_ARGS})

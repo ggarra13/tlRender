@@ -13,7 +13,7 @@ ExternalProject_Add(
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/ZLIB
     GIT_REPOSITORY ${ZLIB_GIT_REPOSITORY}
     GIT_TAG ${ZLIB_GIT_TAG}
-    GIT_SHALLOW 1
+    
     PATCH_COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_CURRENT_SOURCE_DIR}/ZLIB-patch/CMakeLists.txt
         ${CMAKE_CURRENT_BINARY_DIR}/ZLIB/src/ZLIB/CMakeLists.txt
