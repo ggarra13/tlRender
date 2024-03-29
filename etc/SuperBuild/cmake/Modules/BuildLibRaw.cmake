@@ -2,11 +2,14 @@ include(ExternalProject)
 
 
 set(LibRaw_URL "https://www.libraw.org/data/LibRaw-0.21.1.tar.gz")
+set(LibRaw_TAG )
+
+set(LibRaw_cmake_TAG 35127051d127f1e1e3dc0ec3a9f59fa48a244ddd)
 
 ExternalProject_Add(
     LibRaw_cmake
     GIT_REPOSITORY "https://github.com/LibRaw/LibRaw-cmake"
-    GIT_TAG master
+    GIT_TAG ${LibRaw_cmake_TAG}
     GIT_SHALLOW 1
     BUILD_IN_SOURCE 0
     BUILD_ALWAYS 0
