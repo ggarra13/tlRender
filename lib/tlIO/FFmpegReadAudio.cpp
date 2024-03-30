@@ -73,16 +73,20 @@ namespace tl
                     {
                         _avStream = i;
                     }
-                    
+
+                    std::string fileLanguage = "Default";
                     AVDictionaryEntry* tag = nullptr;
                     unsigned trackNumber = _info.audioInfo.size() + 1;
                     while ((tag = av_dict_get(avAudioStream->metadata, "",
                                               tag, AV_DICT_IGNORE_SUFFIX)))
                     {
-                        std::string key(string::Format("Audio Stream #{0}: {1}")
-                                        .arg(trackNumber)
-                                        .arg(tag->key));
-                        tags[key] = tag->value;
+                        const std::string& key = tag->key;
+                        if (key == "language")
+                            fileLanguage = tag->value;
+                        const std::string& audio_key(string::Format("Audio Stream #{0}: {1}")
+                                                     .arg(trackNumber)
+                                                     .arg(key));
+                        tags[audio_key] = tag->value;
                     }
 
                     const size_t fileChannelCount =
@@ -93,6 +97,16 @@ namespace tl
                     const size_t fileSampleRate =
                         avAudioCodecParameters->sample_rate;
                     audio::Info info;
+
+                    if (fileLanguage == "und")
+                    {
+                        fileLanguage = string::Format("Channels: {0} {1} {2}")
+                                       .arg(fileChannelCount)
+                                       .arg(fileDataType)
+                                       .arg(fileSampleRate);
+                    }
+                    
+                    info.name = fileLanguage;
                     info.channelCount = fileChannelCount;
                     info.dataType = fileDataType;
                     info.sampleRate = fileSampleRate;
