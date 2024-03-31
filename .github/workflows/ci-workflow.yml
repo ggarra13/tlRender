@@ -154,6 +154,9 @@ jobs:
 
     - name: Get machine name
       run: echo "Machine name $RUNNER_NAME"
+      
+    - name: Install ninja-build
+      run: brew install ninja
 
     # \bug DYLD_LIBRARY_PATH is not being set here?
     - name: Setup environment
@@ -212,6 +215,9 @@ jobs:
 
     - name: Get machine name
       run: echo "Machine name $RUNNER_NAME"
+      
+    - name: Install ninja-build
+      run: brew install ninja
 
     # \bug DYLD_LIBRARY_PATH is not being set here?
     - name: Setup environment

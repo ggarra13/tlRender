@@ -7,6 +7,7 @@ BUILD_TYPE=$1
 mkdir build
 cd build
 cmake ../etc/SuperBuild \
+    -G Ninja \
     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
     -DCMAKE_INSTALL_PREFIX=$PWD/install \
     -DCMAKE_PREFIX_PATH=$PWD/install \
