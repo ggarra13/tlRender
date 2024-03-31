@@ -268,7 +268,8 @@ jobs:
 
     - name: Get machine name
       shell: cmd
-      run: echo "Machine name: %RUNNER_NAME%"
+      run: |
+        echo "Machine name: %RUNNER_NAME%"
       
     # \bug Any spaces before the ">>" will be considered part of the path.
     - name: Setup environment
