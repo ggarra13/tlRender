@@ -15,7 +15,6 @@ namespace tl
         //! Background type.
         enum class Background
         {
-            Transparent,
             Solid,
             Checkers,
             Gradient,
@@ -29,7 +28,7 @@ namespace tl
         //! Background options.
         struct BackgroundOptions
         {
-            Background     type         = Background::Transparent;
+            Background     type         = Background::Solid;
             image::Color4f color0       = image::Color4f(0.F, 0.F, 0.F);
             image::Color4f color1       = image::Color4f(0.F, 0.F, 0.F);
             math::Size2i   checkersSize = math::Size2i(100, 100);
