@@ -213,18 +213,6 @@ jobs:
     - name: Get machine name
       run: echo "Machine name $RUNNER_NAME"
 
-    - name: Check machine health
-      id: check_machine
-      run: |
-        if [[ "$RUNNER_NAME" = "Github Actions 7" ]]; then
-          echo "Defective machine detected. Rerunning workflow."
-          echo "::set-output name=rerun::true"
-        fi
-
-    - name: Conditional rerun
-      if: steps.check_machine.outputs.rerun == 'true'
-      run: gh workflow rerun ${{ github.workflow }}
-
     # \bug DYLD_LIBRARY_PATH is not being set here?
     - name: Setup environment
       run: |
