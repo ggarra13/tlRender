@@ -28,6 +28,9 @@ namespace tl
             "Tile");
         TLRENDER_ENUM_SERIALIZE_IMPL(CompareMode);
 
+        TLRENDER_ENUM_IMPL(CompareTimeMode, "Relative", "Absolute");
+        TLRENDER_ENUM_SERIALIZE_IMPL(CompareTimeMode);
+
         std::vector<math::Box2i> getBoxes(CompareMode mode, const std::vector<image::Size>& sizes)
         {
             std::vector<math::Box2i> out;
@@ -144,6 +147,16 @@ namespace tl
             return out;
         }
 
+        std::vector<math::Box2i> getBoxes(CompareMode mode, const std::vector<VideoData>& videoData)
+        {
+            std::vector<image::Size> sizes;
+            for (const auto& i : videoData)
+            {
+                sizes.push_back(i.size);
+            }
+            return getBoxes(mode, sizes);
+        }
+
         math::Size2i getRenderSize(CompareMode mode, const std::vector<image::Size>& sizes)
         {
             math::Size2i out;
@@ -158,6 +171,43 @@ namespace tl
                 }
                 out.w = box.w();
                 out.h = box.h();
+            }
+            return out;
+        }
+
+        math::Size2i getRenderSize(CompareMode mode, const std::vector<VideoData>& videoData)
+        {
+            std::vector<image::Size> sizes;
+            for (const auto& i : videoData)
+            {
+                sizes.push_back(i.size);
+            }
+            return getRenderSize(mode, sizes);
+        }
+
+        otime::RationalTime getCompareTime(
+            const otime::RationalTime& sourceTime,
+            const otime::TimeRange& sourceTimeRange,
+            const otime::TimeRange& compareTimeRange,
+            CompareTimeMode mode)
+        {
+            otime::RationalTime out;
+            switch (mode)
+            {
+            case CompareTimeMode::Relative:
+            {
+                const otime::RationalTime relativeTime =
+                    sourceTime - sourceTimeRange.start_time();
+                const otime::RationalTime relativeTimeRescaled = time::floor(
+                    relativeTime.rescaled_to(compareTimeRange.duration().rate()));
+                out = compareTimeRange.start_time() + relativeTimeRescaled;
+                break;
+            }
+            case CompareTimeMode::Absolute:
+                out = time::floor(sourceTime.rescaled_to(
+                    compareTimeRange.duration().rate()));
+                break;
+            default: break;
             }
             return out;
         }

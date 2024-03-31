@@ -54,8 +54,8 @@ namespace tl
             return
                 "#version 410\n"
                 "\n"
-                "in vec3 vPos;\n"
-                "in vec4 vColor;\n"
+                "layout(location = 0) in vec3 vPos;\n"
+                "layout(location = 1) in vec4 vColor;\n"
                 "out vec4 fColor;\n"
                 "\n"
                 "struct Transform\n"
@@ -500,7 +500,6 @@ namespace tl
                 "        outColor.r = outColor.r * scale + offset;\n"
                 "        outColor.g = outColor.g * scale + offset;\n"
                 "        outColor.b = outColor.b * scale + offset;\n"
-                "        outColor.a = outColor.a * scale + offset;\n"
                 "    }\n"
                 "}\n").
                 arg(args[0]).

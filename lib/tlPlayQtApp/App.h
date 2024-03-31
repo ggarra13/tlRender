@@ -79,11 +79,8 @@ namespace tl
             //! Get the files model.
             const std::shared_ptr<play::FilesModel>& filesModel() const;
 
-            //! Get the timeline players.
-            const QVector<QSharedPointer<qt::TimelinePlayer> >& players() const;
-
-            //! Get the active timeline players.
-            QVector<QSharedPointer<qt::TimelinePlayer> > activePlayers() const;
+            //! Get the timeline player.
+            const QSharedPointer<qt::TimelinePlayer>& player() const;
 
             //! Get the recent files model.
             const std::shared_ptr<ui::RecentFilesModel>& recentFilesModel() const;
@@ -122,21 +119,13 @@ namespace tl
             void setSecondaryWindow(bool);
 
         Q_SIGNALS:
-            //! This signal is emitted when the active players are changed.
-            void activePlayersChanged(const QVector<QSharedPointer<qt::TimelinePlayer> >&);
+            //! This signal is emitted when the timeline player is changed.
+            void playerChanged(const QSharedPointer<qt::TimelinePlayer>&);
 
             //! This signal is emitted when the secondary window active state is changed.
             void secondaryWindowChanged(bool);
 
-        private Q_SLOTS:
-            void _filesCallback(const std::vector<std::shared_ptr<tl::play::FilesModelItem> >&);
-            void _activeCallback(const std::vector<std::shared_ptr<tl::play::FilesModelItem> >&);
-            void _mainWindowDestroyedCallback();
-            void _secondaryWindowDestroyedCallback();
-
         private:
-            void _timerCallback();
-
             void _fileLogInit(const std::string&);
             void _settingsInit(const std::string&);
             void _modelsInit();
@@ -146,10 +135,12 @@ namespace tl
             void _windowsInit();
 
             io::Options _ioOptions() const;
-            otime::RationalTime _cacheReadAhead() const;
-            otime::RationalTime _cacheReadBehind() const;
 
             void _settingsUpdate(const std::string&);
+            void _timerUpdate();
+            void _filesUpdate(const std::vector<std::shared_ptr<tl::play::FilesModelItem> >&);
+            void _activeUpdate(const std::vector<std::shared_ptr<tl::play::FilesModelItem> >&);
+            void _layersUpdate(const std::vector<int>&);
             void _cacheUpdate();
             void _viewUpdate(const math::Vector2i& pos, double zoom, bool frame);
             void _audioUpdate();

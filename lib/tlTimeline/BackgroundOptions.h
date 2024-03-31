@@ -18,6 +18,7 @@ namespace tl
             Transparent,
             Solid,
             Checkers,
+            Gradient,
 
             Count,
             First = Transparent

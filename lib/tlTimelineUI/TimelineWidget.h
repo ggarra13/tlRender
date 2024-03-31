@@ -117,6 +117,12 @@ namespace tl
             //! Sets a callback for moving items.
             void setMoveCallback(const std::function<void(const std::vector<timeline::MoveData>&)>&);
             
+            //! Get the frame markers.
+            const std::vector<otime::RationalTime>& getFrameMarkers() const;
+
+            //! Set the frame markers.
+            void setFrameMarkers(const std::vector<otime::RationalTime>&);
+
             void setGeometry(const math::Box2i&) override;
             void tickEvent(
                 bool,

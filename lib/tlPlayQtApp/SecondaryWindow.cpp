@@ -26,12 +26,12 @@ namespace tl
 
             qtwidget::TimelineViewport* viewport = nullptr;
 
-            std::shared_ptr<observer::ValueObserver<timeline::BackgroundOptions> > backgroundOptionsObserver;
             std::shared_ptr<observer::ValueObserver<timeline::OCIOOptions> > ocioOptionsObserver;
             std::shared_ptr<observer::ValueObserver<timeline::LUTOptions> > lutOptionsObserver;
             std::shared_ptr<observer::ValueObserver<timeline::ImageOptions> > imageOptionsObserver;
             std::shared_ptr<observer::ValueObserver<timeline::DisplayOptions> > displayOptionsObserver;
             std::shared_ptr<observer::ValueObserver<timeline::CompareOptions> > compareOptionsObserver;
+            std::shared_ptr<observer::ValueObserver<timeline::BackgroundOptions> > backgroundOptionsObserver;
         };
 
         SecondaryWindow::SecondaryWindow(
@@ -60,21 +60,14 @@ namespace tl
             const math::Size2i size = settings->getValue<math::Size2i>("SecondaryWindow/Size");
             resize(size.w, size.h);
 
-            p.viewport->setTimelinePlayers(app->activePlayers());
+            p.viewport->setPlayer(app->player());
 
             connect(
                 app,
-                &App::activePlayersChanged,
-                [this](const QVector<QSharedPointer<qt::TimelinePlayer> >& value)
+                &App::playerChanged,
+                [this](const QSharedPointer<qt::TimelinePlayer>& value)
                 {
-                    _p->viewport->setTimelinePlayers(value);
-                });
-
-            p.backgroundOptionsObserver = observer::ValueObserver<timeline::BackgroundOptions>::create(
-                app->viewportModel()->observeBackgroundOptions(),
-                [this](const timeline::BackgroundOptions& value)
-                {
-                    _p->viewport->setBackgroundOptions(value);
+                    _p->viewport->setPlayer(value);
                 });
 
             p.ocioOptionsObserver = observer::ValueObserver<timeline::OCIOOptions>::create(
@@ -110,6 +103,13 @@ namespace tl
                 [this](const timeline::CompareOptions& value)
                 {
                     _p->viewport->setCompareOptions(value);
+                });
+
+            p.backgroundOptionsObserver = observer::ValueObserver<timeline::BackgroundOptions>::create(
+                app->viewportModel()->observeBackgroundOptions(),
+                [this](const timeline::BackgroundOptions& value)
+                {
+                    _p->viewport->setBackgroundOptions(value);
                 });
         }
 

@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <tlTimeline/CompareOptions.h>
 #include <tlTimeline/PlayerOptions.h>
 #include <tlTimeline/Timeline.h>
 
@@ -191,9 +192,6 @@ namespace tl
             //! Go to the next frame.
             void frameNext();
 
-            //! Use the time from a separate timeline player.
-            void setExternalTime(const std::shared_ptr<Player>&);
-
             ///@}
 
             //! \name In/Out Points
@@ -222,6 +220,29 @@ namespace tl
 
             ///@}
 
+            //! \name Comparison
+            ///@{
+
+            //! Get the timelines for comparison.
+            const std::vector<std::shared_ptr<Timeline> >& getCompare() const;
+
+            //! Observe the timelines for comparison.
+            std::shared_ptr<observer::IList<std::shared_ptr<Timeline> > > observeCompare() const;
+
+            //! Set the timelines for comparison.
+            void setCompare(const std::vector<std::shared_ptr<Timeline> >&);
+
+            //! Get the comparison time mode.
+            CompareTimeMode getCompareTime() const;
+
+            //! Observe the comparison time mode.
+            std::shared_ptr<observer::IValue<CompareTimeMode> > observeCompareTime() const;
+
+            //! Set the comparison time mode.
+            void setCompareTime(CompareTimeMode);
+
+            ///@}
+
             //! \name I/O
             ///@{
 
@@ -239,11 +260,29 @@ namespace tl
             //! \name Video
             ///@{
 
+            //! Get the video layer.
+            int getVideoLayer() const;
+
+            //! Observer the video layer.
+            std::shared_ptr<observer::IValue<int> > observeVideoLayer() const;
+
+            //! Set the video layer.
+            void setVideoLayer(int);
+
+            //! Get the comparison video layers.
+            const std::vector<int>& getCompareVideoLayers() const;
+
+            //! Observe the comparison video layers.
+            std::shared_ptr<observer::IList<int> > observeCompareVideoLayers() const;
+
+            //! Set the comparison video layers.
+            void setCompareVideoLayers(const std::vector<int>&);
+
             //! Get the current video data.
-            const VideoData& getCurrentVideo() const;
+            const std::vector<VideoData>& getCurrentVideo() const;
 
             //! Observe the current video data.
-            std::shared_ptr<observer::IValue<VideoData> > observeCurrentVideo() const;
+            std::shared_ptr<observer::IList<VideoData> > observeCurrentVideo() const;
 
             ///@}
 

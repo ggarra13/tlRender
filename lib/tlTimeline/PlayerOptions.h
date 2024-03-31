@@ -22,18 +22,6 @@ namespace tl
         TLRENDER_ENUM(TimerMode);
         TLRENDER_ENUM_SERIALIZE(TimerMode);
 
-        //! External time mode.
-        enum class ExternalTimeMode
-        {
-            Relative,
-            Absolute,
-
-            Count,
-            First = Relative
-        };
-        TLRENDER_ENUM(ExternalTimeMode);
-        TLRENDER_ENUM_SERIALIZE(ExternalTimeMode);
-
         //! Timeline player cache options.
         struct PlayerCacheOptions
         {
@@ -68,19 +56,9 @@ namespace tl
             //! Current time.
             otime::RationalTime currentTime = time::invalidTime;
 
-            //! External time mode.
-            ExternalTimeMode externalTimeMode = ExternalTimeMode::Relative;
-
             bool operator == (const PlayerOptions&) const;
             bool operator != (const PlayerOptions&) const;
         };
-
-        //! Get an external time from a source time.
-        otime::RationalTime getExternalTime(
-            const otime::RationalTime& sourceTime,
-            const otime::TimeRange& sourceTimeRange,
-            const otime::TimeRange& externalTimeRange,
-            ExternalTimeMode);
     }
 }
 

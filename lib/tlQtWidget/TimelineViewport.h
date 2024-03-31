@@ -35,9 +35,6 @@ namespace tl
 
             virtual ~TimelineViewport();
 
-            //! Set the background options.
-            void setBackgroundOptions(const timeline::BackgroundOptions&);
-
             //! Set the OpenColorIO options.
             void setOCIOOptions(const timeline::OCIOOptions&);
 
@@ -53,8 +50,11 @@ namespace tl
             //! Set the comparison options.
             void setCompareOptions(const timeline::CompareOptions&);
 
-            //! Set the timeline players.
-            void setTimelinePlayers(const QVector<QSharedPointer<qt::TimelinePlayer> >&);
+            //! Set the background options.
+            void setBackgroundOptions(const timeline::BackgroundOptions&);
+
+            //! Set the timeline player.
+            void setPlayer(const QSharedPointer<qt::TimelinePlayer>&);
 
             //! Get the view position.
             const math::Vector2i& viewPos() const;
@@ -99,7 +99,7 @@ namespace tl
 
         private Q_SLOTS:
             void _playbackUpdate(timeline::Playback);
-            void _videoDataUpdate(const tl::timeline::VideoData&);
+            void _videoDataUpdate(const std::vector<tl::timeline::VideoData>&);
 
         protected:
             void initializeGL() override;

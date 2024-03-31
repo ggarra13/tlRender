@@ -33,9 +33,6 @@ namespace tl
                 const std::shared_ptr<system::Context>&,
                 const std::shared_ptr<IWidget>& parent = nullptr);
 
-            //! Set the background options.
-            void setBackgroundOptions(const timeline::BackgroundOptions&);
-
             //! Set the OpenColorIO options.
             void setOCIOOptions(const timeline::OCIOOptions&);
 
@@ -54,8 +51,11 @@ namespace tl
             //! Set the comparison callback.
             void setCompareCallback(const std::function<void(timeline::CompareOptions)>&);
 
-            //! Set the timeline players.
-            void setPlayers(const std::vector<std::shared_ptr<timeline::Player> >&);
+            //! Set the background options.
+            void setBackgroundOptions(const timeline::BackgroundOptions&);
+
+            //! Set the timeline player.
+            void setPlayer(const std::shared_ptr<timeline::Player>&);
 
             //! Get the view position.
             const math::Vector2i& getViewPos() const;
@@ -94,8 +94,17 @@ namespace tl
             void setViewPosAndZoomCallback(
                 const std::function<void(const math::Vector2i&, double)>&);
 
-            //! Set the dropped frames callback.
-            void setDroppedFramesCallback(const std::function<void(size_t)>&);
+            //! Get the frames per second.
+            double getFPS() const;
+
+            //! Observe the frames per second.
+            std::shared_ptr<observer::IValue<double> > observeFPS() const;
+
+            //! Get the number of dropped frames during playback.
+            size_t getDroppedFrames() const;
+
+            //! Observe the number of dropped frames during playback..
+            std::shared_ptr<observer::IValue<size_t> > observeDroppedFrames() const;
 
             void setGeometry(const math::Box2i&) override;
             void sizeHintEvent(const ui::SizeHintEvent&) override;
@@ -111,13 +120,11 @@ namespace tl
             void _releaseMouse() override;
 
         private:
-            math::Size2i _renderSize() const;
-            math::Vector2i _viewportCenter() const;
+            math::Size2i _getRenderSize() const;
+            math::Vector2i _getViewportCenter() const;
             void _frameView();
 
             void _droppedFramesUpdate(const otime::RationalTime&);
-
-            void _videoDataUpdate(const timeline::VideoData&, size_t);
 
             TLRENDER_PRIVATE();
         };

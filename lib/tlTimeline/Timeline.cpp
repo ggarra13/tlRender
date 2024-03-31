@@ -17,6 +17,11 @@ namespace tl
 {
     namespace timeline
     {
+        namespace
+        {
+            const size_t readCacheMax = 10;
+        }
+
         TLRENDER_ENUM_IMPL(
             FileSequenceAudio,
             "None",
@@ -45,8 +50,7 @@ namespace tl
         void Timeline::_init(
             const otio::SerializableObject::Retainer<otio::Timeline>& otioTimeline,
             const std::shared_ptr<system::Context>& context,
-            const Options& options,
-            const std::shared_ptr<ReadCache>& readCache)
+            const Options& options)
         {
             TLRENDER_P();
 
@@ -80,8 +84,8 @@ namespace tl
             }
 
             p.context = context;
-            p.options = options;
             p.otioTimeline = otioTimeline;
+            p.timelineChanges = observer::Value<bool>::create(false);
             const auto i = otioTimeline->metadata().find("tlRender");
             if (i != otioTimeline->metadata().end())
             {
@@ -102,9 +106,8 @@ namespace tl
                 catch (const std::exception&)
                 {}
             }
-            p.timelineChanges = observer::Value<bool>::create(false);
-            p.readCache = readCache ? readCache : ReadCache::create();
-            p.readCache->setMax(16);
+            p.options = options;
+            p.readCache.setMax(readCacheMax);
 
             // Get information about the timeline.
             p.timeRange = timeline::getTimeRange(p.otioTimeline.value);
@@ -250,15 +253,19 @@ namespace tl
             return _p->ioInfo;
         }
 
-        std::future<VideoData> Timeline::getVideo(
+        VideoRequest Timeline::getVideo(
             const otime::RationalTime& time,
             const io::Options& options)
         {
             TLRENDER_P();
+            (p.requestId)++;
             auto request = std::make_shared<Private::VideoRequest>();
+            request->id = p.requestId;
             request->time = time;
             request->options = options;
-            auto future = request->promise.get_future();
+            VideoRequest out;
+            out.id = p.requestId;
+            out.future = request->promise.get_future();
             bool valid = false;
             {
                 std::unique_lock<std::mutex> lock(p.mutex.mutex);
@@ -276,18 +283,22 @@ namespace tl
             {
                 request->promise.set_value(VideoData());
             }
-            return future;
+            return out;
         }
 
-        std::future<AudioData> Timeline::getAudio(
+        AudioRequest Timeline::getAudio(
             double seconds,
             const io::Options& options)
         {
             TLRENDER_P();
+            (p.requestId)++;
             auto request = std::make_shared<Private::AudioRequest>();
+            request->id = p.requestId;
             request->seconds = seconds;
             request->options = options;
-            auto future = request->promise.get_future();
+            AudioRequest out;
+            out.id = p.requestId;
+            out.future = request->promise.get_future();
             bool valid = false;
             {
                 std::unique_lock<std::mutex> lock(p.mutex.mutex);
@@ -305,28 +316,43 @@ namespace tl
             {
                 request->promise.set_value(AudioData());
             }
-            return future;
+            return out;
         }
 
-        void Timeline::cancelRequests()
+        void Timeline::cancelRequests(const std::vector<uint64_t>& ids)
         {
             TLRENDER_P();
-            std::list<std::shared_ptr<Private::VideoRequest> > videoRequests;
-            std::list<std::shared_ptr<Private::AudioRequest> > audioRequests;
+            std::unique_lock<std::mutex> lock(p.mutex.mutex);
             {
-                std::unique_lock<std::mutex> lock(p.mutex.mutex);
-                videoRequests = std::move(p.mutex.videoRequests);
-                audioRequests = std::move(p.mutex.audioRequests);
+                auto i = p.mutex.videoRequests.begin();
+                while (i != p.mutex.videoRequests.end())
+                {
+                    const auto j = std::find(ids.begin(), ids.end(), (*i)->id);
+                    if (j != ids.end())
+                    {
+                        i = p.mutex.videoRequests.erase(i);
+                    }
+                    else
+                    {
+                        ++i;
+                    }
+                }
             }
-            for (auto& request : videoRequests)
             {
-                request->promise.set_value(VideoData());
+                auto i = p.mutex.audioRequests.begin();
+                while (i != p.mutex.audioRequests.end())
+                {
+                    const auto j = std::find(ids.begin(), ids.end(), (*i)->id);
+                    if (j != ids.end())
+                    {
+                        i = p.mutex.audioRequests.erase(i);
+                    }
+                    else
+                    {
+                        ++i;
+                    }
+                }
             }
-            for (auto& request : audioRequests)
-            {
-                request->promise.set_value(AudioData());
-            }
-            p.readCache->cancelRequests();
         }
 
         void Timeline::tick()
@@ -340,7 +366,6 @@ namespace tl
             }
             if (otioTimelineChanged)
             {
-                cancelRequests();
                 p.timelineChanges->setAlways(true);
             }
         }

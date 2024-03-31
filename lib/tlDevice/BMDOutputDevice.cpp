@@ -46,10 +46,10 @@ namespace tl
             std::shared_ptr<observer::Value<math::Size2i> > size;
             std::shared_ptr<observer::Value<otime::RationalTime> > frameRate;
 
-            std::vector<std::shared_ptr<timeline::Player> > players;
+            std::shared_ptr<timeline::Player> player;
             std::shared_ptr<observer::ValueObserver<timeline::Playback> > playbackObserver;
             std::shared_ptr<observer::ValueObserver<otime::RationalTime> > currentTimeObserver;
-            std::vector<std::shared_ptr<observer::ValueObserver<timeline::VideoData> > > videoObservers;
+            std::shared_ptr<observer::ListObserver<timeline::VideoData> > videoObserver;
             std::shared_ptr<observer::ListObserver<timeline::AudioData> > audioObserver;
 
             std::shared_ptr<gl::GLFWWindow> window;
@@ -68,13 +68,13 @@ namespace tl
                 HDRMode hdrMode = HDRMode::FromFile;
                 image::HDRData hdrData;
                 timeline::CompareOptions compareOptions;
+                timeline::BackgroundOptions backgroundOptions;
                 math::Vector2i viewPos;
                 double viewZoom = 1.0;
                 bool frameView = true;
                 otime::TimeRange timeRange = time::invalidTimeRange;
                 timeline::Playback playback = timeline::Playback::Stop;
                 otime::RationalTime currentTime = time::invalidTime;
-                std::vector<image::Size> sizes;
                 std::vector<timeline::VideoData> videoData;
                 std::shared_ptr<image::Image> overlay;
                 float volume = 1.F;
@@ -97,7 +97,6 @@ namespace tl
                 double viewZoom = 1.0;
                 bool frameView = true;
                 otime::TimeRange timeRange = time::invalidTimeRange;
-                std::vector<image::Size> sizes;
                 std::vector<timeline::VideoData> videoData;
                 std::shared_ptr<image::Image> overlay;
 
@@ -327,6 +326,16 @@ namespace tl
             p.thread.cv.notify_one();
         }
 
+        void OutputDevice::setBackgroundOptions(const timeline::BackgroundOptions& value)
+        {
+            TLRENDER_P();
+            {
+                std::unique_lock<std::mutex> lock(p.mutex.mutex);
+                p.mutex.backgroundOptions = value;
+            }
+            p.thread.cv.notify_one();
+        }
+
         void OutputDevice::setOverlay(const std::shared_ptr<image::Image>& value)
         {
             TLRENDER_P();
@@ -367,24 +376,24 @@ namespace tl
             p.thread.cv.notify_one();
         }
 
-        void OutputDevice::setPlayers(const std::vector<std::shared_ptr<timeline::Player> >& value)
+        void OutputDevice::setPlayer(const std::shared_ptr<timeline::Player>& value)
         {
             TLRENDER_P();
-            if (value == p.players)
+            if (value == p.player)
                 return;
 
             p.playbackObserver.reset();
             p.currentTimeObserver.reset();
-            p.videoObservers.clear();
+            p.videoObserver.reset();
             p.audioObserver.reset();
 
-            p.players = value;
+            p.player = value;
 
-            if (!p.players.empty() && p.players.front())
+            if (p.player)
             {
                 auto weak = std::weak_ptr<OutputDevice>(shared_from_this());
                 p.playbackObserver = observer::ValueObserver<timeline::Playback>::create(
-                    p.players.front()->observePlayback(),
+                    p.player->observePlayback(),
                     [weak](timeline::Playback value)
                     {
                         if (auto device = weak.lock())
@@ -395,9 +404,10 @@ namespace tl
                             }
                             device->_p->thread.cv.notify_one();
                         }
-                    });
+                    },
+                    observer::CallbackAction::Suppress);
                 p.currentTimeObserver = observer::ValueObserver<otime::RationalTime>::create(
-                    p.players.front()->observeCurrentTime(),
+                    p.player->observeCurrentTime(),
                     [weak](const otime::RationalTime& value)
                     {
                         if (auto device = weak.lock())
@@ -408,31 +418,24 @@ namespace tl
                             }
                             device->_p->thread.cv.notify_one();
                         }
-                    });
-                for (size_t i = 0; i < p.players.size(); ++i)
-                {
-                    if (p.players[i])
+                    },
+                    observer::CallbackAction::Suppress);
+                p.videoObserver = observer::ListObserver<timeline::VideoData>::create(
+                    p.player->observeCurrentVideo(),
+                    [weak](const std::vector<timeline::VideoData>& value)
                     {
-                        p.videoObservers.push_back(observer::ValueObserver<timeline::VideoData>::create(
-                            p.players[i]->observeCurrentVideo(),
-                            [weak, i](const timeline::VideoData& value)
+                        if (auto device = weak.lock())
+                        {
                             {
-                                if (auto device = weak.lock())
-                                {
-                                    {
-                                        std::unique_lock<std::mutex> lock(device->_p->mutex.mutex);
-                                        if (i < device->_p->mutex.videoData.size())
-                                        {
-                                            device->_p->mutex.videoData[i] = value;
-                                        }
-                                    }
-                                    device->_p->thread.cv.notify_one();
-                                }
-                            }));
-                    }
-                }
+                                std::unique_lock<std::mutex> lock(device->_p->mutex.mutex);
+                                device->_p->mutex.videoData = value;
+                            }
+                            device->_p->thread.cv.notify_one();
+                        }
+                    },
+                    observer::CallbackAction::Suppress);
                 p.audioObserver = observer::ListObserver<timeline::AudioData>::create(
-                    p.players.front()->observeCurrentAudio(),
+                    p.player->observeCurrentAudio(),
                     [weak](const std::vector<timeline::AudioData>& value)
                     {
                         if (auto device = weak.lock())
@@ -443,16 +446,17 @@ namespace tl
                             }
                             device->_p->thread.cv.notify_one();
                         }
-                    });
+                    },
+                    observer::CallbackAction::Suppress);
             }
 
             {
                 std::unique_lock<std::mutex> lock(p.mutex.mutex);
-                if (!p.players.empty() && p.players.front())
+                if (p.player)
                 {
-                    p.mutex.timeRange = p.players.front()->getTimeRange();
-                    p.mutex.playback = p.players.front()->getPlayback();
-                    p.mutex.currentTime = p.players.front()->getCurrentTime();
+                    p.mutex.timeRange = p.player->getTimeRange();
+                    p.mutex.playback = p.player->getPlayback();
+                    p.mutex.currentTime = p.player->getCurrentTime();
                 }
                 else
                 {
@@ -460,24 +464,12 @@ namespace tl
                     p.mutex.playback = timeline::Playback::Stop;
                     p.mutex.currentTime = time::invalidTime;
                 }
-                p.mutex.sizes.clear();
                 p.mutex.videoData.clear();
-                for (const auto& player : p.players)
-                {
-                    if (player)
-                    {
-                        const auto& ioInfo = player->getIOInfo();
-                        if (!ioInfo.video.empty())
-                        {
-                            p.mutex.sizes.push_back(ioInfo.video[0].size);
-                        }
-                        p.mutex.videoData.push_back(player->getCurrentVideo());
-                    }
-                }
                 p.mutex.audioData.clear();
-                if (!p.players.empty() && p.players.front())
+                if (p.player)
                 {
-                    p.mutex.audioData = p.players.front()->getCurrentAudio();
+                    p.mutex.videoData = p.player->getCurrentVideo();
+                    p.mutex.audioData = p.player->getCurrentAudio();
                 }
             }
         }
@@ -510,6 +502,7 @@ namespace tl
             std::vector<timeline::ImageOptions> imageOptions;
             std::vector<timeline::DisplayOptions> displayOptions;
             timeline::CompareOptions compareOptions;
+            timeline::BackgroundOptions backgroundOptions;
             timeline::Playback playback = timeline::Playback::Stop;
             otime::RationalTime currentTime = time::invalidTime;
             float volume = 1.F;
@@ -536,7 +529,7 @@ namespace tl
                         timeout,
                         [this, config, enabled,
                         ocioOptions, lutOptions, imageOptions,
-                        displayOptions, compareOptions,
+                        displayOptions, compareOptions, backgroundOptions,
                         playback, currentTime,
                         volume, mute, audioOffset, audioData]
                         {
@@ -550,13 +543,13 @@ namespace tl
                                 _p->thread.hdrMode != _p->mutex.hdrMode ||
                                 _p->thread.hdrData != _p->mutex.hdrData ||
                                 compareOptions != _p->mutex.compareOptions ||
+                                backgroundOptions != _p->mutex.backgroundOptions ||
                                 _p->thread.viewPos != _p->mutex.viewPos ||
                                 _p->thread.viewZoom != _p->mutex.viewZoom ||
                                 _p->thread.frameView != _p->mutex.frameView ||
                                 _p->thread.timeRange != _p->mutex.timeRange ||
                                 playback != _p->mutex.playback ||
                                 currentTime != _p->mutex.currentTime ||
-                                _p->thread.sizes != _p->mutex.sizes ||
                                 _p->thread.videoData != _p->mutex.videoData ||
                                 _p->thread.overlay != _p->mutex.overlay ||
                                 volume != _p->mutex.volume ||
@@ -584,10 +577,10 @@ namespace tl
                             p.thread.hdrMode != p.mutex.hdrMode ||
                             p.thread.hdrData != p.mutex.hdrData ||
                             compareOptions != p.mutex.compareOptions ||
+                            backgroundOptions != p.mutex.backgroundOptions ||
                             p.thread.viewPos != p.mutex.viewPos ||
                             p.thread.viewZoom != p.mutex.viewZoom ||
                             p.thread.frameView != p.mutex.frameView ||
-                            p.thread.sizes != p.mutex.sizes ||
                             p.thread.videoData != p.mutex.videoData ||
                             p.thread.overlay != p.mutex.overlay;
                         ocioOptions = p.mutex.ocioOptions;
@@ -597,10 +590,10 @@ namespace tl
                         p.thread.hdrMode = p.mutex.hdrMode;
                         p.thread.hdrData = p.mutex.hdrData;
                         compareOptions = p.mutex.compareOptions;
+                        backgroundOptions = p.mutex.backgroundOptions;
                         p.thread.viewPos = p.mutex.viewPos;
                         p.thread.viewZoom = p.mutex.viewZoom;
                         p.thread.frameView = p.mutex.frameView;
-                        p.thread.sizes = p.mutex.sizes;
                         p.thread.videoData = p.mutex.videoData;
                         p.thread.overlay = p.mutex.overlay;
 
@@ -671,7 +664,8 @@ namespace tl
                             lutOptions,
                             imageOptions,
                             displayOptions,
-                            compareOptions);
+                            compareOptions,
+                            backgroundOptions);
                     }
                     catch (const std::exception& e)
                     {
@@ -916,14 +910,15 @@ namespace tl
             const timeline::LUTOptions& lutOptions,
             const std::vector<timeline::ImageOptions>& imageOptions,
             const std::vector<timeline::DisplayOptions>& displayOptions,
-            const timeline::CompareOptions& compareOptions)
+            const timeline::CompareOptions& compareOptions,
+            const timeline::BackgroundOptions& backgroundOptions)
         {
             TLRENDER_P();
 
             // Create the offscreen buffer.
             const math::Size2i renderSize = timeline::getRenderSize(
                 compareOptions.mode,
-                p.thread.sizes);
+                p.thread.videoData);
             gl::OffscreenBufferOptions offscreenBufferOptions;
             offscreenBufferOptions.colorType = getOffscreenType(p.thread.outputPixelType);
             if (!displayOptions.empty())
@@ -971,13 +966,16 @@ namespace tl
                     -1.F,
                     1.F);
                 p.thread.render->setTransform(pm * vm);
-
-                p.thread.render->drawVideo(
-                    p.thread.videoData,
-                    timeline::getBoxes(compareOptions.mode, p.thread.sizes),
-                    imageOptions,
-                    displayOptions,
-                    compareOptions);
+                if (!p.thread.videoData.empty())
+                {
+                    p.thread.render->drawVideo(
+                        p.thread.videoData,
+                        timeline::getBoxes(compareOptions.mode, p.thread.videoData),
+                        imageOptions,
+                        displayOptions,
+                        compareOptions,
+                        backgroundOptions);
+                }
                 if (p.thread.overlay)
                 {
                     p.thread.render->setTransform(pm);

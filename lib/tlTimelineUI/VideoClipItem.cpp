@@ -9,6 +9,8 @@
 #include <tlTimeline/RenderUtil.h>
 #include <tlTimeline/Util.h>
 
+#include <tlIO/Cache.h>
+
 #include <tlCore/Assert.h>
 #include <tlCore/StringFormat.h>
 
@@ -18,7 +20,7 @@ namespace tl
     {
         struct VideoClipItem::Private
         {
-            io::Options ioOptions;
+            std::string clipName;
             file::Path path;
             std::vector<file::MemoryRead> memoryRead;
             std::shared_ptr<ui::ThumbnailGenerator> thumbnailGenerator;
@@ -62,7 +64,7 @@ namespace tl
                 parent);
             TLRENDER_P();
 
-            p.ioOptions["USD/cameraName"] = clip->name();
+            p.clipName = clip->name();
             p.path = path;
             p.memoryRead = timeline::getMemoryRead(clip->media_reference());
             p.thumbnailGenerator = thumbnailGenerator;
@@ -151,7 +153,9 @@ namespace tl
                     i->second.future.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
                 {
                     const auto image = i->second.future.get();
-                    _data->thumbnails[_getThumbnailKey(i->first, p.ioOptions)] = image;
+                    io::Options ioOptions = _data->options.ioOptions;
+                    ioOptions["USD/cameraName"] = p.clipName;
+                    _data->thumbnails[io::getCacheKey(p.path, i->first, ioOptions)] = image;
                     i = p.thumbnailRequests.erase(i);
                     _updates |= ui::Update::Draw;
                 }
@@ -203,22 +207,6 @@ namespace tl
             {
                 _drawThumbnails(drawRect, event);
             }
-        }
-
-        std::string VideoClipItem::_getThumbnailKey(
-            const otime::RationalTime& time,
-            const io::Options& ioOptions) const
-        {
-            TLRENDER_P();
-            std::vector<std::string> s;
-            s.push_back(p.path.get());
-            s.push_back(string::Format("{0}").arg(time));
-            for (const auto& i : ioOptions)
-            {
-                s.push_back(i.first);
-                s.push_back(i.second);
-            }
-            return string::join(s, '_');
         }
 
         void VideoClipItem::_drawThumbnails(
@@ -284,7 +272,10 @@ namespace tl
                             _trimmedRange,
                             p.ioInfo->videoTime.duration().rate());
 
-                        const auto i = _data->thumbnails.find(_getThumbnailKey(mediaTime, p.ioOptions));
+                        io::Options ioOptions = _data->options.ioOptions;
+                        ioOptions["USD/cameraName"] = p.clipName;
+                        const auto i = _data->thumbnails.find(
+                            io::getCacheKey(p.path, mediaTime, ioOptions));
                         if (i != _data->thumbnails.end())
                         {
                             if (i->second)
@@ -302,7 +293,7 @@ namespace tl
                                     p.memoryRead,
                                     _options.thumbnailHeight,
                                     mediaTime,
-                                    p.ioOptions);
+                                    ioOptions);
                             }
                         }
                     }
