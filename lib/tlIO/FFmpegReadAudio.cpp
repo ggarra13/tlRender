@@ -97,14 +97,6 @@ namespace tl
                     const size_t fileSampleRate =
                         avAudioCodecParameters->sample_rate;
                     audio::Info info;
-
-                    if (fileLanguage == "und")
-                    {
-                        fileLanguage = string::Format("Channels: {0} {1} {2}")
-                                       .arg(fileChannelCount)
-                                       .arg(fileDataType)
-                                       .arg(fileSampleRate);
-                    }
                     
                     info.name = fileLanguage;
                     info.channelCount = fileChannelCount;
