@@ -38,6 +38,9 @@ jobs:
       with:
         python-version: '3.11'
 
+    - name: Get machine name
+      run: echo "Machine name $RUNNER_NAME"
+
     - name: Setup environment
       run: |
         echo "$PWD/build/install/bin" >> $GITHUB_PATH
@@ -149,6 +152,9 @@ jobs:
       with:
         python-version: '3.11'
 
+    - name: Get machine name
+      run: echo "Machine name $RUNNER_NAME"
+
     # \bug DYLD_LIBRARY_PATH is not being set here?
     - name: Setup environment
       run: |
@@ -204,6 +210,9 @@ jobs:
       with:
         python-version: '3.11'
 
+    - name: Get machine name
+      run: echo "Machine name $RUNNER_NAME"
+        
     # \bug DYLD_LIBRARY_PATH is not being set here?
     - name: Setup environment
       run: |
@@ -257,6 +266,10 @@ jobs:
         python-version: '3.11'
     - uses: ilammy/setup-nasm@v1
 
+    - name: Get machine name
+      shell: cmd
+      run: echo "Machine name: %RUNNER_NAME%"
+      
     # \bug Any spaces before the ">>" will be considered part of the path.
     - name: Setup environment
       shell: cmd
