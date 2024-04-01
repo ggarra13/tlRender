@@ -30,6 +30,7 @@ namespace tl
             timeline::PlayerCacheInfo cacheInfo;
             bool editable = false;
             bool stopOnScrub = true;
+            std::function<void(const std::vector<timeline::MoveData>&)> moveCallback;
             std::vector<int> frameMarkers;
             std::shared_ptr<ui::ThumbnailGenerator> thumbnailGenerator;
 

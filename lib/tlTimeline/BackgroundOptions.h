@@ -15,6 +15,7 @@ namespace tl
         //! Background type.
         enum class Background
         {
+            Transparent,
             Solid,
             Checkers,
             Gradient,
