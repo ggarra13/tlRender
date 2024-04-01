@@ -26,7 +26,7 @@ namespace tl
             float mouseWheelScale = 1.1F;
             double scale = 500.0;
             std::shared_ptr<observer::Value<ItemOptions> > itemOptions;
-            std::vector<otime::RationalTime> frameMarkers;
+            std::vector<int> frameMarkers;
             bool sizeInit = true;
 
             std::shared_ptr<gl::GLFWWindow> window;
@@ -298,12 +298,12 @@ namespace tl
             }
         }
 
-        const std::vector<otime::RationalTime>& TimelineWidget::getFrameMarkers() const
+        const std::vector<int>& TimelineWidget::getFrameMarkers() const
         {
             return _p->frameMarkers;
         }
 
-        void TimelineWidget::setFrameMarkers(const std::vector<otime::RationalTime>& value)
+        void TimelineWidget::setFrameMarkers(const std::vector<int>& value)
         {
             TLRENDER_P();
             if (value == p.frameMarkers)
