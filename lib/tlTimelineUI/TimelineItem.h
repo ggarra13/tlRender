@@ -75,7 +75,7 @@ namespace tl
             void setMoveCallback(const std::function<void(const std::vector<timeline::MoveData>&)>&);
             
             //! Set the frame markers.
-            void setFrameMarkers(const std::vector<otime::RationalTime>&);
+            void setFrameMarkers(const std::vector<int>&);
 
             void setOptions(const ItemOptions&) override;
 

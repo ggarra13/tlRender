@@ -30,8 +30,7 @@ namespace tl
             timeline::PlayerCacheInfo cacheInfo;
             bool editable = false;
             bool stopOnScrub = true;
-            std::function<void(const std::vector<timeline::MoveData>&)> moveCallback;
-            std::vector<otime::RationalTime> frameMarkers;
+            std::vector<int> frameMarkers;
             std::shared_ptr<ui::ThumbnailGenerator> thumbnailGenerator;
 
             struct Track
@@ -307,7 +306,7 @@ namespace tl
             _p->stopOnScrub = value;
         }
 
-        void TimelineItem::setFrameMarkers(const std::vector<otime::RationalTime>& value)
+        void TimelineItem::setFrameMarkers(const std::vector<int>& value)
         {
             TLRENDER_P();
             if (value == p.frameMarkers)
@@ -880,10 +879,11 @@ namespace tl
         {
             TLRENDER_P();
             const math::Box2i& g = _geometry;
+            const double rate = _timeRange.duration().rate();
             for (const auto& frameMarker : p.frameMarkers)
             {
                 const math::Box2i g2(
-                    _timeToPos(frameMarker),
+                    _timeToPos(otime::RationalTime(frameMarker, rate)),
                     p.size.scrollPos.y +
                     g.min.y,
                     p.size.border * 2,
