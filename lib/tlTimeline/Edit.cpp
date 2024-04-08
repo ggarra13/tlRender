@@ -252,7 +252,7 @@ namespace tl
             //! copy them to the new timeline. Would it be better to make a
             //! deep copy of the timeline to avoid this?
             std::vector<std::shared_ptr<IMemoryData> > memoryData;
-            for (const auto& clip : timeline->clip_if())
+            for (const auto& clip : timeline->find_clips())
             {
                 if (auto ref = dynamic_cast<ZipMemoryReference*>(clip->media_reference()))
                 {
@@ -290,7 +290,7 @@ namespace tl
             otio::SerializableObject::Retainer<otio::Timeline> out(
                 dynamic_cast<otio::Timeline*>(otio::Timeline::from_json_string(s)));
 
-            for (const auto& clip : out->clip_if())
+            for (const auto& clip : out->find_clips())
             {
                 if (dynamic_cast<RawMemoryReference*>(clip->media_reference()) ||
                     dynamic_cast<SharedMemoryReference*>(clip->media_reference()) ||
