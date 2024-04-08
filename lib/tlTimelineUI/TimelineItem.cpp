@@ -7,7 +7,6 @@
 #include <tlTimelineUI/AudioClipItem.h>
 #include <tlTimelineUI/GapItem.h>
 #include <tlTimelineUI/VideoClipItem.h>
-#include <tlTimelineUI/TransitionItem.h>
 
 #include <tlUI/DrawUtil.h>
 #include <tlUI/ScrollArea.h>
@@ -296,9 +295,10 @@ namespace tl
                         sizeHint.w,
                         track.clipHeight));
                 }
+
                 if (visible)
                 {
-                    // y += track.size.h; // darby
+                    y += track.size.h;
 
                     int transitionH = 0;
                     for (const auto& item : track.transitions)
@@ -308,13 +308,13 @@ namespace tl
                         item->setGeometry(math::Box2i(
                                               _geometry.min.x +
                                               timeRange.start_time().rescaled_to(1.0).value() * _scale,
-                                              y + std::max(labelSizeHint.h, durationSizeHint.h),
+                                              y,
                                               sizeHint.w,
                                               sizeHint.h));
-                        transitionH = sizeHint.h; // + durationSizeHint.h;
+                        transitionH = sizeHint.h;
                     }
                 
-                    y += labelSizeHint.h + transitionH;
+                    y += transitionH;
                 
                 }
             }
