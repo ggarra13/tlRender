@@ -116,7 +116,6 @@ namespace tl
                                 break;
                             default: break;
                             }
-                            track.otioIndexes.push_back(otioIndex);
                         }
                         else if (auto gap = otio::dynamic_retainer_cast<otio::Gap>(child))
                         {
@@ -130,7 +129,6 @@ namespace tl
                                 itemData,
                                 context,
                                 shared_from_this()));
-                            track.otioIndexes.push_back(otioIndex);
                         }
                         else if (auto transition = otio::dynamic_retainer_cast<otio::Transition>(child))
                         {
@@ -142,7 +140,6 @@ namespace tl
                                 context,
                                 shared_from_this()));
                         }
-                        ++otioIndex;
                     }
 
                     p.tracks.push_back(track);
@@ -301,7 +298,24 @@ namespace tl
                 }
                 if (visible)
                 {
-                    y += track.size.h;
+                    // y += track.size.h; // darby
+
+                    int transitionH = 0;
+                    for (const auto& item : track.transitions)
+                    {
+                        const otime::TimeRange& timeRange = item->getTimeRange();
+                        const math::Size2i& sizeHint = item->getSizeHint();
+                        item->setGeometry(math::Box2i(
+                                              _geometry.min.x +
+                                              timeRange.start_time().rescaled_to(1.0).value() * _scale,
+                                              y + std::max(labelSizeHint.h, durationSizeHint.h),
+                                              sizeHint.w,
+                                              sizeHint.h));
+                        transitionH = sizeHint.h; // + durationSizeHint.h;
+                    }
+                
+                    y += labelSizeHint.h + transitionH;
+                
                 }
             }
 
@@ -546,14 +560,7 @@ namespace tl
                 for (const auto& item : p.mouse.items)
                 {
                     const int track = dropTarget.track + (item->track - p.mouse.items[0]->track);
-                    const int fromTrack = item->track;
-                    const int fromIndex = item->index;
-                    const int fromOtioIndex = p.tracks[fromTrack].otioIndexes[fromIndex];
-                    const int toOtioIndex =
-                        p.tracks[track].otioIndexes[dropTarget.index];
-                    moveData.push_back(
-                        {fromTrack, fromIndex, fromOtioIndex, track,
-                         dropTarget.index});
+                    moveData.push_back({ item->track, item->index, track, dropTarget.index });
                     item->p->hide();
                 }
                 if (p.moveCallback)
