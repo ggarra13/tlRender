@@ -35,6 +35,25 @@ namespace tl
 
             virtual ~TimelineViewport();
 
+            //! Get the offscreen color buffer type.
+            image::PixelType offscreenColorType() const;
+
+            //! Get the view position.
+            const math::Vector2i& viewPos() const;
+
+            //! Get the view zoom.
+            double viewZoom() const;
+
+            //! Get whether the view is framed.
+            bool hasFrameView() const;
+
+            //! Get the frames per second.
+            double getFPS() const;
+
+            //! Get the number of dropped frames during playback.
+            size_t getDroppedFrames() const;
+
+        public Q_SLOTS:
             //! Set the OpenColorIO options.
             void setOCIOOptions(const timeline::OCIOOptions&);
 
@@ -53,19 +72,12 @@ namespace tl
             //! Set the background options.
             void setBackgroundOptions(const timeline::BackgroundOptions&);
 
+            //! Set the offscreen color buffer type.
+            void setOffscreenColorType(image::PixelType);
+
             //! Set the timeline player.
             void setPlayer(const QSharedPointer<qt::TimelinePlayer>&);
 
-            //! Get the view position.
-            const math::Vector2i& viewPos() const;
-
-            //! Get the view zoom.
-            double viewZoom() const;
-
-            //! Get whether the view is framed.
-            bool hasFrameView() const;
-
-        public Q_SLOTS:
             //! Set the view position and zoom.
             void setViewPosAndZoom(const tl::math::Vector2i&, double);
 
@@ -93,6 +105,9 @@ namespace tl
 
             //! This signal is emitted when the frame view is changed.
             void frameViewChanged(bool);
+
+            //! This signal is emitetd when the FPS is changed.
+            void fpsChanged(double);
 
             //! This signal is emitted when the dropped frames count is changed.
             void droppedFramesChanged(bool);

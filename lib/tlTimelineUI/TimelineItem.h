@@ -77,6 +77,9 @@ namespace tl
             //! Set the frame markers.
             void setFrameMarkers(const std::vector<int>&);
 
+            //! Get the minimum height.
+            int getMinimumHeight() const;
+
             void setOptions(const ItemOptions&) override;
 
             void setGeometry(const math::Box2i&) override;
@@ -95,6 +98,8 @@ namespace tl
             void _releaseMouse() override;
 
         private:
+            bool _isTrackVisible(int) const;
+
             void _drawInOutPoints(
                 const math::Box2i&,
                 const ui::DrawEvent&);
@@ -120,6 +125,7 @@ namespace tl
                 const math::Box2i&,
                 const ui::DrawEvent&);
 
+            void _tracksUpdate();
             void _textUpdate();
 
             TLRENDER_PRIVATE();
