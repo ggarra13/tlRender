@@ -26,7 +26,7 @@ namespace tl
             float mouseWheelScale = 1.1F;
             double scale = 500.0;
             std::shared_ptr<observer::Value<ItemOptions> > itemOptions;
-            std::vector<otime::RationalTime> frameMarkers;
+            std::vector<int> frameMarkers;
             bool sizeInit = true;
 
             std::shared_ptr<gl::GLFWWindow> window;
@@ -298,12 +298,12 @@ namespace tl
             }
         }
 
-        const std::vector<otime::RationalTime>& TimelineWidget::getFrameMarkers() const
+        const std::vector<int>& TimelineWidget::getFrameMarkers() const
         {
             return _p->frameMarkers;
         }
 
-        void TimelineWidget::setFrameMarkers(const std::vector<otime::RationalTime>& value)
+        void TimelineWidget::setFrameMarkers(const std::vector<int>& value)
         {
             TLRENDER_P();
             if (value == p.frameMarkers)
@@ -340,11 +340,11 @@ namespace tl
         {
             IWidget::sizeHintEvent(event);
             TLRENDER_P();
+            const int b = event.style->getSizeRole(ui::SizeRole::Border, _displayScale);
             const int sa = event.style->getSizeRole(ui::SizeRole::ScrollArea, _displayScale);
             _sizeHint.w = sa;
-            //! \bug Hard-coded size hint.
-            //_sizeHint.h = 226;
-            _sizeHint.h = 376;
+            //! \bug This assumes the scroll bars are hidden.
+            _sizeHint.h = p.timelineItem ? (p.timelineItem->getMinimumHeight() + b * 2) : sa;
         }
 
         void TimelineWidget::mouseMoveEvent(ui::MouseMoveEvent& event)

@@ -260,11 +260,23 @@ namespace tl
             return _p->timelineWidget->getItemOptions();
         }
 
+        const std::vector<int>& TimelineWidget::frameMarkers() const
+        {
+            return _p->timelineWidget->getFrameMarkers();
+        }
+
         QSize TimelineWidget::minimumSizeHint() const
         {
-            //! \bug Hard-coded size hint.
-            //return QSize(100, 113);
-            return QSize(100, 188);
+            math::Size2i sizeHint = _p->timelineWidget->getSizeHint();
+            const float devicePixelRatio = window()->devicePixelRatio();
+            sizeHint.w /= devicePixelRatio;
+            sizeHint.h /= devicePixelRatio;
+            if (!sizeHint.isValid())
+            {
+                sizeHint.w = 1;
+                sizeHint.h = 1;
+            }
+            return QSize(sizeHint.w, sizeHint.h);
         }
 
         void TimelineWidget::setEditable(bool value)
@@ -300,6 +312,11 @@ namespace tl
         void TimelineWidget::setItemOptions(const timelineui::ItemOptions& value)
         {
             _p->timelineWidget->setItemOptions(value);
+        }
+
+        void TimelineWidget::setFrameMarkers(const std::vector<int>& value)
+        {
+            _p->timelineWidget->setFrameMarkers(value);
         }
 
         void TimelineWidget::initializeGL()
@@ -378,7 +395,7 @@ namespace tl
                     if (renderSize.isValid())
                     {
                         gl::OffscreenBufferOptions offscreenBufferOptions;
-                        offscreenBufferOptions.colorType = gl::offscreenColorDefault;
+                        offscreenBufferOptions.colorType = image::PixelType::RGBA_U8;
                         if (gl::doCreate(p.buffer, renderSize, offscreenBufferOptions))
                         {
                             p.buffer = gl::OffscreenBuffer::create(renderSize, offscreenBufferOptions);
@@ -703,6 +720,8 @@ namespace tl
                     _p->timelineWindow->setGeometry(geometry);
 
                     _clipEvent(_p->timelineWindow, geometry, false);
+
+                    updateGeometry();
                 }
 
                 if (_getDrawUpdate(_p->timelineWindow))
