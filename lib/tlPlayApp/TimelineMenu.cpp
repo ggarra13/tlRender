@@ -46,12 +46,14 @@ namespace tl
             addItem(p.actions["FrameView"]);
             addItem(p.actions["StopOnScrub"]);
             addDivider();
+            addItem(p.actions["FirstTrack"]);
+            addItem(p.actions["TrackInfo"]);
+            addItem(p.actions["ClipInfo"]);
             addItem(p.actions["Thumbnails"]);
             p.thumbnailsSizeMenu = addSubMenu("Thumbnails Size");
             p.thumbnailsSizeMenu->addItem(p.actions["Thumbnails100"]);
             p.thumbnailsSizeMenu->addItem(p.actions["Thumbnails200"]);
             p.thumbnailsSizeMenu->addItem(p.actions["Thumbnails300"]);
-            addDivider();
             addItem(p.actions["Transitions"]);
             addItem(p.actions["Markers"]);
 
@@ -87,10 +89,13 @@ namespace tl
                 [this](const timelineui::ItemOptions& value)
                 {
                     setItemChecked(_p->actions["EditAssociatedClips"], value.editAssociatedClips);
+                    setItemChecked(_p->actions["FirstTrack"], !value.tracks.empty());
+                    setItemChecked(_p->actions["TrackInfo"], value.trackInfo);
+                    setItemChecked(_p->actions["ClipInfo"], value.clipInfo);
                     setItemChecked(_p->actions["Thumbnails"], value.thumbnails);
                     _thumbnailsSizeUpdate();
-                    setItemChecked(_p->actions["Transitions"], value.showTransitions);
-                    setItemChecked(_p->actions["Markers"], value.showMarkers);
+                    setItemChecked(_p->actions["Transitions"], value.transitions);
+                    setItemChecked(_p->actions["Markers"], value.markers);
                 });
         }
 
