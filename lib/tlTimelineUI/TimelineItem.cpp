@@ -58,6 +58,7 @@ namespace tl
                 if (auto otioTrack = otio::dynamic_retainer_cast<otio::Track>(child))
                 {
                     Private::Track track;
+                    int otioIndex = 0;
                     track.index = p.tracks.size();
                     std::string trackLabel = otioTrack->name();
                     if (otio::Track::Kind::video == otioTrack->kind())
@@ -115,6 +116,7 @@ namespace tl
                                 break;
                             default: break;
                             }
+                            track.otioIndexes.push_back(otioIndex);
                         }
                         else if (auto gap = otio::dynamic_retainer_cast<otio::Gap>(child))
                         {
@@ -128,6 +130,7 @@ namespace tl
                                 itemData,
                                 context,
                                 shared_from_this()));
+                            track.otioIndexes.push_back(otioIndex);
                         }
                         else if (auto transition = otio::dynamic_retainer_cast<otio::Transition>(child))
                         {
@@ -139,6 +142,7 @@ namespace tl
                                 context,
                                 shared_from_this()));
                         }
+                        ++otioIndex;
                     }
 
                     p.tracks.push_back(track);
@@ -560,7 +564,14 @@ namespace tl
                 for (const auto& item : p.mouse.items)
                 {
                     const int track = dropTarget.track + (item->track - p.mouse.items[0]->track);
-                    moveData.push_back({ item->track, item->index, track, dropTarget.index });
+                    const int fromTrack = item->track;
+                    const int fromIndex = item->index;
+                    const int fromOtioIndex = p.tracks[fromTrack].otioIndexes[fromIndex];
+                    const int toOtioIndex =
+                        p.tracks[track].otioIndexes[dropTarget.index];
+                    moveData.push_back(
+                        {fromTrack, fromIndex, fromOtioIndex, track,
+                         dropTarget.index});
                     item->p->hide();
                 }
                 if (p.moveCallback)
