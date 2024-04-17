@@ -38,6 +38,9 @@ namespace tl
             //! Set the timeline player.
             void setPlayer(const std::shared_ptr<timeline::Player>&);
 
+            //! \name Editing
+            ///@{
+
             //! Get whether the timeline is editable.
             bool isEditable() const;
 
@@ -46,6 +49,11 @@ namespace tl
 
             //! Set whether the timeline is editable.
             void setEditable(bool);
+
+            ///@}
+
+            //! \name View
+            ///@{
 
             //! Set the view zoom.
             void setViewZoom(double);
@@ -73,11 +81,31 @@ namespace tl
             //! Set whether the scroll bars are visible.
             void setScrollBarsVisible(bool);
 
+            //! Get whether to automatically scroll to the current frame.
+            bool hasScrollToCurrentFrame() const;
+
+            //! Observe whether to automatically scroll to the current frame.
+            std::shared_ptr<observer::IValue<bool> > observeScrollToCurrentFrame() const;
+
+            //! Set whether to automatically scroll to the curernt frame.
+            void setScrollToCurrentFrame(bool);
+
             //! Get the mouse scroll key modifier.
             ui::KeyModifier getScrollKeyModifier() const;
 
             //! Set the mouse scroll key modifier.
             void setScrollKeyModifier(ui::KeyModifier);
+
+            //! Get the mouse wheel scale.
+            float getMouseWheelScale() const;
+
+            //! Set the mouse wheel scale.
+            void setMouseWheelScale(float);
+
+            ///@}
+
+            //! \name Scrubbing
+            ///@{
 
             //! Get whether to stop playback when scrubbing.
             bool hasStopOnScrub() const;
@@ -88,11 +116,27 @@ namespace tl
             //! Set whether to stop playback when scrubbing.
             void setStopOnScrub(bool);
 
-            //! Get the mouse wheel scale.
-            float getMouseWheelScale() const;
+            //! Observe whether scrubbing is in progress.
+            std::shared_ptr<observer::IValue<bool> > observeScrub() const;
 
-            //! Set the mouse wheel scale.
-            void setMouseWheelScale(float);
+            //! Observe time scrubbing.
+            std::shared_ptr<observer::IValue<otime::RationalTime> > observeTimeScrub() const;
+
+            ///@}
+
+            //! \name Frame Markers
+            ///@{
+
+            //! Get the frame markers.
+            const std::vector<int>& getFrameMarkers() const;
+
+            //! Set the frame markers.
+            void setFrameMarkers(const std::vector<int>&);
+
+            ///@}
+
+            //! \name Options
+            ///@{
 
             //! Get the item options.
             const ItemOptions& getItemOptions() const;
@@ -103,11 +147,7 @@ namespace tl
             //! Set the item options.
             void setItemOptions(const ItemOptions&);
 
-            //! Get the frame markers.
-            const std::vector<int>& getFrameMarkers() const;
-
-            //! Set the frame markers.
-            void setFrameMarkers(const std::vector<int>&);
+            ///@}
 
             void setGeometry(const math::Box2i&) override;
             void tickEvent(
@@ -142,6 +182,7 @@ namespace tl
                 const std::shared_ptr<IWidget>&,
                 const ItemOptions&);
 
+            void _scrollUpdate();
             void _timelineUpdate();
 
             TLRENDER_PRIVATE();
