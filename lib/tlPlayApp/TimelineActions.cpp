@@ -60,6 +60,16 @@ namespace tl
                     }
                 });
 
+            p.actions["ScrollToCurrentFrame"] = std::make_shared<ui::Action>(
+                "Scroll To Current Frame",
+                [mainWindowWeak](bool value)
+                {
+                    if (auto mainWindow = mainWindowWeak.lock())
+                    {
+                        mainWindow->getTimelineWidget()->setScrollToCurrentFrame(value);
+                    }
+                });
+
             p.actions["StopOnScrub"] = std::make_shared<ui::Action>(
                 "Stop Playback When Scrubbing",
                 [mainWindowWeak](bool value)

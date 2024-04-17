@@ -159,6 +159,8 @@ namespace tl
 
             std::shared_ptr<observer::ValueObserver<bool> > editableObserver;
             std::shared_ptr<observer::ValueObserver<bool> > frameViewObserver;
+            std::shared_ptr<observer::ValueObserver<bool> > scrubObserver;
+            std::shared_ptr<observer::ValueObserver<otime::RationalTime> > timeScrubObserver;
         };
 
         TimelineWidget::TimelineWidget(
@@ -209,9 +211,23 @@ namespace tl
                     Q_EMIT frameViewChanged(value);
                 });
 
+            p.scrubObserver = observer::ValueObserver<bool>::create(
+                p.timelineWidget->observeScrub(),
+                [this](bool value)
+                {
+                    Q_EMIT scrubChanged(value);
+                });
+
+            p.timeScrubObserver = observer::ValueObserver<otime::RationalTime>::create(
+                p.timelineWidget->observeTimeScrub(),
+                [this](const otime::RationalTime& value)
+                {
+                    Q_EMIT timeScrubbed(value);
+                });
+
             p.timer.reset(new QTimer);
             p.timer->setTimerType(Qt::PreciseTimer);
-            connect(p.timer.get(), &QTimer::timeout, this, &TimelineWidget::_timerCallback);
+            connect(p.timer.get(), &QTimer::timeout, this, &TimelineWidget::_timerUpdate);
             p.timer->start(timeout);
         }
 
@@ -240,14 +256,14 @@ namespace tl
             return _p->timelineWidget->areScrollBarsVisible();
         }
 
+        bool TimelineWidget::hasScrollToCurrentFrame() const
+        {
+            return _p->timelineWidget->hasScrollToCurrentFrame();
+        }
+
         ui::KeyModifier TimelineWidget::scrollKeyModifier() const
         {
             return _p->timelineWidget->getScrollKeyModifier();
-        }
-
-        bool TimelineWidget::hasStopOnScrub() const
-        {
-            return _p->timelineWidget->hasStopOnScrub();
         }
 
         float TimelineWidget::mouseWheelScale() const
@@ -255,14 +271,19 @@ namespace tl
             return _p->timelineWidget->getMouseWheelScale();
         }
 
-        const timelineui::ItemOptions& TimelineWidget::itemOptions() const
+        bool TimelineWidget::hasStopOnScrub() const
         {
-            return _p->timelineWidget->getItemOptions();
+            return _p->timelineWidget->hasStopOnScrub();
         }
 
         const std::vector<int>& TimelineWidget::frameMarkers() const
         {
             return _p->timelineWidget->getFrameMarkers();
+        }
+
+        const timelineui::ItemOptions& TimelineWidget::itemOptions() const
+        {
+            return _p->timelineWidget->getItemOptions();
         }
 
         QSize TimelineWidget::minimumSizeHint() const
@@ -277,6 +298,11 @@ namespace tl
                 sizeHint.h = 1;
             }
             return QSize(sizeHint.w, sizeHint.h);
+        }
+
+        QSize TimelineWidget::sizeHint() const
+        {
+            return minimumSizeHint();
         }
 
         void TimelineWidget::setEditable(bool value)
@@ -294,14 +320,14 @@ namespace tl
             _p->timelineWidget->setScrollBarsVisible(value);
         }
 
+        void TimelineWidget::setScrollToCurrentFrame(bool value)
+        {
+            _p->timelineWidget->setScrollToCurrentFrame(value);
+        }
+
         void TimelineWidget::setScrollKeyModifier(ui::KeyModifier value)
         {
             _p->timelineWidget->setScrollKeyModifier(value);
-        }
-
-        void TimelineWidget::setStopOnScrub(bool value)
-        {
-            _p->timelineWidget->setStopOnScrub(value);
         }
 
         void TimelineWidget::setMouseWheelScale(float value)
@@ -309,14 +335,19 @@ namespace tl
             _p->timelineWidget->setMouseWheelScale(value);
         }
 
-        void TimelineWidget::setItemOptions(const timelineui::ItemOptions& value)
+        void TimelineWidget::setStopOnScrub(bool value)
         {
-            _p->timelineWidget->setItemOptions(value);
+            _p->timelineWidget->setStopOnScrub(value);
         }
 
         void TimelineWidget::setFrameMarkers(const std::vector<int>& value)
         {
             _p->timelineWidget->setFrameMarkers(value);
+        }
+
+        void TimelineWidget::setItemOptions(const timelineui::ItemOptions& value)
+        {
+            _p->timelineWidget->setItemOptions(value);
         }
 
         void TimelineWidget::initializeGL()
@@ -372,14 +403,13 @@ namespace tl
                     }
                 }
             }
+            _sizeHintEvent();
         }
 
         void TimelineWidget::resizeGL(int w, int h)
         {
             TLRENDER_P();
-            
-            p.timelineWindow->setGeometry(math::Box2i(0, 0, _toUI(w), _toUI(h)));
-
+            _setGeometry();
             p.vao.reset();
             p.vbo.reset();
         }
@@ -699,38 +729,6 @@ namespace tl
             }
         }
 
-        void TimelineWidget::_timerCallback()
-        {
-            if (_p)
-            {
-                ui::TickEvent tickEvent(_p->style, _p->iconLibrary, _p->fontSystem);
-                _tickEvent(_p->timelineWindow, true, true, tickEvent);
-
-                if (_getSizeUpdate(_p->timelineWindow))
-                {
-                    const float devicePixelRatio = window()->devicePixelRatio();
-                    ui::SizeHintEvent sizeHintEvent(
-                        _p->style,
-                        _p->iconLibrary,
-                        _p->fontSystem,
-                        devicePixelRatio);
-                    _sizeHintEvent(_p->timelineWindow, sizeHintEvent);
-
-                    const math::Box2i geometry(0, 0, _toUI(width()), _toUI(height()));
-                    _p->timelineWindow->setGeometry(geometry);
-
-                    _clipEvent(_p->timelineWindow, geometry, false);
-
-                    updateGeometry();
-                }
-
-                if (_getDrawUpdate(_p->timelineWindow))
-                {
-                    update();
-                }
-            }
-        }
-
         bool TimelineWidget::event(QEvent* event)
         {
             TLRENDER_P();
@@ -740,6 +738,13 @@ namespace tl
                 _styleUpdate();
             }
             return out;
+        }
+
+        void TimelineWidget::_tickEvent()
+        {
+            TLRENDER_P();
+            ui::TickEvent tickEvent(p.style, p.iconLibrary, p.fontSystem);
+            _tickEvent(_p->timelineWindow, true, true, tickEvent);
         }
 
         void TimelineWidget::_tickEvent(
@@ -779,6 +784,18 @@ namespace tl
             return out;
         }
 
+        void TimelineWidget::_sizeHintEvent()
+        {
+            TLRENDER_P();
+            const float devicePixelRatio = window()->devicePixelRatio();
+            ui::SizeHintEvent sizeHintEvent(
+                p.style,
+                p.iconLibrary,
+                p.fontSystem,
+                devicePixelRatio);
+            _sizeHintEvent(p.timelineWindow, sizeHintEvent);
+        }
+
         void TimelineWidget::_sizeHintEvent(
             const std::shared_ptr<ui::IWidget>& widget,
             const ui::SizeHintEvent& event)
@@ -788,6 +805,20 @@ namespace tl
                 _sizeHintEvent(child, event);
             }
             widget->sizeHintEvent(event);
+        }
+
+        void TimelineWidget::_setGeometry()
+        {
+            TLRENDER_P();
+            const math::Box2i geometry(0, 0, _toUI(width()), _toUI(height()));
+            p.timelineWindow->setGeometry(geometry);
+        }
+
+        void TimelineWidget::_clipEvent()
+        {
+            TLRENDER_P();
+            const math::Box2i geometry(0, 0, _toUI(width()), _toUI(height()));
+            _clipEvent(p.timelineWindow, geometry, false);
         }
 
         void TimelineWidget::_clipEvent(
@@ -884,6 +915,25 @@ namespace tl
         {
             const float devicePixelRatio = window()->devicePixelRatio();
             return devicePixelRatio > 0.F ? (value / devicePixelRatio) : math::Vector2i();
+        }
+
+        void TimelineWidget::_timerUpdate()
+        {
+            if (_p)
+            {
+                _tickEvent();
+                if (_getSizeUpdate(_p->timelineWindow))
+                {
+                    _sizeHintEvent();
+                    _setGeometry();
+                    _clipEvent();
+                    updateGeometry();
+                }
+                if (_getDrawUpdate(_p->timelineWindow))
+                {
+                    update();
+                }
+            }
         }
 
         void TimelineWidget::_styleUpdate()

@@ -74,6 +74,12 @@ namespace tl
             //! Sets a callback for inserting items
             void setMoveCallback(const std::function<void(const std::vector<timeline::MoveData>&)>&);
             
+            //! Observe whether scrubbing is in progress.
+            std::shared_ptr<observer::IValue<bool> > observeScrub() const;
+
+            //! Observe time scrubbing.
+            std::shared_ptr<observer::IValue<otime::RationalTime> > observeTimeScrub() const;
+
             //! Set the frame markers.
             void setFrameMarkers(const std::vector<int>&);
 

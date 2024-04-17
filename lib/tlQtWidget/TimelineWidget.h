@@ -6,6 +6,8 @@
 
 #include <tlTimelineUI/IItem.h>
 
+#include <tlTimeline/Player.h>
+
 #include <QOpenGLWidget>
 #include <QOpenGLFunctions_4_1_Core>
 
@@ -46,22 +48,26 @@ namespace tl
             //! Get whether the scroll bars are visible.
             bool areScrollBarsVisible() const;
 
+            //! Get whether to automatically scroll to the current frame.
+            bool hasScrollToCurrentFrame() const;
+
             //! Get the mouse scroll key modifier.
             ui::KeyModifier scrollKeyModifier() const;
-
-            //! Get whether to stop playback when scrubbing.
-            bool hasStopOnScrub() const;
 
             //! Get the mouse wheel scale.
             float mouseWheelScale() const;
 
-            //! Get the item options.
-            const timelineui::ItemOptions& itemOptions() const;
+            //! Get whether to stop playback when scrubbing.
+            bool hasStopOnScrub() const;
 
             //! Get the frame markers.
             const std::vector<int>& frameMarkers() const;
 
+            //! Get the item options.
+            const timelineui::ItemOptions& itemOptions() const;
+
             QSize minimumSizeHint() const override;
+            QSize sizeHint() const override;
 
         public Q_SLOTS:
             //! Set whether the timeline is editable.
@@ -73,20 +79,23 @@ namespace tl
             //! Set whether the scroll bars are visible.
             void setScrollBarsVisible(bool);
 
+            //! Set whether to automatically scroll to the current frame.
+            void setScrollToCurrentFrame(bool);
+
             //! Set the mouse scroll key modifier.
             void setScrollKeyModifier(ui::KeyModifier);
-
-            //! Set whether to stop playback when scrubbing.
-            void setStopOnScrub(bool);
 
             //! Set the mouse wheel scale.
             void setMouseWheelScale(float);
 
-            //! Set the item options.
-            void setItemOptions(const timelineui::ItemOptions&);
+            //! Set whether to stop playback when scrubbing.
+            void setStopOnScrub(bool);
 
             //! Set the frame markers.
             void setFrameMarkers(const std::vector<int>&);
+
+            //! Set the item options.
+            void setItemOptions(const timelineui::ItemOptions&);
 
         Q_SIGNALS:
             //! This signal is emitted when the editable timeline is changed.
@@ -94,6 +103,12 @@ namespace tl
 
             //! This signal is emitted when the frame view is changed.
             void frameViewChanged(bool);
+
+            //! This signal is emitted when scrubbing is in progress.
+            void scrubChanged(bool);
+
+            //! This signal is emitted when the time is scrubbed.
+            void timeScrubbed(const tl::otime::RationalTime&);
 
         protected:
             void initializeGL() override;
@@ -116,8 +131,7 @@ namespace tl
             bool event(QEvent*) override;
 
         private:
-            void _timerCallback();
-
+            void _tickEvent();
             void _tickEvent(
                 const std::shared_ptr<ui::IWidget>&,
                 bool visible,
@@ -125,10 +139,14 @@ namespace tl
                 const ui::TickEvent&);
 
             bool _getSizeUpdate(const std::shared_ptr<ui::IWidget>&) const;
+            void _sizeHintEvent();
             void _sizeHintEvent(
                 const std::shared_ptr<ui::IWidget>&,
                 const ui::SizeHintEvent&);
 
+            void _setGeometry();
+
+            void _clipEvent();
             void _clipEvent(
                 const std::shared_ptr<ui::IWidget>&,
                 const math::Box2i&,
@@ -145,6 +163,7 @@ namespace tl
             int _fromUI(int) const;
             math::Vector2i _fromUI(const math::Vector2i&) const;
 
+            void _timerUpdate();
             void _styleUpdate();
 
             TLRENDER_PRIVATE();
