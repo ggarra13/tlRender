@@ -178,6 +178,32 @@ namespace tl
             _updates |= ui::Update::Draw;
         }
 
+        otime::RationalTime IItem::posToTime(float value) const
+        {
+            otime::RationalTime out = time::invalidTime;
+            if (_geometry.w() > 0)
+            {
+                const double normalized = (value - _geometry.min.x) /
+                    static_cast<double>(_timeRange.duration().rescaled_to(1.0).value() * _scale);
+                out = time::round(
+                    _timeRange.start_time() +
+                    otime::RationalTime(
+                        _timeRange.duration().value() * normalized,
+                        _timeRange.duration().rate()));
+                out = math::clamp(
+                    out,
+                    _timeRange.start_time(),
+                    _timeRange.end_time_inclusive());
+            }
+            return out;
+        }
+
+        int IItem::timeToPos(const otime::RationalTime& value) const
+        {
+            const otime::RationalTime t = value - _timeRange.start_time();
+            return _geometry.min.x + t.rescaled_to(1.0).value() * _scale;
+        }
+
         math::Box2i IItem::_getClipRect(
             const math::Box2i& value,
             double scale)
@@ -196,32 +222,6 @@ namespace tl
             const otime::RationalTime rescaled = value.rescaled_to(_data->speed);
             return string::Format("{0}").
                 arg(_data->timeUnitsModel->getLabel(rescaled));
-        }
-
-        otime::RationalTime IItem::_posToTime(float value) const
-        {
-            otime::RationalTime out = time::invalidTime;
-            if (_geometry.w() > 0)
-            {
-                const double normalized =
-                    (value - _geometry.min.x) / static_cast<double>(_geometry.w());
-                out = time::round(
-                    _timeRange.start_time() +
-                    otime::RationalTime(
-                        _timeRange.duration().value() * normalized,
-                        _timeRange.duration().rate()));
-                out = math::clamp(
-                    out,
-                    _timeRange.start_time(),
-                    _timeRange.end_time_inclusive());
-            }
-            return out;
-        }
-
-        int IItem::_timeToPos(const otime::RationalTime& value) const
-        {
-            const otime::RationalTime t = value - _timeRange.start_time();
-            return _geometry.min.x + t.rescaled_to(1.0).value() * _scale;
         }
 
         void IItem::_timeUnitsUpdate()

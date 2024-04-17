@@ -49,7 +49,10 @@ namespace tl
             _setMousePress(true, 0, 0);
 
             p.player = player;
-            
+
+            p.scrub = observer::Value<bool>::create(false);
+            p.timeScrub = observer::Value<otime::RationalTime>::create(time::invalidTime);
+
             p.thumbnailGenerator = ui::ThumbnailGenerator::create(context, window);
 
             const auto otioTimeline = p.player->getTimeline()->getTimeline();
@@ -207,6 +210,16 @@ namespace tl
         void TimelineItem::setStopOnScrub(bool value)
         {
             _p->stopOnScrub = value;
+        }
+
+        std::shared_ptr<observer::IValue<bool> > TimelineItem::observeScrub() const
+        {
+            return _p->scrub;
+        }
+
+        std::shared_ptr<observer::IValue<otime::RationalTime> > TimelineItem::observeTimeScrub() const
+        {
+            return _p->timeScrub;
         }
 
         void TimelineItem::setFrameMarkers(const std::vector<int>& value)
@@ -450,8 +463,12 @@ namespace tl
             switch (p.mouse.mode)
             {
             case Private::MouseMode::CurrentTime:
-                p.player->seek(_posToTime(event.pos.x));
+            {
+                const otime::RationalTime time = posToTime(event.pos.x);
+                p.timeScrub->setIfChanged(time);
+                p.player->seek(time);
                 break;
+            }
             case Private::MouseMode::Item:
             {
                 if (!p.mouse.items.empty())
@@ -547,7 +564,10 @@ namespace tl
                     {
                         p.player->setPlayback(timeline::Playback::Stop);
                     }
-                    p.player->seek(_posToTime(event.pos.x));
+                    const otime::RationalTime time = posToTime(event.pos.x);
+                    p.scrub->setIfChanged(true);
+                    p.timeScrub->setIfChanged(time);
+                    p.player->seek(time);
                 }
             }
         }
@@ -556,6 +576,7 @@ namespace tl
         {
             IWidget::mouseReleaseEvent(event);
             TLRENDER_P();
+            p.scrub->setIfChanged(false);
             p.mouse.mode = Private::MouseMode::None;
             if (!p.mouse.items.empty() && p.mouse.currentDropTarget != -1)
             {
@@ -658,8 +679,8 @@ namespace tl
                 {
                 case InOutDisplay::InsideRange:
                 {
-                    const int x0 = _timeToPos(_p->inOutRange.start_time());
-                    const int x1 = _timeToPos(_p->inOutRange.end_time_exclusive());
+                    const int x0 = timeToPos(_p->inOutRange.start_time());
+                    const int x1 = timeToPos(_p->inOutRange.end_time_exclusive());
                     const math::Box2i box(
                         x0,
                         p.size.scrollPos.y +
@@ -675,8 +696,8 @@ namespace tl
                 }
                 case InOutDisplay::OutsideRange:
                 {
-                    int x0 = _timeToPos(_timeRange.start_time());
-                    int x1 = _timeToPos(_p->inOutRange.start_time());
+                    int x0 = timeToPos(_timeRange.start_time());
+                    int x1 = timeToPos(_p->inOutRange.start_time());
                     math::Box2i box(
                         x0,
                         p.size.scrollPos.y +
@@ -688,8 +709,8 @@ namespace tl
                     event.render->drawRect(
                         box,
                         event.style->getColorRole(ui::ColorRole::InOut));
-                    x0 = _timeToPos(_p->inOutRange.end_time_exclusive());
-                    x1 = _timeToPos(_timeRange.end_time_exclusive());
+                    x0 = timeToPos(_p->inOutRange.end_time_exclusive());
+                    x1 = timeToPos(_timeRange.end_time_exclusive());
                     box = math::Box2i(
                         x0,
                         p.size.scrollPos.y +
@@ -847,7 +868,7 @@ namespace tl
             for (const auto& frameMarker : p.frameMarkers)
             {
                 const math::Box2i g2(
-                    _timeToPos(otime::RationalTime(frameMarker, rate)),
+                    timeToPos(otime::RationalTime(frameMarker, rate)),
                     p.size.scrollPos.y +
                     g.min.y,
                     p.size.border * 2,
@@ -880,7 +901,6 @@ namespace tl
                 if (seconds > 0.0 && tick > 0)
                 {
                     const math::Size2i labelMaxSize = _getLabelMaxSize(event.fontSystem);
-                    const otime::RationalTime& currentTime = p.player->observeCurrentTime()->get();
                     for (double t = 0.0; t < duration; t += seconds)
                     {
                         const otime::RationalTime time = _timeRange.start_time() +
@@ -895,7 +915,7 @@ namespace tl
                             p.size.margin,
                             labelMaxSize.w,
                             p.size.fontMetrics.lineHeight);
-                        if (time != currentTime && box.intersects(drawRect))
+                        if (time != p.currentTime && box.intersects(drawRect))
                         {
                             const std::string label = _data->timeUnitsModel->getLabel(time);
                             event.render->drawText(
@@ -926,8 +946,8 @@ namespace tl
                 size_t i = 1;
                 for (const auto& t : p.cacheInfo.videoFrames)
                 {
-                    const int x0 = _timeToPos(t.start_time());
-                    const int x1 = _timeToPos(t.end_time_exclusive());
+                    const int x0 = timeToPos(t.start_time());
+                    const int x1 = timeToPos(t.end_time_exclusive());
                     const int h = CacheDisplay::VideoAndAudio == _options.cacheDisplay ?
                         p.size.border * 2 :
                         p.size.border * 4;
@@ -966,8 +986,8 @@ namespace tl
                 size_t i = 1;
                 for (const auto& t : p.cacheInfo.audioFrames)
                 {
-                    const int x0 = _timeToPos(t.start_time());
-                    const int x1 = _timeToPos(t.end_time_exclusive());
+                    const int x0 = timeToPos(t.start_time());
+                    const int x1 = timeToPos(t.end_time_exclusive());
                     const math::Box2i box(
                         x0,
                         p.size.scrollPos.y +
@@ -1007,11 +1027,10 @@ namespace tl
 
             const math::Box2i& g = _geometry;
 
-            const otime::RationalTime& currentTime = p.player->observeCurrentTime()->get();
-            if (!time::compareExact(currentTime, time::invalidTime))
+            if (!time::compareExact(p.currentTime, time::invalidTime))
             {
                 const math::Vector2i pos(
-                    _timeToPos(currentTime),
+                    timeToPos(p.currentTime),
                     p.size.scrollPos.y +
                     g.min.y);
 
@@ -1023,7 +1042,7 @@ namespace tl
                         g.h()),
                     event.style->getColorRole(ui::ColorRole::Red));
 
-                const std::string label = _data->timeUnitsModel->getLabel(currentTime);
+                const std::string label = _data->timeUnitsModel->getLabel(p.currentTime);
                 event.render->drawText(
                     event.fontSystem->getGlyphs(label, p.size.fontInfo),
                     math::Vector2i(

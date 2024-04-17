@@ -60,7 +60,7 @@ set(TLRENDER_GPROF FALSE CACHE BOOL "Enable gprof code profiling")
 #-------------------------------------------------------------------------------
 # Internal configuration
 
-list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
+list(PREPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake/Modules)
 
 if(TLRENDER_PYTHON)
     add_definitions(-DTLRENDER_PYTHON)
@@ -150,7 +150,7 @@ find_package(nlohmann_json REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(minizip REQUIRED)
 find_package(OTIO REQUIRED)
-find_package(Freetype)
+find_package(Freetype REQUIRED)
 
 # GLFW dependency
 if(TLRENDER_GLFW)

@@ -20,6 +20,8 @@ namespace tl
             bool editable = false;
             bool stopOnScrub = true;
             std::function<void(const std::vector<timeline::MoveData>&)> moveCallback;
+            std::shared_ptr<observer::Value<bool> > scrub;
+            std::shared_ptr<observer::Value<otime::RationalTime> > timeScrub;
             std::vector<int> frameMarkers;
             int minimumHeight = 0;
             std::shared_ptr<ui::ThumbnailGenerator> thumbnailGenerator;

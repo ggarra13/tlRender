@@ -23,6 +23,7 @@ namespace tl
 
             std::shared_ptr<observer::ValueObserver<bool> > editableObserver;
             std::shared_ptr<observer::ValueObserver<bool> > frameViewObserver;
+            std::shared_ptr<observer::ValueObserver<bool> > scrollToCurrentFrameObserver;
             std::shared_ptr<observer::ValueObserver<bool> > stopOnScrubObserver;
             std::shared_ptr<observer::ValueObserver<timelineui::ItemOptions> > itemOptionsObserver;
         };
@@ -44,6 +45,7 @@ namespace tl
             addItem(p.actions["EditAssociatedClips"]);
             addDivider();
             addItem(p.actions["FrameView"]);
+            addItem(p.actions["ScrollToCurrentFrame"]);
             addItem(p.actions["StopOnScrub"]);
             addDivider();
             addItem(p.actions["FirstTrack"]);
@@ -75,6 +77,13 @@ namespace tl
                 [this](bool value)
                 {
                     setItemChecked(_p->actions["FrameView"], value);
+                });
+
+            p.scrollToCurrentFrameObserver = observer::ValueObserver<bool>::create(
+                mainWindow->getTimelineWidget()->observeScrollToCurrentFrame(),
+                [this](bool value)
+                {
+                    setItemChecked(_p->actions["ScrollToCurrentFrame"], value);
                 });
 
             p.stopOnScrubObserver = observer::ValueObserver<bool>::create(
