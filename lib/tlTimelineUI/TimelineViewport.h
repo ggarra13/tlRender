@@ -54,6 +54,12 @@ namespace tl
             //! Set the background options.
             void setBackgroundOptions(const timeline::BackgroundOptions&);
 
+            //! Get the offscreen color buffer type.
+            image::PixelType getOffscreenColorType() const;
+
+            //! Set the offscreen color buffer type.
+            void setOffscreenColorType(image::PixelType);
+
             //! Set the timeline player.
             void setPlayer(const std::shared_ptr<timeline::Player>&);
 
@@ -94,8 +100,17 @@ namespace tl
             void setViewPosAndZoomCallback(
                 const std::function<void(const math::Vector2i&, double)>&);
 
-            //! Set the dropped frames callback.
-            void setDroppedFramesCallback(const std::function<void(size_t)>&);
+            //! Get the frames per second.
+            double getFPS() const;
+
+            //! Observe the frames per second.
+            std::shared_ptr<observer::IValue<double> > observeFPS() const;
+
+            //! Get the number of dropped frames during playback.
+            size_t getDroppedFrames() const;
+
+            //! Observe the number of dropped frames during playback..
+            std::shared_ptr<observer::IValue<size_t> > observeDroppedFrames() const;
 
             void setGeometry(const math::Box2i&) override;
             void sizeHintEvent(const ui::SizeHintEvent&) override;

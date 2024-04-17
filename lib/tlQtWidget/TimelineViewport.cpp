@@ -33,19 +33,26 @@ namespace tl
             std::vector<timeline::DisplayOptions> displayOptions;
             timeline::CompareOptions compareOptions;
             timeline::BackgroundOptions backgroundOptions;
+            image::PixelType offscreenColorType = image::PixelType::RGBA_U8;
             QSharedPointer<qt::TimelinePlayer> player;
             std::vector<timeline::VideoData> videoData;
             math::Vector2i viewPos;
             double viewZoom = 1.0;
             bool frameView = true;
-
-            struct DroppedFrames
+            struct FpsData
             {
+                double fps = 0.0;
+                std::chrono::steady_clock::time_point timer;
+                size_t frameCount = 0;
+            };
+            FpsData fpsData;
+            struct DroppedFramesData
+            {
+                size_t dropped = 0;
                 bool init = true;
                 double frame = 0.0;
-                size_t count = 0;
             };
-            DroppedFrames droppedFrames;
+            DroppedFramesData droppedFramesData;
 
             enum class MouseMode
             {
@@ -83,6 +90,36 @@ namespace tl
         TimelineViewport::~TimelineViewport()
         {
             makeCurrent();
+        }
+
+        image::PixelType TimelineViewport::offscreenColorType() const
+        {
+            return _p->offscreenColorType;
+        }
+
+        const math::Vector2i& TimelineViewport::viewPos() const
+        {
+            return _p->viewPos;
+        }
+
+        double TimelineViewport::viewZoom() const
+        {
+            return _p->viewZoom;
+        }
+
+        bool TimelineViewport::hasFrameView() const
+        {
+            return _p->frameView;
+        }
+
+        double TimelineViewport::getFPS() const
+        {
+            return _p->fpsData.fps;
+        }
+
+        size_t TimelineViewport::getDroppedFrames() const
+        {
+            return _p->droppedFramesData.dropped;
         }
 
         void TimelineViewport::setOCIOOptions(const timeline::OCIOOptions& value)
@@ -145,6 +182,16 @@ namespace tl
             update();
         }
 
+        void TimelineViewport::setOffscreenColorType(image::PixelType value)
+        {
+            TLRENDER_P();
+            if (value == p.offscreenColorType)
+                return;
+            p.offscreenColorType = value;
+            p.doRender = true;
+            update();
+        }
+
         void TimelineViewport::setPlayer(const QSharedPointer<qt::TimelinePlayer>& value)
         {
             TLRENDER_P();
@@ -184,21 +231,6 @@ namespace tl
                     SIGNAL(currentVideoChanged(const std::vector<tl::timeline::VideoData>&)),
                     SLOT(_videoDataUpdate(const std::vector<tl::timeline::VideoData>&)));
             }
-        }
-
-        const math::Vector2i& TimelineViewport::viewPos() const
-        {
-            return _p->viewPos;
-        }
-
-        double TimelineViewport::viewZoom() const
-        {
-            return _p->viewZoom;
-        }
-
-        bool TimelineViewport::hasFrameView() const
-        {
-            return _p->frameView;
         }
 
         void TimelineViewport::setViewPosAndZoom(const math::Vector2i& pos, double zoom)
@@ -259,7 +291,9 @@ namespace tl
             {
             case timeline::Playback::Forward:
             case timeline::Playback::Reverse:
-                p.droppedFrames.init = true;
+                p.fpsData.timer = std::chrono::steady_clock::now();
+                p.fpsData.frameCount = 0;
+                p.droppedFramesData.init = true;
                 break;
             default: break;
             }
@@ -268,7 +302,25 @@ namespace tl
         void TimelineViewport::_videoDataUpdate(const std::vector<timeline::VideoData>& value)
         {
             TLRENDER_P();
+
             p.videoData = value;
+
+            p.fpsData.frameCount = p.fpsData.frameCount + 1;
+            const auto now = std::chrono::steady_clock::now();
+            const std::chrono::duration<double> diff = now - p.fpsData.timer;
+            if (diff.count() > 1.0)
+            {
+                const double fps = p.fpsData.frameCount / diff.count();
+                //std::cout << "FPS: " << fps << std::endl;
+                if (fps != p.fpsData.fps)
+                {
+                    p.fpsData.fps = fps;
+                    Q_EMIT fpsChanged(fps);
+                }
+                p.fpsData.timer = now;
+                p.fpsData.frameCount = 0;
+            }
+
             p.doRender = true;
             update();
         }
@@ -356,7 +408,7 @@ namespace tl
                     if (viewportSize.isValid())
                     {
                         gl::OffscreenBufferOptions offscreenBufferOptions;
-                        offscreenBufferOptions.colorType = gl::offscreenColorDefault;
+                        offscreenBufferOptions.colorType = p.offscreenColorType;
                         if (!p.displayOptions.empty())
                         {
                             offscreenBufferOptions.colorFilters = p.displayOptions[0].imageFilters;
@@ -376,7 +428,9 @@ namespace tl
                     if (p.buffer)
                     {
                         gl::OffscreenBufferBinding binding(p.buffer);
-                        p.render->begin(viewportSize);
+                        timeline::RenderOptions renderOptions;
+                        renderOptions.offscreenColorType = p.offscreenColorType;
+                        p.render->begin(viewportSize, renderOptions);
                         p.render->setOCIOOptions(p.ocioOptions);
                         p.render->setLUTOptions(p.lutOptions);
                         if (!p.videoData.empty())
@@ -648,22 +702,22 @@ namespace tl
         void TimelineViewport::_droppedFramesUpdate(const otime::RationalTime& value)
         {
             TLRENDER_P();
-            if (value != time::invalidTime && p.droppedFrames.init)
+            if (value != time::invalidTime && p.droppedFramesData.init)
             {
-                p.droppedFrames.init = false;
-                p.droppedFrames.count = 0;
-                Q_EMIT droppedFramesChanged(p.droppedFrames.count);
+                p.droppedFramesData.init = false;
+                p.droppedFramesData.dropped = 0;
+                Q_EMIT droppedFramesChanged(p.droppedFramesData.dropped);
             }
             else
             {
-                const double frameDiff = value.value() - p.droppedFrames.frame;
+                const double frameDiff = value.value() - p.droppedFramesData.frame;
                 if (std::abs(frameDiff) > 1.0)
                 {
-                    ++p.droppedFrames.count;
-                    Q_EMIT droppedFramesChanged(p.droppedFrames.count);
+                    ++(p.droppedFramesData.dropped);
+                    Q_EMIT droppedFramesChanged(p.droppedFramesData.dropped);
                 }
             }
-            p.droppedFrames.frame = value.value();
+            p.droppedFramesData.frame = value.value();
         }
     }
 }

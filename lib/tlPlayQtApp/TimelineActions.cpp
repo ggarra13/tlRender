@@ -47,9 +47,25 @@ namespace tl
             p.actions["FrameView"]->setCheckable(true);
             p.actions["FrameView"]->setText(tr("Frame Timeline View"));
 
+            p.actions["ScrollToCurrentFrame"] = new QAction(parent);
+            p.actions["ScrollToCurrentFrame"]->setCheckable(true);
+            p.actions["ScrollToCurrentFrame"]->setText(tr("Scroll To Current Frame"));
+
             p.actions["StopOnScrub"] = new QAction(parent);
             p.actions["StopOnScrub"]->setCheckable(true);
             p.actions["StopOnScrub"]->setText(tr("Stop Playback When Scrubbing"));
+
+            p.actions["FirstTrack"] = new QAction(parent);
+            p.actions["FirstTrack"]->setCheckable(true);
+            p.actions["FirstTrack"]->setText(tr("First Track Only"));
+
+            p.actions["TrackInfo"] = new QAction(parent);
+            p.actions["TrackInfo"]->setCheckable(true);
+            p.actions["TrackInfo"]->setText(tr("Track Information"));
+
+            p.actions["ClipInfo"] = new QAction(parent);
+            p.actions["ClipInfo"]->setCheckable(true);
+            p.actions["ClipInfo"]->setText(tr("Clip Information"));
 
             p.actions["Thumbnails"] = new QAction(parent);
             p.actions["Thumbnails"]->setCheckable(true);
@@ -85,14 +101,17 @@ namespace tl
             p.menu->addAction(p.actions["EditAssociatedClips"]);
             p.menu->addSeparator();
             p.menu->addAction(p.actions["FrameView"]);
+            p.menu->addAction(p.actions["ScrollToCurrentFrame"]);
             p.menu->addAction(p.actions["StopOnScrub"]);
             p.menu->addSeparator();
+            p.menu->addAction(p.actions["FirstTrack"]);
+            p.menu->addAction(p.actions["TrackInfo"]);
+            p.menu->addAction(p.actions["ClipInfo"]);
             p.menu->addAction(p.actions["Thumbnails"]);
             auto thumbnailsSizeMenu = p.menu->addMenu(tr("Thumbnails Size"));
             thumbnailsSizeMenu->addAction(p.actions["ThumbnailsSize/Small"]);
             thumbnailsSizeMenu->addAction(p.actions["ThumbnailsSize/Medium"]);
             thumbnailsSizeMenu->addAction(p.actions["ThumbnailsSize/Large"]);
-            p.menu->addSeparator();
             p.menu->addAction(p.actions["Transitions"]);
             p.menu->addAction(p.actions["Markers"]);
 
@@ -126,11 +145,56 @@ namespace tl
                 });
 
             connect(
+                p.actions["ScrollToCurrentFrame"],
+                &QAction::toggled,
+                [mainWindow](bool value)
+                {
+                    mainWindow->timelineWidget()->setScrollToCurrentFrame(value);
+                });
+
+            connect(
                 p.actions["StopOnScrub"],
                 &QAction::toggled,
                 [mainWindow](bool value)
                 {
                     mainWindow->timelineWidget()->setStopOnScrub(value);
+                });
+
+            connect(
+                p.actions["FirstTrack"],
+                &QAction::toggled,
+                [mainWindow](bool value)
+                {
+                    auto timelineWidget = mainWindow->timelineWidget();
+                    auto itemOptions = timelineWidget->itemOptions();
+                    itemOptions.tracks.clear();
+                    if (value)
+                    {
+                        itemOptions.tracks.push_back(0);
+                    }
+                    timelineWidget->setItemOptions(itemOptions);
+                });
+
+            connect(
+                p.actions["TrackInfo"],
+                &QAction::toggled,
+                [mainWindow](bool value)
+                {
+                    auto timelineWidget = mainWindow->timelineWidget();
+                    auto itemOptions = timelineWidget->itemOptions();
+                    itemOptions.trackInfo = value;
+                    timelineWidget->setItemOptions(itemOptions);
+                });
+
+            connect(
+                p.actions["ClipInfo"],
+                &QAction::toggled,
+                [mainWindow](bool value)
+                {
+                    auto timelineWidget = mainWindow->timelineWidget();
+                    auto itemOptions = timelineWidget->itemOptions();
+                    itemOptions.clipInfo = value;
+                    timelineWidget->setItemOptions(itemOptions);
                 });
 
             connect(
@@ -163,7 +227,7 @@ namespace tl
                 {
                     auto timelineWidget = mainWindow->timelineWidget();
                     auto itemOptions = timelineWidget->itemOptions();
-                    itemOptions.showTransitions = value;
+                    itemOptions.transitions = value;
                     timelineWidget->setItemOptions(itemOptions);
                 });
 
@@ -174,7 +238,7 @@ namespace tl
                 {
                     auto timelineWidget = mainWindow->timelineWidget();
                     auto itemOptions = timelineWidget->itemOptions();
-                    itemOptions.showMarkers = value;
+                    itemOptions.markers = value;
                     timelineWidget->setItemOptions(itemOptions);
                 });
         }
@@ -211,9 +275,29 @@ namespace tl
                     p.mainWindow->timelineWidget()->hasFrameView());
             }
             {
+                QSignalBlocker blocker(p.actions["ScrollToCurrentFrame"]);
+                p.actions["ScrollToCurrentFrame"]->setChecked(
+                    p.mainWindow->timelineWidget()->hasScrollToCurrentFrame());
+            }
+            {
                 QSignalBlocker blocker(p.actions["StopOnScrub"]);
                 p.actions["StopOnScrub"]->setChecked(
                     p.mainWindow->timelineWidget()->hasStopOnScrub());
+            }
+            {
+                QSignalBlocker blocker(p.actions["FirstTrack"]);
+                const auto itemOptions = p.mainWindow->timelineWidget()->itemOptions();
+                p.actions["FirstTrack"]->setChecked(!itemOptions.tracks.empty());
+            }
+            {
+                QSignalBlocker blocker(p.actions["TrackInfo"]);
+                const auto itemOptions = p.mainWindow->timelineWidget()->itemOptions();
+                p.actions["TrackInfo"]->setChecked(itemOptions.trackInfo);
+            }
+            {
+                QSignalBlocker blocker(p.actions["ClipInfo"]);
+                const auto itemOptions = p.mainWindow->timelineWidget()->itemOptions();
+                p.actions["ClipInfo"]->setChecked(itemOptions.clipInfo);
             }
             {
                 QSignalBlocker blocker(p.actions["Thumbnails"]);
@@ -238,12 +322,12 @@ namespace tl
             {
                 QSignalBlocker blocker(p.actions["Transitions"]);
                 const auto itemOptions = p.mainWindow->timelineWidget()->itemOptions();
-                p.actions["Transitions"]->setChecked(itemOptions.showTransitions);
+                p.actions["Transitions"]->setChecked(itemOptions.transitions);
             }
             {
                 QSignalBlocker blocker(p.actions["Markers"]);
                 const auto itemOptions = p.mainWindow->timelineWidget()->itemOptions();
-                p.actions["Markers"]->setChecked(itemOptions.showMarkers);
+                p.actions["Markers"]->setChecked(itemOptions.markers);
             }
         }
     }
