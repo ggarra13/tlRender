@@ -148,6 +148,8 @@ namespace tl
 
             //! Set the item options.
             void setItemOptions(const ItemOptions&);
+            
+            ///@}
 
             //! Get timeline item geometry. 
             const math::Box2i& getTimelineItemGeometry() const;
@@ -160,7 +162,6 @@ namespace tl
             
             //! Sets a callback for moving items.
             void setMoveCallback(const std::function<void(const std::vector<timeline::MoveData>&)>&);
-            ///@}
 
             void setGeometry(const math::Box2i&) override;
             void tickEvent(
