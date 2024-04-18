@@ -620,8 +620,9 @@ namespace tl
 
                     const auto params = _avCodecParameters[_avStream];
 
-                    // We should not do a BT2020_NCL to BT709 conversion in
-                    // software which is slow.
+                    // @bug:
+                    //    We don't do a BT2020_NCL to BT709 conversion in
+                    //    software which is slow.
                     if (params->color_space != AVCOL_SPC_BT2020_NCL &&
                         (params->color_space != AVCOL_SPC_UNSPECIFIED ||
                           width < 4096 || height < 2160))
