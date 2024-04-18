@@ -602,11 +602,13 @@ namespace tl
                         throw std::runtime_error(string::Format("{0}: Cannot allocate context").arg(_fileName));
                     }
                     av_opt_set_defaults(_swsContext);
-                    r = av_opt_set_int(_swsContext, "srcw", _avCodecParameters[_avStream]->width, AV_OPT_SEARCH_CHILDREN);
-                    r = av_opt_set_int(_swsContext, "srch", _avCodecParameters[_avStream]->height, AV_OPT_SEARCH_CHILDREN);
+                    int width  = _avCodecParameters[_avStream]->width;
+                    int height = _avCodecParameters[_avStream]->height;
+                    r = av_opt_set_int(_swsContext, "srcw", width, AV_OPT_SEARCH_CHILDREN);
+                    r = av_opt_set_int(_swsContext, "srch", height, AV_OPT_SEARCH_CHILDREN);
                     r = av_opt_set_int(_swsContext, "src_format", _avInputPixelFormat, AV_OPT_SEARCH_CHILDREN);
-                    r = av_opt_set_int(_swsContext, "dstw", _avCodecParameters[_avStream]->width, AV_OPT_SEARCH_CHILDREN);
-                    r = av_opt_set_int(_swsContext, "dsth", _avCodecParameters[_avStream]->height, AV_OPT_SEARCH_CHILDREN);
+                    r = av_opt_set_int(_swsContext, "dstw", width, AV_OPT_SEARCH_CHILDREN);
+                    r = av_opt_set_int(_swsContext, "dsth", height, AV_OPT_SEARCH_CHILDREN);
                     r = av_opt_set_int(_swsContext, "dst_format", _avOutputPixelFormat, AV_OPT_SEARCH_CHILDREN);
                     r = av_opt_set_int(_swsContext, "sws_flags", swsScaleFlags, AV_OPT_SEARCH_CHILDREN);
                     r = av_opt_set_int(_swsContext, "threads", 0, AV_OPT_SEARCH_CHILDREN);
@@ -620,7 +622,9 @@ namespace tl
 
                     // We should not do a BT2020_NCL to BT709 conversion in
                     // software which is slow.
-                    if (params->color_space != AVCOL_SPC_BT2020_NCL)
+                    if (params->color_space != AVCOL_SPC_BT2020_NCL &&
+                        (params->color_space != AVCOL_SPC_UNSPECIFIED ||
+                          width < 4096 || height < 2160))
                     {
                         int in_full, out_full, brightness, contrast, saturation;
                         const int *inv_table, *table;
