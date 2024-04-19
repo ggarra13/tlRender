@@ -37,10 +37,13 @@ list(APPEND USD_ARGS --no-python --no-examples --no-tutorials --no-tools)
 list(APPEND USD_ARGS --generator Ninja --verbose)
 
 # I had to set this up as jfrog was failing on macOS 12.
-set(USD_PATCH_COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    ${CMAKE_CURRENT_SOURCE_DIR}/USD-patch/build_scripts/build_usd.py
-    build_scripts/build_usd.py)
-    
+set(USD_PATCH_COMMAND "")
+if (APPLE)
+    set(USD_PATCH_COMMAND ${CMAKE_COMMAND} -E copy_if_different
+	${CMAKE_CURRENT_SOURCE_DIR}/USD-patch/build_scripts/build_usd.py
+	build_scripts/build_usd.py)
+endif()
+
 set(USD_INSTALL_COMMAND )
 if(WIN32)
     # \todo On Windows the USD cmake build system installs the "*.dll" files
