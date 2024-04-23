@@ -1027,6 +1027,7 @@ namespace tl
                     lutDef,
                     lut,
                     p.lutOptions.order);
+                
                 if (auto context = _context.lock())
                 {
                     //context->log("tl::gl::GLRender", source);

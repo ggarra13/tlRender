@@ -166,12 +166,19 @@ namespace tl
                 "// enum tl::image::VideoLevels\n"
                 "const uint VideoLevels_FullRange  = 0;\n"
                 "const uint VideoLevels_LegalRange = 1;\n";
+            
+            const std::string alphaBlends =
+                "// enum tl::image::AlphaBlend\n"
+                "const uint AlphaBlend_None  = 0;\n"
+                "const uint AlphaBlend_Straight = 1;\n"
+                "const uint AlphaBlend_Premultiplied = 2;\n";
 
             const std::string sampleTexture =
                 "vec4 sampleTexture("
                 "    vec2 textureCoord,\n"
                 "    int pixelType,\n"
                 "    int videoLevels,\n"
+                "    int alphaBlend,\n"
                 "    vec4 yuvCoefficients,\n"
                 "    int imageChannels,\n"
                 "    sampler2D s0,\n"
@@ -225,6 +232,11 @@ namespace tl
                 "        {\n"
                 "            c.a = 1.0;\n"
                 "        }\n"
+                "\n"
+                "        else if (alphaBlend == AlphaBlend_None)\n"
+                "        {\n"
+                "             c.a = 1.0;\n"
+                "        }\n"
                 "    }\n"
                 "    return c;\n"
                 "}\n";
@@ -244,9 +256,12 @@ namespace tl
                 "\n"
                 "{2}\n"
                 "\n"
+                "{3}\n"
+                "\n"
                 "uniform vec4      color;\n"
                 "uniform int       pixelType;\n"
                 "uniform int       videoLevels;\n"
+                "uniform int       alphaBlend;\n"
                 "uniform vec4      yuvCoefficients;\n"
                 "uniform int       imageChannels;\n"
                 "uniform int       mirrorX;\n"
@@ -270,16 +285,17 @@ namespace tl
                 "        t,\n"
                 "        pixelType,\n"
                 "        videoLevels,\n"
+                "        alphaBlend,\n"
                 "        yuvCoefficients,\n"
                 "        imageChannels,\n"
                 "        textureSampler0,\n"
                 "        textureSampler1,\n"
                 "        textureSampler2) *\n"
                 "        color;\n"
-                //"    outColor.a = 1.0;\n"
                 "}\n").
                 arg(pixelType).
                 arg(videoLevels).
+                arg(alphaBlends).
                 arg(sampleTexture);
         }
 
@@ -291,6 +307,7 @@ namespace tl
             timeline::LUTOrder lutOrder)
         {
             std::vector<std::string> args;
+            args.reserve(5);
             args.push_back(videoLevels);
             args.push_back(ocioDef);
             args.push_back(lutDef);
