@@ -321,7 +321,6 @@ namespace tl
             default: break;
             }
             p.shaders["image"]->setUniform("videoLevels", static_cast<int>(videoLevels));
-            p.shaders["image"]->setUniform("alphaBlend", static_cast<int>(imageOptions.alphaBlend));
             p.shaders["image"]->setUniform("yuvCoefficients", image::getYUVCoefficients(info.yuvCoefficients));
             p.shaders["image"]->setUniform("imageChannels", image::getChannelCount(info.pixelType));
             p.shaders["image"]->setUniform("mirrorX", info.layout.mirror.x);
