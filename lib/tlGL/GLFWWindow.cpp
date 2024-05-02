@@ -5,6 +5,7 @@
 #include <tlGL/GLFWWindow.h>
 
 #include <tlGL/GL.h>
+#include <tlGL/GLFWSystem.h>
 #include <tlGL/Init.h>
 
 #include <tlCore/Context.h>
@@ -101,10 +102,18 @@ namespace tl
             glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
             glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_ANY_PROFILE);
 #endif // TLRENDER_API_GL_4_1
+
             glfwWindowHint(GLFW_VISIBLE,
-                options & static_cast<int>(GLFWWindowOptions::Visible));
-            glfwWindowHint(GLFW_DOUBLEBUFFER,
-                options & static_cast<int>(GLFWWindowOptions::DoubleBuffer));
+                           options & static_cast<int>(GLFWWindowOptions::Visible));
+            if (gl::isWayland())
+            {
+                glfwWindowHint(GLFW_DOUBLEBUFFER, GL_TRUE);
+            }
+            else
+            {
+                glfwWindowHint(GLFW_DOUBLEBUFFER,
+                               options & static_cast<int>(GLFWWindowOptions::DoubleBuffer));
+            }
 #if defined(TLRENDER_API_GL_4_1_Debug)
             glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 #endif // TLRENDER_API_GL_4_1_Debug
@@ -116,7 +125,7 @@ namespace tl
                 size.h,
                 name.c_str(),
                 nullptr,
-                share ? share->getGLFW() : nullptr);
+                nullptr);
             if (!p.glfwWindow)
             {
                 throw std::runtime_error("Cannot create window");
