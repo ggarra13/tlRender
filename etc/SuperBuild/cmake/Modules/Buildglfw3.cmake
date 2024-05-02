@@ -6,16 +6,10 @@ set(glfw3_GIT_TAG "3.4")  # used to work
 
 set(glfw3_Linux_ARGS )
 if(UNIX AND NOT APPLE)
-    if(TLRENDER_X11)
-	list(APPEND glfw3_Linux_ARGS
-	    -DGLFW_BUILD_X11=ON
-	)
-    endif()
-    if(TLRENDER_WAYLAND)
-	list(APPEND glfw3_Linux_ARGS
-	    -DGLFW_BUILD_WAYLAND=ON
-	)
-    endif()
+    list(APPEND glfw3_Linux_ARGS
+	-DGLFW_BUILD_X11=${TLRENDER_X11}
+	-DGLFW_BUILD_WAYLAND=${TLRENDER_WAYLAND}
+    )
 endif()
 
 set(glfw3_PATCH)
