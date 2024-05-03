@@ -62,6 +62,8 @@ namespace tl
             }
             else
             {
+                // \@bug: NVidia drivers currently return EGL error if
+                //        GLFW_DOUBLEBUFFER is GLFW_FALSE
                 if (flag == GLFW_DOUBLEBUFFER)
                 {
                     glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
