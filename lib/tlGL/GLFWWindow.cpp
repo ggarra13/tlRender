@@ -54,6 +54,21 @@ namespace tl
 #endif // TLRENDER_API_GL_4_1_Debug
         }
 
+        void windowHint(int flag, int value)
+        {
+            if (!gl::isWayland())
+            {
+                glfwWindowHint(flag, value);
+            }
+            else
+            {
+                if (flag == GLFW_DOUBLEBUFFER)
+                {
+                    glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
+                }
+            }
+        }
+        
         struct GLFWWindow::Private
         {
             std::weak_ptr<system::Context> context;
@@ -105,15 +120,8 @@ namespace tl
 
             glfwWindowHint(GLFW_VISIBLE,
                            options & static_cast<int>(GLFWWindowOptions::Visible));
-            if (gl::isWayland())
-            {
-                glfwWindowHint(GLFW_DOUBLEBUFFER, GL_TRUE);
-            }
-            else
-            {
-                glfwWindowHint(GLFW_DOUBLEBUFFER,
-                               options & static_cast<int>(GLFWWindowOptions::DoubleBuffer));
-            }
+            gl::windowHint(GLFW_DOUBLEBUFFER, 
+                           options & static_cast<int>(GLFWWindowOptions::DoubleBuffer));
 #if defined(TLRENDER_API_GL_4_1_Debug)
             glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 #endif // TLRENDER_API_GL_4_1_Debug
