@@ -32,9 +32,7 @@ namespace tl
         {
             bool out = false;
 #ifdef __linux__
-            char* platform = getenv("GLFW_PLATFORM");
-            if (!platform)
-                platform = getenv("FLTK_BACKEND");
+            char* platform = getenv("FLTK_BACKEND");
             if (!platform)
                 platform = getenv("XDG_SESSION_TYPE");
             if (platform && strcmp(platform, "wayland") == 0)

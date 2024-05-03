@@ -11,7 +11,6 @@ set(LIBRARIES OpenGL::GL)
 if (UNIX AND NOT APPLE)
     set(LIBRARIES OpenGL::OpenGL)
 endif()
-
 target_link_libraries(glad ${LIBRARIES} ${CMAKE_DL_LIBS})
 set_target_properties(glad PROPERTIES FOLDER deps)
 
