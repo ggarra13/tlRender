@@ -8,13 +8,14 @@
 
 export TLRENDER_ASAN=OFF
 export TLRENDER_AV1=OFF
-export TLRENDER_FFMPEG=ON
-export TLRENDER_FFMPEG_MINIMAL=ON
+export TLRENDER_FFMPEG=OFF
+export TLRENDER_FFMPEG_MINIMAL=OFF
 export TLRENDER_JPEG=OFF
 export TLRENDER_NET=OFF
 export TLRENDER_QT6=OFF
 export TLRENDER_QT5=OFF
 export TLRENDER_RAW=OFF
+export TLRENDER_SGI=OFF
 export TLRENDER_STB=OFF
 export TLRENDER_TIFF=OFF
 export TLRENDER_USD=OFF
@@ -23,7 +24,7 @@ export TLRENDER_WAYLAND=ON
 export TLRENDER_X11=ON
 export TLRENDER_YASM=OFF
 
-export BUILD_DIR=_build
+export BUILD_DIR=_build-minimal
 
 mkdir -p $BUILD_DIR
 
@@ -52,9 +53,9 @@ cmake ../etc/SuperBuild -D CMAKE_VERBOSE_MAKEFILE=ON \
       -D TLRENDER_VPX=${TLRENDER_VPX} \
       -D TLRENDER_WAYLAND=${TLRENDER_WAYLAND} \
       -D TLRENDER_X11=${TLRENDER_X11} \
-      -D TLRENDER_YASM=${TLRENDER_YASM}
+      -D TLRENDER_YASM=${TLRENDER_YASM} \
 
-cmake --build . -j 17 --config Debug 2>&1 | tee ../compile.log
+cmake --build . -j 17 --config Debug 2>&1 | tee ../compile_minimal.log
 
 cd -
 

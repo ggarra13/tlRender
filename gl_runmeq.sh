@@ -9,14 +9,7 @@
 #
 set -o pipefail -e
 
-
-export TLRENDER_QT6=OFF
-export TLRENDER_QT5=OFF
-export TLRENDER_USD=OFF
-export TLRENDER_FFMPEG=ON
-export TLRENDER_WAYLAND=ON
-
-export BUILD_DIR=build
+export BUILD_DIR=_build
 
 rm -f $BUILD_DIR/tlRender/src/tlRender-build/bin/tlplay-gl/tlplay-gl
 
