@@ -6,7 +6,12 @@ set(SOURCE
     src/gl.c)
 
 add_library(glad ${HEADERS} ${SOURCE})
-target_link_libraries(glad OpenGL::OpenGL ${CMAKE_DL_LIBS})
+if(UNIX AND NOT APPLE)
+    set(LIBRARIES OpenGL::OpenGL)
+else()
+    set(LIBRARIES OpenGL::GL)
+endif()
+target_link_libraries(glad ${LIBRARIES} ${CMAKE_DL_LIBS})
 set_target_properties(glad PROPERTIES FOLDER deps)
 
 install(

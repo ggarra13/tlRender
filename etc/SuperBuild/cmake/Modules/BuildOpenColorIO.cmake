@@ -11,16 +11,6 @@ set(OpenColorIO_ARGS
     -DOCIO_BUILD_GPU_TESTS=OFF
     -DOCIO_BUILD_PYTHON=OFF
     -DOCIO_INSTALL_EXT_PACKAGES=NONE)
-cmake_host_system_information(RESULT HAS_SSE2 QUERY HAS_SSE2)
-list(APPEND OpenColorIO_ARGS -DOCIO_USE_SSE=${HAS_SSE2})
-#if(APPLE)
-#    execute_process(
-#        COMMAND uname -m
-#        RESULT_VARIABLE result
-#        OUTPUT_VARIABLE OpenColorIO_OSX_NATIVE_ARCH
-#        OUTPUT_STRIP_TRAILING_WHITESPACE)
-#    list(APPEND OpenColorIO_ARGS -DCMAKE_OSX_ARCHITECTURES=${OpenColorIO_OSX_NATIVE_ARCH})
-#endif()
 
 ExternalProject_Add(
     OpenColorIO
