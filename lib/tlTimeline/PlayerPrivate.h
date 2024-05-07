@@ -27,6 +27,12 @@ namespace tl
         {
             otime::RationalTime loopPlayback(const otime::RationalTime&);
 
+            void reverseRequests(const otime::RationalTime& start,
+                                 const otime::RationalTime& end,
+                                 const otime::RationalTime& inc);
+            void forwardRequests(const otime::RationalTime& start,
+                                 const otime::RationalTime& end,
+                                 const otime::RationalTime& inc);
             void clearRequests();
             void clearCache();
             void cacheUpdate();

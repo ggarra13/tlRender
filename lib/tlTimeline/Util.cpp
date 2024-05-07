@@ -125,11 +125,17 @@ namespace tl
             switch (direction)
             {
             case CacheDirection::Forward:
-                if (value.start_time() < range.start_time())
+                if (value.start_time() <= range.start_time())
                 {
-                    const otime::TimeRange a(range.start_time(), min);
-                    TLRENDER_ASSERT(a.duration() == min);
+                    const otime::TimeRange a(range.start_time(), min + value.start_time());
+                    TLRENDER_ASSERT(a.duration() == min + value.start_time());
                     out.push_back(a);
+                    const otime::RationalTime duration = min - (value.duration() + value.start_time());
+                    if (duration.value() > 0.0)
+                    {
+                        const otime::TimeRange b(range.end_time_exclusive() - duration, duration);
+                        out.push_back(b);
+                    }
                 }
                 else if (value.start_time() > range.end_time_inclusive())
                 {
@@ -182,8 +188,9 @@ namespace tl
                     const otime::TimeRange a = otime::TimeRange::range_from_start_end_time_inclusive(
                         range.start_time(),
                         clamped.end_time_inclusive());
+                    const otime::RationalTime behind_duration = clamped.duration() - a.duration();
                     const otime::TimeRange b = otime::TimeRange::range_from_start_end_time_inclusive(
-                        range.end_time_exclusive() - (clamped.duration() - a.duration()),
+                        range.end_time_exclusive() - behind_duration,
                         range.end_time_inclusive());
                     TLRENDER_ASSERT(a.duration() + b.duration() == min);
                     if (a.duration().value() > 0.0)
