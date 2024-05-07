@@ -158,7 +158,7 @@ namespace tl
                     const auto j = thread.videoDataRequests.find(time);
                     if (j == thread.videoDataRequests.end())
                     {
-                        // std::cout << "\t\t\tvideo request: " << time << std::endl;
+                        std::cout << "\t\t\tBACK video request: " << time << std::endl;
                         auto& request = thread.videoDataRequests[time];
                         request.clear();
                         io::Options ioOptions2 = thread.ioOptions;
@@ -195,7 +195,8 @@ namespace tl
                     const auto j = thread.videoDataRequests.find(time);
                     if (j == thread.videoDataRequests.end())
                     {
-                        //std::cout << this << " video request: " << time << std::endl;
+                        std::cout << "\t\t\tFWD video request: "
+                                  << time << std::endl;
                         auto& request = thread.videoDataRequests[time];
                         request.clear();
                         io::Options ioOptions2 = thread.ioOptions;
