@@ -127,6 +127,11 @@ namespace tl
             case CacheDirection::Forward:
                 if (value.start_time() <= range.start_time())
                 {
+#if 1
+                    const otime::TimeRange a(range.start_time(), min);
+                    TLRENDER_ASSERT(a.duration() == min);
+                    out.push_back(a);
+#else
                     const otime::TimeRange a(range.start_time(), min + value.start_time());
                     TLRENDER_ASSERT(a.duration() == min + value.start_time());
                     out.push_back(a);
@@ -136,6 +141,7 @@ namespace tl
                         const otime::TimeRange b(range.end_time_exclusive() - duration, duration);
                         out.push_back(b);
                     }
+#endif
                 }
                 else if (value.start_time() > range.end_time_inclusive())
                 {
@@ -180,7 +186,7 @@ namespace tl
                     out.push_back(a);
                     TLRENDER_ASSERT(a.duration() == min);
                 }
-                else if (value.start_time() < range.start_time())
+                else if (value.start_time() <= range.start_time())
                 {
                     const otime::TimeRange clamped = otime::TimeRange::range_from_start_end_time_inclusive(
                         value.end_time_exclusive() - min,

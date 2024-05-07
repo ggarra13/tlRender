@@ -30,19 +30,6 @@ namespace tl
             bool operator != (const PlayerCacheInfo&) const;
         };
 
-        //! Playback modes.
-        enum class Playback
-        {
-            Stop,
-            Forward,
-            Reverse,
-
-            Count,
-            First = Stop
-        };
-        TLRENDER_ENUM(Playback);
-        TLRENDER_ENUM_SERIALIZE(Playback);
-
         //! Playback loop modes.
         enum class Loop
         {

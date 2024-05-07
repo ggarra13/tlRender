@@ -151,14 +151,15 @@ namespace tl
             const otime::TimeRange& timeRange = timeline->getTimeRange();
             for (auto time = start; time >= end; time -= inc)
             {
-                // std::cout << "\t\tcheck: " << time << std::endl;
                 const auto i = thread.videoDataCache.find(time);
                 if (i == thread.videoDataCache.end())
                 {
                     const auto j = thread.videoDataRequests.find(time);
                     if (j == thread.videoDataRequests.end())
                     {
-                        std::cout << "\t\t\tBACK video request: " << time << std::endl;
+                        // std::cerr << thread.cacheDirection
+                        //           << "\t\tBACK video request: "
+                        //           << time << std::endl;
                         auto& request = thread.videoDataRequests[time];
                         request.clear();
                         io::Options ioOptions2 = thread.ioOptions;
@@ -195,8 +196,9 @@ namespace tl
                     const auto j = thread.videoDataRequests.find(time);
                     if (j == thread.videoDataRequests.end())
                     {
-                        std::cout << "\t\t\tFWD video request: "
-                                  << time << std::endl;
+                        // std::cerr << thread.cacheDirection
+                        //           << "\t\tFWD video request: "
+                        //           << time << std::endl;
                         auto& request = thread.videoDataRequests[time];
                         request.clear();
                         io::Options ioOptions2 = thread.ioOptions;
@@ -383,10 +385,21 @@ namespace tl
                     }
                     case CacheDirection::Reverse:
                     {
-                        const auto start = range.end_time_inclusive();
-                        const auto end = range.start_time();
-                        const auto inc = otime::RationalTime(1.0, range.duration().rate());
-                        reverseRequests(start, end, inc);
+                        if (videoRanges.size() > 2 &&
+                            range.start_time() == thread.inOutRange.start_time())
+                        {
+                            const otime::RationalTime start = range.start_time();
+                            const otime::RationalTime end = range.end_time_inclusive();
+                            const otime::RationalTime inc = otime::RationalTime(1.0, range.duration().rate());
+                            forwardRequests(start, end, inc);
+                        }
+                        else
+                        {
+                            const auto start = range.end_time_inclusive();
+                            const auto end = range.start_time();
+                            const auto inc = otime::RationalTime(1.0, range.duration().rate());
+                            reverseRequests(start, end, inc);
+                        }
                         break;
                     }
                     default: break;

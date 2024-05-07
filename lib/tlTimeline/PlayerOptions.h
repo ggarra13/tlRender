@@ -10,6 +10,19 @@ namespace tl
 {
     namespace timeline
     {
+        //! Playback modes.
+        enum class Playback
+        {
+            Stop,
+            Forward,
+            Reverse,
+
+            Count,
+            First = Stop
+        };
+        TLRENDER_ENUM(Playback);
+        TLRENDER_ENUM_SERIALIZE(Playback);
+        
         //! Timer modes.
         enum class TimerMode
         {
@@ -24,7 +37,7 @@ namespace tl
 
         //! Timeline player cache options.
         struct PlayerCacheOptions
-        {
+        {            
             //! Cache read ahead.
             otime::RationalTime readAhead = otime::RationalTime(2.0, 1.0);
 
@@ -55,6 +68,9 @@ namespace tl
 
             //! Current time.
             otime::RationalTime currentTime = time::invalidTime;
+
+            //! Start playback direction.
+            Playback playback = Playback::Forward;
 
             bool operator == (const PlayerOptions&) const;
             bool operator != (const PlayerOptions&) const;
