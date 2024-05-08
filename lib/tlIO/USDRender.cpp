@@ -144,19 +144,21 @@ namespace tl
                     _finish();
                 });
             
+            const auto& plugins = UsdImagingGLEngine::GetRendererPlugins();
+            for (const auto& id : plugins)
+            {
+                const std::string& name = UsdImagingGLEngine::GetRendererDisplayName(id);
+                p.renderers.push_back(name);
+            }
+            
             if (auto logSystem = p.logSystem.lock())
             {
-                std::vector<std::string> renderers;
-                for (const auto& id : UsdImagingGLEngine::GetRendererPlugins())
-                {
-                    renderers.push_back(UsdImagingGLEngine::GetRendererDisplayName(id));
-                }
                 logSystem->print(
                     "tl::usd::Render",
                     string::Format(
                         "\n"
                         "    Renderers: {0}").
-                    arg(string::join(renderers, ", ")));
+                    arg(string::join(p.renderers, ", ")));
             }
         }
 
