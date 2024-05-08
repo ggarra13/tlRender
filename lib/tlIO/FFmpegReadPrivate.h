@@ -74,6 +74,7 @@ namespace tl
             std::shared_ptr<image::Image> popBuffer();
 
         private:
+            int64_t toTimeStamp(const otime::RationalTime&);
             int _decode(const otime::RationalTime& currentTime);
             void _copy(std::shared_ptr<image::Image>&);
             float _getRotation(const AVStream*);
@@ -86,6 +87,12 @@ namespace tl
             float _rotation = 0.F;
             std::weak_ptr<log::System> _logSystem;
 
+            //! Caching variables
+            bool              _slowCodec = false;
+            std::set<int64_t> _timestamps;
+            otime::RationalTime _lastDecodedTime = time::invalidTime;
+
+            //! FFmpeg variables
             AVFormatContext* _avFormatContext = nullptr;
             AVIOBufferData _avIOBufferData;
             uint8_t* _avIOContextBuffer = nullptr;

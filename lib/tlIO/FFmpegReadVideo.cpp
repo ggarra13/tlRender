@@ -5,6 +5,7 @@
 #include <tlIO/FFmpegReadPrivate.h>
 #include <tlIO/FFmpegMacros.h>
 
+#include <tlCore/String.h>
 #include <tlCore/StringFormat.h>
 
 extern "C"
@@ -14,6 +15,31 @@ extern "C"
 #include <libavutil/opt.h>
 
 } // extern "C"
+
+namespace
+{
+    const char* slowCodecs[] = {
+        "3iv2", "3ivd", "ap41", "avc1", "div1", "div2", "div3", "div4", "div5",
+        "div6", "divx", "dnxhd", "dx50", "h263", "h264", "i263", "iv31", "iv32",
+        "m4s2", "mp42", "mp43", "mp4s", "mp4v", "mpeg4", "mpg1", "mpg3", "mpg4",
+        "pim1", "s263", "svq1", "svq3", "u263", "vc1", "vc1_vdpau", "vc1image",
+        "viv1", "wmv3", "wmv3_vdpau", "wmv3image", "xith", "xvid",
+        0 };
+
+    bool codecIsSlow(std::string name)
+    {
+        name = tl::string::toLower(name);
+        for (const char** p = slowCodecs; *p; p++)
+        {
+            if (*p == name)
+            {
+                return true;
+            }
+        }
+        return false;
+    };
+}
+
 
 namespace tl
 {
@@ -69,6 +95,7 @@ namespace tl
             {
                 throw std::runtime_error(string::Format("{0}: {1}").arg(fileName).arg(getErrorLabel(r)));
             }
+            
             for (unsigned int i = 0; i < _avFormatContext->nb_streams; ++i)
             {
                 //av_dump_format(_avFormatContext, 0, fileName.c_str(), 0);
@@ -149,7 +176,7 @@ namespace tl
                 _avCodecContext[_avStream]->thread_count = options.threadCount;
                 _avCodecContext[_avStream]->thread_type = FF_THREAD_FRAME;
                 
-                // libdav1d codec does not decode properly when thread count is
+                // \@note: libdav1d codec does not decode properly when thread count is
                 // 0.  We must set it to 1.
                 if (avVideoCodecParameters->codec_id == AV_CODEC_ID_AV1 &&
                     options.threadCount == 0)
@@ -439,6 +466,11 @@ namespace tl
                     ss << _rotation;
                     _tags["Video Rotation"] = ss.str();
                 }
+                _slowCodec = codecIsSlow(avVideoCodec->name);
+                if (_slowCodec)
+                {
+                    _tags["Video Codec Slow Seek"] = "True";
+                }
                 {
                     std::stringstream ss;
                     ss << _info.size.w << " " << _info.size.h;
@@ -649,24 +681,45 @@ namespace tl
             }
         }
 
+        inline int64_t ReadVideo::toTimeStamp(const otime::RationalTime& time)
+        {
+            return av_rescale_q(
+                time.value() - _timeRange.start_time().value(),
+                swap(_avSpeed),
+                _avFormatContext->streams[_avStream]->time_base);
+        }
+        
         void ReadVideo::seek(const otime::RationalTime& time)
         {
             //std::cout << "video seek: " << time << std::endl;
 
             if (_avStream != -1)
             {
-                avcodec_flush_buffers(_avCodecContext[_avStream]);
-
-                if (av_seek_frame(
-                    _avFormatContext,
-                    _avStream,
-                    av_rescale_q(
-                        time.value() - _timeRange.start_time().value(),
-                        swap(_avSpeed),
-                        _avFormatContext->streams[_avStream]->time_base),
-                    AVSEEK_FLAG_BACKWARD) < 0)
+                bool seek = false;
+                const int gop_size =
+                    _slowCodec && _avCodecContext[_avStream]->gop_size != 0
+                        ? _avCodecContext[_avStream]->gop_size
+                        : 1;
+                const auto nearTime = otime::RationalTime(gop_size, time.rate());
+                if (!time::isValid(_lastDecodedTime) ||
+                    _lastDecodedTime > time ||
+                    _lastDecodedTime < time - nearTime)
+                    seek = true;
+                if (seek)
                 {
-                    //! \todo How should this be handled?
+                    avcodec_flush_buffers(_avCodecContext[_avStream]);
+                    
+                    if (av_seek_frame(
+                            _avFormatContext,
+                            _avStream, toTimeStamp(time),
+                            AVSEEK_FLAG_BACKWARD) < 0)
+                    {
+                        //! \todo How should this be handled?
+                    }
+                }
+                else
+                {
+                    std::cerr << "no seek" << std::endl;
                 }
             }
 
@@ -787,6 +840,8 @@ namespace tl
 
                 if (time >= currentTime)
                 {
+                    _lastDecodedTime = time;
+                    
                     //std::cout << "video time: " << time << std::endl;
                     auto image = image::Image::create(_info);
                     
