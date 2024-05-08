@@ -74,8 +74,10 @@ namespace tl
             std::shared_ptr<image::Image> popBuffer();
 
         private:
+            int64_t _findBestTS(int64_t goalTS);
             int64_t _frameToPTS(const int64_t frame);
-            int _decode(const otime::RationalTime& currentTime);
+            int _decode(const otime::RationalTime& currentTime,
+                        const AVPacket* const packet);
             void _copy(std::shared_ptr<image::Image>&);
             float _getRotation(const AVStream*);
 
@@ -90,7 +92,8 @@ namespace tl
 
             //! Caching variables
             bool              _slowSeekCodec = false;
-            std::set<int64_t> _timestamps;
+            std::set<int64_t> tsSet;
+            int64_t           bestTS = 0;
             int64_t           _lastDecodedFrame = -1;
 
             //! FFmpeg variables

@@ -2,6 +2,9 @@
 // Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
+#include <sstream>
+
+
 #include <tlIO/FFmpegReadPrivate.h>
 #include <tlIO/FFmpegMacros.h>
 
@@ -15,6 +18,12 @@ extern "C"
 #include <libavutil/opt.h>
 
 } // extern "C"
+
+
+#if 0
+#define DEBUG_TIMESTAMPS
+#else
+#endif
 
 namespace
 {
@@ -681,6 +690,43 @@ namespace tl
             }
         }
 
+        inline int64_t ReadVideo::_findBestTS(int64_t goalTS)
+        {
+            //
+            //  The timestamps we have collected from unordered packets give us
+            //  a view into the future timestamps for the frames we _will_
+            //  decode. This helps us "predict the future" for interframe codecs
+            //  and do a better job of finding the best timestamp match for RV's
+            //  frame request.
+            //
+            //  Below we look through the timestamps we know are coming to find
+            //  the one that is closest to the goalTS that represents the RV
+            //  requested frame
+            //
+            const auto& videoStream = _avCodecContext[_avStream];
+            const double speed = av_q2d(_avSpeed);
+            const double frameDur =
+                double(videoStream->time_base.den) /
+                (double(videoStream->time_base.num) * speed);
+
+            int64_t smallest = -1;
+            std::map<int64_t, int64_t> diffs;
+            for(const auto& ts : tsSet)
+            {
+                int64_t diff = std::abs(goalTS - ts);
+                if (diff < smallest || smallest == -1)
+                    smallest = diff;
+                diffs[diff] = ts;
+            }
+            bestTS =
+                (smallest != -1 && ( smallest < ( frameDur * 0.5 )))
+                ? diffs[smallest]
+                : goalTS;
+            std::cerr << "bestTS=" << bestTS << " goalTS="
+                      << goalTS << std::endl;
+            return bestTS;
+        }
+
         inline int64_t ReadVideo::_frameToPTS(const int64_t frame)
         {
             return av_rescale_q(
@@ -716,12 +762,8 @@ namespace tl
                     {
                         //! \todo How should this be handled?
                     }
-                    std::cerr << "seek " << frame << " pts=" << pts
-                              << std::endl;
-                }
-                else
-                {
-                    std::cerr << "no seek" << std::endl;
+                    // _lastDecodedFrame = -1;
+                    // tsSet.clear();
                 }
             }
 
@@ -752,6 +794,15 @@ namespace tl
                             //! \todo How should this be handled?
                             break;
                         }
+
+                        const AVPacket* pkt = packet.p;
+                        if (pkt->pts != AV_NOPTS_VALUE)
+                            tsSet.insert(pkt->pts);
+                        else if (pkt->dts != AV_NOPTS_VALUE)
+                            tsSet.insert(pkt->dts);
+
+                        const int64_t goalTS = _frameToPTS(currentTime.value());
+                        bestTS = _findBestTS(goalTS);
                     }
                     if ((_eof && _avStream != -1) || (_avStream == packet.p->stream_index))
                     {
@@ -767,7 +818,7 @@ namespace tl
                             //! \todo How should this be handled?
                             break;
                         }
-                        decoding = _decode(currentTime);
+                        decoding = _decode(currentTime, packet.p);
                         if (AVERROR(EAGAIN) == decoding)
                         {
                             decoding = 0;
@@ -798,6 +849,21 @@ namespace tl
                 }
                 //std::cout << "video buffer size: " << _buffer.size() << std::endl;
             }
+
+            
+            // // Remove earlier timestamps
+            // int64_t prune = _frameToPTS(currentTime.value());
+            // std::set<int64_t>::iterator pruneIT;
+            // for (pruneIT = tsSet.begin(); pruneIT != tsSet.end();
+            //      pruneIT++)
+            // {
+            //     if (*pruneIT > prune)
+            //     {
+            //         if (pruneIT != tsSet.begin()) pruneIT--;
+            //         break;
+            //     }
+            // }
+            // tsSet.erase(tsSet.begin(), pruneIT);
             return out;
         }
 
@@ -817,7 +883,8 @@ namespace tl
             return out;
         }
 
-        int ReadVideo::_decode(const otime::RationalTime& currentTime)
+        int ReadVideo::_decode(const otime::RationalTime& currentTime,
+                               const AVPacket* const packet)
         {
             int out = 0;
             while (0 == out)
@@ -843,6 +910,15 @@ namespace tl
                 if (time >= currentTime)
                 {
                     _lastDecodedFrame = time.value();
+
+#ifdef DEBUG_TIMESTAMPS
+                    std::ostringstream tss;
+                    for (const auto& ts : tsSet)
+                    {
+                        tss << " " << ts;
+                    }
+                    std::cerr << "tss: " << tss.str() << std::endl;
+#endif
                     
                     //std::cout << "video time: " << time << std::endl;
                     auto image = image::Image::create(_info);
