@@ -105,6 +105,7 @@ else()
 	--disable-v4l2-m2m
 	--disable-vaapi
 	--disable-vdpau
+	--disable-large-tests
 	${FFmpeg_CFLAGS}
 	${FFmpeg_CXXFLAGS}
 	${FFmpeg_OBJCFLAGS}
