@@ -25,31 +25,6 @@ extern "C"
 #else
 #endif
 
-namespace
-{
-    const char* slowCodecs[] = {
-        "3iv2", "3ivd", "ap41", "avc1", "div1", "div2", "div3", "div4", "div5",
-        "div6", "divx", "dnxhd", "dx50", "h263", "h264", "i263", "iv31", "iv32",
-        "m4s2", "mp42", "mp43", "mp4s", "mp4v", "mpeg4", "mpg1", "mpg3", "mpg4",
-        "pim1", "s263", "svq1", "svq3", "u263", "vc1", "vc1_vdpau", "vc1image",
-        "viv1", "wmv3", "wmv3_vdpau", "wmv3image", "xith", "xvid",
-        0 };
-
-    bool codecIsSlow(std::string name)
-    {
-        name = tl::string::toLower(name);
-        for (const char** p = slowCodecs; *p; p++)
-        {
-            if (*p == name)
-            {
-                return true;
-            }
-        }
-        return false;
-    };
-}
-
-
 namespace tl
 {
     namespace ffmpeg
@@ -475,11 +450,6 @@ namespace tl
                     ss << _rotation;
                     _tags["Video Rotation"] = ss.str();
                 }
-                _slowSeekCodec = codecIsSlow(avVideoCodec->name);
-                if (_slowSeekCodec)
-                {
-                    _tags["Video Codec Slow Seek"] = "True";
-                }
                 {
                     std::stringstream ss;
                     ss << _info.size.w << " " << _info.size.h;
@@ -742,10 +712,9 @@ namespace tl
             if (_avStream != -1)
             {
                 bool seek = false;
-                const int gop_size =
-                    _slowSeekCodec && _avCodecContext[_avStream]->gop_size != 0
-                        ? _avCodecContext[_avStream]->gop_size
-                        : 1;
+                const int gop_size = _avCodecContext[_avStream]->gop_size != 0
+                                         ? _avCodecContext[_avStream]->gop_size
+                                         : 1;
                 const int64_t frame = time.value();
                 if (_lastDecodedFrame = -1 ||
                     _lastDecodedFrame > frame ||

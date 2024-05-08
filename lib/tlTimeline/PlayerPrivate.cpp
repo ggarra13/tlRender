@@ -264,7 +264,11 @@ namespace tl
                 otime::TimeRange(
                     thread.currentTime,
                     otime::RationalTime(1.0, thread.currentTime.rate())));
+
+            //! If we are at the start either playing backwards or stopping,
+            //! we need to loop the cache read behind to the end (for looping).
             if (mutex.playback != Playback::Forward &&
+                loop->get() == Loop::Loop &&
                 videoRanges[1].start_time() == thread.inOutRange.start_time())
             {
                 const auto& end = thread.inOutRange.end_time_inclusive();
@@ -377,7 +381,11 @@ namespace tl
                     {
                     case CacheDirection::Forward:
                     {
-                        if (videoRanges.size() > 2 &&
+                        // If we are stopped, and we are looping, we have to
+                        // check the last video range we added at the end of
+                        // the timeline to read it backwards
+                        if (mutex.playback == Playback::Stop &&
+                            loop->get() == Loop::Loop &&
                             range.end_time_inclusive() == thread.inOutRange.end_time_inclusive())
                         {
                             const auto start = range.end_time_inclusive();
@@ -396,21 +404,10 @@ namespace tl
                     }
                     case CacheDirection::Reverse:
                     {
-                        if (videoRanges.size() > 2 &&
-                            range.start_time() == thread.inOutRange.start_time())
-                        {
-                            const otime::RationalTime start = range.start_time();
-                            const otime::RationalTime end = range.end_time_inclusive();
-                            const otime::RationalTime inc = otime::RationalTime(1.0, range.duration().rate());
-                            forwardRequests(start, end, inc);
-                        }
-                        else
-                        {
-                            const auto start = range.end_time_inclusive();
-                            const auto end = range.start_time();
-                            const auto inc = otime::RationalTime(1.0, range.duration().rate());
-                            reverseRequests(start, end, inc);
-                        }
+                        const auto start = range.end_time_inclusive();
+                        const auto end = range.start_time();
+                        const auto inc = otime::RationalTime(1.0, range.duration().rate());
+                        reverseRequests(start, end, inc);
                         break;
                     }
                     default: break;
