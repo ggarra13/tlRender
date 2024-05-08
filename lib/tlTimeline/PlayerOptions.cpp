@@ -11,6 +11,9 @@ namespace tl
 {
     namespace timeline
     {
+        TLRENDER_ENUM_IMPL(Playback, "Stop", "Forward", "Reverse");
+        TLRENDER_ENUM_SERIALIZE_IMPL(Playback);
+        
         TLRENDER_ENUM_IMPL(TimerMode, "System", "Audio");
         TLRENDER_ENUM_SERIALIZE_IMPL(TimerMode);
     }

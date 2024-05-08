@@ -5,6 +5,7 @@
 #include <tlIO/FFmpegReadPrivate.h>
 #include <tlIO/FFmpegMacros.h>
 
+#include <tlCore/String.h>
 #include <tlCore/StringFormat.h>
 
 extern "C"
@@ -69,6 +70,7 @@ namespace tl
             {
                 throw std::runtime_error(string::Format("{0}: {1}").arg(fileName).arg(getErrorLabel(r)));
             }
+            
             for (unsigned int i = 0; i < _avFormatContext->nb_streams; ++i)
             {
                 //av_dump_format(_avFormatContext, 0, fileName.c_str(), 0);
@@ -149,7 +151,7 @@ namespace tl
                 _avCodecContext[_avStream]->thread_count = options.threadCount;
                 _avCodecContext[_avStream]->thread_type = FF_THREAD_FRAME;
                 
-                // libdav1d codec does not decode properly when thread count is
+                // \@note: libdav1d codec does not decode properly when thread count is
                 // 0.  We must set it to 1.
                 if (avVideoCodecParameters->codec_id == AV_CODEC_ID_AV1 &&
                     options.threadCount == 0)
@@ -649,24 +651,40 @@ namespace tl
             }
         }
 
+        inline int64_t ReadVideo::_frameToPTS(const int64_t frame)
+        {
+            return av_rescale_q(
+                frame - _timeRange.start_time().value(),
+                swap(_avSpeed),
+                _avFormatContext->streams[_avStream]->time_base);
+        }
+        
         void ReadVideo::seek(const otime::RationalTime& time)
         {
             //std::cout << "video seek: " << time << std::endl;
 
             if (_avStream != -1)
             {
-                avcodec_flush_buffers(_avCodecContext[_avStream]);
-
-                if (av_seek_frame(
-                    _avFormatContext,
-                    _avStream,
-                    av_rescale_q(
-                        time.value() - _timeRange.start_time().value(),
-                        swap(_avSpeed),
-                        _avFormatContext->streams[_avStream]->time_base),
-                    AVSEEK_FLAG_BACKWARD) < 0)
+                bool seek = false;
+                const int gop_size = _avCodecContext[_avStream]->gop_size != 0
+                                         ? _avCodecContext[_avStream]->gop_size
+                                         : 1;
+                const int64_t frame = time.value();
+                if (_lastDecodedFrame = -1 ||
+                    _lastDecodedFrame > frame ||
+                    _lastDecodedFrame < frame - gop_size)
+                    seek = true;
+                if (seek)
                 {
-                    //! \todo How should this be handled?
+                    avcodec_flush_buffers(_avCodecContext[_avStream]);
+
+                    const int64_t pts = _frameToPTS(frame);
+                    if (av_seek_frame(
+                            _avFormatContext, _avStream, pts,
+                            AVSEEK_FLAG_BACKWARD) < 0)
+                    {
+                        //! \todo How should this be handled?
+                    }
                 }
             }
 
@@ -787,6 +805,8 @@ namespace tl
 
                 if (time >= currentTime)
                 {
+                    _lastDecodedFrame = time.value();
+                    
                     //std::cout << "video time: " << time << std::endl;
                     auto image = image::Image::create(_info);
                     

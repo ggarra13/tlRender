@@ -143,7 +143,85 @@ namespace tl
                 audioMutex.audioDataCache.clear();
             }
         }
+        
+        void Player::Private::reverseRequests(const otime::RationalTime& start,
+                                              const otime::RationalTime& end,
+                                              const otime::RationalTime& inc)
+        {
+            const otime::TimeRange& timeRange = timeline->getTimeRange();
+            for (auto time = start; time >= end; time -= inc)
+            {
+                const auto i = thread.videoDataCache.find(time);
+                if (i == thread.videoDataCache.end())
+                {
+                    const auto j = thread.videoDataRequests.find(time);
+                    if (j == thread.videoDataRequests.end())
+                    {
+                        // std::cerr << thread.cacheDirection
+                        //           << "\t\tBACK video request: "
+                        //           << time << std::endl;
+                        auto& request = thread.videoDataRequests[time];
+                        request.clear();
+                        io::Options ioOptions2 = thread.ioOptions;
+                        ioOptions2["Layer"] = string::Format("{0}").arg(thread.videoLayer);
+                        request.push_back(timeline->getVideo(time, ioOptions2));
+                        for (size_t i = 0; i < thread.compare.size(); ++i)
+                        {
+                            const otime::RationalTime time2 = timeline::getCompareTime(
+                                time,
+                                timeRange,
+                                thread.compare[i]->getTimeRange(),
+                                thread.compareTime);
+                            ioOptions2["Layer"] = string::Format("{0}").
+                                                  arg(i < thread.compareVideoLayers.size() ?
+                                                      thread.compareVideoLayers[i] :
+                                                      thread.videoLayer);
+                            request.push_back(thread.compare[i]->getVideo(time2, ioOptions2));
+                        }
+                    }
+                }
+            }
+        }
 
+        void Player::Private::forwardRequests(const otime::RationalTime& start,
+                                              const otime::RationalTime& end,
+                                              const otime::RationalTime& inc)
+        {
+            const otime::TimeRange& timeRange = timeline->getTimeRange();
+            for (otime::RationalTime time = start; time <= end; time += inc)
+            {
+                const auto i = thread.videoDataCache.find(time);
+                if (i == thread.videoDataCache.end())
+                {
+                    const auto j = thread.videoDataRequests.find(time);
+                    if (j == thread.videoDataRequests.end())
+                    {
+                        // std::cerr << thread.cacheDirection
+                        //           << "\t\tFWD video request: "
+                        //           << time << std::endl;
+                        auto& request = thread.videoDataRequests[time];
+                        request.clear();
+                        io::Options ioOptions2 = thread.ioOptions;
+                        ioOptions2["Layer"] = string::Format("{0}").arg(thread.videoLayer);
+                        request.push_back(timeline->getVideo(time, ioOptions2));
+                        for (size_t i = 0; i < thread.compare.size(); ++i)
+                        {
+                            const otime::RationalTime time2 = timeline::getCompareTime(
+                                time,
+                                timeRange,
+                                thread.compare[i]->getTimeRange(),
+                                thread.compareTime);
+                            ioOptions2["Layer"] = string::Format("{0}").
+                                                  arg(i < thread.compareVideoLayers.size() ?
+                                                      thread.compareVideoLayers[i] :
+                                                      thread.videoLayer);
+                            request.push_back(thread.compare[i]->getVideo(time2, ioOptions2));
+                        }
+                    }
+                }
+            }
+        }
+        
         void Player::Private::cacheUpdate()
         {
             // Get the video ranges to be cached.
@@ -173,8 +251,10 @@ namespace tl
                 break;
             default: break;
             }
-            //std::cout << "in out range: " << inOutRange << std::endl;
-            //std::cout << "video range: " << videoRange << std::endl;
+            // std::cout << "------------- " << thread.currentTime << " "
+            //           << thread.cacheDirection << std::endl;
+            // std::cout << "in out range: " << thread.inOutRange << std::endl;
+            // std::cout << "video range: " << videoRange << std::endl;
             auto videoRanges = timeline::loopCache(
                 videoRange,
                 thread.inOutRange,
@@ -184,10 +264,25 @@ namespace tl
                 otime::TimeRange(
                     thread.currentTime,
                     otime::RationalTime(1.0, thread.currentTime.rate())));
-            //for (const auto& i : videoRanges)
-            //{
-            //    std::cout << "video ranges: " << i << std::endl;
-            //}
+
+            //! If we are at the start either playing backwards or stopping,
+            //! we need to loop the cache read behind to the end (for looping).
+            if (mutex.playback != Playback::Forward &&
+                loop->get() == Loop::Loop &&
+                videoRanges[1].start_time() == thread.inOutRange.start_time())
+            {
+                const auto& end = thread.inOutRange.end_time_inclusive();
+                const auto& start = end - readBehindRescaled;
+                videoRange =
+                    otime::TimeRange::range_from_start_end_time_inclusive(
+                        start, end);
+                videoRanges.push_back(videoRange);
+            }
+            
+            // for (const auto& i : videoRanges)
+            // {
+            //    std::cout << "\tvideo ranges: " << i << std::endl;
+            // }
 
             // Get the audio ranges to be cached.
             const otime::RationalTime audioOffsetTime = otime::RationalTime(thread.audioOffset, 1.0).
@@ -286,38 +381,24 @@ namespace tl
                     {
                     case CacheDirection::Forward:
                     {
-                        const otime::RationalTime start = range.start_time();
-                        const otime::RationalTime end = range.end_time_inclusive();
-                        const otime::RationalTime inc = otime::RationalTime(1.0, range.duration().rate());
-                        for (otime::RationalTime time = start; time <= end; time += inc)
+                        // If we are stopped, and we are looping, we have to
+                        // check the last video range we added at the end of
+                        // the timeline to read it backwards
+                        if (mutex.playback == Playback::Stop &&
+                            loop->get() == Loop::Loop &&
+                            range.end_time_inclusive() == thread.inOutRange.end_time_inclusive())
                         {
-                            const auto i = thread.videoDataCache.find(time);
-                            if (i == thread.videoDataCache.end())
-                            {
-                                const auto j = thread.videoDataRequests.find(time);
-                                if (j == thread.videoDataRequests.end())
-                                {
-                                    //std::cout << this << " video request: " << time << std::endl;
-                                    auto& request = thread.videoDataRequests[time];
-                                    request.clear();
-                                    io::Options ioOptions2 = thread.ioOptions;
-                                    ioOptions2["Layer"] = string::Format("{0}").arg(thread.videoLayer);
-                                    request.push_back(timeline->getVideo(time, ioOptions2));
-                                    for (size_t i = 0; i < thread.compare.size(); ++i)
-                                    {
-                                        const otime::RationalTime time2 = timeline::getCompareTime(
-                                            time,
-                                            timeRange,
-                                            thread.compare[i]->getTimeRange(),
-                                            thread.compareTime);
-                                        ioOptions2["Layer"] = string::Format("{0}").
-                                            arg(i < thread.compareVideoLayers.size() ?
-                                                thread.compareVideoLayers[i] :
-                                                thread.videoLayer);
-                                        request.push_back(thread.compare[i]->getVideo(time2, ioOptions2));
-                                    }
-                                }
-                            }
+                            const auto start = range.end_time_inclusive();
+                            const auto end = range.start_time();
+                            const auto inc = otime::RationalTime(1.0, range.duration().rate());
+                            reverseRequests(start, end, inc);
+                        }
+                        else
+                        {
+                            const otime::RationalTime start = range.start_time();
+                            const otime::RationalTime end = range.end_time_inclusive();
+                            const otime::RationalTime inc = otime::RationalTime(1.0, range.duration().rate());
+                            forwardRequests(start, end, inc);
                         }
                         break;
                     }
@@ -326,36 +407,7 @@ namespace tl
                         const auto start = range.end_time_inclusive();
                         const auto end = range.start_time();
                         const auto inc = otime::RationalTime(1.0, range.duration().rate());
-                        for (auto time = start; time >= end; time -= inc)
-                        {
-                            const auto i = thread.videoDataCache.find(time);
-                            if (i == thread.videoDataCache.end())
-                            {
-                                const auto j = thread.videoDataRequests.find(time);
-                                if (j == thread.videoDataRequests.end())
-                                {
-                                    //std::cout << this << " video request: " << time << std::endl;
-                                    auto& request = thread.videoDataRequests[time];
-                                    request.clear();
-                                    io::Options ioOptions2 = thread.ioOptions;
-                                    ioOptions2["Layer"] = string::Format("{0}").arg(thread.videoLayer);
-                                    request.push_back(timeline->getVideo(time, ioOptions2));
-                                    for (size_t i = 0; i < thread.compare.size(); ++i)
-                                    {
-                                        const otime::RationalTime time2 = timeline::getCompareTime(
-                                            time,
-                                            timeRange,
-                                            thread.compare[i]->getTimeRange(),
-                                            thread.compareTime);
-                                        ioOptions2["Layer"] = string::Format("{0}").
-                                            arg(i < thread.compareVideoLayers.size() ?
-                                                thread.compareVideoLayers[i] :
-                                                thread.videoLayer);
-                                        request.push_back(thread.compare[i]->getVideo(time2, ioOptions2));
-                                    }
-                                }
-                            }
-                        }
+                        reverseRequests(start, end, inc);
                         break;
                     }
                     default: break;
@@ -715,7 +767,6 @@ namespace tl
                                                                          range.start_time().value() - inOffset - 1.0,
                                                                          range.start_time().value() + outOffset);
                                             volumeMultiplier = std::min(1.F, volumeMultiplier);
-                                            // std::cerr << currentTime << " layer=" << layerCount << " " << " FADE IN  ";
                                         }
                                     }
                                     else
@@ -746,7 +797,6 @@ namespace tl
                                         {
                                             volumeMultiplier = 0.F;
                                         }
-                                        // std::cerr << currentTime << " layer=" << layerCount << " " << " FADE OUT ";
                                     }
                                 }
                                 

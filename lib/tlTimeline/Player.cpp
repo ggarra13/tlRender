@@ -16,9 +16,6 @@ namespace tl
 {
     namespace timeline
     {
-        TLRENDER_ENUM_IMPL(Playback, "Stop", "Forward", "Reverse");
-        TLRENDER_ENUM_SERIALIZE_IMPL(Playback);
-
         TLRENDER_ENUM_IMPL(Loop, "Loop", "Once", "Ping-Pong");
         TLRENDER_ENUM_SERIALIZE_IMPL(Loop);
 
@@ -121,6 +118,8 @@ namespace tl
                 });
 
             // Create a new thread.
+            if (playerOptions.playback == Playback::Reverse)
+                p.mutex.cacheDirection = CacheDirection::Reverse;
             p.mutex.currentTime = p.currentTime->get();
             p.mutex.inOutRange = p.inOutRange->get();
             p.mutex.audioOffset = p.audioOffset->get();
