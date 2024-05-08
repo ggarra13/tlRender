@@ -253,7 +253,7 @@ namespace tl
             }
             // std::cout << "------------- " << thread.currentTime << " "
             //           << thread.cacheDirection << std::endl;
-            // std::cout << "in out range: " << thread.inOutRange << std::endl;
+            std::cout << "in out range: " << thread.inOutRange << std::endl;
             // std::cout << "video range: " << videoRange << std::endl;
             auto videoRanges = timeline::loopCache(
                 videoRange,
@@ -264,10 +264,23 @@ namespace tl
                 otime::TimeRange(
                     thread.currentTime,
                     otime::RationalTime(1.0, thread.currentTime.rate())));
-            // for (const auto& i : videoRanges)
+            // if (mutex.playback != Playback::Forward &&
+            //     videoRanges[1].start_time() == thread.inOutRange.start_time())
             // {
-            //    std::cout << "\tvideo ranges: " << i << std::endl;
+            //     const auto& end = thread.inOutRange.end_time_inclusive();
+            //     const auto& start = end - readBehindRescaled;
+            //     videoRange =
+            //         otime::TimeRange::range_from_start_end_time_inclusive(
+            //             start, end);
+            //     std::cerr << "\tadd end segment" << std::endl;
+            //     videoRanges.push_back(videoRange);
             // }
+            
+            for (const auto& i : videoRanges)
+            {
+               std::cout << "\tvideo ranges: " << i << std::endl;
+            }
+            // abort();
 
             // Get the audio ranges to be cached.
             const otime::RationalTime audioOffsetTime = otime::RationalTime(thread.audioOffset, 1.0).

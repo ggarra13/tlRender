@@ -74,11 +74,12 @@ namespace tl
             std::shared_ptr<image::Image> popBuffer();
 
         private:
-            int64_t toTimeStamp(const otime::RationalTime&);
+            int64_t _frameToPTS(const int64_t frame);
             int _decode(const otime::RationalTime& currentTime);
             void _copy(std::shared_ptr<image::Image>&);
             float _getRotation(const AVStream*);
-            
+
+            //! tlRender variables
             std::string _fileName;
             Options _options;
             image::Info _info;
@@ -88,9 +89,9 @@ namespace tl
             std::weak_ptr<log::System> _logSystem;
 
             //! Caching variables
-            bool              _slowCodec = false;
+            bool              _slowSeekCodec = false;
             std::set<int64_t> _timestamps;
-            otime::RationalTime _lastDecodedTime = time::invalidTime;
+            int64_t           _lastDecodedFrame = -1;
 
             //! FFmpeg variables
             AVFormatContext* _avFormatContext = nullptr;

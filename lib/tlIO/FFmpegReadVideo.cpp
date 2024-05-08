@@ -466,8 +466,8 @@ namespace tl
                     ss << _rotation;
                     _tags["Video Rotation"] = ss.str();
                 }
-                _slowCodec = codecIsSlow(avVideoCodec->name);
-                if (_slowCodec)
+                _slowSeekCodec = codecIsSlow(avVideoCodec->name);
+                if (_slowSeekCodec)
                 {
                     _tags["Video Codec Slow Seek"] = "True";
                 }
@@ -681,10 +681,10 @@ namespace tl
             }
         }
 
-        inline int64_t ReadVideo::toTimeStamp(const otime::RationalTime& time)
+        inline int64_t ReadVideo::_frameToPTS(const int64_t frame)
         {
             return av_rescale_q(
-                time.value() - _timeRange.start_time().value(),
+                frame - _timeRange.start_time().value(),
                 swap(_avSpeed),
                 _avFormatContext->streams[_avStream]->time_base);
         }
@@ -697,25 +697,27 @@ namespace tl
             {
                 bool seek = false;
                 const int gop_size =
-                    _slowCodec && _avCodecContext[_avStream]->gop_size != 0
+                    _slowSeekCodec && _avCodecContext[_avStream]->gop_size != 0
                         ? _avCodecContext[_avStream]->gop_size
                         : 1;
-                const auto nearTime = otime::RationalTime(gop_size, time.rate());
-                if (!time::isValid(_lastDecodedTime) ||
-                    _lastDecodedTime > time ||
-                    _lastDecodedTime < time - nearTime)
+                const int64_t frame = time.value();
+                if (_lastDecodedFrame = -1 ||
+                    _lastDecodedFrame > frame ||
+                    _lastDecodedFrame < frame - gop_size)
                     seek = true;
                 if (seek)
                 {
                     avcodec_flush_buffers(_avCodecContext[_avStream]);
-                    
+
+                    const int64_t pts = _frameToPTS(frame);
                     if (av_seek_frame(
-                            _avFormatContext,
-                            _avStream, toTimeStamp(time),
+                            _avFormatContext, _avStream, pts,
                             AVSEEK_FLAG_BACKWARD) < 0)
                     {
                         //! \todo How should this be handled?
                     }
+                    std::cerr << "seek " << frame << " pts=" << pts
+                              << std::endl;
                 }
                 else
                 {
@@ -840,7 +842,7 @@ namespace tl
 
                 if (time >= currentTime)
                 {
-                    _lastDecodedTime = time;
+                    _lastDecodedFrame = time.value();
                     
                     //std::cout << "video time: " << time << std::endl;
                     auto image = image::Image::create(_info);
