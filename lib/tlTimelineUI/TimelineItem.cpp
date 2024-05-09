@@ -612,7 +612,7 @@ namespace tl
         }
 
         
-        bool TimelineItem::isDragging() const
+        bool TimelineItem::isDraggingClip() const
         {
             TLRENDER_P();
             return p.mouse.mode == Private::MouseMode::Item;

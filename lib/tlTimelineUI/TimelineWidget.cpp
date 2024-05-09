@@ -435,10 +435,10 @@ namespace tl
             }
         }
 
-        bool TimelineWidget::isDragging() const
+        bool TimelineWidget::isDraggingClip() const
         {
             TLRENDER_P();
-            return p.timelineItem->isDragging();
+            return p.timelineItem->isDraggingClip();
         }
         
         //! Sets a callback for inserting items

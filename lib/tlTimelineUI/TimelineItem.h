@@ -69,7 +69,7 @@ namespace tl
             void setStopOnScrub(bool);
             
             //! Returns whether a clip is getting dragged.
-            bool isDragging() const;
+            bool isDraggingClip() const;
 
             //! Sets a callback for inserting items
             void setMoveCallback(const std::function<void(const std::vector<timeline::MoveData>&)>&);

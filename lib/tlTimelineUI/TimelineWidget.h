@@ -158,7 +158,7 @@ namespace tl
             double getScale() const;
 
             //! Return whether a clip is getting dragged.
-            bool isDragging() const;
+            bool isDraggingClip() const;
             
             //! Sets a callback for moving items.
             void setMoveCallback(const std::function<void(const std::vector<timeline::MoveData>&)>&);
