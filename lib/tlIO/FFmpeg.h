@@ -136,6 +136,9 @@ namespace tl
             void cancelRequests() override;
 
         private:
+            void _addToCache(io::VideoData& data,
+                             const otime::RationalTime&,
+                             const io::Options&);
             void _videoThread();
             void _audioThread();
             void _cancelVideoRequests();

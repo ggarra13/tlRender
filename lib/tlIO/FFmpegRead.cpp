@@ -345,6 +345,24 @@ namespace tl
             _cancelAudioRequests();
         }
 
+        void Read::_addToCache(io::VideoData& data,
+                               const otime::RationalTime& time,
+                               const io::Options& options)
+        {
+            TLRENDER_P();
+            data.time = time;
+            if (!p.readVideo->isBufferEmpty())
+            {
+                data.image = p.readVideo->popBuffer();
+            }
+            
+            const std::string cacheKey = io::getCacheKey(
+                _path,
+                time,
+                options);
+            _cache->addVideo(cacheKey, data);
+        }
+        
         void Read::_videoThread()
         {
             TLRENDER_P();
@@ -398,12 +416,18 @@ namespace tl
                     }
                 }
 
+
                 // Seek.
+                bool backwards = false;
                 if (videoRequest &&
                     !time::compareExact(videoRequest->time, p.videoThread.currentTime))
                 {
-                    p.videoThread.currentTime = videoRequest->time;
-                    p.readVideo->seek(p.videoThread.currentTime);
+                    if (_cache &&
+                        videoRequest->time < p.videoThread.currentTime)
+                        backwards = true;
+                    else
+                        p.videoThread.currentTime = videoRequest->time;
+                    p.readVideo->seek(videoRequest->time);
                 }
 
                 // Process.
@@ -411,29 +435,30 @@ namespace tl
                     videoRequest &&
                     p.readVideo->isBufferEmpty() &&
                     p.readVideo->isValid() &&
-                    _p->readVideo->process(p.videoThread.currentTime))
-                    ;
+                    p.readVideo->process(backwards,
+                                         videoRequest->time,
+                                         p.videoThread.currentTime)
+                    )
+                {
+                    if (backwards)
+                    {
+                        if (time::compareExact(videoRequest->time,
+                                               p.videoThread.currentTime))
+                            break;
+                        io::VideoData data;
+                        _addToCache(data,
+                                    p.videoThread.currentTime,
+                                    videoRequest->options);
+                    }
+                }
 
                 // Handle request.
                 if (videoRequest)
                 {
                     io::VideoData data;
-                    data.time = videoRequest->time;
-                    if (!p.readVideo->isBufferEmpty())
-                    {
-                        data.image = p.readVideo->popBuffer();
-                    }
+                    _addToCache(data, videoRequest->time,
+                                videoRequest->options);
                     videoRequest->promise.set_value(data);
-                    
-                    if (_cache)
-                    {
-                        const std::string cacheKey = io::getCacheKey(
-                            _path,
-                            videoRequest->time,
-                            videoRequest->options);
-                        _cache->addVideo(cacheKey, data);
-                    }
-
                     p.videoThread.currentTime += otime::RationalTime(1.0, p.info.videoTime.duration().rate());
                 }
 

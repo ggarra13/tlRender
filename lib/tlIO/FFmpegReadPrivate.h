@@ -68,16 +68,17 @@ namespace tl
 
             void start();
             void seek(const otime::RationalTime&);
-            bool process(const otime::RationalTime& currentTime);
+            bool process(const bool backwards,
+                         const otime::RationalTime& targetTime,
+                         otime::RationalTime& currentTime);
 
             bool isBufferEmpty() const;
             std::shared_ptr<image::Image> popBuffer();
 
         private:
-            int64_t _findBestTS(int64_t goalTS);
-            int64_t _frameToPTS(const int64_t frame);
-            int _decode(const otime::RationalTime& currentTime,
-                        const AVPacket* const packet);
+            int _decode(const bool backwards,
+                        const otime::RationalTime& targetTime,
+                        otime::RationalTime& currentTime);
             void _copy(std::shared_ptr<image::Image>&);
             float _getRotation(const AVStream*);
 
@@ -89,13 +90,7 @@ namespace tl
             image::Tags _tags;
             float _rotation = 0.F;
             std::weak_ptr<log::System> _logSystem;
-
-            //! Caching variables
-            bool              _slowSeekCodec = false;
-            std::set<int64_t> tsSet;
-            int64_t           bestTS = 0;
-            int64_t           _lastDecodedFrame = -1;
-
+            
             //! FFmpeg variables
             AVFormatContext* _avFormatContext = nullptr;
             AVIOBufferData _avIOBufferData;

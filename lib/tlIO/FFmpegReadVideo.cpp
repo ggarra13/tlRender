@@ -660,79 +660,21 @@ namespace tl
             }
         }
 
-        inline int64_t ReadVideo::_findBestTS(int64_t goalTS)
-        {
-            //
-            //  The timestamps we have collected from unordered packets give us
-            //  a view into the future timestamps for the frames we _will_
-            //  decode. This helps us "predict the future" for interframe codecs
-            //  and do a better job of finding the best timestamp match for RV's
-            //  frame request.
-            //
-            //  Below we look through the timestamps we know are coming to find
-            //  the one that is closest to the goalTS that represents the RV
-            //  requested frame
-            //
-            const auto& videoStream = _avCodecContext[_avStream];
-            const double speed = av_q2d(_avSpeed);
-            const double frameDur =
-                double(videoStream->time_base.den) /
-                (double(videoStream->time_base.num) * speed);
-
-            int64_t smallest = -1;
-            std::map<int64_t, int64_t> diffs;
-            for(const auto& ts : tsSet)
-            {
-                int64_t diff = std::abs(goalTS - ts);
-                if (diff < smallest || smallest == -1)
-                    smallest = diff;
-                diffs[diff] = ts;
-            }
-            bestTS =
-                (smallest != -1 && ( smallest < ( frameDur * 0.5 )))
-                ? diffs[smallest]
-                : goalTS;
-            std::cerr << "bestTS=" << bestTS << " goalTS="
-                      << goalTS << std::endl;
-            return bestTS;
-        }
-
-        inline int64_t ReadVideo::_frameToPTS(const int64_t frame)
-        {
-            return av_rescale_q(
-                frame - _timeRange.start_time().value(),
-                swap(_avSpeed),
-                _avFormatContext->streams[_avStream]->time_base);
-        }
-        
         void ReadVideo::seek(const otime::RationalTime& time)
         {
-            //std::cout << "video seek: " << time << std::endl;
-
             if (_avStream != -1)
             {
-                bool seek = false;
-                const int gop_size = _avCodecContext[_avStream]->gop_size != 0
-                                         ? _avCodecContext[_avStream]->gop_size
-                                         : 1;
-                const int64_t frame = time.value();
-                if (_lastDecodedFrame = -1 ||
-                    _lastDecodedFrame > frame ||
-                    _lastDecodedFrame < frame - gop_size)
-                    seek = true;
-                if (seek)
+                avcodec_flush_buffers(_avCodecContext[_avStream]);
+                
+                if (av_seek_frame(
+                        _avFormatContext, _avStream,
+                        av_rescale_q(
+                            time.value() - _timeRange.start_time().value(),
+                            swap(_avSpeed),
+                            _avFormatContext->streams[_avStream]->time_base),
+                        AVSEEK_FLAG_BACKWARD) < 0)
                 {
-                    avcodec_flush_buffers(_avCodecContext[_avStream]);
-
-                    const int64_t pts = _frameToPTS(frame);
-                    if (av_seek_frame(
-                            _avFormatContext, _avStream, pts,
-                            AVSEEK_FLAG_BACKWARD) < 0)
-                    {
-                        //! \todo How should this be handled?
-                    }
-                    // _lastDecodedFrame = -1;
-                    // tsSet.clear();
+                    //! \todo How should this be handled?
                 }
             }
 
@@ -740,7 +682,9 @@ namespace tl
             _eof = false;
         }
 
-        bool ReadVideo::process(const otime::RationalTime& currentTime)
+        bool ReadVideo::process(
+            const bool backwards, const otime::RationalTime& targetTime,
+            otime::RationalTime& currentTime)
         {
             bool out = false;
             if (_avStream != -1 &&
@@ -763,15 +707,6 @@ namespace tl
                             //! \todo How should this be handled?
                             break;
                         }
-
-                        const AVPacket* pkt = packet.p;
-                        if (pkt->pts != AV_NOPTS_VALUE)
-                            tsSet.insert(pkt->pts);
-                        else if (pkt->dts != AV_NOPTS_VALUE)
-                            tsSet.insert(pkt->dts);
-
-                        const int64_t goalTS = _frameToPTS(currentTime.value());
-                        bestTS = _findBestTS(goalTS);
                     }
                     if ((_eof && _avStream != -1) || (_avStream == packet.p->stream_index))
                     {
@@ -787,7 +722,8 @@ namespace tl
                             //! \todo How should this be handled?
                             break;
                         }
-                        decoding = _decode(currentTime, packet.p);
+                        decoding = _decode(backwards, targetTime,
+                                           currentTime);
                         if (AVERROR(EAGAIN) == decoding)
                         {
                             decoding = 0;
@@ -818,21 +754,6 @@ namespace tl
                 }
                 //std::cout << "video buffer size: " << _buffer.size() << std::endl;
             }
-
-            
-            // // Remove earlier timestamps
-            // int64_t prune = _frameToPTS(currentTime.value());
-            // std::set<int64_t>::iterator pruneIT;
-            // for (pruneIT = tsSet.begin(); pruneIT != tsSet.end();
-            //      pruneIT++)
-            // {
-            //     if (*pruneIT > prune)
-            //     {
-            //         if (pruneIT != tsSet.begin()) pruneIT--;
-            //         break;
-            //     }
-            // }
-            // tsSet.erase(tsSet.begin(), pruneIT);
             return out;
         }
 
@@ -852,8 +773,9 @@ namespace tl
             return out;
         }
 
-        int ReadVideo::_decode(const otime::RationalTime& currentTime,
-                               const AVPacket* const packet)
+        int ReadVideo::_decode(const bool backwards,
+                               const otime::RationalTime& targetTime,
+                               otime::RationalTime& currentTime)
         {
             int out = 0;
             while (0 == out)
@@ -864,32 +786,21 @@ namespace tl
                     return out;
                 }
                 const int64_t timestamp = _avFrame->pts != AV_NOPTS_VALUE ? _avFrame->pts : _avFrame->pkt_dts;
-                //std::cout << "video timestamp: " << timestamp << std::endl;
+                // std::cout << "video timestamp: " << timestamp << std::endl;
 
                 const auto& avVideoStream = _avFormatContext->streams[_avStream];
-
+                
                 const otime::RationalTime time(
                     _timeRange.start_time().value() +
                         av_rescale_q(
                             timestamp, avVideoStream->time_base,
                             swap(avVideoStream->r_frame_rate)),
                     _timeRange.duration().rate());
-                //std::cout << "video time: " << time << std::endl;
 
-                if (time >= currentTime)
+                if (time >= targetTime || backwards)
                 {
-                    _lastDecodedFrame = time.value();
-
-#ifdef DEBUG_TIMESTAMPS
-                    std::ostringstream tss;
-                    for (const auto& ts : tsSet)
-                    {
-                        tss << " " << ts;
-                    }
-                    std::cerr << "tss: " << tss.str() << std::endl;
-#endif
+                    currentTime = time;
                     
-                    //std::cout << "video time: " << time << std::endl;
                     auto image = image::Image::create(_info);
                     
                     auto tags = _tags;
