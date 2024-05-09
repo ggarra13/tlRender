@@ -19,12 +19,6 @@ extern "C"
 
 } // extern "C"
 
-
-#if 0
-#define DEBUG_TIMESTAMPS
-#else
-#endif
-
 namespace tl
 {
     namespace ffmpeg
