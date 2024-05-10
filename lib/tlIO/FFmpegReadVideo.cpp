@@ -793,7 +793,10 @@ namespace tl
 
                 if (time >= targetTime || backwards)
                 {
-                    currentTime = time;
+                    if (time >= targetTime)
+                        currentTime = targetTime;
+                    else
+                        currentTime = time;
                     
                     auto image = image::Image::create(_info);
                     
