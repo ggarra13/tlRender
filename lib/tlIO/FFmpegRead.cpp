@@ -418,6 +418,14 @@ namespace tl
 
 
                 // Seek.
+                //
+                // \@note: Seeking on some large movies with inter-frame
+                //         compression can be slow, as FFmpeg returns the
+                //         closest 'F' frame.
+                //         When playing backwards, while we look for the
+                //         actual request time, we cache all previous 'F' and
+                //         'I' frames which allows us to play 4K movies
+                //         backwards with no issues.
                 bool backwards = false;
                 if (videoRequest &&
                     !time::compareExact(videoRequest->time, p.videoThread.currentTime))
