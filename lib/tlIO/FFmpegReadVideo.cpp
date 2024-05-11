@@ -166,7 +166,7 @@ namespace tl
                     if (avVideoCodecParameters->codec_id == AV_CODEC_ID_AV1)
                     {
                         LOG_WARNING("Decoder AV1 cannot be decoded with 0 "
-                                    "FFmpeg I/O threads.  Using 1");
+                                    "FFmpeg I/O threads.  Using 1.");
                         _avCodecContext[_avStream]->thread_count = 1;
                     }
                     // \@note: libvp9 codec does not decode properly when
