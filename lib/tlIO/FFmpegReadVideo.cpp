@@ -19,6 +19,11 @@ extern "C"
 
 } // extern "C"
 
+namespace
+{
+    const char* kModule = "ffmpeg";
+}
+
 namespace tl
 {
     namespace ffmpeg
@@ -153,16 +158,27 @@ namespace tl
                 }
                 _avCodecContext[_avStream]->thread_count = options.threadCount;
                 _avCodecContext[_avStream]->thread_type = FF_THREAD_FRAME;
-                
-                // \@note: libdav1d codec does not decode properly when thread count is
-                // 0.  We must set it to 1.
-                if (avVideoCodecParameters->codec_id == AV_CODEC_ID_AV1 &&
-                    options.threadCount == 0)
+
+                if (options.threadCount == 0)
                 {
-                    _avCodecContext[_avStream]->thread_count = 1;
+                    // \@note: libdav1d codec does not decode properly when
+                    //         thread count is 0.  We must set it to 1.
+                    if (avVideoCodecParameters->codec_id == AV_CODEC_ID_AV1)
+                    {
+                        LOG_WARNING("Decoder AV1 cannot be decoded with 0 "
+                                    "FFmpeg I/O threads.  Using 1");
+                        _avCodecContext[_avStream]->thread_count = 1;
+                    }
+                    // \@note: libvp9 codec does not decode properly when
+                    //         thread count is 0.  We must set it to 2.
+                    if (avVideoCodecParameters->codec_id == AV_CODEC_ID_VP9)
+                    {
+                        LOG_WARNING("Decoder VP9 cannot be decoded with 0 "
+                                    "FFmpeg I/O threads.  Using 2.");
+                        _avCodecContext[_avStream]->thread_count = 2;
+                    }
                 }
                 
-                _avCodecContext[_avStream]->thread_type = FF_THREAD_FRAME;
                 r = avcodec_open2(_avCodecContext[_avStream], avVideoCodec, 0);
                 if (r < 0)
                 {
