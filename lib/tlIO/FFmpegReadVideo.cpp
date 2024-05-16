@@ -640,7 +640,7 @@ namespace tl
 
                     const auto params = _avCodecParameters[_avStream];
 
-                    // @bug:
+                    // \@bug:
                     //    We don't do a BT2020_NCL to BT709 conversion in
                     //    software which is slow.
                     if (params->color_space != AVCOL_SPC_BT2020_NCL &&
@@ -654,8 +654,41 @@ namespace tl
                             _swsContext, (int**)&inv_table, &in_full,
                             (int**)&table, &out_full, &brightness, &contrast,
                             &saturation);
+
+                        // \@note: sws_getCoefficients uses its own enum,
+                        //         which mostly matches AV_COL_SPC_* values,
+                        //         but we still do a special check here just in
+                        //         case.
+                        int in_color_space = SWS_CS_DEFAULT;
+                        switch(params->color_space)
+                        {
+                        case AVCOL_SPC_RGB:
+                            in_color_space = SWS_CS_ITU601;
+                            break;
+                        case AVCOL_SPC_BT709:
+                            in_color_space = SWS_CS_ITU709;
+                            break;
+                        case AVCOL_SPC_FCC:
+                            in_color_space = SWS_CS_FCC;
+                            break;
+                            // case AVCOL_SPC_ITU624 (is not defined)
+                            // can be NTSC or PAL in_color_space = SWS_CS_624;
+                            // break;
+                        case AVCOL_SPC_SMPTE170M:
+                            in_color_space = SWS_CS_SMPTE170M;
+                            break;
+                        case AVCOL_SPC_SMPTE240M:
+                            in_color_space = SWS_CS_SMPTE240M;
+                            break;
+                        case AVCOL_SPC_BT2020_NCL:
+                        case AVCOL_SPC_BT2020_CL:  // \@bug: this one is wrong
+                            in_color_space = SWS_CS_BT2020;
+                            break;
+                        default:
+                            break;
+                        }
                         
-                        inv_table = sws_getCoefficients(params->color_space);
+                        inv_table = sws_getCoefficients(in_color_space);
                         table = sws_getCoefficients(AVCOL_SPC_BT709);
                 
                         in_full = (params->color_range == AVCOL_RANGE_JPEG);
