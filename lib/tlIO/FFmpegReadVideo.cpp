@@ -582,8 +582,9 @@ namespace tl
                 return in == out &&
                     (AV_PIX_FMT_RGB24   == in ||
                      AV_PIX_FMT_GRAY8   == in ||
-                     AV_PIX_FMT_RGBA    == in ||
-                     AV_PIX_FMT_YUV420P == in);
+                     AV_PIX_FMT_RGBA    == in);
+                    // We should not copy YUV420P as swscale may need to
+                    // color correct it.
             }
         }
 
@@ -639,7 +640,7 @@ namespace tl
                     }
 
                     const auto params = _avCodecParameters[_avStream];
-
+                    
                     // \@bug:
                     //    We don't do a BT2020_NCL to BT709 conversion in
                     //    software which is slow.
@@ -647,13 +648,16 @@ namespace tl
                         (params->color_space != AVCOL_SPC_UNSPECIFIED ||
                           width < 4096 || height < 2160))
                     {
-                        int in_full, out_full, brightness, contrast, saturation;
-                        const int *inv_table, *table;
+                        int in_full = -1;
+                        int out_full = -1;
+                        int brightness = -1;
+                        int contrast = -1;
+                        int saturation = -1;
+                        int *inv_table = nullptr, *table = nullptr;
 
                         sws_getColorspaceDetails(
-                            _swsContext, (int**)&inv_table, &in_full,
-                            (int**)&table, &out_full, &brightness, &contrast,
-                            &saturation);
+                            _swsContext, &inv_table, &in_full, &table,
+                            &out_full, &brightness, &contrast, &saturation);
 
                         // \@note: sws_getCoefficients uses its own enum,
                         //         which mostly matches AV_COL_SPC_* values,
@@ -688,14 +692,16 @@ namespace tl
                             break;
                         }
                         
-                        inv_table = sws_getCoefficients(in_color_space);
-                        table = sws_getCoefficients(AVCOL_SPC_BT709);
-                
+                        
                         in_full = (params->color_range == AVCOL_RANGE_JPEG);
                         out_full = (params->color_range == AVCOL_RANGE_JPEG);
 
+                        int out_color_space = SWS_CS_ITU709;
+                        
                         sws_setColorspaceDetails(
-                            _swsContext, inv_table, in_full, table, out_full,
+                            _swsContext, sws_getCoefficients(in_color_space),
+                            in_full, sws_getCoefficients(out_color_space),
+                            out_full,
                             brightness, contrast, saturation);
                     }
                 }
@@ -915,34 +921,6 @@ namespace tl
                             w * 4);
                     }
                     break;
-                case AV_PIX_FMT_YUV420P:
-                {
-                    const std::size_t w2 = w / 2;
-                    const std::size_t h2 = h / 2;
-                    const uint8_t* const data1 = _avFrame->data[1];
-                    const uint8_t* const data2 = _avFrame->data[2];
-                    const int linesize1 = _avFrame->linesize[1];
-                    const int linesize2 = _avFrame->linesize[2];
-                    for (std::size_t i = 0; i < h; ++i)
-                    {
-                        std::memcpy(
-                            data + w * i,
-                            data0 + linesize0 * i,
-                            w);
-                    }
-                    for (std::size_t i = 0; i < h2; ++i)
-                    {
-                        std::memcpy(
-                            data + (w * h) + w2 * i,
-                            data1 + linesize1 * i,
-                            w2);
-                        std::memcpy(
-                            data + (w * h) + (w2 * h2) + w2 * i,
-                            data2 + linesize2 * i,
-                            w2);
-                    }
-                    break;
-                }
                 default: break;
                 }
             }
