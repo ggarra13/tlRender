@@ -303,7 +303,7 @@ namespace tl
                     const auto i = ref->metadata().find("tlRender");
                     if (i != ref->metadata().end())
                     {
-                        const int64_t index = otio::any_cast<int64_t>(i->second);
+                        const int64_t index = std::any_cast<int64_t>(i->second);
                         if (index >= 0 && index < memoryData.size())
                         {
                             memoryData[index]->copy(ref);

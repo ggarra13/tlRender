@@ -214,11 +214,11 @@ namespace tl
             return out;
         }
 
-        otio::optional<otime::RationalTime> getDuration(
+        std::optional<otime::RationalTime> getDuration(
             const otio::Timeline* otioTimeline,
             const std::string& kind)
         {
-            otio::optional<otime::RationalTime> out;
+            std::optional<otime::RationalTime> out;
             otio::ErrorStatus errorStatus;
             for (auto track : otioTimeline->find_children<otio::Track>(&errorStatus))
             {
