@@ -40,6 +40,7 @@ namespace tl
             const otio::SerializableObject::Retainer<otio::Clip>& clip,
             double scale,
             const ItemOptions& options,
+            const DisplayOptions& displayOptions,
             const std::shared_ptr<ItemData>& itemData,
             const std::shared_ptr<ui::ThumbnailGenerator> thumbnailGenerator,
             const std::shared_ptr<system::Context>& context,
@@ -56,6 +57,7 @@ namespace tl
                 clip.value,
                 scale,
                 options,
+                displayOptions,
                 itemData,
                 context,
                 parent);
@@ -86,13 +88,22 @@ namespace tl
             const otio::SerializableObject::Retainer<otio::Clip>& clip,
             double scale,
             const ItemOptions& options,
+            const DisplayOptions& displayOptions,
             const std::shared_ptr<ItemData>& itemData,
             const std::shared_ptr<ui::ThumbnailGenerator> thumbnailGenerator,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
         {
             auto out = std::shared_ptr<AudioClipItem>(new AudioClipItem);
-            out->_init(clip, scale, options, itemData, thumbnailGenerator, context, parent);
+            out->_init(
+                clip,
+                scale,
+                options,
+                displayOptions,
+                itemData,
+                thumbnailGenerator,
+                context,
+                parent);
             return out;
         }
 
@@ -108,14 +119,14 @@ namespace tl
             }
         }
 
-        void AudioClipItem::setOptions(const ItemOptions& value)
+        void AudioClipItem::setDisplayOptions(const DisplayOptions& value)
         {
             const bool thumbnailsChanged =
-                value.thumbnails != _options.thumbnails ||
-                value.waveformWidth != _options.waveformWidth ||
-                value.waveformHeight != _options.waveformHeight ||
-                value.waveformPrim != _options.waveformPrim;
-            IBasicItem::setOptions(value);
+                value.thumbnails != _displayOptions.thumbnails ||
+                value.waveformWidth != _displayOptions.waveformWidth ||
+                value.waveformHeight != _displayOptions.waveformHeight ||
+                value.waveformPrim != _displayOptions.waveformPrim;
+            IBasicItem::setDisplayOptions(value);
             TLRENDER_P();
             if (thumbnailsChanged)
             {
@@ -151,7 +162,12 @@ namespace tl
                     i->second.future.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
                 {
                     const auto mesh = i->second.future.get();
-                    _data->waveforms[io::getCacheKey(p.path, i->second.timeRange, _data->options.ioOptions)] = mesh;
+                    const std::string cacheKey = io::getCacheKey(
+                        p.path,
+                        i->second.timeRange,
+                        _data->options.ioOptions,
+                        {});
+                    _data->waveforms[cacheKey] = mesh;
                     i = p.waveformRequests.erase(i);
                     _updates |= ui::Update::Draw;
                 }
@@ -167,9 +183,9 @@ namespace tl
             IBasicItem::sizeHintEvent(event);
             TLRENDER_P();
             p.size.dragLength = event.style->getSizeRole(ui::SizeRole::DragLength, _displayScale);
-            if (_options.thumbnails)
+            if (_displayOptions.thumbnails)
             {
-                _sizeHint.h += _options.waveformHeight;
+                _sizeHint.h += _displayOptions.waveformHeight;
             }
         }
 
@@ -192,7 +208,7 @@ namespace tl
             const ui::DrawEvent& event)
         {
             IBasicItem::drawEvent(drawRect, event);
-            if (_options.thumbnails)
+            if (_displayOptions.thumbnails)
             {
                 _drawWaveforms(drawRect, event);
             }
@@ -210,9 +226,9 @@ namespace tl
             const math::Box2i box(
                 g.min.x,
                 g.min.y +
-                (_options.clipInfo ? (_getLineHeight() + m * 2) : 0),
+                (_displayOptions.clipInfo ? (_getLineHeight() + m * 2) : 0),
                 g.w(),
-                _options.waveformHeight);
+                _displayOptions.waveformHeight);
             event.render->drawRect(
                 box,
                 image::Color4f(0.F, 0.F, 0.F));
@@ -223,7 +239,7 @@ namespace tl
 
             const math::Box2i clipRect = _getClipRect(
                 drawRect,
-                _options.clipRectScale);
+                _displayOptions.clipRectScale);
             if (g.intersects(clipRect))
             {
                 if (!p.ioInfo && !p.infoRequest.future.valid())
@@ -234,18 +250,18 @@ namespace tl
                 }
             }
 
-            if (_options.waveformWidth > 0 && p.ioInfo)
+            if (_displayOptions.waveformWidth > 0 && p.ioInfo)
             {
                 const int w = _sizeHint.w;
-                for (int x = 0; x < w; x += _options.waveformWidth)
+                for (int x = 0; x < w; x += _displayOptions.waveformWidth)
                 {
                     const math::Box2i box(
                         g.min.x +
                         x,
                         g.min.y +
-                        (_options.clipInfo ? (_getLineHeight() + m * 2) : 0),
-                        _options.waveformWidth,
-                        _options.waveformHeight);
+                        (_displayOptions.clipInfo ? (_getLineHeight() + m * 2) : 0),
+                        _displayOptions.waveformWidth,
+                        _displayOptions.waveformHeight);
                     if (box.intersects(clipRect))
                     {
                         const otime::RationalTime time = time::round(otime::RationalTime(
@@ -255,7 +271,7 @@ namespace tl
                             _timeRange.duration().rate()));
                         const otime::RationalTime time2 = time::round(otime::RationalTime(
                             _timeRange.start_time().value() +
-                            (w > 0 ? ((x + _options.waveformWidth) / static_cast<double>(w)) : 0) *
+                            (w > 0 ? ((x + _displayOptions.waveformWidth) / static_cast<double>(w)) : 0) *
                             _timeRange.duration().value(),
                             _timeRange.duration().rate()));
                         const otime::TimeRange mediaRange = timeline::toAudioMediaTime(
@@ -264,8 +280,12 @@ namespace tl
                             _trimmedRange,
                             p.ioInfo->audio.sampleRate);
 
-                        const auto i = _data->waveforms.find(
-                            io::getCacheKey(p.path, mediaRange, _data->options.ioOptions));
+                        const std::string cacheKey = io::getCacheKey(
+                            p.path,
+                            mediaRange,
+                            _data->options.ioOptions,
+                            {});
+                        const auto i = _data->waveforms.find(cacheKey);
                         if (i != _data->waveforms.end())
                         {
                             if (i->second)

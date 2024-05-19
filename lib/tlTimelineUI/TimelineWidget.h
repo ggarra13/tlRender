@@ -89,7 +89,7 @@ namespace tl
             //! Observe whether to automatically scroll to the current frame.
             std::shared_ptr<observer::IValue<bool> > observeScrollToCurrentFrame() const;
 
-            //! Set whether to automatically scroll to the curernt frame.
+            //! Set whether to automatically scroll to the current frame.
             void setScrollToCurrentFrame(bool);
 
             //! Get the mouse scroll key modifier.
@@ -148,7 +148,7 @@ namespace tl
 
             //! Set the item options.
             void setItemOptions(const ItemOptions&);
-            
+
             ///@}
 
             void setGeometry(const math::Box2i&) override;
@@ -183,6 +183,9 @@ namespace tl
             void _setItemOptions(
                 const std::shared_ptr<IWidget>&,
                 const ItemOptions&);
+            void _setDisplayOptions(
+                const std::shared_ptr<IWidget>&,
+                const DisplayOptions&);
 
             void _scrollUpdate();
             void _timelineUpdate();

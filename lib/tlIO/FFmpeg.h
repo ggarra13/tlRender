@@ -22,7 +22,7 @@ namespace tl
     //! FFmpeg video and audio I/O
     namespace ffmpeg
     {
-        //! Profiles.
+        //! Write profiles.
         enum class Profile
         {
             None,
@@ -85,6 +85,7 @@ namespace tl
         public:
             Packet();
             ~Packet();
+
             AVPacket* p = nullptr;
         };
 
