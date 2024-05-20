@@ -21,7 +21,8 @@ set(USD_DEPS ${PYTHON_DEP})
 set(USD_GIT_REPOSITORY https://github.com/PixarAnimationStudios/OpenUSD.git)
 set(USD_GIT_TAG v24.03)
 
-set(USD_ARGS)
+string(TOLOWER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_LC)
+set(USD_ARGS --build-variant ${CMAKE_BUILD_TYPE_LC})
 if(CMAKE_OSX_ARCHITECTURES)
     list(APPEND USD_ARGS --build-target ${CMAKE_OSX_ARCHITECTURES})
 endif()
@@ -44,11 +45,10 @@ if(WIN32)
     # \todo On Windows the USD cmake build system installs the "*.dll" files
     # and "usd" directory into "lib", however it seems like they need to be
     # in "bin" instead.
-    cmake_path(CONVERT ${CMAKE_INSTALL_PREFIX} TO_NATIVE_PATH_LIST cmake_install)
+    cmake_path(CONVERT ${CMAKE_INSTALL_PREFIX} TO_NATIVE_PATH_LIST CMAKE_INSTALL_PREFIX_NATIVE)
     set(USD_INSTALL_COMMAND
         ${CMAKE_COMMAND} -E copy_directory ${CMAKE_INSTALL_PREFIX}/lib/usd  ${CMAKE_INSTALL_PREFIX}/bin/usd
-        COMMAND copy "${cmake_install}\\lib\\*.dll" "${cmake_install}\\bin")
-
+        COMMAND copy /Y "${CMAKE_INSTALL_PREFIX_NATIVE}\\lib\\*.dll" "${CMAKE_INSTALL_PREFIX_NATIVE}\\bin")
 endif()
 
 ExternalProject_Add(
