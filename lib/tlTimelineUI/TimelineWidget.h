@@ -149,7 +149,28 @@ namespace tl
             //! Set the item options.
             void setItemOptions(const ItemOptions&);
 
+            //! Get the display options.
+            const DisplayOptions& getDisplayOptions() const;
+
+            //! Observe the display options.
+            std::shared_ptr<observer::IValue<DisplayOptions> > observeDisplayOptions() const;
+
+            //! Set the display options.
+            void setDisplayOptions(const DisplayOptions&);
+
             ///@}
+
+            //! Get timeline item geometry. 
+            const math::Box2i& getTimelineItemGeometry() const;
+
+            //! Get timeline scale.
+            double getScale() const;
+
+            //! Return whether a clip is getting dragged.
+            bool isDraggingClip() const;
+            
+            //! Sets a callback for moving items.
+            void setMoveCallback(const std::function<void(const std::vector<timeline::MoveData>&)>&);
 
             void setGeometry(const math::Box2i&) override;
             void tickEvent(

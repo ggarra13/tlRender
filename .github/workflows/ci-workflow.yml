@@ -13,12 +13,15 @@ jobs:
       TLRENDER_NET: OFF
       TLRENDER_OCIO: ON
       TLRENDER_AUDIO: ON
+      TLRENDER_ASAN: OFF
       TLRENDER_JPEG: ON
       TLRENDER_TIFF: ON
       TLRENDER_STB: ON
       TLRENDER_PNG: ON
       TLRENDER_EXR: ON
       TLRENDER_FFMPEG: ON
+      TLRENDER_X11: ON
+      TLRENDER_WAYLAND: ON
       TLRENDER_USD: OFF
       TLRENDER_NFD: OFF
       TLRENDER_QT5: ON
@@ -28,12 +31,15 @@ jobs:
       TLRENDER_GCOV: ON
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: recursive
     - uses: actions/setup-python@v5
       with:
         python-version: '3.11'
+
+    - name: Get machine name
+      run: echo "Machine name $RUNNER_NAME"
 
     - name: Setup environment
       run: |
@@ -69,10 +75,9 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      TLRENDER_PYTHON: OFF
       TLRENDER_API: GL_4_1
+      TLRENDER_PYTHON: OFF
       TLRENDER_GLFW: ON
-      TLRENDER_NET: OFF
       TLRENDER_OCIO: OFF
       TLRENDER_AUDIO: OFF
       TLRENDER_JPEG: OFF
@@ -81,13 +86,16 @@ jobs:
       TLRENDER_PNG: OFF
       TLRENDER_EXR: OFF
       TLRENDER_FFMPEG: OFF
+      TLRENDER_X11: ON
+      TLRENDER_WAYLAND: ON
+      TLRENDER_ASAN: OFF
       TLRENDER_USD: OFF
       TLRENDER_NFD: OFF
       TLRENDER_QT5: OFF
       TLRENDER_TESTS: ON
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: recursive
     - uses: actions/setup-python@v5
@@ -110,106 +118,6 @@ jobs:
         cd build
         cd tlRender/src/tlRender-build
         xvfb-run tests/tltest/tltest
-
-  linux-gles2-minimal-build:
-    runs-on: ubuntu-latest
-
-    env:
-      TLRENDER_PYTHON: OFF
-      TLRENDER_API: GLES_2
-      TLRENDER_GLFW: ON
-      TLRENDER_NET: OFF
-      TLRENDER_OCIO: OFF
-      TLRENDER_AUDIO: OFF
-      TLRENDER_JPEG: OFF
-      TLRENDER_TIFF: OFF
-      TLRENDER_STB: OFF
-      TLRENDER_PNG: OFF
-      TLRENDER_EXR: OFF
-      TLRENDER_FFMPEG: OFF
-      TLRENDER_USD: OFF
-      TLRENDER_NFD: OFF
-      TLRENDER_QT5: OFF
-      TLRENDER_TESTS: ON
-
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        submodules: recursive
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-
-    - name: Setup environment
-      run: |
-        echo "$PWD/build/install/bin" >> $GITHUB_PATH
-        echo "LD_LIBRARY_PATH=$PWD/build/install/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-        echo "PYTHONPATH=$PWD/build/install/lib:$PYTHONPATH" >> $GITHUB_ENV
-        cmake --version
-        python --version
-
-    - name: Build tlRender
-      run: bash etc/Linux/linux-build-gha.sh Debug
-
-    - name: Run tests
-      run: |
-        cd build
-        cd tlRender/src/tlRender-build
-        xvfb-run tests/tltest/tltest
-
-  linux-package:
-    runs-on: ubuntu-latest
-
-    env:
-      CMAKE_CXX_STANDARD: 17
-      TLRENDER_PYTHON: OFF
-      TLRENDER_API: GL_4_1
-      TLRENDER_GLFW: ON
-      TLRENDER_NET: ON
-      TLRENDER_OCIO: ON
-      TLRENDER_AUDIO: ON
-      TLRENDER_JPEG: ON
-      TLRENDER_TIFF: ON
-      TLRENDER_STB: ON
-      TLRENDER_PNG: ON
-      TLRENDER_EXR: ON
-      TLRENDER_FFMPEG: ON
-      TLRENDER_USD: ON
-      TLRENDER_NFD: OFF
-      TLRENDER_QT5: ON
-      TLRENDER_PROGRAMS: ON
-      TLRENDER_EXAMPLES: OFF
-      TLRENDER_TESTS: OFF
-
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        submodules: recursive
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-
-    - name: Setup environment
-      run: |
-        echo "$PWD/build/install/bin" >> $GITHUB_PATH
-        echo "LD_LIBRARY_PATH=$PWD/build/install/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
-        echo "PYTHONPATH=$PWD/build/install/lib:$PYTHONPATH" >> $GITHUB_ENV
-        cmake --version
-        python --version
-
-    - name: Build tlRender
-      run: bash etc/Linux/linux-build-gha.sh Release
-
-    - name: Package
-      run: |
-        cd build
-        cd tlRender/src/tlRender-build
-        cmake --build . -j 4 --target package
-
-    - uses: actions/upload-artifact@v3
-      with:
-        name: tlRender-Linux-Packages
-        path: build/tlRender/src/tlRender-build/tlRender-*.tar.gz
 
   macos-12-build:
     runs-on: macos-12
@@ -238,12 +146,18 @@ jobs:
       CMAKE_OSX_ARCHITECTURES: x86_64
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: recursive
     - uses: actions/setup-python@v5
       with:
         python-version: '3.11'
+
+    - name: Get machine name
+      run: echo "Machine name $RUNNER_NAME"
+      
+    - name: Install ninja-build
+      run: brew install ninja
 
     # \bug DYLD_LIBRARY_PATH is not being set here?
     - name: Setup environment
@@ -264,65 +178,7 @@ jobs:
         export DYLD_LIBRARY_PATH=$PWD/build/install/lib:$DYLD_LIBRARY_PATH
         cd build
         cd tlRender/src/tlRender-build
-        tests/tltest/tltest
-
-  macos-12-package:
-    runs-on: macos-12
-
-    env:
-      CMAKE_CXX_STANDARD: 17
-      CMAKE_OSX_DEPLOYMENT_TARGET: 10.15
-      TLRENDER_PYTHON: OFF
-      TLRENDER_API: GL_4_1
-      TLRENDER_GLFW: ON
-      TLRENDER_NET: ON
-      TLRENDER_OCIO: ON
-      TLRENDER_AUDIO: ON
-      TLRENDER_JPEG: ON
-      TLRENDER_TIFF: ON
-      TLRENDER_STB: ON
-      TLRENDER_PNG: ON
-      TLRENDER_EXR: ON
-      TLRENDER_FFMPEG: ON
-      TLRENDER_USD: ON
-      TLRENDER_NFD: OFF
-      TLRENDER_QT5: OFF
-      TLRENDER_PROGRAMS: ON
-      TLRENDER_EXAMPLES: OFF
-      TLRENDER_TESTS: OFF
-
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        submodules: recursive
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-
-    # \bug DYLD_LIBRARY_PATH is not being set here?
-    - name: Setup environment
-      run: |
-        echo "$PWD/build/install/bin" >> $GITHUB_PATH
-        echo "DYLD_LIBRARY_PATH=$PWD/build/install/lib:$DYLD_LIBRARY_PATH" >> $GITHUB_ENV
-        echo "PYTHONPATH=$PWD/build/install/lib:$PYTHONPATH" >> $GITHUB_ENV
-        cmake --version
-        python --version
-
-    - name: Build tlRender
-      run: |
-        export DYLD_LIBRARY_PATH=$PWD/build/install/lib:$DYLD_LIBRARY_PATH
-        bash etc/macOS/macos-build-gha.sh Release
-
-    - name: Package
-      run: |
-        cd build
-        cd tlRender/src/tlRender-build
-        cmake --build . -j 4 --target package
-
-    - uses: actions/upload-artifact@v3
-      with:
-        name: tlRender-macOS-Packages
-        path: build/tlRender/src/tlRender-build/tlRender-*.dmg
+        # tests/tltest/tltest
 
   macos-14-build:
     runs-on: macos-14
@@ -351,12 +207,18 @@ jobs:
       CMAKE_OSX_ARCHITECTURES: arm64
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: recursive
     - uses: actions/setup-python@v5
       with:
         python-version: '3.11'
+
+    - name: Get machine name
+      run: echo "Machine name $RUNNER_NAME"
+      
+    - name: Install ninja-build
+      run: brew install ninja
 
     # \bug DYLD_LIBRARY_PATH is not being set here?
     - name: Setup environment
@@ -383,8 +245,8 @@ jobs:
     runs-on: windows-latest
 
     env:
-      TLRENDER_PYTHON: OFF
       TLRENDER_API: GL_4_1
+      TLRENDER_PYTHON: OFF
       TLRENDER_GLFW: ON
       TLRENDER_NET: OFF
       TLRENDER_OCIO: ON
@@ -394,7 +256,7 @@ jobs:
       TLRENDER_STB: ON
       TLRENDER_PNG: ON
       TLRENDER_EXR: ON
-      TLRENDER_FFMPEG: ON
+      TLRENDER_FFMPEG: OFF
       TLRENDER_USD: OFF
       TLRENDER_NFD: OFF
       TLRENDER_QT5: OFF
@@ -403,7 +265,7 @@ jobs:
       TLRENDER_TESTS: ON
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: recursive
     - uses: actions/setup-python@v5
@@ -411,6 +273,11 @@ jobs:
         python-version: '3.11'
     - uses: ilammy/setup-nasm@v1
 
+    - name: Get machine name
+      shell: cmd
+      run: |
+        echo "Machine name: %RUNNER_NAME%"
+      
     # \bug Any spaces before the ">>" will be considered part of the path.
     - name: Setup environment
       shell: cmd
@@ -436,65 +303,3 @@ jobs:
     #    cd tlRender\src\tlRender-build
     #    tests\tltest\Debug\tltest
 
-  # \bug USD has errors in the boost build with windows-latest
-  # \bug USD has errors in the MaterialX build with windows-2019
-  windows-package:
-    runs-on: windows-latest
-    #runs-on: windows-2019
-
-    env:
-      TLRENDER_PYTHON: OFF
-      TLRENDER_API: GL_4_1
-      TLRENDER_GLFW: ON
-      TLRENDER_NET: ON
-      TLRENDER_OCIO: ON
-      TLRENDER_AUDIO: ON
-      TLRENDER_JPEG: ON
-      TLRENDER_TIFF: ON
-      TLRENDER_STB: ON
-      TLRENDER_PNG: ON
-      TLRENDER_EXR: ON
-      TLRENDER_FFMPEG: ON
-      TLRENDER_USD: OFF
-      TLRENDER_NFD: OFF
-      TLRENDER_QT5: OFF
-      TLRENDER_PROGRAMS: ON
-      TLRENDER_EXAMPLES: OFF
-      TLRENDER_TESTS: OFF
-      CMAKE_CXX_STANDARD: 17
-
-    steps:
-    - uses: actions/checkout@v3
-      with:
-        submodules: recursive
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.11'
-    - uses: ilammy/setup-nasm@v1
-
-    # \bug Any spaces before the ">>" will be considered part of the path.
-    - name: Setup environment
-      shell: cmd
-      run: |
-        echo %CD%\build\install\bin>> %GITHUB_PATH%
-        echo %CD%\build\install\lib>> %GITHUB_PATH%
-        echo CTEST_OUTPUT_ON_FAILURE=1 >> %GITHUB_ENV%
-        cmake --version
-        python --version
-
-    - name: Build tlRender
-      shell: cmd
-      run: |
-        etc\Windows\windows-build-gha.bat Release
-
-    - name: Package
-      shell: cmd
-      run: |
-        cd build
-        cd tlRender\src\tlRender-build
-        cmake --build . -j 4 --target package
-
-    - uses: actions/upload-artifact@v3
-      with:
-        name: tlRender-Windows-Packages
-        path: build\tlRender\src\tlRender-build\tlRender-*.zip

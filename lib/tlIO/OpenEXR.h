@@ -6,8 +6,6 @@
 
 #include <tlIO/SequenceIO.h>
 
-#include <tlCore/Box.h>
-
 namespace tl
 {
     //! OpenEXR image I/O.
@@ -89,6 +87,7 @@ namespace tl
 
         private:
             ChannelGrouping _channelGrouping = ChannelGrouping::Known;
+            bool            _ignoreDisplayWindow = false;
         };
 
         //! OpenEXR writer.
@@ -130,6 +129,7 @@ namespace tl
             Compression _compression = Compression::ZIP;
             float _dwaCompressionLevel = 45.F;
             int   _zipCompressionLevel = 4;
+            double _speed = io::sequenceDefaultSpeed;
         };
 
         //! OpenEXR plugin.

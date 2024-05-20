@@ -2,8 +2,13 @@
 // Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
-#include <tlIO/FFmpegReadPrivate.h>
+#include <sstream>
 
+
+#include <tlIO/FFmpegReadPrivate.h>
+#include <tlIO/FFmpegMacros.h>
+
+#include <tlCore/String.h>
 #include <tlCore/StringFormat.h>
 
 extern "C"
@@ -14,6 +19,11 @@ extern "C"
 
 } // extern "C"
 
+namespace
+{
+    const char* kModule = "ffmpeg";
+}
+
 namespace tl
 {
     namespace ffmpeg
@@ -21,8 +31,10 @@ namespace tl
         ReadVideo::ReadVideo(
             const std::string& fileName,
             const std::vector<file::MemoryRead>& memory,
+            const std::weak_ptr<log::System>& logSystem,
             const Options& options) :
             _fileName(fileName),
+            _logSystem(logSystem),
             _options(options)
         {
             if (!memory.empty())
@@ -66,6 +78,7 @@ namespace tl
             {
                 throw std::runtime_error(string::Format("{0}: {1}").arg(fileName).arg(getErrorLabel(r)));
             }
+            
             for (unsigned int i = 0; i < _avFormatContext->nb_streams; ++i)
             {
                 //av_dump_format(_avFormatContext, 0, fileName.c_str(), 0);
@@ -97,6 +110,16 @@ namespace tl
                 auto avVideoCodecParameters = avVideoStream->codecpar;
                 auto avVideoCodec = avcodec_find_decoder(avVideoCodecParameters->codec_id);
                 
+                AVDictionaryEntry* tag = nullptr;
+                unsigned trackNumber = 1; // we only support one video stream
+                while ((tag = av_dict_get(avVideoStream->metadata, "",
+                                              tag, AV_DICT_IGNORE_SUFFIX)))
+                    {
+                        std::string key(string::Format("Video Stream #{0}: {1}")
+                                        .arg(trackNumber)
+                                        .arg(tag->key));
+                        _tags[key] = tag->value;
+                    }
                 // If we are reading VPX, use libvpx-vp9 external lib if available so
                 // we can read an alpha channel.
                 if (avVideoCodecParameters->codec_id == AV_CODEC_ID_VP9)
@@ -135,6 +158,26 @@ namespace tl
                 }
                 _avCodecContext[_avStream]->thread_count = options.threadCount;
                 _avCodecContext[_avStream]->thread_type = FF_THREAD_FRAME;
+
+                if (options.threadCount == 0)
+                {
+                    // \@note: libdav1d codec does not decode properly when
+                    //         thread count is 0.
+                    if (avVideoCodecParameters->codec_id == AV_CODEC_ID_AV1)
+                    {
+                        LOG_WARNING("Decoder AV1 may decode black with 0 "
+                                    "FFmpeg I/O threads.  Setting it to 4.");
+                        _avCodecContext[_avStream]->thread_count = 4;
+                    }
+                    // \@note: libvp9 codec does not decode properly when
+                    //         thread count is 0 on Linux.
+                    if (avVideoCodecParameters->codec_id == AV_CODEC_ID_VP9)
+                    {
+                        LOG_WARNING("Decoder VP9 may decode black with 0 "
+                                    "FFmpeg I/O threads.");
+                    }
+                }
+                
                 r = avcodec_open2(_avCodecContext[_avStream], avVideoCodec, 0);
                 if (r < 0)
                 {
@@ -152,8 +195,11 @@ namespace tl
 
                 _avInputPixelFormat = static_cast<AVPixelFormat>(_avCodecParameters[_avStream]->format);
 
-                // LibVPX returns AV_PIX_FMT_YUV420P with metadata "alpha_mode" set to 1.
-                AVDictionaryEntry* tag = nullptr;
+                _tags["FFmpeg Pixel Format"] =
+                    av_get_pix_fmt_name(_avInputPixelFormat);
+
+                // LibVPX returns AV_PIX_FMT_YUV420P with metadata
+                // "alpha_mode" set to 1.
                 while ((tag = av_dict_get(avVideoStream->metadata, "", tag, AV_DICT_IGNORE_SUFFIX)))
                 {
                     const std::string key(tag->key);
@@ -161,7 +207,7 @@ namespace tl
                     if (string::compare(
                         key,
                         "alpha_mode",
-                        string::Compare::CaseSensitive))
+                        string::Compare::CaseInsensitive))
                     {
                         if (value == "1" && _avInputPixelFormat == AV_PIX_FMT_YUV420P)
                         {
@@ -262,35 +308,52 @@ namespace tl
                 case AV_PIX_FMT_YUV444P10LE:
                 case AV_PIX_FMT_YUV444P12BE:
                 case AV_PIX_FMT_YUV444P12LE:
+                    _avOutputPixelFormat = AV_PIX_FMT_RGB48;
+                    _info.pixelType = image::PixelType::RGB_U16;
+                    break;
                 case AV_PIX_FMT_YUV444P16BE:
                 case AV_PIX_FMT_YUV444P16LE:
-                    if (options.yuvToRGBConversion)
-                    {
-                        _avOutputPixelFormat = AV_PIX_FMT_RGB48;
-                        _info.pixelType = image::PixelType::RGB_U16;
-                    }
-                    else
-                    {
-                        //! \todo Use the _info.layout.endian field instead of
-                        //! converting endianness.
-                        _avOutputPixelFormat = AV_PIX_FMT_YUV444P16LE;
-                        _info.pixelType = image::PixelType::YUV_444P_U16;
-                    }
+                    //! \todo Use the _info.layout.endian field instead of
+                    //! converting endianness.
+                    _avOutputPixelFormat = AV_PIX_FMT_YUV444P16LE;
+                    _info.pixelType = image::PixelType::YUV_444P_U16;
+                    break;
+                case AV_PIX_FMT_GBR24P:
+                    _avOutputPixelFormat = AV_PIX_FMT_RGB24;
+                    _info.pixelType = image::PixelType::RGB_U8;
+                    break;
+                case AV_PIX_FMT_GBRP9BE:
+                case AV_PIX_FMT_GBRP9LE:
+                case AV_PIX_FMT_GBRP10BE:
+                case AV_PIX_FMT_GBRP12LE:
+                case AV_PIX_FMT_GBRP12BE:
+                case AV_PIX_FMT_GBRP10LE:
+                case AV_PIX_FMT_GBRP16BE:
+                case AV_PIX_FMT_GBRP16LE:
+                    _avOutputPixelFormat = AV_PIX_FMT_RGB48;
+                    _info.pixelType = image::PixelType::RGB_U16;
                     break;
                 case AV_PIX_FMT_YUVA420P:
                 case AV_PIX_FMT_YUVA422P:
                 case AV_PIX_FMT_YUVA444P:
-                    //! \todo Support these formats natively.
                     _avOutputPixelFormat = AV_PIX_FMT_RGBA;
                     _info.pixelType = image::PixelType::RGBA_U8;
+                    break;
+                case AV_PIX_FMT_GBRAP10BE:
+                case AV_PIX_FMT_GBRAP12LE:
+                case AV_PIX_FMT_GBRAP12BE:
+                case AV_PIX_FMT_GBRAP10LE:
+                case AV_PIX_FMT_GBRAP16BE:
+                case AV_PIX_FMT_GBRAP16LE:
+                    _avOutputPixelFormat = AV_PIX_FMT_RGBA64;
+                    _info.pixelType = image::PixelType::RGBA_U16;
                     break;
                 case AV_PIX_FMT_YUVA444P10BE:
                 case AV_PIX_FMT_YUVA444P10LE:
                 case AV_PIX_FMT_YUVA444P12BE:
                 case AV_PIX_FMT_YUVA444P12LE:
                 case AV_PIX_FMT_YUVA444P16BE:
-                case AV_PIX_FMT_YUVA444P16LE:
-                    //! \todo Support these formats natively.
+                case AV_PIX_FMT_YUVA444P16LE:;
                     _avOutputPixelFormat = AV_PIX_FMT_RGBA64;
                     _info.pixelType = image::PixelType::RGBA_U16;
                     break;
@@ -307,11 +370,12 @@ namespace tl
                     }
                     break;
                 }
-                if (_avCodecContext[_avStream]->color_range != AVCOL_RANGE_JPEG)
+                const auto params = _avCodecParameters[_avStream];
+                if (params->color_range != AVCOL_RANGE_JPEG)
                 {
                     _info.videoLevels = image::VideoLevels::LegalRange;
                 }
-                switch (_avCodecParameters[_avStream]->color_space)
+                switch (params->color_space)
                 {
                 case AVCOL_SPC_BT2020_NCL:
                     _info.yuvCoefficients = image::YUVCoefficients::BT2020;
@@ -417,6 +481,18 @@ namespace tl
                         avcodec_get_name(_avCodecContext[_avStream]->codec_id);
                 }
                 {
+                    _tags["Video Color Primaries"] =
+                        av_color_primaries_name(params->color_primaries);
+                }
+                {
+                    _tags["Video Color TRC"] =
+                        av_color_transfer_name(params->color_trc);
+                }
+                {
+                    _tags["Video Color Space"] =
+                        av_color_space_name(params->color_space);
+                }
+                {
                     std::stringstream ss;
                     ss << _info.videoLevels;
                     _tags["Video Levels"] = ss.str();
@@ -506,8 +582,9 @@ namespace tl
                 return in == out &&
                     (AV_PIX_FMT_RGB24   == in ||
                      AV_PIX_FMT_GRAY8   == in ||
-                     AV_PIX_FMT_RGBA    == in ||
-                     AV_PIX_FMT_YUV420P == in);
+                     AV_PIX_FMT_RGBA    == in);
+                    // We should not copy YUV420P as swscale may need to
+                    // color correct it.
             }
         }
 
@@ -529,32 +606,30 @@ namespace tl
                         throw std::runtime_error(string::Format("{0}: Cannot allocate frame").arg(_fileName));
                     }
 
-                    /*_swsContext = sws_getContext(
-                        _avCodecParameters[_avStream]->width,
-                        _avCodecParameters[_avStream]->height,
-                        _avInputPixelFormat,
-                        _avCodecParameters[_avStream]->width,
-                        _avCodecParameters[_avStream]->height,
-                        _avOutputPixelFormat,
-                        swsScaleFlags,
-                        0,
-                        0,
-                        0);
-                    if (!_swsContext)
+                    int r;
+                    r = sws_isSupportedInput(_avInputPixelFormat);
+                    if (r == 0)
                     {
-                        throw std::runtime_error(string::Format("{0}: Cannot get context").arg(_fileName));
-                    }*/
+                        throw std::runtime_error(string::Format("{0}: Unsuported pixel input format").arg(_fileName));
+                    }
+                    r = sws_isSupportedOutput(_avOutputPixelFormat);
+                    if (r == 0)
+                    {
+                        throw std::runtime_error(string::Format("{0}: Unsuported pixel output format").arg(_fileName));
+                    }
                     _swsContext = sws_alloc_context();
                     if (!_swsContext)
                     {
                         throw std::runtime_error(string::Format("{0}: Cannot allocate context").arg(_fileName));
                     }
                     av_opt_set_defaults(_swsContext);
-                    int r = av_opt_set_int(_swsContext, "srcw", _avCodecParameters[_avStream]->width, AV_OPT_SEARCH_CHILDREN);
-                    r = av_opt_set_int(_swsContext, "srch", _avCodecParameters[_avStream]->height, AV_OPT_SEARCH_CHILDREN);
+                    int width  = _avCodecParameters[_avStream]->width;
+                    int height = _avCodecParameters[_avStream]->height;
+                    r = av_opt_set_int(_swsContext, "srcw", width, AV_OPT_SEARCH_CHILDREN);
+                    r = av_opt_set_int(_swsContext, "srch", height, AV_OPT_SEARCH_CHILDREN);
                     r = av_opt_set_int(_swsContext, "src_format", _avInputPixelFormat, AV_OPT_SEARCH_CHILDREN);
-                    r = av_opt_set_int(_swsContext, "dstw", _avCodecParameters[_avStream]->width, AV_OPT_SEARCH_CHILDREN);
-                    r = av_opt_set_int(_swsContext, "dsth", _avCodecParameters[_avStream]->height, AV_OPT_SEARCH_CHILDREN);
+                    r = av_opt_set_int(_swsContext, "dstw", width, AV_OPT_SEARCH_CHILDREN);
+                    r = av_opt_set_int(_swsContext, "dsth", height, AV_OPT_SEARCH_CHILDREN);
                     r = av_opt_set_int(_swsContext, "dst_format", _avOutputPixelFormat, AV_OPT_SEARCH_CHILDREN);
                     r = av_opt_set_int(_swsContext, "sws_flags", swsScaleFlags, AV_OPT_SEARCH_CHILDREN);
                     r = av_opt_set_int(_swsContext, "threads", 0, AV_OPT_SEARCH_CHILDREN);
@@ -564,61 +639,88 @@ namespace tl
                         throw std::runtime_error(string::Format("{0}: Cannot initialize sws context").arg(_fileName));
                     }
 
-                    const int* inTable    = nullptr;
-                    int        inFull     = 0;
-                    const int* outTable   = nullptr;
-                    int        outFull    = 0;
-                    int        brightness = 0;
-                    int        contrast   = 0;
-                    int        saturation = 0;
-
-                    r = sws_getColorspaceDetails(
-                        _swsContext,
-                        (int**)&inTable,
-                        &inFull,
-                        (int**)&outTable,
-                        &outFull,
-                        &brightness,
-                        &contrast,
-                        &saturation);
-
-                    AVColorSpace colorSpace = _avCodecParameters[_avStream]->color_space;
-                    if (AVCOL_SPC_UNSPECIFIED == colorSpace)
+                    const auto params = _avCodecParameters[_avStream];
+                    
+                    // \@bug:
+                    //    We don't do a BT2020_NCL to BT709 conversion in
+                    //    software which is slow.
+                    if (params->color_space != AVCOL_SPC_BT2020_NCL &&
+                        (params->color_space != AVCOL_SPC_UNSPECIFIED ||
+                          width < 4096 || height < 2160))
                     {
-                        colorSpace = AVCOL_SPC_BT709;
-                    }
-                    inFull = 1;
-                    outFull = 1;
+                        int in_full = -1;
+                        int out_full = -1;
+                        int brightness = -1;
+                        int contrast = -1;
+                        int saturation = -1;
+                        int *inv_table = nullptr, *table = nullptr;
 
-                    r = sws_setColorspaceDetails(
-                        _swsContext,
-                        sws_getCoefficients(colorSpace),
-                        inFull,
-                        sws_getCoefficients(AVCOL_SPC_BT709),
-                        outFull,
-                        brightness,
-                        contrast,
-                        saturation);
+                        sws_getColorspaceDetails(
+                            _swsContext, &inv_table, &in_full, &table,
+                            &out_full, &brightness, &contrast, &saturation);
+
+                        // \@note: sws_getCoefficients uses its own enum,
+                        //         which mostly matches AV_COL_SPC_* values,
+                        //         but we still do a special check here just in
+                        //         case.
+                        int in_color_space = SWS_CS_DEFAULT;
+                        switch(params->color_space)
+                        {
+                        case AVCOL_SPC_RGB:
+                            in_color_space = SWS_CS_ITU601;
+                            break;
+                        case AVCOL_SPC_BT709:
+                            in_color_space = SWS_CS_ITU709;
+                            break;
+                        case AVCOL_SPC_FCC:
+                            in_color_space = SWS_CS_FCC;
+                            break;
+                            // case AVCOL_SPC_ITU624 (is not defined)
+                            // can be NTSC or PAL in_color_space = SWS_CS_624;
+                            // break;
+                        case AVCOL_SPC_SMPTE170M:
+                            in_color_space = SWS_CS_SMPTE170M;
+                            break;
+                        case AVCOL_SPC_SMPTE240M:
+                            in_color_space = SWS_CS_SMPTE240M;
+                            break;
+                        case AVCOL_SPC_BT2020_NCL:
+                        case AVCOL_SPC_BT2020_CL:  // \@bug: this one is wrong
+                            in_color_space = SWS_CS_BT2020;
+                            break;
+                        default:
+                            break;
+                        }
+                        
+                        
+                        in_full = (params->color_range == AVCOL_RANGE_JPEG);
+                        out_full = (params->color_range == AVCOL_RANGE_JPEG);
+
+                        int out_color_space = SWS_CS_ITU709;
+                        
+                        sws_setColorspaceDetails(
+                            _swsContext, sws_getCoefficients(in_color_space),
+                            in_full, sws_getCoefficients(out_color_space),
+                            out_full,
+                            brightness, contrast, saturation);
+                    }
                 }
             }
         }
 
         void ReadVideo::seek(const otime::RationalTime& time)
         {
-            //std::cout << "video seek: " << time << std::endl;
-
             if (_avStream != -1)
             {
                 avcodec_flush_buffers(_avCodecContext[_avStream]);
-
+                
                 if (av_seek_frame(
-                    _avFormatContext,
-                    _avStream,
-                    av_rescale_q(
-                        time.value() - _timeRange.start_time().value(),
-                        swap(_avSpeed),
-                        _avFormatContext->streams[_avStream]->time_base),
-                    AVSEEK_FLAG_BACKWARD) < 0)
+                        _avFormatContext, _avStream,
+                        av_rescale_q(
+                            time.value() - _timeRange.start_time().value(),
+                            swap(_avSpeed),
+                            _avFormatContext->streams[_avStream]->time_base),
+                        AVSEEK_FLAG_BACKWARD) < 0)
                 {
                     //! \todo How should this be handled?
                 }
@@ -628,7 +730,9 @@ namespace tl
             _eof = false;
         }
 
-        bool ReadVideo::process(const otime::RationalTime& currentTime)
+        bool ReadVideo::process(
+            const bool backwards, const otime::RationalTime& targetTime,
+            otime::RationalTime& currentTime)
         {
             bool out = false;
             if (_avStream != -1 &&
@@ -666,7 +770,8 @@ namespace tl
                             //! \todo How should this be handled?
                             break;
                         }
-                        decoding = _decode(currentTime);
+                        decoding = _decode(backwards, targetTime,
+                                           currentTime);
                         if (AVERROR(EAGAIN) == decoding)
                         {
                             decoding = 0;
@@ -716,7 +821,9 @@ namespace tl
             return out;
         }
 
-        int ReadVideo::_decode(const otime::RationalTime& currentTime)
+        int ReadVideo::_decode(const bool backwards,
+                               const otime::RationalTime& targetTime,
+                               otime::RationalTime& currentTime)
         {
             int out = 0;
             while (0 == out)
@@ -727,24 +834,35 @@ namespace tl
                     return out;
                 }
                 const int64_t timestamp = _avFrame->pts != AV_NOPTS_VALUE ? _avFrame->pts : _avFrame->pkt_dts;
-                //std::cout << "video timestamp: " << timestamp << std::endl;
+                // std::cout << "video timestamp: " << timestamp << std::endl;
 
+                const auto& avVideoStream = _avFormatContext->streams[_avStream];
+                
                 const otime::RationalTime time(
                     _timeRange.start_time().value() +
-                    av_rescale_q(
-                        timestamp,
-                        _avFormatContext->streams[_avStream]->time_base,
-                        swap(_avFormatContext->streams[_avStream]->r_frame_rate)),
+                        av_rescale_q(
+                            timestamp, avVideoStream->time_base,
+                            swap(avVideoStream->r_frame_rate)),
                     _timeRange.duration().rate());
-                //std::cout << "video time: " << time << std::endl;
 
-                if (time >= currentTime)
+                if (time >= targetTime || backwards)
                 {
-                    //std::cout << "video time: " << time << std::endl;
+                    if (time >= targetTime)
+                        currentTime = targetTime;
+                    else
+                        currentTime = time;
+                    
                     auto image = image::Image::create(_info);
                     
                     auto tags = _tags;
                     AVDictionaryEntry* tag = nullptr;
+                    while ((tag = av_dict_get(avVideoStream->metadata, "", tag, AV_DICT_IGNORE_SUFFIX)))
+                    {
+                        std::string key(string::Format("Video Stream #{0}: {1}")
+                                            .arg(_avStream)
+                                            .arg(tag->key));
+                        tags[key] = tag->value;
+                    }
                     while ((tag = av_dict_get(_avFrame->metadata, "", tag, AV_DICT_IGNORE_SUFFIX)))
                     {
                         tags[tag->key] = tag->value;
@@ -768,6 +886,7 @@ namespace tl
             const auto& info = image->getInfo();
             const std::size_t w = info.size.w;
             const std::size_t h = info.size.h;
+                
             uint8_t* const data = image->getData();
             if (canCopy(_avInputPixelFormat, _avOutputPixelFormat))
             {
@@ -802,34 +921,6 @@ namespace tl
                             w * 4);
                     }
                     break;
-                case AV_PIX_FMT_YUV420P:
-                {   
-                    const std::size_t w2 = w / 2;
-                    const std::size_t h2 = h / 2;
-                    const uint8_t* const data1 = _avFrame->data[1];
-                    const uint8_t* const data2 = _avFrame->data[2];
-                    const int linesize1 = _avFrame->linesize[1];
-                    const int linesize2 = _avFrame->linesize[2];
-                    for (std::size_t i = 0; i < h; ++i)
-                    {
-                        std::memcpy(
-                            data + w * i,
-                            data0 + linesize0 * i,
-                            w);
-                    }
-                    for (std::size_t i = 0; i < h2; ++i)
-                    {
-                        std::memcpy(
-                            data + (w * h) + w2 * i,
-                            data1 + linesize1 * i,
-                            w2);
-                        std::memcpy(
-                            data + (w * h) + (w2 * h2) + w2 * i,
-                            data2 + linesize2 * i,
-                            w2);
-                    }
-                    break;
-                }
                 default: break;
                 }
             }
@@ -843,6 +934,7 @@ namespace tl
                     w,
                     h,
                     1);
+                    
                 sws_scale(
                     _swsContext,
                     (uint8_t const* const*)_avFrame->data,
@@ -851,93 +943,6 @@ namespace tl
                     _avCodecParameters[_avStream]->height,
                     _avFrame2->data,
                     _avFrame2->linesize);
-            }
-
-            // Handle embedded rotation in movie file (as when taken from a
-            // phone).
-            if (_rotation != 0.F)
-            {
-                int rotation = static_cast<int>(_rotation);
-                auto info = _info;
-                if (std::abs(rotation) != 180)
-                {
-                    const auto tmp = info.size.w;
-                    info.size.w = info.size.h;
-                    info.size.h = tmp;
-                }
-                auto tmp = image::Image::create(info);
-                if (std::abs(rotation) == 180.F)
-                {
-                    switch(info.pixelType)
-                    {
-                    case image::PixelType::YUV_420P_U8:
-                        _flipYUV420<uint8_t>(tmp->getData(), data);
-                        break;
-                    case image::PixelType::YUV_420P_U16:
-                        _flipYUV420<uint16_t>(
-                            reinterpret_cast<uint16_t*>(tmp->getData()),
-                            reinterpret_cast<uint16_t*>(data));
-                        break;
-                    case image::PixelType::YUV_422P_U8:
-                        _flipYUV422<uint8_t>(tmp->getData(), data);
-                        break;
-                    case image::PixelType::YUV_422P_U16:
-                        _flipYUV422<uint16_t>(
-                            reinterpret_cast<uint16_t*>(tmp->getData()),
-                            reinterpret_cast<uint16_t*>(data));
-                        break;
-                    case image::PixelType::YUV_444P_U8:
-                        _flipYUV444<uint8_t>(tmp->getData(), data);
-                        break;
-                    case image::PixelType::YUV_444P_U16:
-                        _flipYUV444<uint16_t>(
-                            reinterpret_cast<uint16_t*>(tmp->getData()),
-                            reinterpret_cast<uint16_t*>(data));
-                        break;
-                    default:
-                        return; // cannot flip
-                        break;
-                    }
-                }
-                else
-                {
-                    bool clockwise = true;
-                    if (rotation == 90 || rotation == -270)
-                        clockwise = false;
-
-                    switch(info.pixelType)
-                    {
-                    case image::PixelType::YUV_420P_U8:
-                        _rotateYUV420<uint8_t>(tmp->getData(), data, clockwise);
-                        break;
-                    case image::PixelType::YUV_420P_U16:
-                        _rotateYUV420<uint16_t>(
-                            reinterpret_cast<uint16_t*>(tmp->getData()),
-                            reinterpret_cast<uint16_t*>(data), clockwise);
-                        break;
-                    case image::PixelType::YUV_422P_U8:
-                        _rotateYUV422<uint8_t>(tmp->getData(), data, clockwise);
-                        break;
-                    case image::PixelType::YUV_422P_U16:
-                        _rotateYUV422<uint16_t>(
-                            reinterpret_cast<uint16_t*>(tmp->getData()),
-                            reinterpret_cast<uint16_t*>(data), clockwise);
-                        break;
-                    case image::PixelType::YUV_444P_U8:
-                        _rotateYUV444<uint8_t>(
-                            tmp->getData(), data, clockwise);
-                        break;
-                    case image::PixelType::YUV_444P_U16:
-                        _rotateYUV444<uint16_t>(
-                            reinterpret_cast<uint16_t*>(tmp->getData()),
-                            reinterpret_cast<uint16_t*>(data), clockwise);
-                        break;
-                    default:
-                        return; // cannot rotate
-                        break;
-                    }
-                }
-                image = tmp;
             }
         }
         
@@ -955,307 +960,5 @@ namespace tl
             return out;
         }
 
-        template<typename T>
-        void ReadVideo::_rotateYUV420(T* out, const T* in,
-                                         const bool clockwise)
-        {
-            const size_t w = _info.size.w;
-            const size_t h = _info.size.h;
-            const size_t w2 = w / 2;
-            const size_t h2 = h / 2;
-            const size_t size = w * h;
-            const size_t size4 = size / 4;
-
-            if (clockwise)
-            {
-                // Transpose Y plane
-                for (size_t y = 0; y < h; ++y)
-                {
-                    for (size_t x = 0; x < w; ++x)
-                    {
-                        out[x * h + ( h - 1 - y )] = in[y * w + x];
-                    }
-                }
-
-                // Transpose U and V planes (downsampling)
-                for (size_t y = 0; y < h2; ++y)
-                {
-                    for (size_t x = 0; x < w2; ++x)
-                    {
-                        out[size + x * h2 + (h2 - y - 1)] =
-                            in[size + y * w2 + x];
-                        out[size + size4 + x * h2 + (h2 - y - 1)] =
-                            in[size + size4 + y * w2 + x];
-                    }
-                }
-            }
-            else
-            {
-                // Transpose Y plane counterclockwise
-                for (size_t y = 0; y < h; ++y)
-                {
-                    for (size_t x = 0; x < w; ++x)
-                    {
-                        out[(w - 1 - x) * h + y] = in[y * w + x];
-                    }
-                }
-
-                // Transpose U and V planes (downsampling) counterclockwise
-                for (size_t y = 0; y < h2; ++y)
-                {
-                    for (size_t x = 0; x < w2; ++x)
-                    {
-                        out[size + (w2 - 1 - x) * h2 + y] =
-                            in[size + y * w2 + x];
-                        out[size + size4 + (w2 - 1 - x) * h2 + y] =
-                            in[size + size4 + y * w2 + x];
-                    }
-                }
-            }
-        }
-
-        template<typename T>
-        void ReadVideo::_flipYUV420(T* out, const T* in)
-        {
-            // Calculate the size of each plane
-            const size_t w = _info.size.w;
-            const size_t h = _info.size.h;
-            const size_t w2 = w / 2;
-            const size_t h2 = h / 2;
-            const size_t size = w * h;
-            const size_t size4 = size / 4;
-
-            // Flip Y plane vertically
-            for (size_t y = 0; y < h; ++y)
-            {
-                for (size_t x = 0; x < w; ++x)
-                {
-                    out[(h - 1 - y) * w + (w - 1 - x)] = in[y * w + x];
-                }
-            }
-
-            // Flip U and V planes vertically
-            for (size_t y = 0; y < h2; ++y)
-            {
-                for (size_t x = 0; x < w2; ++x)
-                {
-                    // U plane
-                    out[size + y * w2 + x] =
-                        in[size + (h2 - 1 - y) * w2 + (w2 - 1 - x)];
-                    // V plane
-                    out[size + size4 + y * w2 + x] =
-                        in[size + size4 + (h2 - 1 - y) * w2 + (w2 - 1 - x)];
-                }
-            }
-        }
-        
- 
-        template<typename T>
-        void ReadVideo::_rotateYUV422(T* out, const T* in,
-                                         const bool clockwise)
-        {
-            const size_t w = _info.size.w;
-            const size_t h = _info.size.h;
-            const size_t w2 = w / 2;
-            const size_t size = w * h;
-            const size_t size2 = size + w2 * h;
-
-            // Create temp buffer for U and V planes
-            auto* tmp = new T[w * h];
-
-            
-            if (clockwise)
-            {
-                // Rotate Y plane clockwise
-                for (size_t y = 0; y < h; ++y)
-                {
-                    for (size_t x = 0; x < w; ++x)
-                    {
-                        out[x * h + ( h - y - 1 )] = in[y * w + x];
-                    }
-                }
-
-                // Upsample and rotate U clockwise into temp buffer
-                for (size_t y = 0; y < h; ++y)
-                {
-                    for (size_t x = 0; x < w2; ++x)
-                    {
-                        tmp[x * 2 * h + ( h - y - 1 )] = in[size + y * w2 + x];
-                        tmp[(x * 2 + 1) * h + (h - y - 1)] =
-                            in[size + y * w2 + x];
-                    }
-                }
-
-                // Downsample U into final position
-                for (size_t y = 0; y < h; ++y)
-                {
-                    for (size_t x = 0; x < w2; ++x)
-                    {
-                        out[size + y * w2 + x] = tmp[y * w + x * 2];
-                    }
-                }
-                
-                // Upsample and rotate V clockwise into temp buffer
-                for (size_t y = 0; y < h; ++y)
-                {
-                    for (size_t x = 0; x < w2; ++x)
-                    {
-                        tmp[x * 2 * h + ( h - y - 1 )] = in[size2 + y * w2 + x];
-                        tmp[(x * 2 + 1) * h + (h - y - 1)] =
-                            in[size2 + y * w2 + x];
-                    }
-                }
-
-            }
-            else
-            {
-                // Rotate Y plane counterclockwise
-                for (size_t y = 0; y < h; ++y)
-                {
-                    for (size_t x = 0; x < w; ++x)
-                    {
-                        out[(w - 1 - x) * h + y] = in[y * w + x];
-                    }
-                }
-
-                // Upsample and rotate U counterclockwise into temp buffer
-                for (size_t y = 0; y < h; ++y)
-                {
-                    for (size_t x = 0; x < w2; ++x)
-                    {
-                        const size_t x2 = (w2 - 1 - x) * 2;
-                        tmp[x2 * h + y] = in[size + y * w2 + x];
-                        tmp[(x2 + 1) * h + y] = in[size + y * w2 + x];
-                    }
-                }
-
-                // Downsample U into final position
-                for (size_t y = 0; y < h; ++y)
-                {
-                    for (size_t x = 0; x < w2; ++x)
-                    {
-                        out[size + y * w2 + x] = tmp[y * w + x * 2];
-                    }
-                }
-                
-                // Upsample and rotate V counterclockwise into temp buffer
-                for (size_t y = 0; y < h; ++y)
-                {
-                    for (size_t x = 0; x < w2; ++x)
-                    {
-                        const size_t x2 = (w2 - 1 - x) * 2;
-                        tmp[x2 * h + y] = in[size2 + y * w2 + x];
-                        tmp[(x2 + 1) * h + y] = in[size2 + y * w2 + x];
-                    }
-                }
-            }
-            
-            // Downsample V into final position
-            for (size_t y = 0; y < h; ++y)
-            {
-                for (size_t x = 0; x < w2; ++x)
-                {
-                    out[size2 + y * w2 + x] = tmp[y * w + x * 2];
-                }
-            }
-
-            // Delete tmp buffer
-            delete [] tmp;
-        }
-
-        template<typename T>
-        void ReadVideo::_flipYUV422(T* out, const T* in)
-        {
-            // Calculate the size of each plane
-            const size_t w = _info.size.w;
-            const size_t h = _info.size.h;
-            const size_t w2 = w / 2;
-            const size_t size = w * h;
-            const size_t size2 = size + w2 * h;
-
-            // Flip Y plane vertically
-            for (size_t y = 0; y < h; ++y)
-            {
-                for (size_t x = 0; x < w; ++x)
-                {
-                    out[(h - 1 - y) * w + (w - 1 - x)] = in[y * w + x];
-                }
-            }
-
-            // Flip U and V planes vertically
-            for (size_t y = 0; y < h; ++y)
-            {
-                for (size_t x = 0; x < w2; ++x)
-                {
-                    out[size + y * w2 + x] =
-                        in[size + (h - 1 - y) * w2 + (w2 - 1 - x)];
-                    out[size2 + y * w2 + x] =
-                        in[size2 + (h - 1 - y) * w2 + (w2 - 1 - x)];
-                }
-            }
-        }
-            
-        template<typename T>
-        void ReadVideo::_rotateYUV444(T* out, const T* in,
-                                         const bool clockwise)
-        {
-            const size_t w = _info.size.w;
-            const size_t h = _info.size.h;
-            const size_t size = w * h;
-
-            if (clockwise)
-            {
-                // Transpose YUV planes clockwise
-                for (int p = 0; p < 3; ++p)
-                {
-                    size_t plane = p * size;
-                    for (size_t y = 0; y < h; ++y)
-                    {
-                        for (size_t x = 0; x < w; ++x)
-                        {
-                            out[plane + x * h + ( h - 1 - y )] = in[plane + y * w + x];
-                        }
-                    }
-                }
-            }
-            else
-            {
-                // Transpose YUV planes counterclockwise
-                for (int p = 0; p < 3; ++p)
-                {
-                    size_t plane = p * size;
-                    for (size_t y = 0; y < h; ++y)
-                    {
-                        for (size_t x = 0; x < w; ++x)
-                        {
-                            out[plane + (w - 1 - x) * h + y] = in[plane + y * w + x];
-                        }
-                    }
-                }
-            }
-        }
-        
-        template<typename T>
-        void ReadVideo::_flipYUV444(T* out, const T* in)
-        {
-            // Calculate the size of each plane
-            const size_t w = _info.size.w;
-            const size_t h = _info.size.h;
-            const size_t size = w * h;
-
-            // Flip YUV planes vertically
-            for (int p = 0; p < 3; ++p)
-            {
-                size_t plane = p * size;
-                for (size_t y = 0; y < h; ++y)
-                {
-                    for (size_t x = 0; x < w; ++x)
-                    {
-                        out[plane + (h - 1 - y) * w + (w - 1 - x)] =
-                            in[plane + y * w + x];
-                    }
-                }
-            }
-        }
     }
 }

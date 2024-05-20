@@ -62,12 +62,12 @@ if(TLRENDER_PNG)
     list(APPEND LIBRARIES_PRIVATE PNG)
 endif()
 if(TLRENDER_EXR)
-    list(APPEND HEADERS_PRIVATE OpenEXR.h OpenEXRPrivate.h)
+    list(APPEND HEADERS_PRIVATE OpenEXR.h)
     list(APPEND SOURCE OpenEXR.cpp OpenEXRRead.cpp OpenEXRWrite.cpp)
     list(APPEND LIBRARIES_PRIVATE OpenEXR::OpenEXR)
 endif()
 if(TLRENDER_FFMPEG)
-    list(APPEND HEADERS_PRIVATE FFmpeg.h FFmpegReadPrivate.h)
+    list(APPEND HEADERS_PRIVATE FFmpeg.h FFmpegMacros.h FFmpegReadPrivate.h)
     list(APPEND SOURCE FFmpeg.cpp FFmpegRead.cpp FFmpegReadAudio.cpp
         FFmpegReadVideo.cpp FFmpegWrite.cpp)
     list(APPEND LIBRARIES_PRIVATE FFmpeg)
@@ -90,7 +90,27 @@ if(TLRENDER_RAW)
     list(APPEND SOURCE RAW.cpp RAWRead.cpp)
     list(APPEND LIBRARIES_PRIVATE LibRaw)
 endif()
-list(APPEND LIBRARIES tlGL)
+if(TLRENDER_NDI AND TLRENDER_FFMPEG)
+    list(APPEND HEADERS_PRIVATE NDI.h)
+    list(APPEND SOURCE NDI.cpp NDIRead.cpp NDIReadVideo.cpp NDIReadAudio.cpp )
+    list(APPEND LIBRARIES_PRIVATE NDI)
+    if (WIN32)
+	# Additional handling for Windows to copy the DLL
+	execute_process(
+	    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            "${TLRENDER_NDI_SDK}/Bin/x64/Processing.NDI.Lib.x64.dll"
+	    "${CMAKE_INSTALL_PRFIX}/bin")
+    else()
+	install(
+	    TARGETS NDI
+	    LIBRARY DESTINATION lib
+	    ARCHIVE DESTINATION lib
+	    RUNTIME DESTINATION bin
+	    INCLUDES DESTINATION include
+	)
+    endif()
+endif()
+list(APPEND LIBRARIES tlGL tlCore)
 
 add_library(tlIO ${HEADERS} ${HEADERS_PRIVATE} ${SOURCE})
 target_link_libraries(tlIO PUBLIC ${LIBRARIES} PRIVATE ${LIBRARIES_PRIVATE})

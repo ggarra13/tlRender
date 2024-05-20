@@ -34,7 +34,10 @@ namespace tl
             "ProRes_LT",
             "ProRes_HQ",
             "ProRes_4444",
-            "ProRes_XQ");
+            "ProRes_XQ",
+            "VP9",
+            "Cineform",
+            "AV1");
         TLRENDER_ENUM_SERIALIZE_IMPL(Profile);
     
         TLRENDER_ENUM_IMPL(
@@ -195,8 +198,10 @@ namespace tl
                     { ".divx", io::FileType::Movie },
                     { ".dv", io::FileType::Movie },
                     { ".flv", io::FileType::Movie },
+                    { ".gif", io::FileType::Movie },
                     { ".m4v", io::FileType::Movie },
                     { ".mkv", io::FileType::Movie },
+                    { ".mk3d", io::FileType::Movie },
                     { ".mov", io::FileType::Movie },
                     { ".mp4", io::FileType::Movie },
                     { ".mpg", io::FileType::Movie },
@@ -213,6 +218,7 @@ namespace tl
 
                     // Audio Formats
                     { ".aiff", io::FileType::Audio },
+                    { ".mka", io::FileType::Audio },
                     { ".mp3", io::FileType::Audio },
                     { ".ogg", io::FileType::Audio },
                     { ".opus", io::FileType::Audio },
@@ -224,7 +230,7 @@ namespace tl
 
             _logSystemWeak = logSystem;
             //av_log_set_level(AV_LOG_QUIET);
-            av_log_set_level(AV_LOG_VERBOSE);
+            av_log_set_level(AV_LOG_WARNING);
             av_log_set_callback(_logCallback);
 
             const AVCodec* avCodec = nullptr;
@@ -284,6 +290,14 @@ namespace tl
             case image::PixelType::RGBA_U16:
                 out.pixelType = info.pixelType;
                 break;
+            case image::PixelType::RGB_F16:
+            case image::PixelType::RGB_F32:
+                out.pixelType = image::PixelType::RGB_U16;
+                break;
+            case image::PixelType::RGBA_F16:
+            case image::PixelType::RGBA_F32:
+                out.pixelType = image::PixelType::RGBA_U16;
+                break;
             default: break;
             }
             return out;
@@ -302,24 +316,65 @@ namespace tl
             return Write::create(path, info, options, _logSystem);
         }
 
-        void Plugin::_logCallback(void*, int level, const char* fmt, va_list vl)
+        void
+        Plugin::_logCallback(void* avcl, int level, const char* fmt, va_list vl)
         {
-            switch (level)
+            static std::string lastMessage;
+            std::string format;
+
+            if (level != AV_LOG_VERBOSE)
             {
-            case AV_LOG_PANIC:
-            case AV_LOG_FATAL:
-            case AV_LOG_ERROR:
-            case AV_LOG_WARNING:
-            case AV_LOG_INFO:
+                AVClass* avc = avcl ? *(AVClass **) avcl : NULL;
+                if (avc)
+                {
+                    format = "(";
+                    format += avc->item_name(avcl);
+                    format += ") ";
+                }
+                format += fmt;
+            }
+            
+            if (level != AV_LOG_VERBOSE)
+            {
                 if (auto logSystem = _logSystemWeak.lock())
                 {
                     char buf[string::cBufferSize];
-                    vsnprintf(buf, string::cBufferSize, fmt, vl);
-                    logSystem->print("tl::io::ffmpeg::Plugin", string::removeTrailingNewlines(buf));
+                    vsnprintf(buf, string::cBufferSize, format.c_str(), vl);
+
+                    const std::string& message =
+                        string::removeTrailingNewlines(buf);
+
+                    if (level < AV_LOG_INFO)
+                    {
+                        if (message == lastMessage)
+                            return;
+
+                        lastMessage = message;
+                    }
+                    
+                    switch (level)
+                    {
+                    case AV_LOG_PANIC:
+                    case AV_LOG_FATAL:
+                    case AV_LOG_ERROR:
+                        logSystem->print(
+                            "tl::io::ffmpeg::Plugin", message,
+                            log::Type::Error, "ffmpeg");
+                        break;
+                    case AV_LOG_WARNING:
+                        logSystem->print(
+                            "tl::io::ffmpeg::Plugin", message,
+                            log::Type::Warning, "ffmpeg");
+                        break;
+                    case AV_LOG_INFO:
+                        logSystem->print(
+                            "tl::io::ffmpeg::Plugin", message,
+                            log::Type::Message, "ffmpeg");
+                        break;
+                    default:
+                        break;
+                    }
                 }
-                break;
-            case AV_LOG_VERBOSE:
-            default: break;
             }
         }
     }

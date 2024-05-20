@@ -7,6 +7,7 @@
 #include <tlIO/Cineon.h>
 
 #include <tlCore/Error.h>
+#include <tlCore/Locale.h>
 #include <tlCore/Memory.h>
 #include <tlCore/StringFormat.h>
 
@@ -752,8 +753,7 @@ namespace tl
                 snprintf(header.film.count, 4, "%d", count);
                 snprintf(header.film.offset, 2, "%d", offset);
             }
-            std::string savedLocale = std::setlocale(LC_NUMERIC, NULL);
-            std::setlocale(LC_NUMERIC, "C");
+            locale::SetAndRestore saved;
             i = info.tags.find("Film Format");
             if (i != info.tags.end())
             {
@@ -863,8 +863,6 @@ namespace tl
                 header.tv.integrationTimes = std::stof(i->second);
             }
 
-            std::setlocale(LC_NUMERIC, savedLocale.c_str());
-                
             memory::Endian fileEndian = memory::getEndian();
             switch (endian)
             {

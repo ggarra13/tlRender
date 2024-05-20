@@ -6,6 +6,7 @@
 
 #include <tlIO/Plugin.h>
 
+#include <tlCore/LogSystem.h>
 #include <tlCore/HDR.h>
 
 extern "C"
@@ -22,7 +23,7 @@ namespace tl
     //! FFmpeg video and audio I/O
     namespace ffmpeg
     {
-        //! Write profiles.
+        //! Profiles.
         enum class Profile
         {
             None,
@@ -33,7 +34,10 @@ namespace tl
             ProRes_HQ,
             ProRes_4444,
             ProRes_XQ,
-
+            VP9,
+            Cineform,
+            AV1,
+            
             Count
         };
         TLRENDER_ENUM(Profile);
@@ -62,7 +66,7 @@ namespace tl
         const size_t threadCount = 0;
 
         //! Software scaler flags.
-        const int swsScaleFlags = SWS_FAST_BILINEAR;
+        const int swsScaleFlags = SWS_SPLINE | SWS_ACCURATE_RND | SWS_FULL_CHR_H_INT | SWS_FULL_CHR_H_INP;
 
         //! Swap the numerator and denominator.
         AVRational swap(AVRational);
@@ -85,7 +89,6 @@ namespace tl
         public:
             Packet();
             ~Packet();
-
             AVPacket* p = nullptr;
         };
 
@@ -133,6 +136,9 @@ namespace tl
             void cancelRequests() override;
 
         private:
+            void _addToCache(io::VideoData& data,
+                             const otime::RationalTime&,
+                             const io::Options&);
             void _videoThread();
             void _audioThread();
             void _cancelVideoRequests();

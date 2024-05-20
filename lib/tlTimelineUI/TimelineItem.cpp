@@ -7,7 +7,6 @@
 #include <tlTimelineUI/AudioClipItem.h>
 #include <tlTimelineUI/GapItem.h>
 #include <tlTimelineUI/VideoClipItem.h>
-#include <tlTimelineUI/TransitionItem.h>
 
 #include <tlUI/DrawUtil.h>
 #include <tlUI/ScrollArea.h>
@@ -64,11 +63,8 @@ namespace tl
                 if (auto otioTrack = otio::dynamic_retainer_cast<otio::Track>(child))
                 {
                     Private::Track track;
-<<<<<<< HEAD
                     int otioIndex = 0;
-=======
                     track.index = p.tracks.size();
->>>>>>> bc2dec3dfebecd6f4f7016daedd8f44cd47f73a1
                     std::string trackLabel = otioTrack->name();
                     if (otio::Track::Kind::video == otioTrack->kind())
                     {
@@ -150,6 +146,7 @@ namespace tl
                                 transition,
                                 scale,
                                 options,
+                                displayOptions,
                                 itemData,
                                 context,
                                 shared_from_this()));
@@ -304,7 +301,7 @@ namespace tl
                     y,
                     durationSizeHint.w,
                     durationSizeHint.h));
-                
+
                 for (const auto& item : track.items)
                 {
                     const auto i = std::find_if(
@@ -332,31 +329,27 @@ namespace tl
                         track.clipHeight));
                 }
 
-<<<<<<< HEAD
-                y += track.clipHeight;
-
-                int transitionH = 0;
-                for (const auto& item : track.transitions)
-                {
-                    const otime::TimeRange& timeRange = item->getTimeRange();
-                    const math::Size2i& sizeHint = item->getSizeHint();
-                    item->setGeometry(math::Box2i(
-                        _geometry.min.x +
-                        timeRange.start_time().rescaled_to(1.0).value() * _scale,
-                        y + std::max(labelSizeHint.h, durationSizeHint.h),
-                        sizeHint.w,
-                        sizeHint.h));
-                    transitionH = sizeHint.h + durationSizeHint.h;
-                }
-                
-                y += transitionH;
-                
-=======
                 if (visible)
                 {
                     y += track.size.h;
+
+                    int transitionH = 0;
+                    for (const auto& item : track.transitions)
+                    {
+                        const otime::TimeRange& timeRange = item->getTimeRange();
+                        const math::Size2i& sizeHint = item->getSizeHint();
+                        item->setGeometry(math::Box2i(
+                                              _geometry.min.x +
+                                              timeRange.start_time().rescaled_to(1.0).value() * _scale,
+                                              y,
+                                              sizeHint.w,
+                                              sizeHint.h));
+                        transitionH = sizeHint.h;
+                    }
+                
+                    y += transitionH;
+                
                 }
->>>>>>> bc2dec3dfebecd6f4f7016daedd8f44cd47f73a1
             }
 
             if (auto scrollArea = getParentT<ui::ScrollArea>())
@@ -609,15 +602,19 @@ namespace tl
                 std::vector<timeline::MoveData> moveData;
                 for (const auto& item : p.mouse.items)
                 {
-                    const int track = dropTarget.track + (item->track - p.mouse.items[0]->track);
                     const int fromTrack = item->track;
                     const int fromIndex = item->index;
                     const int fromOtioIndex = p.tracks[fromTrack].otioIndexes[fromIndex];
-                    const int toOtioIndex =
-                        p.tracks[track].otioIndexes[dropTarget.index];
+                    const int toTrack = dropTarget.track + (item->track - p.mouse.items[0]->track);
+                    const int toIndex = dropTarget.index;
+                    int toOtioIndex = toIndex;
+                    if (toOtioIndex < p.tracks[toTrack].otioIndexes.size())
+                    {
+                        toOtioIndex = p.tracks[toTrack].otioIndexes[toIndex];
+                    }
                     moveData.push_back(
-                        {fromTrack, fromIndex, fromOtioIndex, track,
-                         dropTarget.index});
+                        {fromTrack, fromIndex, fromOtioIndex,
+                         toTrack, toIndex, toOtioIndex});
                     item->p->hide();
                 }
                 if (p.moveCallback)
@@ -637,16 +634,16 @@ namespace tl
         }
 
         
-        bool TimelineItem::isDragging() const
+        bool TimelineItem::isDraggingClip() const
         {
             TLRENDER_P();
             return p.mouse.mode == Private::MouseMode::Item;
         }
-
-    void TimelineItem::setMoveCallback(const std::function<void(const std::vector<timeline::MoveData>&)>& value)
-    {
-        _p->moveCallback = value;
-    }
+        
+        void TimelineItem::setMoveCallback(const std::function<void(const std::vector<timeline::MoveData>&)>& value)
+        {
+            _p->moveCallback = value;
+        }
     
         /*void TimelineItem::keyPressEvent(ui::KeyEvent& event)
         {

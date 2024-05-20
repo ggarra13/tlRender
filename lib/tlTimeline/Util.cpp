@@ -174,7 +174,7 @@ namespace tl
                     out.push_back(a);
                     TLRENDER_ASSERT(a.duration() == min);
                 }
-                else if (value.start_time() < range.start_time())
+                else if (value.start_time() <= range.start_time())
                 {
                     const otime::TimeRange clamped = otime::TimeRange::range_from_start_end_time_inclusive(
                         value.end_time_exclusive() - min,
@@ -182,8 +182,9 @@ namespace tl
                     const otime::TimeRange a = otime::TimeRange::range_from_start_end_time_inclusive(
                         range.start_time(),
                         clamped.end_time_inclusive());
+                    const otime::RationalTime behind_duration = clamped.duration() - a.duration();
                     const otime::TimeRange b = otime::TimeRange::range_from_start_end_time_inclusive(
-                        range.end_time_exclusive() - (clamped.duration() - a.duration()),
+                        range.end_time_exclusive() - behind_duration,
                         range.end_time_inclusive());
                     TLRENDER_ASSERT(a.duration() + b.duration() == min);
                     if (a.duration().value() > 0.0)
@@ -213,11 +214,11 @@ namespace tl
             return out;
         }
 
-        otio::optional<otime::RationalTime> getDuration(
+        std::optional<otime::RationalTime> getDuration(
             const otio::Timeline* otioTimeline,
             const std::string& kind)
         {
-            otio::optional<otime::RationalTime> out;
+            std::optional<otime::RationalTime> out;
             otio::ErrorStatus errorStatus;
             for (auto track : otioTimeline->find_children<otio::Track>(&errorStatus))
             {

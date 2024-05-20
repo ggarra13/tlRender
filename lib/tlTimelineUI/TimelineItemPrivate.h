@@ -3,6 +3,7 @@
 // All rights reserved.
 
 #include <tlTimelineUI/TimelineItem.h>
+#include <tlTimelineUI/TransitionItem.h>
 
 #include <tlUI/Label.h>
 
@@ -18,6 +19,7 @@ namespace tl
             timeline::PlayerCacheInfo cacheInfo;
             bool editable = false;
             bool stopOnScrub = true;
+            std::function<void(const std::vector<timeline::MoveData>&)> moveCallback;
             std::shared_ptr<observer::Value<bool> > scrub;
             std::shared_ptr<observer::Value<otime::RationalTime> > timeScrub;
             std::vector<int> frameMarkers;
@@ -32,6 +34,8 @@ namespace tl
                 std::shared_ptr<ui::Label> label;
                 std::shared_ptr<ui::Label> durationLabel;
                 std::vector<std::shared_ptr<IItem> > items;
+                std::vector<int> otioIndexes;
+                std::vector<std::shared_ptr<TransitionItem> > transitions;
                 math::Size2i size;
                 int clipHeight = 0;
             };

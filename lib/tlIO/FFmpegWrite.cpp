@@ -2,11 +2,18 @@
 // Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <unordered_map>
+
+#include <tlCore/Math.h>
 #include <tlCore/StringFormat.h>
 #include <tlCore/AudioResample.h>
 #include <tlCore/LogSystem.h>
 
 #include <tlIO/FFmpeg.h>
+#include <tlIO/FFmpegMacros.h>
 
 extern "C"
 {
@@ -20,12 +27,365 @@ extern "C"
     
 }
 
+namespace
+{
+    const char* kModule = "save";
+}
+
 namespace tl
 {
     namespace ffmpeg
     {
         namespace
-        {
+        {   
+            AVPixelFormat parsePixelFormat(const std::string& c)
+            {
+                AVPixelFormat o = AV_PIX_FMT_YUV420P;
+                const std::string s = string::toUpper(c);
+
+                // Most common formats
+                if (s == "YUV420P")
+                    o = AV_PIX_FMT_YUV420P;
+                else if (s == "YUV422P")
+                    o = AV_PIX_FMT_YUV422P;
+                else if (s == "YUV444P")
+                    o = AV_PIX_FMT_YUV444P;
+                else if (s == "YUV_420P")
+                    o = AV_PIX_FMT_YUV420P;
+                else if (s == "YUV_422P")
+                    o = AV_PIX_FMT_YUV422P;
+                else if (s == "YUV_444P")
+                    o = AV_PIX_FMT_YUV444P;
+
+                // 10-bits pixel formats
+
+                else if (s == "YUV420P10LE")
+                    o = AV_PIX_FMT_YUV420P10LE;
+                else if (s == "YUV422P10LE")
+                    o = AV_PIX_FMT_YUV422P10LE;
+                else if (s == "YUV444P10LE")
+                    o = AV_PIX_FMT_YUV444P10LE;
+
+                else if (s == "YUV_420P10LE")
+                    o = AV_PIX_FMT_YUV420P10LE;
+                else if (s == "YUV_422P10LE")
+                    o = AV_PIX_FMT_YUV422P10LE;
+                else if (s == "YUV_444P10LE")
+                    o = AV_PIX_FMT_YUV444P10LE;
+
+                else if (s == "YUV_420P_10LE")
+                    o = AV_PIX_FMT_YUV420P10LE;
+                else if (s == "YUV_422P_10LE")
+                    o = AV_PIX_FMT_YUV422P10LE;
+                else if (s == "YUV_444P_10LE")
+                    o = AV_PIX_FMT_YUV444P10LE;
+
+                // 12-bits pixel formats
+                else if (s == "YUV420P12LE")
+                    o = AV_PIX_FMT_YUV420P12LE;
+                else if (s == "YUV422P12LE")
+                    o = AV_PIX_FMT_YUV422P12LE;
+                else if (s == "YUV444P12LE")
+                    o = AV_PIX_FMT_YUV444P12LE;
+                else if (s == "YUV_420P12LE")
+                    o = AV_PIX_FMT_YUV420P12LE;
+                else if (s == "YUV_422P12LE")
+                    o = AV_PIX_FMT_YUV422P12LE;
+                else if (s == "YUV_444P12LE")
+                    o = AV_PIX_FMT_YUV444P12LE;
+                else if (s == "YUV_420P_12LE")
+                    o = AV_PIX_FMT_YUV420P12LE;
+                else if (s == "YUV_422P_12LE")
+                    o = AV_PIX_FMT_YUV422P12LE;
+                else if (s == "YUV_444P_12LE")
+                    o = AV_PIX_FMT_YUV444P12LE;
+                
+                // With alpha
+                else if (s == "YUVA420P")
+                    o = AV_PIX_FMT_YUVA420P;
+                else if (s == "YUVA444P10LE")
+                    o = AV_PIX_FMT_YUVA444P10LE;
+                else if (s == "YUVA444P12LE")
+                    o = AV_PIX_FMT_YUVA444P12LE;
+                else if (s == "YUVA444P16LE")
+                    o = AV_PIX_FMT_YUVA444P16LE;
+                
+                else if (s == "YUVA_420P")
+                    o = AV_PIX_FMT_YUVA420P;
+                else if (s == "YUVA_444P10LE")
+                    o = AV_PIX_FMT_YUVA444P10LE;
+                else if (s == "YUVA_444P12LE")
+                    o = AV_PIX_FMT_YUVA444P12LE;
+                else if (s == "YUVA_444P16LE")
+                    o = AV_PIX_FMT_YUVA444P16LE;
+                
+                else if (s == "YUVA444P")
+                    o = AV_PIX_FMT_YUVA444P;
+                else if (s == "YUVA_444P_10LE")
+                    o = AV_PIX_FMT_YUVA444P10LE;
+                else if (s == "YUVA_444P_12LE")
+                    o = AV_PIX_FMT_YUVA444P12LE;
+                else if (s == "YUVA_444P_16LE")
+                    o = AV_PIX_FMT_YUVA444P16LE;
+
+                // BGR formats
+                else if (s == "GBRP")
+                    o = AV_PIX_FMT_GBRP;
+                else if (s == "GBRP10LE")
+                    o = AV_PIX_FMT_GBRP10LE;
+                else if (s == "GBRP_10LE")
+                    o = AV_PIX_FMT_GBRP10LE;
+                else if (s == "GBRP12LE")
+                    o = AV_PIX_FMT_GBRP12LE;
+                else if (s == "GBRP_12LE")
+                    o = AV_PIX_FMT_GBRP12LE;
+                
+                // BGRA formats
+                else if (s == "GBRAP")
+                    o = AV_PIX_FMT_GBRAP;
+                else if (s == "GBRAP10LE")
+                    o = AV_PIX_FMT_GBRAP10LE;
+                else if (s == "GBRAP_10LE")
+                    o = AV_PIX_FMT_GBRAP10LE;
+                else if (s == "GBRAP12LE")
+                    o = AV_PIX_FMT_GBRAP12LE;
+                else if (s == "GBRAP_12LE")
+                    o = AV_PIX_FMT_GBRAP12LE;
+
+                
+                // Hardware formats
+                else if (s == "NV12")
+                    o = AV_PIX_FMT_NV12;
+                else if (s == "P210LE")
+                    o = AV_PIX_FMT_P210LE;
+                else if (s == "P210_LE")
+                    o = AV_PIX_FMT_P210LE;
+                
+                else if (s == "P216LE")
+                    o = AV_PIX_FMT_P216LE;
+                else if (s == "P216_LE")
+                    o = AV_PIX_FMT_P216LE;
+                
+                else if (s == "P416LE")
+                    o = AV_PIX_FMT_P416LE;
+                else if (s == "P416_LE")
+                    o = AV_PIX_FMT_P416LE;
+                
+                else if (s == "AYUV64LE")
+                    o = AV_PIX_FMT_AYUV64LE;
+                else if (s == "AYUV64_LE")
+                    o = AV_PIX_FMT_AYUV64LE;
+                else if (s == "AYUV_64_LE")
+                    o = AV_PIX_FMT_AYUV64LE;
+
+
+                
+                else
+                    throw std::runtime_error(
+                        string::Format("Unknown pixel format {0}").arg(s));
+                return o;
+            }
+    
+            enum AVPixelFormat
+            choosePixelFormat(const AVCodec *codec, enum AVPixelFormat target,
+                              std::weak_ptr<log::System>& _logSystem)
+            {
+                if (codec && codec->pix_fmts) {
+                    const enum AVPixelFormat *p = codec->pix_fmts;
+                    const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(target);
+                    int has_alpha = desc ? desc->nb_components % 2 == 0 : 0;
+                    enum AVPixelFormat best= AV_PIX_FMT_NONE;
+
+                    for (; *p != AV_PIX_FMT_NONE; p++) {
+                        best = av_find_best_pix_fmt_of_2(best, *p, target,
+                                                         has_alpha, NULL);
+                        if (*p == target)
+                            break;
+                    }
+                    if (*p == AV_PIX_FMT_NONE)
+                    {
+                        if (target != AV_PIX_FMT_NONE)
+                        {
+                            const char* targetFormat =
+                                av_get_pix_fmt_name(target);
+                            const char* bestFormat = av_get_pix_fmt_name(best);
+                            const std::string msg =
+                                string::Format(
+                                    "Incompatible pixel format '{0}' for codec "
+                                    "'{1}', auto-selecting format '{2}'.")
+                                   .arg(targetFormat)
+                                    .arg(codec->name)
+                                    .arg(bestFormat);
+                            LOG_WARNING(msg);
+                        }
+                        return best;
+                    }
+                }
+                return target;
+            }
+
+            AVColorRange parseColorRange(const std::string& c)
+            {
+                AVColorRange out = AVCOL_RANGE_UNSPECIFIED;
+                const std::string& s = string::toLower(c);
+                if (s == "mpeg" || s == "tv")
+                    out = AVCOL_RANGE_MPEG;
+                else if (s == "jpeg" || s == "pc")
+                    out = AVCOL_RANGE_JPEG;
+                return out;
+            }
+            
+            AVColorPrimaries parseColorPrimaries(const std::string& c)
+            {
+                AVColorPrimaries out = AVCOL_PRI_BT709;
+                const std::string& s = string::toLower(c);
+                if (s == "unspecified")
+                    out = AVCOL_PRI_UNSPECIFIED;
+                else if (s == "reserved")
+                    out = AVCOL_PRI_RESERVED;
+                else if (s == "bt470m")
+                    out = AVCOL_PRI_BT470M;
+                else if (s == "bt470bg")
+                    out = AVCOL_PRI_BT470BG;
+                else if (s == "smpte170m")
+                    out = AVCOL_PRI_SMPTE170M;
+                else if (s == "smpte240m" || s == "smpte-c")
+                    out = AVCOL_PRI_SMPTE240M;
+                else if (s == "film")
+                    out = AVCOL_PRI_FILM;
+                else if (s == "bt2020")
+                    out = AVCOL_PRI_BT2020;
+                else if (s == "smpte428")
+                    out = AVCOL_PRI_SMPTE428;
+                else if (s == "smpte431")
+                    out = AVCOL_PRI_SMPTE431;
+                else if (s == "smpte432")
+                    out = AVCOL_PRI_SMPTE432;
+                else if (s == "ebu3213" || s == "jedec-p22")
+                    out = AVCOL_PRI_EBU3213;
+                return out;
+            }
+            
+            AVColorTransferCharacteristic parseColorTRC(const std::string& c)
+            {
+                AVColorTransferCharacteristic out = AVCOL_TRC_BT709;
+                const std::string& s = string::toLower(c);
+                if (s == "reserved")
+                    out = AVCOL_TRC_RESERVED;
+                else if (s == "unspecified")
+                    out = AVCOL_TRC_UNSPECIFIED;
+                else if (s == "gamma22")
+                    out = AVCOL_TRC_GAMMA22;
+                else if (s == "gamma28")
+                    out = AVCOL_TRC_GAMMA28;
+                else if (s == "smpte170m" || s == "bt601" || s == "bt1358")
+                    out = AVCOL_TRC_SMPTE170M;
+                else if (s == "smpte240m")
+                    out = AVCOL_TRC_SMPTE240M;
+                else if (s == "linear")
+                    out = AVCOL_TRC_LINEAR;
+                else if (s == "log")
+                    out = AVCOL_TRC_LOG;
+                else if (s == "logsqrt" || s == "log_sqrt")
+                    out = AVCOL_TRC_LOG_SQRT;
+                else if (s == "iec61966-2-4")
+                    out = AVCOL_TRC_IEC61966_2_4;
+                else if (s == "bt1361" || s == "bt1361-ecg")
+                    out = AVCOL_TRC_BT1361_ECG;
+                else if (s == "iec61966-2-1")
+                    out = AVCOL_TRC_IEC61966_2_1;
+                else if (s == "bt2020-10")
+                    out = AVCOL_TRC_BT2020_10;
+                else if (s == "bt2020-12")
+                    out = AVCOL_TRC_BT2020_12;
+                else if (s == "smpte2084")
+                    out = AVCOL_TRC_SMPTE2084;
+                else if (s == "arib-std-b67")
+                    out = AVCOL_TRC_ARIB_STD_B67;
+                
+                return out;
+            }
+
+            AVColorSpace parseColorSpace(const std::string& c)
+            {
+                AVColorSpace out = AVCOL_SPC_RGB;
+                const std::string& s = string::toLower(c);
+                if (s == "bt709")
+                {
+                    out = AVCOL_SPC_BT709;
+                }
+                else if (s == "fcc")
+                {
+                    out = AVCOL_SPC_FCC;
+                }
+                else if (s == "smpte240m")
+                {
+                    out = AVCOL_SPC_SMPTE240M;
+                }
+                else if (s == "bt601" || s == "bt470" ||
+                         s == "smpte170m")
+                {
+                    out = AVCOL_SPC_BT470BG;
+                }
+                else if (s == "bt2020")
+                {
+                    out = AVCOL_SPC_BT2020_NCL;
+                }
+                else if (s == "unspecified")
+                {
+                    out = AVCOL_SPC_UNSPECIFIED;
+                }
+                else if (s == "reserved")
+                {
+                    out = AVCOL_SPC_RESERVED;
+                }
+                return out;
+            }
+
+            //! Parse preset file and extract the video codec settings
+            void parsePresets(AVDictionary*& codecOptions,
+                              const std::string& presetFile)
+            {
+                std::ifstream file(presetFile);
+                if (!file.is_open())
+                {
+                    throw std::runtime_error(
+                        string::Format("Unable to open preset file '{0}'.")
+                        .arg(presetFile));
+                }
+
+                std::string line;
+                std::unordered_map<std::string, std::string> settings;
+                while (std::getline(file, line)) {
+                    // Ignore lines starting with #
+                    if (line.empty() || line[0] == '#')
+                        continue;
+
+                    // Find the position of the colon
+                    size_t colonPos = line.find(':');
+                    if (colonPos == std::string::npos)
+                        continue;
+
+                    // Extract option and value
+                    std::string option = line.substr(0, colonPos);
+                    std::string value = line.substr(colonPos + 1);
+
+                    // Remove leading and trailing whitespaces from option and value
+                    option.erase(0, option.find_first_not_of(" \t"));
+                    option.erase(option.find_last_not_of(" \t#") + 1);
+                    value.erase(0, value.find_first_not_of(" \t"));
+                    value.erase(value.find_last_not_of(" \t#") + 1);
+
+                    settings[option] = value;
+                }
+                file.close();
+                    
+                for (const auto& pair : settings)
+                {
+                    av_dict_set(&codecOptions, pair.first.c_str(),
+                                pair.second.c_str(), 0);
+                }
+            }
 
             //! Return the equivalent planar format if available.
             AVSampleFormat toPlanarFormat(const enum AVSampleFormat s)
@@ -148,6 +508,7 @@ namespace tl
             AVFrame* avFrame2 = nullptr;
             SwsContext* swsContext = nullptr;
             otime::RationalTime videoStartTime = time::invalidTime;
+            double              avSpeed = 24.0;
 
             // Audio
             AVCodecContext* avAudioCodecContext = nullptr;
@@ -190,7 +551,7 @@ namespace tl
                     .arg(p.fileName));
             
             AVCodec* avCodec = nullptr;
-            AVCodecID avCodecID = AV_CODEC_ID_AAC;
+            AVCodecID avAudioCodecID = AV_CODEC_ID_AAC;
             auto option = options.find("FFmpeg/AudioCodec");
             if (option != options.end())
             {
@@ -200,25 +561,25 @@ namespace tl
                 switch (audioCodec)
                 {
                 case AudioCodec::None:
-                    avCodecID = AV_CODEC_ID_NONE;
+                    avAudioCodecID = AV_CODEC_ID_NONE;
                     break;
                 case AudioCodec::AAC:
-                    avCodecID = AV_CODEC_ID_AAC;
+                    avAudioCodecID = AV_CODEC_ID_AAC;
                     break;
                 case AudioCodec::AC3:
-                    avCodecID = AV_CODEC_ID_AC3;
+                    avAudioCodecID = AV_CODEC_ID_AC3;
                     break;
                 case AudioCodec::True_HD:
-                    avCodecID = AV_CODEC_ID_TRUEHD;
+                    avAudioCodecID = AV_CODEC_ID_TRUEHD;
                     break;
                 case AudioCodec::MP2:
-                    avCodecID = AV_CODEC_ID_MP2;
+                    avAudioCodecID = AV_CODEC_ID_MP2;
                     break;
                 case AudioCodec::MP3:
-                    avCodecID = AV_CODEC_ID_MP3;
+                    avAudioCodecID = AV_CODEC_ID_MP3;
                     break;
                 case AudioCodec::PCM_S16LE:
-                    avCodecID = AV_CODEC_ID_PCM_S16LE;
+                    avAudioCodecID = AV_CODEC_ID_PCM_S16LE;
                     break;
                 default:
                 {
@@ -231,7 +592,7 @@ namespace tl
                             avcodec_descriptor_get_by_name(name);
                         if (desc)
                         {
-                            avCodecID = desc->id;
+                            avAudioCodecID = desc->id;
                         }
                     }
                     break;
@@ -243,9 +604,9 @@ namespace tl
                     string::toLower(path.getExtension());
                 if (extension == ".wav")
                 {
-                    if (avCodecID != AV_CODEC_ID_PCM_S16LE &&
-                        avCodecID != AV_CODEC_ID_MP3 &&
-                        avCodecID != AV_CODEC_ID_AAC)
+                    if (avAudioCodecID != AV_CODEC_ID_PCM_S16LE &&
+                        avAudioCodecID != AV_CODEC_ID_MP3 &&
+                        avAudioCodecID != AV_CODEC_ID_AAC)
                     {
                         if (auto logSystem = _logSystem.lock())
                         {
@@ -254,12 +615,12 @@ namespace tl
                                 "Invalid codec for .wav, switching to AAC",
                                 log::Type::Error);
                         }
-                        avCodecID = AV_CODEC_ID_AAC;
+                        avAudioCodecID = AV_CODEC_ID_AAC;
                     }
                 }
                 else if (extension == ".aiff")
                 {
-                    if (avCodecID != AV_CODEC_ID_PCM_S16LE)
+                    if (avAudioCodecID != AV_CODEC_ID_PCM_S16LE)
                     {
                         if (auto logSystem = _logSystem.lock())
                         {
@@ -268,12 +629,12 @@ namespace tl
                                 "Invalid codec for .aiff, switching to PCM_S16LE",
                                 log::Type::Error);
                         }
-                        avCodecID = AV_CODEC_ID_PCM_S16LE;
+                        avAudioCodecID = AV_CODEC_ID_PCM_S16LE;
                     }
                 }
                 else if (extension == ".mp3")
                 {
-                    if (avCodecID != AV_CODEC_ID_MP3)
+                    if (avAudioCodecID != AV_CODEC_ID_MP3)
                     {
                         if (auto logSystem = _logSystem.lock())
                         {
@@ -282,12 +643,12 @@ namespace tl
                                 "Invalid codec for .mp3, switching to MP3 (needs libmp3lame)",
                                 log::Type::Error);
                         }
-                        avCodecID = AV_CODEC_ID_MP3;
+                        avAudioCodecID = AV_CODEC_ID_MP3;
                     }
                 }
                 else if (extension == ".opus")
                 {
-                    if (avCodecID != AV_CODEC_ID_OPUS)
+                    if (avAudioCodecID != AV_CODEC_ID_OPUS)
                     {
                         if (auto logSystem = _logSystem.lock())
                         {
@@ -299,13 +660,13 @@ namespace tl
                                     .arg(extension),
                                 log::Type::Error);
                         }
-                        avCodecID = AV_CODEC_ID_OPUS;
+                        avAudioCodecID = AV_CODEC_ID_OPUS;
                     }
                 }
                 else if (extension == ".vorbis" ||
                          extension == ".ogg")
                 {
-                    if (avCodecID != AV_CODEC_ID_VORBIS)
+                    if (avAudioCodecID != AV_CODEC_ID_VORBIS)
                     {
                         if (auto logSystem = _logSystem.lock())
                         {
@@ -317,18 +678,19 @@ namespace tl
                                     .arg(extension),
                                 log::Type::Error);
                         }
-                        avCodecID = AV_CODEC_ID_VORBIS;
+                        avAudioCodecID = AV_CODEC_ID_VORBIS;
                     }
                 }
             }
-                
-            if (info.audio.isValid() && avCodecID != AV_CODEC_ID_NONE)
+
+            std::string msg;
+            if (info.audio.isValid() && avAudioCodecID != AV_CODEC_ID_NONE)
             {
                 if (!avCodec)
-                    avCodec = const_cast<AVCodec*>(avcodec_find_encoder(avCodecID));
+                    avCodec = const_cast<AVCodec*>(avcodec_find_encoder(avAudioCodecID));
                 if (!avCodec)
                     throw std::runtime_error("Could not find audio encoder");
-                
+
                 p.avAudioStream = avformat_new_stream(p.avFormatContext,
                                                       avCodec);
                 if (!p.avAudioStream)
@@ -478,7 +840,7 @@ namespace tl
                     p.avAudioCodecContext->codec_id == AV_CODEC_ID_MP3)
                     p.avAudioCodecContext->block_align = 0;
 
-                if (avCodecID == AV_CODEC_ID_AC3)
+                if (avAudioCodecID == AV_CODEC_ID_AC3)
                     p.avAudioCodecContext->block_align = 0;
 
                 r = avcodec_open2(p.avAudioCodecContext, avCodec, NULL);
@@ -490,6 +852,11 @@ namespace tl
                             .arg(getErrorLabel(r)));
                 }
 
+                const std::string codecName = avCodec->name;
+                msg = string::Format("Tring to save audio with '{0}' codec.")
+                          .arg(codecName);
+                LOG_STATUS(msg);
+                
                 r = avcodec_parameters_from_context(
                     p.avAudioStream->codecpar, p.avAudioCodecContext);
                 if (r < 0)
@@ -572,6 +939,17 @@ namespace tl
                     std::stringstream ss(option->second);
                     ss >> profile;
                 }
+                bool hardwareEncode = false;
+                option = options.find("FFmpeg/HardwareEncode");
+                if (option != options.end())
+                {
+                    std::stringstream ss(option->second);
+                    ss >> hardwareEncode;
+                    if (hardwareEncode)
+                    {
+                        LOG_STATUS("Trying Hardware encoding.");
+                    }
+                }
                 switch (profile)
                 {
                 case Profile::H264:
@@ -602,14 +980,92 @@ namespace tl
                     avCodecID = AV_CODEC_ID_PRORES;
                     avProfile = FF_PROFILE_PRORES_XQ;
                     break;
+                case Profile::VP9:
+                    avCodecID = AV_CODEC_ID_VP9;
+                    avProfile = FF_PROFILE_UNKNOWN;
+                    break;
+                case Profile::Cineform:
+                    avCodecID = AV_CODEC_ID_CFHD;
+                    avProfile = FF_PROFILE_UNKNOWN;
+                    break;
+                case Profile::AV1:
+                    avCodecID = AV_CODEC_ID_AV1;
+                    avProfile = FF_PROFILE_UNKNOWN;
+                    break;
                 default: break;
                 }
-                
-                const AVCodec* avCodec = avcodec_find_encoder(avCodecID);
+
+                p.avSpeed = info.videoTime.duration().rate();
+                const auto& videoInfo = info.video[0];
+
+
+                // Allow setting the speed if not saving audio
+                if (!info.audio.isValid() || avAudioCodecID == AV_CODEC_ID_NONE)
+                {
+                    option = options.find("FFmpeg/Speed");
+                    if (option != options.end())
+                    {
+                        std::stringstream ss(option->second);
+                        ss >> p.avSpeed;
+                    }
+                }
+
+                const AVCodec* avCodec = nullptr;
+                if (avCodecID == AV_CODEC_ID_H264)
+                {
+#ifdef __APPLE__
+                    if (hardwareEncode)
+                    {
+                        avCodec =
+                            avcodec_find_encoder_by_name("h264_videotoolbox");
+                        if (!avCodec)
+                        {
+                            hardwareEncode = false;
+                        }
+                    }
+#endif
+                }
+                else if (avCodecID == AV_CODEC_ID_VP9)
+                {
+                    // Try hardware encoders first
+                    if (hardwareEncode)
+                    {
+#ifdef __APPLE__
+                        avCodec = avcodec_find_encoder_by_name("vp9_videotoolbox");
+#else
+                        avCodec = avcodec_find_encoder_by_name("vp9_qsv");
+#endif
+                    }
+                    // If failed, use software encoder
+                    if (!avCodec)
+                    {
+                        hardwareEncode = false;
+                        avCodec = avcodec_find_encoder_by_name("libvpx-vp9");
+                    }
+                }
+                else if (avCodecID == AV_CODEC_ID_PRORES)
+                {
+#ifdef __APPLE__
+                    if (hardwareEncode)
+                    {
+                        avCodec = avcodec_find_encoder_by_name("prores_videotoolbox");
+                    }
+#endif
+                    if (!avCodec)
+                    {
+                        hardwareEncode = false;
+                        avCodec = avcodec_find_encoder_by_name("prores_ks");
+                    }
+                }
+                if (!avCodec)
+                    avCodec = avcodec_find_encoder(avCodecID);
                 if (!avCodec)
                 {
                     throw std::runtime_error(string::Format("{0}: Cannot find encoder").arg(p.fileName));
                 }
+                const std::string codecName = avCodec->name;
+                if (codecName.find("videotoolbox") != std::string::npos)
+                    hardwareEncode = true;
                 p.avCodecContext = avcodec_alloc_context3(avCodec);
                 if (!p.avCodecContext)
                 {
@@ -628,15 +1084,79 @@ namespace tl
 
                 p.avCodecContext->codec_id = avCodec->id;
                 p.avCodecContext->codec_type = AVMEDIA_TYPE_VIDEO;
-                const auto& videoInfo = info.video[0];
                 p.avCodecContext->width = videoInfo.size.w;
                 p.avCodecContext->height = videoInfo.size.h;
                 p.avCodecContext->sample_aspect_ratio = AVRational({ 1, 1 });
-                p.avCodecContext->pix_fmt = avCodec->pix_fmts[0];
-                const auto rational = time::toRational(info.videoTime.duration().rate());
+                const auto rational = time::toRational(p.avSpeed);
                 p.avCodecContext->time_base = { rational.second, rational.first };
                 p.avCodecContext->framerate = { rational.first, rational.second };
-                p.avCodecContext->profile = avProfile;
+
+                if (avCodecID == AV_CODEC_ID_PRORES || hardwareEncode)
+                {
+                    // Equivalent to -color_range tv (1)
+                    p.avCodecContext->color_range = AVCOL_RANGE_MPEG;
+                }
+                else
+                {
+                    // Equivalent to -color_range pc (2)
+                    p.avCodecContext->color_range = AVCOL_RANGE_JPEG;
+                }
+                
+                option = options.find("FFmpeg/ColorRange");
+                if (option != options.end())
+                {
+                    std::string value;
+                    std::stringstream ss(option->second);
+                    ss >> value;
+                    LOG_STATUS(
+                        string::Format("Parsing color range {0}").arg(value));
+                    p.avCodecContext->color_range = parseColorRange(value);
+                }
+
+                // Equivalent to -colorspace bt709
+                p.avCodecContext->colorspace = AVCOL_SPC_BT709;
+                option = options.find("FFmpeg/ColorSpace");
+                if (option != options.end())
+                {
+                    std::string value;
+                    std::stringstream ss(option->second);
+                    ss >> value;
+                    LOG_STATUS(
+                        string::Format("Parsing color space {0}").arg(value));
+                    p.avCodecContext->colorspace = parseColorSpace(value);
+                }
+
+                // Equivalent to -color_primaries bt709
+                p.avCodecContext->color_primaries = AVCOL_PRI_BT709;
+                option = options.find("FFmpeg/ColorPrimaries");
+                if (option != options.end())
+                {
+                    std::string value;
+                    std::stringstream ss(option->second);
+                    ss >> value;
+                    LOG_STATUS(
+                        string::Format("Parsing color primaries {0}")
+                        .arg(value));
+                    p.avCodecContext->color_primaries =
+                        parseColorPrimaries(value);
+                }
+
+                // Equivalent to -color_trc iec61966-2-1 (ie. sRGB)
+                if (!hardwareEncode)
+                    p.avCodecContext->color_trc = AVCOL_TRC_IEC61966_2_1;
+                else
+                    p.avCodecContext->color_trc = AVCOL_TRC_BT709;
+                option = options.find("FFmpeg/ColorTRC");
+                if (option != options.end())
+                {
+                    std::string value;
+                    std::stringstream ss(option->second);
+                    ss >> value;
+                    LOG_STATUS(
+                        string::Format("Parsing color trc {0}").arg(value));
+                    p.avCodecContext->color_trc = parseColorTRC(value);
+                }
+                
                 if (p.avFormatContext->oformat->flags & AVFMT_GLOBALHEADER)
                 {
                     p.avCodecContext->flags |= AV_CODEC_FLAG_GLOBAL_HEADER;
@@ -644,13 +1164,96 @@ namespace tl
                 p.avCodecContext->thread_count = 0;
                 p.avCodecContext->thread_type = FF_THREAD_FRAME;
 
-                r = avcodec_open2(p.avCodecContext, avCodec, NULL);
+                // Get the pixel format from the options.
+                std::string pixelFormat = "YUV420P";
+                option = options.find("FFmpeg/PixelFormat");
+                if (option != options.end())
+                {
+                    std::stringstream ss(option->second);
+                    ss >> pixelFormat;
+                }
+
+                // Parse the pixel format and check that it is a valid one.
+                AVPixelFormat pix_fmt = parsePixelFormat(pixelFormat);
+                pix_fmt = choosePixelFormat(avCodec, pix_fmt, _logSystem);
+                p.avCodecContext->pix_fmt = pix_fmt;
+
+                if (profile == Profile::H264)
+                {
+                    switch(pix_fmt)
+                    {
+                    case AV_PIX_FMT_YUV420P10LE:
+                        avProfile = FF_PROFILE_H264_HIGH_10;
+                        break;
+                    case AV_PIX_FMT_YUV422P10LE:
+                        avProfile = FF_PROFILE_H264_HIGH_422;
+                        break;
+                    case AV_PIX_FMT_YUV444P10LE:
+                        avProfile = FF_PROFILE_H264_HIGH_444;
+                        break;
+                    default:
+                        avProfile = FF_PROFILE_H264_HIGH;
+                    }
+                }
+
+                p.avCodecContext->profile = avProfile;
+
+                // Get codec options from preset file
+                AVDictionary* codecOptions = NULL;
+
+                std::string presetFile;
+                option = options.find("FFmpeg/PresetFile");
+                if (option != options.end())
+                {
+                    std::stringstream ss(option->second);
+                    std::getline(ss, presetFile);
+                    presetFile =
+                        string::removeTrailingNewlines(presetFile.c_str());
+                }
+                
+                if (!presetFile.empty())
+                {
+                    parsePresets(codecOptions, presetFile);
+                }
+
+                msg = string::Format("Trying to save video with '{0}' codec.")
+                      .arg(codecName);
+                LOG_STATUS(msg);
+                
+                msg = string::Format("FFmpeg pixel format '{0}'.")
+                      .arg(av_get_pix_fmt_name(pix_fmt));
+                LOG_STATUS(msg);
+                
+                if (hardwareEncode)
+                {
+                    LOG_STATUS("Hardware encoding is on.");
+                }
+                else
+                {
+                    LOG_STATUS("Hardware encoding is off.");
+                }
+
+                r = avcodec_open2(p.avCodecContext, avCodec, &codecOptions);
                 if (r < 0)
                 {
                     throw std::runtime_error(
                         string::Format("{0}: avcodec_open2 - {1}")
                             .arg(p.fileName)
                             .arg(getErrorLabel(r)));
+                }
+
+                av_dict_free(&codecOptions);
+
+                if (p.avCodecContext->codec && p.avCodecContext->codec->name)
+                {
+                    if (auto logSystem = _logSystem.lock())
+                    {
+                        logSystem->print(
+                            "tl::io::ffmpeg::Plugin::Write",
+                            string::Format("{0}: Opened codec {1}.")
+                            .arg(p.fileName)
+                            .arg(p.avCodecContext->codec->name));
+                    }
                 }
 
                 r = avcodec_parameters_from_context(p.avVideoStream->codecpar, p.avCodecContext);
@@ -665,12 +1268,35 @@ namespace tl
 
                 p.avVideoStream->time_base = { rational.second, rational.first };
                 p.avVideoStream->avg_frame_rate = { rational.first, rational.second };
+                if (profile == Profile::VP9)
+                {
 
+                    if (pix_fmt == AV_PIX_FMT_YUVA420P)
+                    {
+                        av_dict_set(
+                            &p.avVideoStream->metadata, "alpha_mode", "1", 0);
+
+                        const std::string& extension =
+                            string::toLower(path.getExtension());
+
+                        // \bug: this does not add alpha_mode to the .webm
+                        //       or .mp4 container
+                        if (extension != ".mkv" && extension != ".mk3d")
+                        {
+                            throw
+                                std::runtime_error("To save with an alpha "
+                                                   "channel you need a .mkv "
+                                                   "or .mk3d movie extension");
+                        }
+                    }
+                }
+                
                 for (const auto& i : info.tags)
                 {
                     av_dict_set(&p.avFormatContext->metadata, i.first.c_str(), i.second.c_str(), 0);
                 }
 
+                p.videoStartTime = info.videoTime.start_time();
                 // Set timecode
                 option = options.find("timecode");
                 if (option != options.end())
@@ -725,27 +1351,22 @@ namespace tl
                 }
                 switch (videoInfo.pixelType)
                 {
-                case image::PixelType::L_U8:     p.avPixelFormatIn = AV_PIX_FMT_GRAY8;  break;
-                case image::PixelType::RGB_U8:   p.avPixelFormatIn = AV_PIX_FMT_RGB24;  break;
-                case image::PixelType::RGBA_U8:  p.avPixelFormatIn = AV_PIX_FMT_RGBA;   break;
-                case image::PixelType::L_U16:    p.avPixelFormatIn = AV_PIX_FMT_GRAY16; break;
-                case image::PixelType::RGB_U16:  p.avPixelFormatIn = AV_PIX_FMT_RGB48;  break;
-                case image::PixelType::RGBA_U16: p.avPixelFormatIn = AV_PIX_FMT_RGBA64; break;
+                case image::PixelType::L_U8:
+                    p.avPixelFormatIn = AV_PIX_FMT_GRAY8;  break;
+                case image::PixelType::RGB_U8:
+                    p.avPixelFormatIn = AV_PIX_FMT_RGB24;  break;
+                case image::PixelType::RGBA_U8:
+                    p.avPixelFormatIn = AV_PIX_FMT_RGBA;   break;
+                case image::PixelType::L_U16:
+                    p.avPixelFormatIn = AV_PIX_FMT_GRAY16; break;
+                case image::PixelType::RGB_U16:
+                    p.avPixelFormatIn = AV_PIX_FMT_RGB48;  break;
+                case image::PixelType::RGBA_U16:
+                    p.avPixelFormatIn = AV_PIX_FMT_RGBA64; break;
                 default:
                     throw std::runtime_error(string::Format("{0}: Incompatible pixel type").arg(p.fileName));
                     break;
                 }
-                /*p.swsContext = sws_getContext(
-                  videoInfo.size.w,
-                  videoInfo.size.h,
-                  p.avPixelFormatIn,
-                  videoInfo.size.w,
-                  videoInfo.size.h,
-                  p.avCodecContext->pix_fmt,
-                  swsScaleFlags,
-                  0,
-                  0,
-                  0);*/
                 p.swsContext = sws_alloc_context();
                 if (!p.swsContext)
                 {
@@ -765,6 +1386,30 @@ namespace tl
                 {
                     throw std::runtime_error(string::Format("{0}: Cannot initialize sws context").arg(p.fileName));
                 }
+
+                    
+                // Handle matrices and color space details
+                int in_full, out_full, brightness, contrast, saturation;
+                const int *inv_table, *table;
+
+                sws_getColorspaceDetails(
+                    p.swsContext, (int**)&inv_table, &in_full,
+                    (int**)&table, &out_full, &brightness, &contrast,
+                    &saturation);
+
+                inv_table = sws_getCoefficients(p.avCodecContext->colorspace);
+                table = sws_getCoefficients(AVCOL_SPC_BT709);
+
+                // We use the full range, and we set -color_range to 2
+                // ( as we set AV_COL_RANGE_JPEG )
+                in_full =
+                    (p.avCodecContext->color_range == AVCOL_RANGE_JPEG);
+                out_full =
+                    (p.avCodecContext->color_range == AVCOL_RANGE_JPEG);
+
+                sws_setColorspaceDetails(
+                    p.swsContext, inv_table, in_full, table, out_full,
+                    brightness, contrast, saturation);
             }
             
             if (p.avFormatContext->nb_streams == 0)
@@ -773,8 +1418,8 @@ namespace tl
                     string::Format("{0}: No video or audio streams.")
                         .arg(p.fileName));
             }
-                
-            //av_dump_format(p.avFormatContext, 0, p.fileName.c_str(), 1);
+            
+            av_dump_format(p.avFormatContext, 0, p.fileName.c_str(), 1);
 
             r = avio_open(&p.avFormatContext->pb, p.fileName.c_str(), AVIO_FLAG_WRITE);
             if (r < 0)
@@ -792,6 +1437,7 @@ namespace tl
                         .arg(p.fileName)
                         .arg(getErrorLabel(r)));
             }
+
             
             p.opened = true;
         }
@@ -803,7 +1449,7 @@ namespace tl
         Write::~Write()
         {
             TLRENDER_P();
-            
+
             if (p.opened)
             {
                 // We need to enclose this in a try block as _encode can throw
@@ -825,10 +1471,20 @@ namespace tl
                             p.avPacket);
                     }
                 }
-                catch(const std::exception&)
+                catch(const std::exception& e)
                 {
+                    LOG_ERROR(e.what());
                 }
-                av_write_trailer(p.avFormatContext);
+
+                
+                int r = av_write_trailer(p.avFormatContext);
+                if (r != 0)
+                {
+                    LOG_ERROR(
+                        string::Format("{0}: avformat_write_trailer - {1}")
+                        .arg(p.fileName)
+                        .arg(getErrorLabel(r)));
+                }
             }
 
             if (p.swsContext)
@@ -895,8 +1551,6 @@ namespace tl
             const io::Options&)
         {
             TLRENDER_P();
-            if (!p.avCodecContext)
-                return;
             
             const auto& info = image->getInfo();
             av_image_fill_arrays(
@@ -933,9 +1587,24 @@ namespace tl
             case image::PixelType::YUV_422P_U16:
             case image::PixelType::YUV_444P_U16:
                 //! \bug How do we flip YUV data?
-                throw std::runtime_error(string::Format("{0}: Incompatible pixel type").arg(p.fileName));
+                throw std::runtime_error(
+                    string::Format("{0}: Incompatible pixel type")
+                        .arg(p.fileName));
                 break;
-            default: break;
+            default:
+                throw std::runtime_error(
+                    string::Format("{0}: Incompatible pixel type")
+                        .arg(p.fileName));
+                break;
+            }
+
+            int r = av_frame_make_writable(p.avFrame);
+            if (r < 0)
+            {
+                throw std::runtime_error(
+                    string::Format(
+                        "Could not make video frame writable at time {0}.")
+                        .arg(time));
             }
 
             sws_scale(
@@ -947,7 +1616,7 @@ namespace tl
                 p.avFrame->data,
                 p.avFrame->linesize);
 
-            const auto timeRational = time::toRational(time.rate());
+            const auto timeRational = time::toRational(p.avSpeed);
             p.avFrame->pts = av_rescale_q(
                 time.value() - p.videoStartTime.value(),
                 { timeRational.second, timeRational.first },
@@ -1114,13 +1783,14 @@ namespace tl
                             AVPacket* packet)
         {
             TLRENDER_P();
-                
+            
             int r = avcodec_send_frame(context, frame);
             if (r < 0)
             {
                 throw std::runtime_error(
-                    string::Format("{0}: Cannot send frame")
-                        .arg(p.fileName));
+                    string::Format("{0}: Cannot send frame - {1}")
+                        .arg(p.fileName)
+                        .arg(getErrorLabel(r)));
             }
 
             while (r >= 0)
@@ -1133,8 +1803,9 @@ namespace tl
                 else if (r < 0) 
                 {
                     throw std::runtime_error(
-                        string::Format("{0}: Cannot receive packet")
-                            .arg(p.fileName));
+                        string::Format("{0}: Cannot receive packet - {1}")
+                            .arg(p.fileName)
+                            .arg(getErrorLabel(r)));
                 }
 
 
@@ -1144,8 +1815,9 @@ namespace tl
                 if (r < 0)
                 {
                     throw std::runtime_error(
-                        string::Format("{0}: Cannot write frame")
-                        .arg(p.fileName));
+                        string::Format("{0}: Cannot write frame - {1}")
+                        .arg(p.fileName)
+                        .arg(getErrorLabel(r)));
                 }
                 av_packet_unref(packet);
             }

@@ -11,6 +11,9 @@ set(OpenSSL_GIT_TAG "openssl-3.1.4")
 
 set(OpenSSL )
 
+include(ProcessorCount)
+ProcessorCount(NPROCS)
+
 if(WIN32)
     #
     # We build with MSys
@@ -35,8 +38,8 @@ elseif(APPLE)
     if(CMAKE_OSX_DEPLOYMENT_TARGET)
         list(APPEND OpenSSL_CONFIGURE -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET})
     endif()
-    set(OpenSSL_BUILD make)
-    set(OpenSSL_INSTALL make install)
+    set(OpenSSL_BUILD make -j ${NPROCS})
+    set(OpenSSL_INSTALL make -j ${NPROCS} install)
 else()
     set(OpenSSL_CONFIGURE
         ./Configure
@@ -45,8 +48,8 @@ else()
         no-external-tests
         no-tests
         no-unit-test)
-    set(OpenSSL_BUILD make)
-    set(OpenSSL_INSTALL make install)
+    set(OpenSSL_BUILD make -j ${NPROCS})
+    set(OpenSSL_INSTALL make -j ${NPROCS} install)
 
 endif()
 

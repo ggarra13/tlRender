@@ -909,6 +909,18 @@ namespace tl
             out.size = info.size;
             switch (info.pixelType)
             {
+            case image::PixelType::L_U8:
+                out.pixelType = image::PixelType::L_F16;
+                break;
+            case image::PixelType::LA_U8:
+                out.pixelType = image::PixelType::LA_F16;
+                break;
+            case image::PixelType::RGB_U8:
+                out.pixelType = image::PixelType::RGB_F16;
+                break;
+            case image::PixelType::RGBA_U8:
+                out.pixelType = image::PixelType::RGBA_F16;
+                break;
             case image::PixelType::L_F16:
             case image::PixelType::LA_F16:
             case image::PixelType::RGB_F16:
@@ -919,7 +931,7 @@ namespace tl
             case image::PixelType::LA_U32:
             case image::PixelType::RGB_U32:
             case image::PixelType::RGBA_U32:
-                out.pixelType = info.pixelType;;
+                out.pixelType = info.pixelType;
             default:
                 break;
             }

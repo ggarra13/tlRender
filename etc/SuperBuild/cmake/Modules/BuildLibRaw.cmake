@@ -2,11 +2,15 @@ include(ExternalProject)
 
 
 set(LibRaw_URL "https://www.libraw.org/data/LibRaw-0.21.1.tar.gz")
+set(LibRaw_TAG )
+
+set(LibRaw_cmake_URL "https://github.com/LibRaw/LibRaw-cmake")
+set(LibRaw_cmake_TAG 35127051d127f1e1e3dc0ec3a9f59fa48a244ddd)
 
 ExternalProject_Add(
     LibRaw_cmake
-    GIT_REPOSITORY "https://github.com/LibRaw/LibRaw-cmake"
-    GIT_TAG master
+    GIT_REPOSITORY ${LibRaw_cmake_URL}
+    GIT_TAG ${LibRaw_cmake_TAG}
     BUILD_IN_SOURCE 0
     BUILD_ALWAYS 0
     UPDATE_COMMAND ""
@@ -17,8 +21,9 @@ ExternalProject_Add(
     INSTALL_COMMAND ""
 )
 
+set(LibRaw_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 if(APPLE)
-    set(CMAKE_CXX_FLAGS "-Wno-register ${CMAKE_CXX_FLAGS}")
+    set(LibRaw_CXX_FLAGS "-Wno-register ${CMAKE_CXX_FLAGS}")
 endif()
 
 set(LibRaw_ARGS
@@ -31,7 +36,7 @@ set(LibRaw_ARGS
     -DENABLE_X3FTOOLS=ON
     -DENABLE_EXAMPLES=OFF
     -DBUILD_TESTING=OFF
-    -DCMAKE_CXX_FLAGS=${CMAKE_CXX_FLAGS}
+    -DCMAKE_CXX_FLAGS=${LibRaw_CXX_FLAGS}
 )
 
 #

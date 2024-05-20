@@ -4,6 +4,7 @@ Debug
 Release
 RelWithDebInfo
 build*
+_build*
 debug_tests
 doc/doxygen
 *~

@@ -7,6 +7,7 @@ BUILD_TYPE=$1
 mkdir build
 cd build
 cmake ../etc/SuperBuild \
+    -G Ninja \
     -DCMAKE_BUILD_TYPE=$BUILD_TYPE \
     -DCMAKE_INSTALL_PREFIX=$PWD/install \
     -DCMAKE_PREFIX_PATH=$PWD/install \
@@ -33,4 +34,4 @@ cmake ../etc/SuperBuild \
     -DTLRENDER_GCOV=$TLRENDER_GCOV \
     -DCMAKE_OSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET} \
     -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
-cmake --build . -j 1 --config $BUILD_TYPE
+cmake --build . -j $(nproc) --config $BUILD_TYPE

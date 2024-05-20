@@ -7,6 +7,7 @@
 #include <tlCore/Assert.h>
 #include <tlCore/Error.h>
 #include <tlCore/String.h>
+#include <tlCore/Locale.h>
 
 #include <algorithm>
 #include <array>
@@ -376,10 +377,8 @@ namespace tl
             }
             if (2 == split.size())
             {
-                std::string savedLocale = std::setlocale(LC_NUMERIC, NULL);
-                std::setlocale(LC_NUMERIC, "C");
+                locale::SetAndRestore saved;
                 out.pixelAspectRatio = std::stof(split[1]);
-                std::setlocale(LC_NUMERIC, savedLocale.c_str());
             }
             split = string::split(split[0], 'x');
             if (split.size() != 2)

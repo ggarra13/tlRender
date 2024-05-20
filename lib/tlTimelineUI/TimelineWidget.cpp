@@ -465,10 +465,10 @@ namespace tl
             }
         }
 
-        bool TimelineWidget::isDragging() const
+        bool TimelineWidget::isDraggingClip() const
         {
             TLRENDER_P();
-            return p.timelineItem->isDragging();
+            return p.timelineItem->isDraggingClip();
         }
         
         //! Sets a callback for inserting items
@@ -711,6 +711,7 @@ namespace tl
                         context);
                     p.timelineItem->setEditable(p.editable->get());
                     p.timelineItem->setStopOnScrub(p.stopOnScrub->get());
+                    p.timelineItem->setMoveCallback(p.moveCallback);
                     p.timelineItem->setFrameMarkers(p.frameMarkers);
                     p.scrollWidget->setScrollPos(scrollPos);
                     p.scrollWidget->setWidget(p.timelineItem);

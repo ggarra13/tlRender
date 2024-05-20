@@ -43,6 +43,7 @@ namespace tl
             otime::RationalTime startTime = time::invalidTime;
             bool yuvToRGBConversion = false;
             audio::Info audioConvertInfo;
+            int    audioTrack = -1;
             size_t threadCount = ffmpeg::threadCount;
             size_t requestTimeout = 5;
             size_t videoBufferSize = 4;
@@ -55,6 +56,7 @@ namespace tl
             ReadVideo(
                 const std::string& fileName,
                 const std::vector<file::MemoryRead>& memory,
+                const std::weak_ptr<log::System>& logSystem,
                 const Options& options);
 
             ~ReadVideo();
@@ -66,37 +68,30 @@ namespace tl
 
             void start();
             void seek(const otime::RationalTime&);
-            bool process(const otime::RationalTime& currentTime);
+            bool process(const bool backwards,
+                         const otime::RationalTime& targetTime,
+                         otime::RationalTime& currentTime);
 
             bool isBufferEmpty() const;
             std::shared_ptr<image::Image> popBuffer();
 
         private:
-            int _decode(const otime::RationalTime& currentTime);
+            int _decode(const bool backwards,
+                        const otime::RationalTime& targetTime,
+                        otime::RationalTime& currentTime);
             void _copy(std::shared_ptr<image::Image>&);
             float _getRotation(const AVStream*);
 
-            template<typename T>
-            void _rotateYUV420(T*, const T*, const bool);
-            template<typename T>
-            void _rotateYUV422(T*, const T*, const bool);
-            template<typename T>
-            void _rotateYUV444(T*, const T*, const bool);
-            
-            template<typename T>
-            void _flipYUV420(T*, const T*);
-            template<typename T>
-            void _flipYUV422(T*, const T*);
-            template<typename T>
-            void _flipYUV444(T*, const T*);
-            
+            //! tlRender variables
             std::string _fileName;
             Options _options;
             image::Info _info;
             otime::TimeRange _timeRange = time::invalidTimeRange;
             image::Tags _tags;
             float _rotation = 0.F;
-
+            std::weak_ptr<log::System> _logSystem;
+            
+            //! FFmpeg variables
             AVFormatContext* _avFormatContext = nullptr;
             AVIOBufferData _avIOBufferData;
             uint8_t* _avIOContextBuffer = nullptr;
@@ -141,7 +136,7 @@ namespace tl
 
         private:
             int _decode(const otime::RationalTime& currentTime);
-
+            
             std::string _fileName;
             Options _options;
             audio::Info _info;

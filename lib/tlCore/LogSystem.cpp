@@ -19,7 +19,8 @@ namespace tl
                 time == other.time &&
                 prefix == other.prefix &&
                 message == other.message &&
-                type == other.type;
+                type == other.type &&
+                module == other.module;
         }
 
         bool Item::operator != (const Item& other) const
@@ -41,8 +42,9 @@ namespace tl
             }
             switch (item.type)
             {
+            case Type::Status:
             case Type::Message:
-                 ss << item.message;
+                ss << item.message;
                 break;
             case Type::Warning:
                 ss << "Warning: " << item.message;
@@ -96,13 +98,14 @@ namespace tl
         void System::print(
             const std::string& prefix,
             const std::string& value,
-            Type type)
+            Type type,
+            const std::string& module)
         {
             TLRENDER_P();
             const auto now = std::chrono::steady_clock::now();
             const std::chrono::duration<float> time = now - p.startTime;
             std::unique_lock<std::mutex> lock(p.mutex);
-            p.items.push_back({ time.count(), prefix, value, type });
+            p.items.push_back({ time.count(), prefix, value, type, module });
         }
 
         std::shared_ptr<observer::IList<Item> > System::observeLog() const

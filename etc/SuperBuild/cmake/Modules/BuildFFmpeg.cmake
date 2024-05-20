@@ -1,5 +1,7 @@
 include(ExternalProject)
 
+include(ProcessorCount)
+ProcessorCount(NPROCS)
 
 set(FFmpeg_DEPS)
 if(WIN32)
@@ -16,16 +18,25 @@ else()
 
     if(TLRENDER_VPX)
 	list(APPEND FFmpeg_LDFLAGS
-	    --extra-ldflags="-L${CMAKE_INSTALL_PREFIX}/lib/"
 	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libvpx.a")
 	list(APPEND FFmpeg_DEPS VPX)
+    endif()
+    if(TLRENDER_AV1)
+	list(APPEND FFmpeg_LDFLAGS
+	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libdav1d.a"
+	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libSvtAv1Enc.a")
+	if (UNIX AND NOT APPLE)
+	  list(APPEND FFmpeg_LDFLAGS
+	    --extra-libs=-lm
+	    --extra-libs=-lpthread)
+	endif()
+	list(APPEND FFmpeg_DEPS SvtAV1 dav1d)
     endif()
     if(TLRENDER_X264)
 	#
 	# Make sure we pick the static libx264 we compiled, not the system one
 	#
 	list(APPEND FFmpeg_LDFLAGS
-	    --extra-ldflags="-L${CMAKE_INSTALL_PREFIX}/lib/"
 	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libx264.a")
 	list(APPEND FFmpeg_DEPS X264)
     endif()
@@ -55,10 +66,12 @@ else()
     endif()
     set(FFmpeg_CONFIGURE_ARGS
 	--prefix=${CMAKE_INSTALL_PREFIX}
+	--enable-pic
+	--pkg-config-flags=--static
 	--disable-programs
+	--disable-avfilter
 	--disable-doc
 	--disable-postproc
-	--disable-avfilter
 	--disable-hwaccels
 	--disable-devices
 	--disable-filters
@@ -82,7 +95,6 @@ else()
 	--disable-xlib
 	--disable-zlib
 	--disable-amf
-	--disable-audiotoolbox
 	--disable-cuda-llvm
 	--disable-cuvid
 	--disable-d3d11va
@@ -93,30 +105,41 @@ else()
 	--disable-v4l2-m2m
 	--disable-vaapi
 	--disable-vdpau
-	--disable-videotoolbox
-	--enable-pic
+	--disable-large-tests
 	${FFmpeg_CFLAGS}
 	${FFmpeg_CXXFLAGS}
 	${FFmpeg_OBJCFLAGS}
 	${FFmpeg_LDFLAGS})
+    if(NOT APPLE)
+	list(APPEND FFmpeg_CONFIGURE_ARGS
+	    --disable-videotoolbox
+	    --disable-audiotoolbox)
+    else()
+	list(APPEND FFmpeg_CONFIGURE_ARGS
+	    --enable-videotoolbox
+	    --enable-audiotoolbox)
+    endif()
     if(TLRENDER_FFMPEG_MINIMAL)
 	list(APPEND FFmpeg_CONFIGURE_ARGS
-            --disable-decoders
+	    --disable-decoders
+	    
             --enable-decoder=aac
             --enable-decoder=ac3
             --enable-decoder=av1
             --enable-decoder=ayuv
+            --enable-decoder=cfhd
             --enable-decoder=dnxhd
             --enable-decoder=eac3
             --enable-decoder=flac
+            --enable-decoder=gif
             --enable-decoder=h264
             --enable-decoder=hevc
             --enable-decoder=mjpeg
             --enable-decoder=mp3
             --enable-decoder=mpeg2video
             --enable-decoder=mpeg4
+            --enable-decoder=opus
             --enable-decoder=pcm_alaw
-            --enable-decoder=pcm_alaw_at
             --enable-decoder=pcm_bluray
             --enable-decoder=pcm_dvd
             --enable-decoder=pcm_f16le
@@ -127,7 +150,6 @@ else()
             --enable-decoder=pcm_f64le
             --enable-decoder=pcm_lxf
             --enable-decoder=pcm_mulaw
-            --enable-decoder=pcm_mulaw_at
             --enable-decoder=pcm_s16be
             --enable-decoder=pcm_s16be_planar
             --enable-decoder=pcm_s16le
@@ -154,24 +176,38 @@ else()
             --enable-decoder=pcm_vidc
             --enable-decoder=prores
             --enable-decoder=rawvideo
+	    --enable-decoder=truehd
             --enable-decoder=v210
             --enable-decoder=v210x
             --enable-decoder=v308
             --enable-decoder=v408
             --enable-decoder=v410
+            --enable-decoder=vorbis
             --enable-decoder=vp9
             --enable-decoder=yuv4
+            --enable-decoder=wmalossless
+            --enable-decoder=wmapro
+            --enable-decoder=wmav1
+            --enable-decoder=wmav2
+            --enable-decoder=wmavoice
+            --enable-decoder=wmv1
+            --enable-decoder=wmv2
+            --enable-decoder=wmv3
+            --enable-decoder=wmv3image
+
             --disable-encoders
             --enable-encoder=aac
             --enable-encoder=ac3
             --enable-encoder=ayuv
+            --enable-encoder=cfhd
             --enable-encoder=dnxhd
             --enable-encoder=eac3
+            --enable-encoder=gif
             --enable-encoder=mjpeg
             --enable-encoder=mpeg2video
             --enable-encoder=mpeg4
+            --enable-encoder=opus
             --enable-encoder=pcm_alaw
-            --enable-encoder=pcm_alaw_at
             --enable-encoder=pcm_bluray
             --enable-encoder=pcm_dvd
             --enable-encoder=pcm_f32be
@@ -179,7 +215,6 @@ else()
             --enable-encoder=pcm_f64be
             --enable-encoder=pcm_f64le
             --enable-encoder=pcm_mulaw
-            --enable-encoder=pcm_mulaw_at
             --enable-encoder=pcm_s16be
             --enable-encoder=pcm_s16be_planar
             --enable-encoder=pcm_s16le
@@ -204,30 +239,41 @@ else()
             --enable-encoder=pcm_u8
             --enable-encoder=pcm_vidc
             --enable-encoder=prores
+            --enable-encoder=prores_ks
             --enable-encoder=rawvideo
+	    --enable-encoder=truehd
             --enable-encoder=v210
             --enable-encoder=v308
             --enable-encoder=v408
             --enable-encoder=v410
             --enable-encoder=yuv4
+            --enable-encoder=vorbis
+            --enable-encoder=wmav1
+            --enable-encoder=wmav2
+            --enable-encoder=wmv1
+            --enable-encoder=wmv2
+
             --disable-demuxers
             --enable-demuxer=aac
             --enable-demuxer=ac3
             --enable-demuxer=aiff
+            --enable-demuxer=asf
             --enable-demuxer=av1
             --enable-demuxer=dnxhd
             --enable-demuxer=dts
             --enable-demuxer=dtshd
             --enable-demuxer=eac3
             --enable-demuxer=flac
+            --enable-demuxer=gif
             --enable-demuxer=h264
             --enable-demuxer=hevc
-            --enable-demuxer=imf
             --enable-demuxer=m4v
+            --enable-demuxer=matroska
             --enable-demuxer=mjpeg
             --enable-demuxer=mov
             --enable-demuxer=mp3
             --enable-demuxer=mxf
+            --enable-demuxer=ogg
             --enable-demuxer=pcm_alaw
             --enable-demuxer=pcm_f32be
             --enable-demuxer=pcm_f32le
@@ -250,25 +296,32 @@ else()
             --enable-demuxer=pcm_u8
             --enable-demuxer=pcm_vidc
             --enable-demuxer=rawvideo
+            --enable-demuxer=truehd
             --enable-demuxer=v210
             --enable-demuxer=v210x
             --enable-demuxer=wav
             --enable-demuxer=yuv4mpegpipe
+
             --disable-muxers
             --enable-muxer=ac3
             --enable-muxer=aiff
+            --enable-muxer=asf
             --enable-muxer=dnxhd
             --enable-muxer=dts
             --enable-muxer=eac3
             --enable-muxer=flac
+            --enable-muxer=gif
             --enable-muxer=h264
             --enable-muxer=hevc
             --enable-muxer=m4v
+            --enable-muxer=matroska
             --enable-muxer=mjpeg
             --enable-muxer=mov
             --enable-muxer=mp4
             --enable-muxer=mpeg2video
             --enable-muxer=mxf
+            --enable-muxer=ogg
+            --enable-muxer=opus
             --enable-muxer=pcm_alaw
             --enable-muxer=pcm_f32be
             --enable-muxer=pcm_f32le
@@ -291,8 +344,10 @@ else()
             --enable-muxer=pcm_u8
             --enable-muxer=pcm_vidc
             --enable-muxer=rawvideo
+            --enable-muxer=truehd
             --enable-muxer=wav
             --enable-muxer=yuv4mpegpipe
+
             --disable-parsers
             --enable-parser=aac
             --enable-parser=ac3
@@ -300,13 +355,17 @@ else()
             --enable-parser=dnxhd
             --enable-parser=dolby_e
             --enable-parser=flac
+            --enable-parser=gif
             --enable-parser=h264
             --enable-parser=hevc
             --enable-parser=mjpeg
             --enable-parser=mpeg4video
             --enable-parser=mpegaudio
             --enable-parser=mpegvideo
+            --enable-parser=opus
+            --enable-parser=vorbis
             --enable-parser=vp9
+
             --disable-protocols
             --enable-protocol=crypto
             --enable-protocol=file
@@ -315,6 +374,13 @@ else()
             --enable-protocol=httpproxy
             --enable-protocol=https
             --enable-protocol=md5)
+	if(APPLE)
+	    list(APPEND FFmpeg_CONFIGURE_ARGS
+		--enable-encoder=pcm_alaw_at
+		--enable-decoder=pcm_alaw_at
+		--enable-encoder=pcm_mulaw_at
+		--enable-decoder=pcm_mulaw_at)
+	endif()
     endif()
     list(APPEND FFmpeg_CONFIGURE_ARGS
 	--x86asmexe=${CMAKE_INSTALL_PREFIX}/bin/nasm)
@@ -325,10 +391,23 @@ else()
 
     if(TLRENDER_VPX)
 	list(APPEND FFmpeg_CONFIGURE_ARGS
+            --enable-decoder=libvpx_vp8
+            --enable-decoder=libvpx_vp9
+            --enable-encoder=libvpx_vp8
+            --enable-encoder=libvpx_vp9
 	    --enable-libvpx)
+    endif()
+    if(TLRENDER_AV1)
+	list(APPEND FFmpeg_CONFIGURE_ARGS
+            --enable-encoder=libsvtav1
+            --enable-decoder=libdav1d
+	    --enable-libdav1d
+	    --enable-libsvtav1)
     endif()
     if(TLRENDER_X264)
 	list(APPEND FFmpeg_CONFIGURE_ARGS
+            --enable-encoder=libx264
+            --enable-decoder=libx264
 	    --enable-libx264 --enable-gpl)
 	if(TLRENDER_NET)
 	    list(APPEND FFmpeg_CONFIGURE_ARGS
@@ -348,15 +427,15 @@ else()
             --assert-level=2)
     endif()
 
-    set(FFmpeg_CONFIGURE ./configure ${FFmpeg_CONFIGURE_ARGS})
-    set(FFmpeg_BUILD make -j 4)
+    set(FFmpeg_CONFIGURE ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${CMAKE_INSTALL_PREFIX}/lib64/pkgconfig:${CMAKE_INSTALL_PREFIX}/lib/pkgconfig -- ./configure ${FFmpeg_CONFIGURE_ARGS})
+    set(FFmpeg_BUILD make -j ${NPROCS})
     set(FFmpeg_INSTALL make install)
 
     ExternalProject_Add(
 	FFmpeg
 	PREFIX ${CMAKE_CURRENT_BINARY_DIR}/FFmpeg
 	DEPENDS ${FFmpeg_DEPS}
-	URL https://ffmpeg.org/releases/ffmpeg-6.0.tar.bz2
+	URL https://ffmpeg.org/releases/ffmpeg-6.1.1.tar.bz2
 	CONFIGURE_COMMAND ${FFmpeg_CONFIGURE}
 	BUILD_COMMAND ${FFmpeg_BUILD}
 	INSTALL_COMMAND ${FFmpeg_INSTALL}

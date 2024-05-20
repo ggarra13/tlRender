@@ -115,6 +115,11 @@ namespace tl
             return _exit;
         }
 
+        const std::vector<std::string> BaseApp::getUnusedArgs() const
+        {
+            return _unusedArgs;
+        }
+
         const std::string& BaseApp::_getCmdLineName() const
         {
             return _p->cmdLine.name;
@@ -147,7 +152,10 @@ namespace tl
             {
                 try
                 {
-                    i->parse(p.cmdLine.argv);
+                    if (!p.cmdLine.argv.empty())
+                    {
+                        i->parse(p.cmdLine.argv);
+                    }
                 }
                 catch (const std::exception& e)
                 {
@@ -156,11 +164,16 @@ namespace tl
                         arg(e.what()));
                 }
             }
+            bool   unusedArgs   = false;
             size_t requiredArgs = 0;
             size_t optionalArgs = 0;
             for (const auto& i : p.cmdLine.args)
             {
-                if (!i->isOptional())
+                if (i->isUnused())
+                {
+                    unusedArgs = true;
+                }
+                else if (!i->isOptional())
                 {
                     ++requiredArgs;
                 }
@@ -170,7 +183,8 @@ namespace tl
                 }
             }
             if (p.cmdLine.argv.size() < requiredArgs ||
-                p.cmdLine.argv.size() > requiredArgs + optionalArgs ||
+                (p.cmdLine.argv.size() > requiredArgs + optionalArgs &&
+                 !unusedArgs) ||
                 _options.help)
             {
                 _printCmdLineHelp();
@@ -180,8 +194,13 @@ namespace tl
             {
                 try
                 {
-                    if (!(p.cmdLine.argv.empty() && i->isOptional()))
+                    if (!p.cmdLine.argv.empty())
                     {
+                        if(i->isUnused())
+                        {
+                            _unusedArgs = p.cmdLine.argv;
+                            break;
+                        }
                         i->parse(p.cmdLine.argv);
                     }
                 }
@@ -210,16 +229,19 @@ namespace tl
                     for (const auto& i : p.cmdLine.args)
                     {
                         const bool optional = i->isOptional();
+                        const bool unused   = i->isUnused();
                         args.push_back(
                             (optional ? "[" : "(") +
                             string::toLower(i->getName()) +
                             (optional ? "]" : ")"));
+                        if (unused)
+                            args.push_back("...");
                     }
                     ss << " " << string::join(args, " ");
                 }
                 if (p.cmdLine.options.size())
                 {
-                    ss << " [option],...";
+                    ss << " [option]...";
                 }
                 _print(ss.str());
                 _printNewline();

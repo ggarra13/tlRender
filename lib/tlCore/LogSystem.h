@@ -19,7 +19,8 @@ namespace tl
         {
             Message,
             Warning,
-            Error
+            Error,
+            Status
         };
 
         //! Log item.
@@ -29,6 +30,7 @@ namespace tl
             std::string prefix;
             std::string message;
             Type type = Type::Message;
+            std::string module;
 
             bool operator == (const Item&) const;
             bool operator != (const Item&) const;
@@ -65,7 +67,8 @@ namespace tl
             void print(
                 const std::string& prefix,
                 const std::string&,
-                Type = Type::Message);
+                Type = Type::Message,
+                const std::string& module = "");
 
             //! Observe the log.
             std::shared_ptr<observer::IList<Item> > observeLog() const;

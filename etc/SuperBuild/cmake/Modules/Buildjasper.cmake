@@ -2,7 +2,7 @@ include(ExternalProject)
 
 
 set(jasper_GIT_REPOSITORY "https://github.com/jasper-software/jasper.git")
-set(jasper_GIT_TAG version-4.0.0)
+set(jasper_GIT_TAG version-4.2.1)
 
 set(jasper_ARGS
     ${TLRENDER_EXTERNAL_ARGS}
@@ -24,6 +24,7 @@ ExternalProject_Add(
      PREFIX ${CMAKE_CURRENT_BINARY_DIR}/jasper
      GIT_REPOSITORY ${jasper_GIT_REPOSITORY}
      GIT_TAG ${jasper_GIT_TAG}
+     GIT_SHALLOW 1
      DEPENDS ${jasper_DEPS}
      LIST_SEPARATOR |
      CMAKE_ARGS ${jasper_ARGS}

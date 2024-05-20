@@ -4476,6 +4476,23 @@ RtAudio::DeviceInfo RtApiWasapi::getDeviceInfo( unsigned int device )
   hr = audioClient->GetMixFormat( &deviceFormat );
   if ( FAILED( hr ) ) {
     errorText_ = "RtApiWasapi::getDeviceInfo: Unable to retrieve device mix format.";
+    switch(hr)
+    {
+    case AUDCLNT_E_DEVICE_INVALIDATED:
+      errorText_ += "Invalidated Device.";
+      break;
+    case AUDCLNT_E_SERVICE_NOT_RUNNING:
+      errorText_ += "Service not runnning.";
+      break;
+    case E_POINTER:
+      errorText_ += "Pointer issue.";
+      break;
+    case E_OUTOFMEMORY:
+      errorText_ += "Out of Memory.";
+      break;
+    default:
+      break;
+    }
     goto Exit;
   }
 

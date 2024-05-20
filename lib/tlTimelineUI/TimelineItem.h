@@ -71,7 +71,10 @@ namespace tl
             void setStopOnScrub(bool);
             
             //! Returns whether a clip is getting dragged.
-            bool isDragging() const;
+            bool isDraggingClip() const;
+
+            //! Sets a callback for inserting items
+            void setMoveCallback(const std::function<void(const std::vector<timeline::MoveData>&)>&);
             
             //! Observe whether scrubbing is in progress.
             std::shared_ptr<observer::IValue<bool> > observeScrub() const;
@@ -96,7 +99,6 @@ namespace tl
             //void keyPressEvent(ui::KeyEvent&) override;
             //void keyReleaseEvent(ui::KeyEvent&) override;
 
-            
         protected:
             void _timeUnitsUpdate() override;
 

@@ -1,7 +1,7 @@
 include(ExternalProject)
 
-set(PNG_GIT_REPOSITORY "https://github.com/glennrp/libpng.git")
-set(PNG_GIT_TAG "v1.6.39")
+set(PNG_GIT_REPOSITORY "https://github.com/pnggroup/libpng.git")
+set(PNG_GIT_TAG "v1.6.43")
 
 set(PNG_SHARED_LIBS ON)
 set(PNG_STATIC_LIBS OFF)
@@ -13,6 +13,7 @@ endif()
 set(PNG_ARGS
     ${TLRENDER_EXTERNAL_ARGS}
     -DCMAKE_INSTALL_LIBDIR=lib
+    -DCMAKE_POSITION_INDEPENDENT_CODE=ON
     -DPNG_SHARED=${PNG_SHARED_LIBS}
     -DPNG_STATIC=${PNG_STATIC_LIBS}
     -DPNG_TESTS=OFF
@@ -27,5 +28,6 @@ ExternalProject_Add(
     DEPENDS ZLIB
     GIT_REPOSITORY ${PNG_GIT_REPOSITORY}
     GIT_TAG ${PNG_GIT_TAG}
+    GIT_SHALLOW 1
     LIST_SEPARATOR |
     CMAKE_ARGS ${PNG_ARGS})

@@ -27,6 +27,12 @@ namespace tl
         {
             otime::RationalTime loopPlayback(const otime::RationalTime&);
 
+            void reverseRequests(const otime::RationalTime& start,
+                                 const otime::RationalTime& end,
+                                 const otime::RationalTime& inc);
+            void forwardRequests(const otime::RationalTime& start,
+                                 const otime::RationalTime& end,
+                                 const otime::RationalTime& inc);
             void clearRequests();
             void clearCache();
             void cacheUpdate();
@@ -97,7 +103,6 @@ namespace tl
             struct AudioMutex
             {
                 double speed = 0.0;
-                double defaultSpeed = 0.0;
                 float volume = 1.F;
                 bool mute = false;
                 std::chrono::steady_clock::time_point muteTimeout;
