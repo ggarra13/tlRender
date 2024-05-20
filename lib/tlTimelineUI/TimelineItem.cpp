@@ -146,6 +146,7 @@ namespace tl
                                 transition,
                                 scale,
                                 options,
+                                displayOptions,
                                 itemData,
                                 context,
                                 shared_from_this()));

@@ -137,7 +137,7 @@ namespace tl
                     p.size.fontMetrics.lineHeight +
                     p.size.margin * 2;
             }
-            if (_diplayOptions.markers)
+            if (_displayOptions.markers)
             {
                 for (const auto& marker : p.markers)
                 {

@@ -9,8 +9,6 @@
 #include <tlCore/LogSystem.h>
 #include <tlCore/StringFormat.h>
 
-#include <tlGL/GLFWWindow.h>
-
 #include <pxr/pxr.h>
 #include <pxr/base/tf/diagnostic.h>
 #include <pxr/base/tf/token.h>
@@ -88,7 +86,6 @@ namespace tl
             
             struct Thread
             {
-                std::string rendererName = "GL";
                 memory::LRUCache<std::string, StageCacheItem> stageCache;
                 memory::LRUCache<std::string, std::shared_ptr<DiskCacheItem> > diskCache;
                 std::string tempDir;
@@ -98,8 +95,6 @@ namespace tl
                 std::atomic<bool> running;
             };
             Thread thread;
-
-            std::vector<std::string> renderers;
         };
         
         void Render::_init(
@@ -123,7 +118,7 @@ namespace tl
             glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
             glfwWindowHint(GLFW_OPENGL_PROFILE, glProfile);
             glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-            gl::windowHint(GLFW_DOUBLEBUFFER, GLFW_FALSE);
+            glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_FALSE);
             p.glfwWindow = glfwCreateWindow(1, 1, "tl::usd::Render", NULL, NULL);
             if (!p.glfwWindow)
             {
@@ -144,21 +139,19 @@ namespace tl
                     _finish();
                 });
             
-            const auto& plugins = UsdImagingGLEngine::GetRendererPlugins();
-            for (const auto& id : plugins)
-            {
-                const std::string& name = UsdImagingGLEngine::GetRendererDisplayName(id);
-                p.renderers.push_back(name);
-            }
-            
             if (auto logSystem = p.logSystem.lock())
             {
+                std::vector<std::string> renderers;
+                for (const auto& id : UsdImagingGLEngine::GetRendererPlugins())
+                {
+                    renderers.push_back(UsdImagingGLEngine::GetRendererDisplayName(id));
+                }
                 logSystem->print(
                     "tl::usd::Render",
                     string::Format(
                         "\n"
                         "    Renderers: {0}").
-                    arg(string::join(p.renderers, ", ")));
+                    arg(string::join(renderers, ", ")));
             }
         }
 
@@ -397,18 +390,7 @@ namespace tl
             TLRENDER_P();
             stage = UsdStage::Open(fileName);
             const bool gpuEnabled = true;
-            TfToken rendererId;
-            for (const auto& id : UsdImagingGLEngine::GetRendererPlugins())
-            {
-                const std::string renderer =
-                    UsdImagingGLEngine::GetRendererDisplayName(id);
-                if (renderer == p.thread.rendererName)
-                {
-                    rendererId = id;
-                    break;
-                }
-            }
-            engine = std::make_shared<UsdImagingGLEngine>(HdDriver(), rendererId, gpuEnabled);
+            engine = std::make_shared<UsdImagingGLEngine>(HdDriver(), TfToken(), gpuEnabled);
             if (stage && engine)
             {
                 if (auto logSystem = p.logSystem.lock())
@@ -533,11 +515,6 @@ namespace tl
                 {
                     cameraName = i->second;
                 }
-                i = ioOptions.find("USD/rendererName");
-                if (i != ioOptions.end())
-                {
-                    p.thread.rendererName = i->second;
-                }
                 if (infoRequest)
                 {
                     const std::string fileName = infoRequest->path.get(-1, file::PathType::Path);
@@ -577,14 +554,6 @@ namespace tl
                         info.videoTime = otime::TimeRange::range_from_start_end_time_inclusive(
                             otime::RationalTime(startTimeCode, timeCodesPerSecond),
                             otime::RationalTime(endTimeCode, timeCodesPerSecond));
-                        int rendererId = 0;
-                        for (const auto& renderer : p.renderers)
-                        {
-                            std::stringstream s;
-                            s << "Renderer " << rendererId;
-                            info.tags[s.str()] = renderer;
-                            ++rendererId;
-                        }
                         //std::cout << fileName << " range: " << info.videoTime << std::endl;
                     }
                     infoRequest->promise.set_value(info);
@@ -597,7 +566,8 @@ namespace tl
                     const std::string cacheKey = io::getCacheKey(
                         request->path,
                         request->time,
-                        ioOptions);
+                        ioOptions,
+                        {});
                     if (p.cache->getVideo(cacheKey, videoData))
                     {
                         request->promise.set_value(videoData);
@@ -612,7 +582,8 @@ namespace tl
                     const std::string cacheKey = io::getCacheKey(
                         request->path,
                         request->time,
-                        ioOptions);
+                        ioOptions,
+                        {});
                     if (diskCacheByteCount > 0 &&
                         p.thread.diskCache.get(cacheKey, diskCacheItem))
                     {
@@ -662,7 +633,8 @@ namespace tl
                     const std::string cacheKey = io::getCacheKey(
                         request->path,
                         request->time,
-                        ioOptions);
+                        ioOptions,
+                        {});
                     try
                     {
                         // Check the stage cache for a previously opened stage.
@@ -704,29 +676,13 @@ namespace tl
                             {
                                 enableLighting = std::atoi(i->second.c_str());
                             }
-                            bool enableSceneLights = false;
-                            i = ioOptions.find("USD/enableSceneLights");
-                            if (i != ioOptions.end())
-                            {
-                                enableSceneLights = std::atoi(i->second.c_str());
-                            }
-                            bool enableSceneMaterials = true;
-                            i = ioOptions.find("USD/enableSceneMaterials");
-                            if (i != ioOptions.end())
-                            {
-                                enableSceneMaterials = std::atoi(i->second.c_str());
-                            }
                             bool sRGB = true;
                             i = ioOptions.find("USD/sRGB");
                             if (i != ioOptions.end())
                             {
                                 sRGB = std::atoi(i->second.c_str());
                             }
-                            i = ioOptions.find("USD/rendererName");
-                            if (i != ioOptions.end())
-                            {
-                                p.thread.rendererName = i->second;
-                            }
+
                             // Setup the camera.
                             std::string cameraName;
                             i = ioOptions.find("USD/cameraName");
@@ -734,8 +690,6 @@ namespace tl
                             {
                                 cameraName = i->second;
                             }
-
-                            // Setup the camera.
                             GfCamera gfCamera;
                             auto camera = getCamera(stageCacheItem.stage, cameraName);
                             if (camera)
@@ -789,10 +743,6 @@ namespace tl
                             renderParams.complexity = complexity;
                             renderParams.drawMode = toUSD(drawMode);
                             renderParams.enableLighting = enableLighting;
-#if PXR_VERSION >= 2311
-                            renderParams.enableSceneLights = enableSceneLights;
-                            renderParams.enableSceneMaterials = enableSceneMaterials;
-#endif
                             renderParams.clearColor = GfVec4f(0.F, 0.F, 0.F, 0.F);
                             renderParams.colorCorrectionMode = sRGB ?
                                 HdxColorCorrectionTokens->sRGB :
