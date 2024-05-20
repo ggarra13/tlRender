@@ -602,15 +602,19 @@ namespace tl
                 std::vector<timeline::MoveData> moveData;
                 for (const auto& item : p.mouse.items)
                 {
-                    const int track = dropTarget.track + (item->track - p.mouse.items[0]->track);
                     const int fromTrack = item->track;
                     const int fromIndex = item->index;
                     const int fromOtioIndex = p.tracks[fromTrack].otioIndexes[fromIndex];
-                    const int toOtioIndex =
-                        p.tracks[track].otioIndexes[dropTarget.index];
+                    const int toTrack = dropTarget.track + (item->track - p.mouse.items[0]->track);
+                    const int toIndex = dropTarget.index;
+                    int toOtioIndex = toIndex;
+                    if (toOtioIndex < p.tracks[toTrack].otioIndexes.size())
+                    {
+                        toOtioIndex = p.tracks[toTrack].otioIndexes[toIndex];
+                    }
                     moveData.push_back(
-                        {fromTrack, fromIndex, fromOtioIndex, track,
-                         dropTarget.index});
+                        {fromTrack, fromIndex, fromOtioIndex,
+                         toTrack, toIndex, toOtioIndex});
                     item->p->hide();
                 }
                 if (p.moveCallback)
