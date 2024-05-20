@@ -266,6 +266,8 @@ add_subdirectory(etc)
 #-------------------------------------------------------------------------------
 # Packaging (not used by mrv2)
 
-#include(Package)
-#include(CPack)
-#include(InstallRequiredSystemLibraries)
+if(CMAKE_BUILD_TYPE MATCHES "^Release$")
+    include(Package)
+    include(CPack)
+    include(InstallRequiredSystemLibraries)
+endif()
