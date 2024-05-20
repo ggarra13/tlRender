@@ -6,8 +6,6 @@
 
 #include <tlIO/SequenceIO.h>
 
-#include <tlCore/Box.h>
-
 namespace tl
 {
     //! OpenEXR image I/O.
