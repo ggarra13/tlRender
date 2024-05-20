@@ -48,6 +48,7 @@ namespace tl
             const otio::SerializableObject::Retainer<otio::Transition>& transition,
             double scale,
             const ItemOptions& options,
+            const DisplayOptions& displayOptions,
             const std::shared_ptr<ItemData>& itemData,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
@@ -77,6 +78,7 @@ namespace tl
                 trimmedRange,
                 scale,
                 options,
+                displayOptions,
                 itemData,
                 context,
                 parent);
@@ -93,12 +95,20 @@ namespace tl
             const otio::SerializableObject::Retainer<otio::Transition>& transition,
             double scale,
             const ItemOptions& options,
+            const DisplayOptions& displayOptions,
             const std::shared_ptr<ItemData>& itemData,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
         {
             auto out = std::shared_ptr<TransitionItem>(new TransitionItem);
-            out->_init(transition, scale, options, itemData, context, parent);
+            out->_init(
+                transition,
+                scale,
+                options,
+                displayOptions,
+                itemData,
+                context,
+                parent);
             return out;
         }
 

@@ -25,6 +25,7 @@ namespace tl
             const otio::SerializableObject::Retainer<otio::Stack>& stack,
             double scale,
             const ItemOptions& options,
+            const DisplayOptions& displayOptions,
             const std::shared_ptr<ItemData>& itemData,
             const std::shared_ptr<gl::GLFWWindow>& window,
             const std::shared_ptr<system::Context>& context,
@@ -40,6 +41,7 @@ namespace tl
                 trimmedRange,
                 scale,
                 options,
+                displayOptions,
                 itemData,
                 context,
                 parent);
@@ -102,6 +104,7 @@ namespace tl
                                     clip,
                                     scale,
                                     options,
+                                    displayOptions,
                                     itemData,
                                     p.thumbnailGenerator,
                                     context,
@@ -112,6 +115,7 @@ namespace tl
                                     clip,
                                     scale,
                                     options,
+                                    displayOptions,
                                     itemData,
                                     p.thumbnailGenerator,
                                     context,
@@ -130,6 +134,7 @@ namespace tl
                                 gap,
                                 scale,
                                 options,
+                                displayOptions,
                                 itemData,
                                 context,
                                 shared_from_this()));
@@ -192,13 +197,23 @@ namespace tl
             const otio::SerializableObject::Retainer<otio::Stack>& stack,
             double scale,
             const ItemOptions& options,
+            const DisplayOptions& displayOptions,
             const std::shared_ptr<ItemData>& itemData,
             const std::shared_ptr<gl::GLFWWindow>& window,
             const std::shared_ptr<system::Context>& context,
             const std::shared_ptr<IWidget>& parent)
         {
             auto out = std::shared_ptr<TimelineItem>(new TimelineItem);
-            out->_init(player, stack, scale, options, itemData, window, context, parent);
+            out->_init(
+                player,
+                stack,
+                scale,
+                options,
+                displayOptions,
+                itemData,
+                window,
+                context,
+                parent);
             return out;
         }
 
@@ -236,10 +251,10 @@ namespace tl
             return _p->minimumHeight;
         }
 
-        void TimelineItem::setOptions(const ItemOptions& value)
+        void TimelineItem::setDisplayOptions(const DisplayOptions& value)
         {
-            const bool changed = value != _options;
-            IItem::setOptions(value);
+            const bool changed = value != _displayOptions;
+            IItem::setDisplayOptions(value);
             TLRENDER_P();
             if (changed)
             {
@@ -266,7 +281,7 @@ namespace tl
                 const bool visible = _isTrackVisible(track.index);
 
                 math::Size2i labelSizeHint;
-                if (visible && _options.trackInfo)
+                if (visible && _displayOptions.trackInfo)
                 {
                     labelSizeHint = track.label->getSizeHint();
                 }
@@ -276,7 +291,7 @@ namespace tl
                     labelSizeHint.w,
                     labelSizeHint.h));
                 math::Size2i durationSizeHint;
-                if (visible && _options.trackInfo)
+                if (visible && _displayOptions.trackInfo)
                 {
                     durationSizeHint = track.durationLabel->getSizeHint();
                 }
@@ -285,7 +300,7 @@ namespace tl
                     y,
                     durationSizeHint.w,
                     durationSizeHint.h));
-                
+
                 for (const auto& item : track.items)
                 {
                     const auto i = std::find_if(
@@ -354,8 +369,8 @@ namespace tl
                 p.size.border = event.style->getSizeRole(ui::SizeRole::Border, _displayScale);
                 p.size.handle = event.style->getSizeRole(ui::SizeRole::Handle, _displayScale);
                 p.size.fontInfo = image::FontInfo(
-                    _options.monoFont,
-                    _options.fontSize * _displayScale);
+                    _displayOptions.monoFont,
+                    _displayOptions.fontSize * _displayScale);
                 p.size.fontMetrics = event.fontSystem->getMetrics(p.size.fontInfo);
             }
             p.size.sizeInit = false;
@@ -379,7 +394,7 @@ namespace tl
                         track.size.h = std::max(track.size.h, sizeHint.h);
                     }
                     track.clipHeight = track.size.h;
-                    if (_options.trackInfo)
+                    if (_displayOptions.trackInfo)
                     {
                         track.size.h += std::max(
                             track.label->getSizeHint().h,
@@ -513,7 +528,9 @@ namespace tl
         {
             IWidget::mousePressEvent(event);
             TLRENDER_P();
-            if (0 == event.button && 0 == event.modifiers)
+            if (_options.inputEnabled &&
+                0 == event.button &&
+                0 == event.modifiers)
             {
                 takeKeyFocus();
 
@@ -626,7 +643,9 @@ namespace tl
         /*void TimelineItem::keyPressEvent(ui::KeyEvent& event)
         {
             TLRENDER_P();
-            if (isEnabled() && 0 == event.modifiers)
+            if (isEnabled() &&
+                _options.inputEnabled &&
+                0 == event.modifiers)
             {
                 switch (event.key)
                 {
@@ -658,11 +677,11 @@ namespace tl
         bool TimelineItem::_isTrackVisible(int index) const
         {
             return
-                _options.tracks.empty() ||
+                _displayOptions.tracks.empty() ||
                 std::find(
-                    _options.tracks.begin(),
-                    _options.tracks.end(),
-                    index) != _options.tracks.end();
+                    _displayOptions.tracks.begin(),
+                    _displayOptions.tracks.end(),
+                    index) != _displayOptions.tracks.end();
         }
 
         void TimelineItem::_drawInOutPoints(
@@ -675,7 +694,7 @@ namespace tl
             {
                 const math::Box2i& g = _geometry;
 
-                switch (_options.inOutDisplay)
+                switch (_displayOptions.inOutDisplay)
                 {
                 case InOutDisplay::InsideRange:
                 {
@@ -939,8 +958,8 @@ namespace tl
 
             const math::Box2i& g = _geometry;
 
-            if (CacheDisplay::VideoAndAudio == _options.cacheDisplay ||
-                CacheDisplay::VideoOnly == _options.cacheDisplay)
+            if (CacheDisplay::VideoAndAudio == _displayOptions.cacheDisplay ||
+                CacheDisplay::VideoOnly == _displayOptions.cacheDisplay)
             {
                 geom::TriangleMesh2 mesh;
                 size_t i = 1;
@@ -948,7 +967,7 @@ namespace tl
                 {
                     const int x0 = timeToPos(t.start_time());
                     const int x1 = timeToPos(t.end_time_exclusive());
-                    const int h = CacheDisplay::VideoAndAudio == _options.cacheDisplay ?
+                    const int h = CacheDisplay::VideoAndAudio == _displayOptions.cacheDisplay ?
                         p.size.border * 2 :
                         p.size.border * 4;
                     const math::Box2i box(
@@ -980,7 +999,7 @@ namespace tl
                 }
             }
 
-            if (CacheDisplay::VideoAndAudio == _options.cacheDisplay)
+            if (CacheDisplay::VideoAndAudio == _displayOptions.cacheDisplay)
             {
                 geom::TriangleMesh2 mesh;
                 size_t i = 1;
@@ -1060,8 +1079,8 @@ namespace tl
             for (const auto& track : p.tracks)
             {
                 const bool visible = _isTrackVisible(track.index);
-                track.label->setVisible(_options.trackInfo && visible);
-                track.durationLabel->setVisible(_options.trackInfo && visible);
+                track.label->setVisible(_displayOptions.trackInfo && visible);
+                track.durationLabel->setVisible(_displayOptions.trackInfo && visible);
                 for (const auto& item : track.items)
                 {
                     item->setVisible(visible);

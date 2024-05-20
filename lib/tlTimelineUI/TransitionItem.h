@@ -20,6 +20,7 @@ namespace tl
                 const otio::SerializableObject::Retainer<otio::Transition>&,
                 double scale,
                 const ItemOptions&,
+                const DisplayOptions&,
                 const std::shared_ptr<ItemData>&,
                 const std::shared_ptr<system::Context>&,
                 const std::shared_ptr<IWidget>& parent);
@@ -34,12 +35,10 @@ namespace tl
                 const otio::SerializableObject::Retainer<otio::Transition>&,
                 double scale,
                 const ItemOptions&,
+                const DisplayOptions&,
                 const std::shared_ptr<ItemData>&,
                 const std::shared_ptr<system::Context>&,
                 const std::shared_ptr<IWidget>& parent = nullptr);
-
-            // void setScale(double) override;
-            // void setOptions(const ItemOptions&) override;
 
             void sizeHintEvent(const ui::SizeHintEvent&) override;
             void clipEvent(const math::Box2i&, bool) override;
