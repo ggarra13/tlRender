@@ -184,7 +184,7 @@ namespace tl
             void scrollEvent(ui::ScrollEvent&) override;
             void keyPressEvent(ui::KeyEvent&) override;
             void keyReleaseEvent(ui::KeyEvent&) override;
-
+            
         protected:
             void _releaseMouse() override;
 
