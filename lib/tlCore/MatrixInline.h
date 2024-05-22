@@ -246,7 +246,7 @@ namespace tl
             const T y = v[0] * a.e[1] + v[1] * a.e[5] + v[2] * a.e[9]  + a.e[13];
             const T z = v[0] * a.e[2] + v[1] * a.e[6] + v[2] * a.e[10] + a.e[14];
             const T w = v[0] * a.e[3] + v[1] * a.e[7] + v[2] * a.e[11] + a.e[15];
-            return Vector3<T>(x / w, y / w, z / w)
+            return Vector3<T>(x / w, y / w, z / w);
         }
 
         template<typename T>
