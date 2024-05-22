@@ -22,9 +22,9 @@ namespace tl
             T e3, T e4, T e5,
             T e6, T e7, T e8)
         {
-            e[0] = e0; e[1] = e3; e[2] = e6;
-            e[3] = e1; e[4] = e4; e[5] = e7;
-            e[6] = e2; e[7] = e5; e[8] = e8;
+            e[0] = e0; e[1] = e1; e[2] = e2;
+            e[3] = e3; e[4] = e4; e[5] = e5;
+            e[6] = e6; e[7] = e7; e[8] = e8;
         }
 
         template<typename T>
@@ -99,6 +99,15 @@ namespace tl
         }
 
         template<typename T>
+        constexpr Matrix3x3<T> translate(const Vector2<T>& value)
+        {
+            return Matrix3x3<T>(
+                T(1),    T(0),    T(0),
+                T(0),    T(1),    T(0),
+                value.x, value.y, T(1));
+        }
+
+        template<typename T>
         constexpr Matrix4x4<T> translate(const Vector3<T>& value)
         {
             return Matrix4x4<T>(
@@ -111,32 +120,32 @@ namespace tl
         template<typename T>
         inline Matrix4x4<T> rotateX(T angle)
         {
-            const T a = std::cos(deg2rad(-angle));
-            const T b = std::sin(deg2rad(-angle));
+            const T a = std::cos(deg2rad(angle));
+            const T b = std::sin(deg2rad(angle));
             return Matrix4x4<T>(
                 T(1), T(0), T(0), T(0),
-                T(0), a,   -b,    T(0),
-                T(0), b,    a,    T(0),
+                T(0), a,    b,    T(0),
+                T(0), -b,   a,    T(0),
                 T(0), T(0), T(0), T(1));
         }
 
         template<typename T>
         inline Matrix4x4<T> rotateY(T angle)
         {
-            const T a = std::cos(deg2rad(-angle));
-            const T b = std::sin(deg2rad(-angle));
+            const T a = std::cos(deg2rad(angle));
+            const T b = std::sin(deg2rad(angle));
             return Matrix4x4<T>(
-                a,    T(0), b,    T(0),
+                a,    T(0), -b,   T(0),
                 T(0), T(1), T(0), T(0),
-                -b,   T(0), a,    T(0),
+                b,    T(0), a,    T(0),
                 T(0), T(0), T(0), T(1));
         }
 
         template<typename T>
         inline Matrix4x4<T> rotateZ(T angle)
         {
-            const T a = std::cos(deg2rad(-angle));
-            const T b = std::sin(deg2rad(-angle));
+            const T a = std::cos(deg2rad(angle));
+            const T b = std::sin(deg2rad(angle));
             return Matrix4x4<T>(
                 a,   -b,    T(0), T(0),
                 b,    a,    T(0), T(0),
@@ -206,15 +215,9 @@ namespace tl
         template<typename T>
         inline Vector2<T> operator * (const Matrix3x3<T>& a, const Vector2<T>& v)
         {
-            Vector2<T> out;
-            for (int i = 0; i < 2; ++i)
-            {
-                for (int j = 0; j < 2; ++j)
-                {
-                    out[i] += a.e[i * 3 + j] * v[j];
-                }
-            }
-            return out;
+            const T x = v[0] * a.e[0] + v[1] * a.e[3] + a.e[6];
+            const T y = v[0] * a.e[1] + v[1] * a.e[4] + a.e[7];
+            return Vector2<T>(x, y);
         }
 
         template<typename T>
@@ -239,24 +242,21 @@ namespace tl
         template<typename T>
         inline Vector3<T> operator * (const Matrix4x4<T>& a, const Vector3<T>& v)
         {
-            Vector3<T> out;
-            T x = T (v[0] * a.e[0] + v[1] * a.e[4] + v[2] * a.e[8]  + a.e[12]);
-            T y = T (v[0] * a.e[1] + v[1] * a.e[5] + v[2] * a.e[9]  + a.e[13]);
-            T z = T (v[0] * a.e[2] + v[1] * a.e[6] + v[2] * a.e[10] + a.e[14]);
-            T w = T (v[0] * a.e[3] + v[1] * a.e[7] + v[2] * a.e[11] + a.e[15]);
-
-            out = Vector3<T> (x / w, y / w, z / w);
-            return out;
+            const T x = v[0] * a.e[0] + v[1] * a.e[4] + v[2] * a.e[8]  + a.e[12];
+            const T y = v[0] * a.e[1] + v[1] * a.e[5] + v[2] * a.e[9]  + a.e[13];
+            const T z = v[0] * a.e[2] + v[1] * a.e[6] + v[2] * a.e[10] + a.e[14];
+            const T w = v[0] * a.e[3] + v[1] * a.e[7] + v[2] * a.e[11] + a.e[15];
+            return Vector3<T>(x / w, y / w, z / w)
         }
 
         template<typename T>
         inline Vector4<T> operator * (const Matrix4x4<T>& a, const Vector4<T>& v)
         {
             Vector4<T> out;
-            out.x = T (v[0] * a.e[0] + v[1] * a.e[4] + v[2] * a.e[8]  + v[3] * a.e[12]);
-            out.y = T (v[0] * a.e[1] + v[1] * a.e[5] + v[2] * a.e[9]  + v[3] * a.e[13]);
-            out.z = T (v[0] * a.e[2] + v[1] * a.e[6] + v[2] * a.e[10] + v[3] * a.e[14]);
-            out.w = T (v[0] * a.e[3] + v[1] * a.e[7] + v[2] * a.e[11] + v[3] * a.e[15]);
+            out.x = v[0] * a.e[0] + v[1] * a.e[4] + v[2] * a.e[8]  + v[3] * a.e[12];
+            out.y = v[0] * a.e[1] + v[1] * a.e[5] + v[2] * a.e[9]  + v[3] * a.e[13];
+            out.z = v[0] * a.e[2] + v[1] * a.e[6] + v[2] * a.e[10] + v[3] * a.e[14];
+            out.w = v[0] * a.e[3] + v[1] * a.e[7] + v[2] * a.e[11] + v[3] * a.e[15];
             return out;
         }
     };
