@@ -274,8 +274,8 @@ add_subdirectory(etc)
 #-------------------------------------------------------------------------------
 # Packaging (not used by mrv2)
 
-if(CMAKE_BUILD_TYPE MATCHES "^Release$")
-    include(Package)
-    include(CPack)
-    include(InstallRequiredSystemLibraries)
-endif()
+# if(CMAKE_BUILD_TYPE MATCHES "^Release$")
+#     include(Package)
+#     include(CPack)
+#     include(InstallRequiredSystemLibraries)
+# endif()
