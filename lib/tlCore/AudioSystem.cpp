@@ -37,6 +37,9 @@ namespace tl
 #endif // TLRENDER_AUDIO
             std::vector<std::string> apis;
             std::vector<Device> devices;
+            int currentApi = 0;
+            std::string inputDeviceName;
+            std::string outputDeviceName;
         };
 
         void System::_init(const std::shared_ptr<system::Context>& context)
@@ -286,11 +289,10 @@ namespace tl
             }
         }
 
-        Info System::getDefaultInputInfo() const
+        Info System::getInputInfo(const size_t deviceIndex) const
         {
             TLRENDER_P();
             Info out;
-            const size_t deviceIndex = getDefaultInputDevice();
             if (deviceIndex < p.devices.size())
             {
                 const auto& device = p.devices[deviceIndex];
@@ -310,11 +312,24 @@ namespace tl
             return out;
         }
 
+        Info System::getDefaultInputInfo() const
+        {
+            TLRENDER_P();
+            const size_t deviceIndex = getInputDevice();
+            return getInputInfo(deviceIndex);
+        }
+
         Info System::getDefaultOutputInfo() const
         {
             TLRENDER_P();
+            const size_t deviceIndex = getOutputDevice();
+            return getOutputInfo(deviceIndex);
+        }
+        
+        Info System::getOutputInfo(const size_t deviceIndex) const
+        {
+            TLRENDER_P();
             Info out;
-            const size_t deviceIndex = getDefaultOutputDevice();
             if (deviceIndex < p.devices.size())
             {
                 const auto& device = p.devices[deviceIndex];
@@ -330,6 +345,99 @@ namespace tl
                 default: out.dataType = DataType::F32; break;
                 }
                 out.sampleRate = device.preferredSampleRate;
+            }
+            return out;
+        }
+
+        void System::setAPI(const std::string& apiName)
+        {
+            TLRENDER_P();
+            int currentApi = 0;
+            for (const auto& api : p.apis)
+            {
+                if (api == apiName)
+                {
+                    p.currentApi = currentApi;
+                    break;
+                }
+                ++currentApi;
+            }
+        }
+
+        int System::getCurrentAPI() const
+        {
+            return _p->currentApi;
+        }
+            
+        void System::setOutputDevice(const std::string& outputDeviceName)
+        {
+            TLRENDER_P();
+            for (const auto& device : p.devices)
+            {
+                if (outputDeviceName == device.name &&
+                    device.outputChannels > 0)
+                {
+                    p.outputDeviceName = outputDeviceName;
+                    break;
+                }
+            }
+        }
+        
+        size_t System::getOutputDevice() const
+        {
+            TLRENDER_P();
+            size_t out = 0;
+            if (p.outputDeviceName.empty())
+            {
+                out = getDefaultOutputDevice();
+            }
+            else
+            {
+                out = deviceNameToIndex(p.outputDeviceName);
+            }
+            return out;
+        }
+        
+        void System::setInputDevice(const std::string& inputDeviceName)
+        {
+            TLRENDER_P();
+            for (const auto& device : p.devices)
+            {
+                if (inputDeviceName == device.name &&
+                    device.inputChannels > 0)
+                {
+                    p.inputDeviceName = inputDeviceName;
+                    break;
+                }
+            }
+        }
+        
+        size_t System::getInputDevice() const
+        {
+            TLRENDER_P();
+            size_t out = 0;
+            if (p.inputDeviceName.empty())
+            {
+                out = getDefaultInputDevice();
+            }
+            else
+            {
+                out = deviceNameToIndex(p.inputDeviceName);
+            }
+            return out;
+        }
+        
+        size_t System::deviceNameToIndex(const std::string& name)  const
+        {
+            TLRENDER_P();
+            size_t out = 0;
+            for (size_t i = 0; i < p.devices.size(); ++i)
+            {
+                if (p.devices[i].name == name)
+                {
+                    out = i;
+                    break;
+                }
             }
             return out;
         }

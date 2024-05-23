@@ -129,7 +129,9 @@ namespace tl
 #if defined(TLRENDER_AUDIO)
             try
             {
-                p.thread.rtAudio.reset(new RtAudio);
+                auto audioSystem = context->getSystem<audio::System>();
+                auto api = static_cast<RtAudio::Api>(audioSystem->getCurrentAPI());
+                p.thread.rtAudio.reset(new RtAudio(api));
             }
             catch (const std::exception& e)
             {
@@ -164,7 +166,7 @@ namespace tl
                                 {
                                     RtAudio::StreamParameters rtParameters;
                                     auto audioSystem = context->getSystem<audio::System>();
-                                    rtParameters.deviceId = audioSystem->getDefaultOutputDevice();
+                                    rtParameters.deviceId = audioSystem->getOutputDevice();
                                     rtParameters.nChannels = p.audioThread.info.channelCount;
                                     unsigned int rtBufferFrames = p.playerOptions.audioBufferFrameCount;
                                     p.thread.rtAudio->openStream(

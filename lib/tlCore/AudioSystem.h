@@ -58,22 +58,48 @@ namespace tl
             //! Get the list of audio APIs.
             const std::vector<std::string>& getAPIs() const;
 
+            //! Return current audio API.
+            int getCurrentAPI() const;
+            
+            //! Set Audio API to use.
+            void setAPI(const std::string& api);
+
             //! Get the audio devices.
             const std::vector<Device>& getDevices() const;
 
             //! Get the default audio input device.
             size_t getDefaultInputDevice() const;
-
+            
+            //! Get the current audio input device.
+            size_t getInputDevice() const;
+            
+            //! Set the current audio input device.
+            void setInputDevice(const std::string&);
+            
             //! Get the default audio output device.
             size_t getDefaultOutputDevice() const;
+            
+            //! Get the current audio output device.
+            size_t getOutputDevice() const;
+            
+            //! Set the current audio outut device.
+            void setOutputDevice(const std::string&);
+            
+            //! Get the audio information for input device.
+            Info getInputInfo(const size_t) const;
 
             //! Get the default audio input device information.
             Info getDefaultInputInfo() const;
 
+            //! Get the audio information for output device.
+            Info getOutputInfo(const size_t) const;
+
             //! Get the default audio output device information.
             Info getDefaultOutputInfo() const;
-
+            
         private:
+            size_t deviceNameToIndex(const std::string&) const;
+            
             TLRENDER_PRIVATE();
         };
     }
