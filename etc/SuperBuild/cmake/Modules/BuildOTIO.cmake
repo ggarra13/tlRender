@@ -3,7 +3,8 @@ include(ExternalProject)
 # set(OTIO_GIT_REPOSITORY "https://github.com/ggarra13/OpenTimelineIO.git")
 # set(OTIO_GIT_TAG "edit_commands")  # stable branch
 set(OTIO_GIT_REPOSITORY "https://github.com/AcademySoftwareFoundation/OpenTimelineIO.git")
-set(OTIO_GIT_TAG "v0.16.0")
+#set(OTIO_GIT_TAG "v0.16.0")
+set(OTIO_GIT_TAG 48f09e244c1b77190d1ecc6d4cdef942b8336960)
 
 set(OTIO_SHARED_LIBS ON)
 if(NOT BUILD_SHARED_LIBS)
