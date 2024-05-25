@@ -79,11 +79,11 @@ namespace tl
                 std::stringstream ss(i->second);
                 ss >> p.options.yuvToRGBConversion;
             }
-            i = options.find("FFmpeg/FastYUV420Conversion");
+            i = options.find("FFmpeg/FastYUV420PConversion");
             if (i != options.end())
             {
                 std::stringstream ss(i->second);
-                ss >> p.options.fastYUV420Conversion;
+                ss >> p.options.fastYUV420PConversion;
             }
             i = options.find("FFmpeg/AudioChannelCount");
             if (i != options.end())

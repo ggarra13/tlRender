@@ -238,6 +238,7 @@ namespace tl
                     }
                     else
                     {
+                        _fastYUV420PConversion = options.fastYUV420PConversion;
                         _avOutputPixelFormat = _avInputPixelFormat;
                         _info.pixelType = image::PixelType::YUV_420P_U8;
                     }
@@ -577,14 +578,15 @@ namespace tl
 
         namespace
         {
-            bool canCopy(AVPixelFormat in, AVPixelFormat out)
+            bool canCopy(AVPixelFormat in, AVPixelFormat out,
+                         bool fastYUV420PConversion)
             {
                 return in == out &&
                     (AV_PIX_FMT_RGB24   == in ||
                      AV_PIX_FMT_GRAY8   == in ||
-                     AV_PIX_FMT_RGBA    == in);
-                    // We should not copy YUV420P as swscale may need to
-                    // color correct it.
+                     AV_PIX_FMT_RGBA    == in ||
+                     (AV_PIX_FMT_YUV420P == in &&
+                      fastYUV420PConversion));
             }
         }
 
@@ -598,7 +600,8 @@ namespace tl
                     throw std::runtime_error(string::Format("{0}: Cannot allocate frame").arg(_fileName));
                 }
 
-                if (!canCopy(_avInputPixelFormat, _avOutputPixelFormat))
+                if (!canCopy(_avInputPixelFormat, _avOutputPixelFormat,
+                             _fastYUV420PConversion))
                 {
                     _avFrame2 = av_frame_alloc();
                     if (!_avFrame2)
@@ -888,7 +891,8 @@ namespace tl
             const std::size_t h = info.size.h;
                 
             uint8_t* const data = image->getData();
-            if (canCopy(_avInputPixelFormat, _avOutputPixelFormat))
+            if (canCopy(_avInputPixelFormat, _avOutputPixelFormat,
+                        _fastYUV420PConversion))
             {
                 const uint8_t* const data0 = _avFrame->data[0];
                 const int linesize0 = _avFrame->linesize[0];
@@ -921,6 +925,34 @@ namespace tl
                             w * 4);
                     }
                     break;
+                case AV_PIX_FMT_YUV420P:
+                {
+                    const std::size_t w2 = w / 2;
+                    const std::size_t h2 = h / 2;
+                    const uint8_t* const data1 = _avFrame->data[1];
+                    const uint8_t* const data2 = _avFrame->data[2];
+                    const int linesize1 = _avFrame->linesize[1];
+                    const int linesize2 = _avFrame->linesize[2];
+                    for (std::size_t i = 0; i < h; ++i)
+                    {
+                        std::memcpy(
+                            data + w * i,
+                            data0 + linesize0 * i,
+                            w);
+                    }
+                    for (std::size_t i = 0; i < h2; ++i)
+                    {
+                        std::memcpy(
+                            data + (w * h) + w2 * i,
+                            data1 + linesize1 * i,
+                            w2);
+                        std::memcpy(
+                            data + (w * h) + (w2 * h2) + w2 * i,
+                            data2 + linesize2 * i,
+                            w2);
+                    }
+                    break;
+                }
                 default: break;
                 }
             }
