@@ -241,8 +241,11 @@ namespace tl
             {
                 if (api == apiName)
                 {
-                    p.currentApi = currentApi;
-                    _getDevices();
+                    if (p.currentApi != currentApi)
+                    {
+                        p.currentApi = currentApi;
+                        _getDevices();
+                    }
                     break;
                 }
                 ++currentApi;
