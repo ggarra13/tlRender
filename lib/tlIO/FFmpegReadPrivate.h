@@ -42,6 +42,7 @@ namespace tl
         {
             otime::RationalTime startTime = time::invalidTime;
             bool yuvToRGBConversion = false;
+            bool fastYUV420Conversion = false;
             audio::Info audioConvertInfo;
             int    audioTrack = -1;
             size_t threadCount = ffmpeg::threadCount;
