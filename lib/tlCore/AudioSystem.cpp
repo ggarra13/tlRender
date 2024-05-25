@@ -34,10 +34,12 @@ namespace tl
         {
 #if defined(TLRENDER_AUDIO)
             std::unique_ptr<RtAudio> rtAudio;
+            int currentApi = static_cast<int>(RtAudio::Api::UNSPECIFIED);
+#else
+            int currentApi = 0;
 #endif // TLRENDER_AUDIO
             std::vector<std::string> apis;
             std::vector<Device> devices;
-            int currentApi = 0;
             std::string inputDeviceName;
             std::string outputDeviceName;
         };
