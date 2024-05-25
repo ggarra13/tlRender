@@ -1,9 +1,12 @@
 include(ExternalProject)
 
-# set(OTIO_GIT_REPOSITORY "https://github.com/ggarra13/OpenTimelineIO.git")
-# set(OTIO_GIT_TAG "edit_commands")  # stable branch
 set(OTIO_GIT_REPOSITORY "https://github.com/AcademySoftwareFoundation/OpenTimelineIO.git")
-#set(OTIO_GIT_TAG "v0.16.0")
+
+# \@bug: Compiling OTIO on an M1 machine and running it on an M3 machine can
+#        run into issues with the functions to/from_json_string() not decoing
+#        and re-encoding valid .otio json files.
+#set(OTIO_GIT_TAG "v0.16.0") # stable branch, has problems with M3 chips
+
 set(OTIO_GIT_TAG 48f09e244c1b77190d1ecc6d4cdef942b8336960)
 
 set(OTIO_SHARED_LIBS ON)
