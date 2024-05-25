@@ -98,7 +98,8 @@ namespace tl
             Info getDefaultOutputInfo() const;
             
         private:
-            size_t deviceNameToIndex(const std::string&) const;
+            size_t _deviceNameToIndex(const std::string&) const;
+            void   _getDevices();
             
             TLRENDER_PRIVATE();
         };

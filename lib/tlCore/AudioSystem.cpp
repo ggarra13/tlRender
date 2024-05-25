@@ -66,126 +66,8 @@ namespace tl
                 ss << "Audio API: " << RtAudio::getApiDisplayName(i);
                 _log(ss.str());
             }
-
-            try
-            {
-                p.rtAudio.reset(new RtAudio);
-                std::vector<std::string> log;
-                log.push_back(std::string());
-                const size_t rtDeviceCount = p.rtAudio->getDeviceCount();
-                for (size_t i = 0; i < rtDeviceCount; ++i)
-                {
-                    const RtAudio::DeviceInfo rtInfo = p.rtAudio->getDeviceInfo(i);
-                    if (rtInfo.probed)
-                    {
-                        Device device;
-                        device.name = rtInfo.name;
-                        device.outputChannels = rtInfo.outputChannels;
-                        device.inputChannels = rtInfo.inputChannels;
-                        device.duplexChannels = rtInfo.duplexChannels;
-                        for (auto j : rtInfo.sampleRates)
-                        {
-                            device.sampleRates.push_back(j);
-                        }
-                        device.preferredSampleRate = rtInfo.preferredSampleRate;
-                        if (rtInfo.nativeFormats & RTAUDIO_SINT8)
-                        {
-                            device.nativeFormats.push_back(DeviceFormat::S8);
-                        }
-                        if (rtInfo.nativeFormats & RTAUDIO_SINT16)
-                        {
-                            device.nativeFormats.push_back(DeviceFormat::S16);
-                        }
-                        if (rtInfo.nativeFormats & RTAUDIO_SINT24)
-                        {
-                            device.nativeFormats.push_back(DeviceFormat::S24);
-                        }
-                        if (rtInfo.nativeFormats & RTAUDIO_SINT32)
-                        {
-                            device.nativeFormats.push_back(DeviceFormat::S32);
-                        }
-                        if (rtInfo.nativeFormats & RTAUDIO_FLOAT32)
-                        {
-                            device.nativeFormats.push_back(DeviceFormat::F32);
-                        }
-                        if (rtInfo.nativeFormats & RTAUDIO_FLOAT64)
-                        {
-                            device.nativeFormats.push_back(DeviceFormat::F64);
-                        }
-                        p.devices.push_back(device);
-                        {
-                            std::stringstream ss;
-                            ss << "    Device " << i << ": " << device.name;
-                            log.push_back(ss.str());
-                        }
-                        {
-                            std::stringstream ss;
-                            ss << "        Channels: " <<
-                                device.outputChannels << " output, " <<
-                                device.inputChannels << " input, " <<
-                                device.duplexChannels << " duplex";
-                            log.push_back(ss.str());
-                        }
-                        {
-                            std::stringstream ss;
-                            ss << "        Sample rates: ";
-                            for (auto j : device.sampleRates)
-                            {
-                                ss << j << " ";
-                            }
-                            log.push_back(ss.str());
-                        }
-                        {
-                            std::stringstream ss;
-                            ss << "        Preferred sample rate: " << device.preferredSampleRate;
-                            log.push_back(ss.str());
-                        }
-                        {
-                            std::stringstream ss;
-                            ss << "        Native formats: ";
-                            for (auto j : device.nativeFormats)
-                            {
-                                ss << j << " ";
-                            }
-                            log.push_back(ss.str());
-                        }
-                    }
-                }
-                {
-                    std::stringstream ss;
-                    ss << "    Default input device: " << getDefaultInputDevice();
-                    log.push_back(ss.str());
-                }
-                {
-                    std::stringstream ss;
-                    ss << "    Default input info: " <<
-                        static_cast<size_t>(getDefaultInputInfo().channelCount) << " " <<
-                        getDefaultInputInfo().dataType << " " <<
-                        getDefaultInputInfo().sampleRate;
-                    log.push_back(ss.str());
-                }
-                {
-                    std::stringstream ss;
-                    ss << "    Default output device: " << getDefaultOutputDevice();
-                    log.push_back(ss.str());
-                }
-                {
-                    std::stringstream ss;
-                    ss << "    Default output info: " <<
-                        static_cast<size_t>(getDefaultOutputInfo().channelCount) << " " <<
-                        getDefaultOutputInfo().dataType << " " <<
-                        getDefaultOutputInfo().sampleRate;
-                    log.push_back(ss.str());
-                }
-                _log(string::join(log, "\n"));
-            }
-            catch (const std::exception& e)
-            {
-                std::stringstream ss;
-                ss << "Cannot initialize audio system: " << e.what();
-                _log(ss.str(), log::Type::Error);
-            }
-#endif // TLRENDER_AUDIO
+            _getDevices();
+#endif
         }
 
         System::System() :
@@ -360,6 +242,7 @@ namespace tl
                 if (api == apiName)
                 {
                     p.currentApi = currentApi;
+                    _getDevices();
                     break;
                 }
                 ++currentApi;
@@ -395,7 +278,7 @@ namespace tl
             }
             else
             {
-                out = deviceNameToIndex(p.outputDeviceName);
+                out = _deviceNameToIndex(p.outputDeviceName);
             }
             return out;
         }
@@ -424,12 +307,12 @@ namespace tl
             }
             else
             {
-                out = deviceNameToIndex(p.inputDeviceName);
+                out = _deviceNameToIndex(p.inputDeviceName);
             }
             return out;
         }
         
-        size_t System::deviceNameToIndex(const std::string& name)  const
+        size_t System::_deviceNameToIndex(const std::string& name)  const
         {
             TLRENDER_P();
             size_t out = 0;
@@ -442,6 +325,134 @@ namespace tl
                 }
             }
             return out;
+        }
+
+        void System::_getDevices()
+        {
+            TLRENDER_P();
+            
+#if defined(TLRENDER_AUDIO)
+            try
+            {
+                p.devices.clear();
+                p.rtAudio.reset(
+                    new RtAudio(static_cast<RtAudio::Api>(p.currentApi)));
+                std::vector<std::string> log;
+                log.push_back(std::string());
+                const size_t rtDeviceCount = p.rtAudio->getDeviceCount();
+                for (size_t i = 0; i < rtDeviceCount; ++i)
+                {
+                    const RtAudio::DeviceInfo rtInfo = p.rtAudio->getDeviceInfo(i);
+                    if (rtInfo.probed)
+                    {
+                        Device device;
+                        device.name = rtInfo.name;
+                        device.outputChannels = rtInfo.outputChannels;
+                        device.inputChannels = rtInfo.inputChannels;
+                        device.duplexChannels = rtInfo.duplexChannels;
+                        for (auto j : rtInfo.sampleRates)
+                        {
+                            device.sampleRates.push_back(j);
+                        }
+                        device.preferredSampleRate = rtInfo.preferredSampleRate;
+                        if (rtInfo.nativeFormats & RTAUDIO_SINT8)
+                        {
+                            device.nativeFormats.push_back(DeviceFormat::S8);
+                        }
+                        if (rtInfo.nativeFormats & RTAUDIO_SINT16)
+                        {
+                            device.nativeFormats.push_back(DeviceFormat::S16);
+                        }
+                        if (rtInfo.nativeFormats & RTAUDIO_SINT24)
+                        {
+                            device.nativeFormats.push_back(DeviceFormat::S24);
+                        }
+                        if (rtInfo.nativeFormats & RTAUDIO_SINT32)
+                        {
+                            device.nativeFormats.push_back(DeviceFormat::S32);
+                        }
+                        if (rtInfo.nativeFormats & RTAUDIO_FLOAT32)
+                        {
+                            device.nativeFormats.push_back(DeviceFormat::F32);
+                        }
+                        if (rtInfo.nativeFormats & RTAUDIO_FLOAT64)
+                        {
+                            device.nativeFormats.push_back(DeviceFormat::F64);
+                        }
+                        p.devices.push_back(device);
+                        {
+                            std::stringstream ss;
+                            ss << "    Device " << i << ": " << device.name;
+                            log.push_back(ss.str());
+                        }
+                        {
+                            std::stringstream ss;
+                            ss << "        Channels: " <<
+                                device.outputChannels << " output, " <<
+                                device.inputChannels << " input, " <<
+                                device.duplexChannels << " duplex";
+                            log.push_back(ss.str());
+                        }
+                        {
+                            std::stringstream ss;
+                            ss << "        Sample rates: ";
+                            for (auto j : device.sampleRates)
+                            {
+                                ss << j << " ";
+                            }
+                            log.push_back(ss.str());
+                        }
+                        {
+                            std::stringstream ss;
+                            ss << "        Preferred sample rate: " << device.preferredSampleRate;
+                            log.push_back(ss.str());
+                        }
+                        {
+                            std::stringstream ss;
+                            ss << "        Native formats: ";
+                            for (auto j : device.nativeFormats)
+                            {
+                                ss << j << " ";
+                            }
+                            log.push_back(ss.str());
+                        }
+                    }
+                }
+                {
+                    std::stringstream ss;
+                    ss << "    Default input device: " << getDefaultInputDevice();
+                    log.push_back(ss.str());
+                }
+                {
+                    std::stringstream ss;
+                    ss << "    Default input info: " <<
+                        static_cast<size_t>(getDefaultInputInfo().channelCount) << " " <<
+                        getDefaultInputInfo().dataType << " " <<
+                        getDefaultInputInfo().sampleRate;
+                    log.push_back(ss.str());
+                }
+                {
+                    std::stringstream ss;
+                    ss << "    Default output device: " << getDefaultOutputDevice();
+                    log.push_back(ss.str());
+                }
+                {
+                    std::stringstream ss;
+                    ss << "    Default output info: " <<
+                        static_cast<size_t>(getDefaultOutputInfo().channelCount) << " " <<
+                        getDefaultOutputInfo().dataType << " " <<
+                        getDefaultOutputInfo().sampleRate;
+                    log.push_back(ss.str());
+                }
+                _log(string::join(log, "\n"));
+            }
+            catch (const std::exception& e)
+            {
+                std::stringstream ss;
+                ss << "Cannot initialize audio system: " << e.what();
+                _log(ss.str(), log::Type::Error);
+            }
+#endif // TLRENDER_AUDIO
         }
     }
 }
