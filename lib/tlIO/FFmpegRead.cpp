@@ -436,7 +436,7 @@ namespace tl
                 //         backwards with no issues.
                 bool backwards = false;
                 if (videoRequest &&
-                    !time::compareExact(videoRequest->time, p.videoThread.currentTime))
+                    !videoRequest->time.strictly_equal(p.videoThread.currentTime))
                 {
                     if (_cache &&
                         videoRequest->time < p.videoThread.currentTime)
@@ -532,9 +532,7 @@ namespace tl
                             request = p.audioMutex.requests.front();
                             p.audioMutex.requests.pop_front();
                             requestSampleCount = request->timeRange.duration().rescaled_to(p.info.audio.sampleRate).value();
-                            if (!time::compareExact(
-                                request->timeRange.start_time(),
-                                p.audioThread.currentTime))
+                            if (!request->timeRange.start_time().strictly_equal(p.audioThread.currentTime))
                             {
                                 seek = true;
                                 p.audioThread.currentTime = request->timeRange.start_time();

@@ -73,6 +73,15 @@ namespace tl
             //! Observe when the window is closed.
             std::shared_ptr<observer::IValue<bool> > observeClose() const;
 
+            //! Get the color buffer type.
+            image::PixelType getColorBuffer() const;
+
+            //! Observe the color buffer type.
+            std::shared_ptr<observer::IValue<image::PixelType> > observeColorBuffer() const;
+
+            //! Set the color buffer type.
+            void setColorBuffer(image::PixelType);
+
             //! Get the GLFW window.
             const std::shared_ptr<gl::GLFWWindow>& getGLFWWindow() const;
 

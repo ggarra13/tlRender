@@ -299,7 +299,7 @@ namespace tl
                         }
 
                         // Logging.
-                        const auto t1 = std::chrono::steady_clock::now();
+                        auto t1 = std::chrono::steady_clock::now();
                         const std::chrono::duration<double> diff = t1 - p.thread.logTimer;
                         if (diff.count() > 10.0)
                         {
@@ -308,6 +308,7 @@ namespace tl
                             {
                                 p.log(context);
                             }
+                            t1 = std::chrono::steady_clock::now();
                         }
 
                         // Sleep for a bit.
@@ -545,7 +546,9 @@ namespace tl
 
             // Loop the time.
             const auto& timeRange = p.timeline->getTimeRange();
-            const auto tmp = loop(time::floor(time.rescaled_to(timeRange.duration())), timeRange);
+            const auto tmp = loop(
+                time.rescaled_to(timeRange.duration()).floor(),
+                timeRange);
 
             if (p.currentTime->setIfChanged(tmp))
             {
@@ -963,7 +966,9 @@ namespace tl
                 }
                 const otime::RationalTime currentTime = p.loopPlayback(
                     playbackStartTime +
-                    time::floor(otime::RationalTime(seconds, 1.0).rescaled_to(timeRange.duration().rate())));
+                    otime::RationalTime(seconds, 1.0).
+                        rescaled_to(timeRange.duration().rate()).
+                        floor());
                 //const double currentTimeDiff = abs(currentTime.value() - p.currentTime->get().value());
                 if (p.currentTime->setIfChanged(currentTime))
                 {

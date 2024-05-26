@@ -59,7 +59,7 @@ namespace tl
         {
             {
                 otio::SerializableObject::Retainer<otio::Timeline> otioTimeline(new otio::Timeline);
-                auto otioTrack = new otio::Track("Video", otio::nullopt, otio::Track::Kind::video);
+                auto otioTrack = new otio::Track("Video", std::nullopt, otio::Track::Kind::video);
                 otioTimeline->tracks()->append_child(otioTrack);
                 otioTrack->append_child(new otio::Clip(
                     "Video 0",
@@ -89,7 +89,7 @@ namespace tl
             }
             {
                 otio::SerializableObject::Retainer<otio::Timeline> otioTimeline(new otio::Timeline);
-                auto otioTrack = new otio::Track("Video", otio::nullopt, otio::Track::Kind::video);
+                auto otioTrack = new otio::Track("Video", std::nullopt, otio::Track::Kind::video);
                 otioTimeline->tracks()->append_child(otioTrack);
                 otioTrack->append_child(new otio::Clip(
                     "Video 0",
@@ -125,7 +125,7 @@ namespace tl
             }
             {
                 otio::SerializableObject::Retainer<otio::Timeline> otioTimeline(new otio::Timeline);
-                auto otioTrack = new otio::Track("Video", otio::nullopt, otio::Track::Kind::video);
+                auto otioTrack = new otio::Track("Video", std::nullopt, otio::Track::Kind::video);
                 otioTimeline->tracks()->append_child(otioTrack);
                 otioTrack->append_child(new otio::Clip(
                     "Video 0",
@@ -171,7 +171,7 @@ namespace tl
             }
             {
                 otio::SerializableObject::Retainer<otio::Timeline> otioTimeline(new otio::Timeline);
-                auto otioTrack = new otio::Track("Video", otio::nullopt, otio::Track::Kind::video);
+                auto otioTrack = new otio::Track("Video", std::nullopt, otio::Track::Kind::video);
                 otioTimeline->tracks()->append_child(otioTrack);
                 otioTrack->append_child(new otio::Clip(
                     "Video 0",
@@ -191,7 +191,7 @@ namespace tl
                     otime::TimeRange(
                         otime::RationalTime(0.0, 24.0),
                         otime::RationalTime(24.0, 24.0))));
-                otioTrack = new otio::Track("Audio", otio::nullopt, otio::Track::Kind::audio);
+                otioTrack = new otio::Track("Audio", std::nullopt, otio::Track::Kind::audio);
                 otioTimeline->tracks()->append_child(otioTrack);
                 otioTrack->append_child(new otio::Clip(
                     "Audio 0",
@@ -236,7 +236,7 @@ namespace tl
             }
             {
                 otio::SerializableObject::Retainer<otio::Timeline> otioTimeline(new otio::Timeline);
-                auto otioTrack = new otio::Track("Video", otio::nullopt, otio::Track::Kind::video);
+                auto otioTrack = new otio::Track("Video", std::nullopt, otio::Track::Kind::video);
                 otioTimeline->tracks()->append_child(otioTrack);
                 otioTrack->append_child(new otio::Clip(
                     "Video 0",
@@ -244,7 +244,7 @@ namespace tl
                     otime::TimeRange(
                         otime::RationalTime(0.0, 24.0),
                         otime::RationalTime(24.0, 24.0))));
-                otioTrack = new otio::Track("Video", otio::nullopt, otio::Track::Kind::video);
+                otioTrack = new otio::Track("Video", std::nullopt, otio::Track::Kind::video);
                 otioTimeline->tracks()->append_child(otioTrack);
 
                 MoveData moveData;

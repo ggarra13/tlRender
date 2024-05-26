@@ -162,6 +162,7 @@ namespace tl
             std::shared_ptr<observer::Value<bool> > fullScreen;
             std::shared_ptr<observer::Value<bool> > floatOnTop;
             std::shared_ptr<observer::Value<bool> > close;
+            std::shared_ptr<observer::Value<image::PixelType> > colorBuffer;
 
             std::shared_ptr<gl::GLFWWindow> glfwWindow;
             math::Size2i frameBufferSize;
@@ -189,6 +190,7 @@ namespace tl
             p.fullScreen = observer::Value<bool>::create(false);
             p.floatOnTop = observer::Value<bool>::create(false);
             p.close = observer::Value<bool>::create(false);
+            p.colorBuffer = observer::Value<image::PixelType>::create(image::PixelType::RGBA_U8);
 
             p.glfwWindow = gl::GLFWWindow::create(
                 name,
@@ -333,7 +335,7 @@ namespace tl
         {
             return _p->visible;
         }
-        
+
         int Window::getScreen() const
         {
             return _p->glfwWindow->getScreen();
@@ -376,6 +378,24 @@ namespace tl
         std::shared_ptr<observer::IValue<bool> > Window::observeClose() const
         {
             return _p->close;
+        }
+
+        image::PixelType Window::getColorBuffer() const
+        {
+            return _p->colorBuffer->get();
+        }
+
+        std::shared_ptr<observer::IValue<image::PixelType> > Window::observeColorBuffer() const
+        {
+            return _p->colorBuffer;
+        }
+
+        void Window::setColorBuffer(image::PixelType value)
+        {
+            if (_p->colorBuffer->setIfChanged(value))
+            {
+                _updates |= ui::Update::Draw;
+            }
         }
 
         const std::shared_ptr<gl::GLFWWindow>& Window::getGLFWWindow() const
@@ -449,7 +469,7 @@ namespace tl
                 }
 
                 gl::OffscreenBufferOptions offscreenBufferOptions;
-                offscreenBufferOptions.colorType = image::PixelType::RGBA_U8;
+                offscreenBufferOptions.colorType = p.colorBuffer->get();
                 if (gl::doCreate(
                     p.offscreenBuffer,
                     p.frameBufferSize,
