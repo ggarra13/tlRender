@@ -431,7 +431,7 @@ namespace tl
 
                 // Seek.
                 if (videoRequest &&
-                    !time::compareExact(videoRequest->time, p.videoThread.currentTime))
+                    !videoRequest->time.strictly_equal(p.videoThread.currentTime))
                 {
                     p.videoThread.currentTime = videoRequest->time;
                 }
@@ -520,9 +520,7 @@ namespace tl
                             request = p.audioMutex.requests.front();
                             requestSampleCount = request->timeRange.duration().rescaled_to(p.info.audio.sampleRate).value();
                             p.audioMutex.requests.pop_front();
-                            if (!time::compareExact(
-                                request->timeRange.start_time(),
-                                p.audioThread.currentTime))
+                            if (!request->timeRange.start_time().strictly_equal(p.audioThread.currentTime))
                             {
                                 seek = true;
                                 p.audioThread.currentTime = request->timeRange.start_time();
