@@ -1317,7 +1317,7 @@ namespace tl
                         &errorStatus);
                     if (!otime::is_error(errorStatus))
                     {
-                        p.videoStartTime = time::floor(time);
+                        p.videoStartTime = time.floor();
                     }
                 }
 
