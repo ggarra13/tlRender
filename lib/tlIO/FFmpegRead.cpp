@@ -458,8 +458,7 @@ namespace tl
                 {
                     if (backwards)
                     {
-                        if (time::compareExact(videoRequest->time,
-                                               p.videoThread.currentTime))
+                        if (videoRequest->time.strictly_equal(p.videoThread.currentTime))
                             break;
                         io::VideoData data;
                         _addToCache(data,
