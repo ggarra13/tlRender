@@ -30,6 +30,10 @@ namespace tl
             }
             for (const auto& i : frameOptions)
             {
+                // Do not add ClearFrame frame option if present
+                if (i.first == "ClearFrame")
+                    continue;
+                
                 s.push_back(string::Format("{0}:{1}").arg(i.first).arg(i.second));
             }
             return string::join(s, ';');
@@ -123,6 +127,13 @@ namespace tl
                 videoData.image ? videoData.image->getDataByteCount() : 1);
         }
 
+        void Cache::removeVideo(const std::string& key)
+        {
+            TLRENDER_P();
+            std::unique_lock<std::mutex> lock(p.mutex);
+            p.video.remove(key);
+        }
+        
         bool Cache::containsVideo(const std::string& key) const
         {
             TLRENDER_P();

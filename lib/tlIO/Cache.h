@@ -63,6 +63,9 @@ namespace tl
             //! Get video from the cache.
             bool getVideo(const std::string& key, VideoData&) const;
 
+            //! Remove video from the cache.
+            void removeVideo(const std::string& key);
+            
             //! Add audio to the cache.
             void addAudio(const std::string& key, const AudioData&);
 

@@ -32,11 +32,14 @@ namespace tl
                                  const otime::RationalTime& inc);
             void forwardRequests(const otime::RationalTime& start,
                                  const otime::RationalTime& end,
-                                 const otime::RationalTime& inc);
+                                 const otime::RationalTime& inc,
+                                 const bool clearFrame = false);
             void clearRequests();
             void clearCache();
             void cacheUpdate();
 
+            void finishedVideoRequests();
+            
             void resetAudioTime();
 #if defined(TLRENDER_AUDIO)
             static int rtAudioCallback(

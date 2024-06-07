@@ -78,6 +78,8 @@ namespace tl
 
             Player();
 
+            void updateVideoData();
+            
         public:
             ~Player();
 
@@ -325,7 +327,10 @@ namespace tl
 
             //! Observe the cache information.
             std::shared_ptr<observer::IValue<PlayerCacheInfo> > observeCacheInfo() const;
-
+            
+            //! Update Video Cache Time.
+            void updateVideoCache(const otime::RationalTime& time);
+            
             //! Clear the cache.
             void clearCache();
 

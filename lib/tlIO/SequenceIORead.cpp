@@ -212,17 +212,33 @@ namespace tl
                     auto request = videoRequests.front();
                     videoRequests.pop_front();
 
-                    VideoData videoData;
-                    const std::string cacheKey = getCacheKey(
-                        _path,
-                        request->time,
-                        _options,
-                        request->options);
-                    if (_cache && _cache->getVideo(cacheKey, videoData))
+                    bool readSequence = true;
+                    if (_cache)
                     {
-                        request->promise.set_value(videoData);
+                        const std::string cacheKey = getCacheKey(
+                            _path,
+                            request->time,
+                            _options,
+                            request->options);
+                        
+                        const auto i = request->options.find("ClearFrame");
+                        if (i != request->options.end())
+                        {
+                            _cache->removeVideo(cacheKey);
+                        }
+                        else
+                        {
+                            VideoData videoData;
+                    
+                            if (_cache->getVideo(cacheKey, videoData))
+                            {
+                                readSequence = false;
+                                request->promise.set_value(videoData);
+                            }
+                        }
                     }
-                    else
+                    
+                    if (readSequence)
                     {
                         bool seq = false;
                         std::string fileName;

@@ -185,7 +185,8 @@ namespace tl
 
         void Player::Private::forwardRequests(const otime::RationalTime& start,
                                               const otime::RationalTime& end,
-                                              const otime::RationalTime& inc)
+                                              const otime::RationalTime& inc,
+                                              const bool clearFrame)
         {
             const otime::TimeRange& timeRange = timeline->getTimeRange();
             for (otime::RationalTime time = start; time <= end; time += inc)
@@ -196,13 +197,12 @@ namespace tl
                     const auto j = thread.videoDataRequests.find(time);
                     if (j == thread.videoDataRequests.end())
                     {
-                        // std::cerr << thread.cacheDirection
-                        //           << "\t\tFWD video request: "
-                        //           << time << std::endl;
                         auto& request = thread.videoDataRequests[time];
                         request.clear();
                         io::Options ioOptions2 = thread.ioOptions;
                         ioOptions2["Layer"] = string::Format("{0}").arg(thread.videoLayer);
+                        if (clearFrame)
+                            ioOptions2["ClearFrame"] = "1";
                         request.push_back(timeline->getVideo(time, ioOptions2));
                         for (size_t i = 0; i < thread.compare.size(); ++i)
                         {
@@ -218,6 +218,42 @@ namespace tl
                             request.push_back(thread.compare[i]->getVideo(time2, ioOptions2));
                         }
                     }
+                }
+            }
+        }
+
+        void Player::Private::finishedVideoRequests()
+        {
+            // Check for finished video.
+            auto videoDataRequestsIt = thread.videoDataRequests.begin();
+            while (videoDataRequestsIt != thread.videoDataRequests.end())
+            {
+                bool ready = true;
+                for (auto videoDataRequestIt = videoDataRequestsIt->second.begin();
+                    videoDataRequestIt != videoDataRequestsIt->second.end();
+                    ++videoDataRequestIt)
+                {
+                    ready &= videoDataRequestIt->future.valid() &&
+                        videoDataRequestIt->future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+                }
+                if (ready)
+                {
+                    const otime::RationalTime time = videoDataRequestsIt->first;
+                    auto& videoDataCache = thread.videoDataCache[time];
+                    videoDataCache.clear();
+                    for (auto videoDataRequestIt = videoDataRequestsIt->second.begin();
+                        videoDataRequestIt != videoDataRequestsIt->second.end();
+                        ++videoDataRequestIt)
+                    {
+                        auto videoData = videoDataRequestIt->future.get();
+                        videoData.time = time;
+                        videoDataCache.push_back(videoData);
+                    }
+                    videoDataRequestsIt = thread.videoDataRequests.erase(videoDataRequestsIt);
+                }
+                else
+                {
+                    ++videoDataRequestsIt;
                 }
             }
         }
@@ -481,38 +517,7 @@ namespace tl
                 }*/
             }
 
-            // Check for finished video.
-            auto videoDataRequestsIt = thread.videoDataRequests.begin();
-            while (videoDataRequestsIt != thread.videoDataRequests.end())
-            {
-                bool ready = true;
-                for (auto videoDataRequestIt = videoDataRequestsIt->second.begin();
-                    videoDataRequestIt != videoDataRequestsIt->second.end();
-                    ++videoDataRequestIt)
-                {
-                    ready &= videoDataRequestIt->future.valid() &&
-                        videoDataRequestIt->future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
-                }
-                if (ready)
-                {
-                    const otime::RationalTime time = videoDataRequestsIt->first;
-                    auto& videoDataCache = thread.videoDataCache[time];
-                    videoDataCache.clear();
-                    for (auto videoDataRequestIt = videoDataRequestsIt->second.begin();
-                        videoDataRequestIt != videoDataRequestsIt->second.end();
-                        ++videoDataRequestIt)
-                    {
-                        auto videoData = videoDataRequestIt->future.get();
-                        videoData.time = time;
-                        videoDataCache.push_back(videoData);
-                    }
-                    videoDataRequestsIt = thread.videoDataRequests.erase(videoDataRequestsIt);
-                }
-                else
-                {
-                    ++videoDataRequestsIt;
-                }
-            }
+            finishedVideoRequests();
 
             // Check for finished audio.
             auto audioDataRequestsIt = thread.audioDataRequests.begin();
