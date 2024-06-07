@@ -7,7 +7,7 @@ endif()
 list(APPEND OpenSSL_DEPENDS ZLIB)
 
 set(OpenSSL_GIT_REPOSITORY "https://github.com/openssl/openssl.git")
-set(OpenSSL_GIT_TAG "openssl-3.1.4")
+set(OpenSSL_GIT_TAG "openssl-3.3.0")
 
 set(OpenSSL )
 
@@ -32,6 +32,7 @@ elseif(APPLE)
         ./Configure
         --prefix=${CMAKE_INSTALL_PREFIX}
         --openssldir=${CMAKE_INSTALL_PREFIX}
+        no-docs
         no-external-tests
         no-tests
         no-unit-test)
@@ -45,6 +46,7 @@ else()
         ./Configure
         --prefix=${CMAKE_INSTALL_PREFIX}
         --openssldir=${CMAKE_INSTALL_PREFIX}
+        no-docs
         no-external-tests
         no-tests
         no-unit-test)

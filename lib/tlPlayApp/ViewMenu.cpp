@@ -6,10 +6,9 @@
 
 #include <tlPlayApp/App.h>
 #include <tlPlayApp/MainWindow.h>
+#include <tlPlayApp/Viewport.h>
 
 #include <tlPlay/ViewportModel.h>
-
-#include <tlTimelineUI/TimelineViewport.h>
 
 namespace tl
 {
@@ -21,6 +20,7 @@ namespace tl
             std::map<std::string, std::shared_ptr<Menu> > menus;
 
             std::shared_ptr<observer::ValueObserver<bool> > frameViewObserver;
+            std::shared_ptr<observer::ValueObserver<bool> > hudObserver;
             std::shared_ptr<observer::ValueObserver<timeline::DisplayOptions> > displayOptionsObserver;
         };
 
@@ -58,11 +58,21 @@ namespace tl
             p.menus["MagnifyFilter"]->addItem(p.actions["MagnifyNearest"]);
             p.menus["MagnifyFilter"]->addItem(p.actions["MagnifyLinear"]);
 
+            addDivider();
+            addItem(p.actions["HUD"]);
+
             p.frameViewObserver = observer::ValueObserver<bool>::create(
-                mainWindow->getTimelineViewport()->observeFrameView(),
+                mainWindow->getViewport()->observeFrameView(),
                 [this](bool value)
                 {
                     setItemChecked(_p->actions["Frame"], value);
+                });
+
+            p.hudObserver = observer::ValueObserver<bool>::create(
+                mainWindow->getViewport()->observeHUD(),
+                [this](bool value)
+                {
+                    setItemChecked(_p->actions["HUD"], value);
                 });
 
             p.displayOptionsObserver = observer::ValueObserver<timeline::DisplayOptions>::create(
