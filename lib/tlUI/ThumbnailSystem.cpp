@@ -771,8 +771,10 @@ namespace tl
                                     context,
                                     timelineOptions);
                                 const auto info = timeline->getIOInfo();
-                                const auto videoData = timeline->getVideo(
-                                    timeline->getTimeRange().start_time()).future.get();
+                                // const auto videoData = timeline->getVideo(
+                                //     timeline->getTimeRange().start_time()).future.get();
+                                const auto videoData =
+                                    timeline->getVideo(request->time).future.get();
                                 math::Size2i size;
                                 if (!info.video.empty())
                                 {
