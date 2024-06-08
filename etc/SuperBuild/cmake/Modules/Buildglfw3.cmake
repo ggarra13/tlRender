@@ -12,10 +12,11 @@ if(UNIX AND NOT APPLE)
     )
 endif()
 
-set(glfw3_PATCH
-    ${CMAKE_COMMAND} -E copy_if_different
-    ${CMAKE_CURRENT_SOURCE_DIR}/glfw3-patch/src/nsgl_context.m
-    ${CMAKE_CURRENT_BINARY_DIR}/glfw3/src/glfw3/src/nsgl_context.m)
+set(glfw3_PATCH )
+#list(APPEND glfw3_PATCH
+#     ${CMAKE_COMMAND} -E copy_if_different
+#     ${CMAKE_CURRENT_SOURCE_DIR}/glfw3-patch/src/nsgl_context.m
+#     ${CMAKE_CURRENT_BINARY_DIR}/glfw3/src/glfw3/src/nsgl_context.m)
 if(TLRENDER_GLFW_DISABLE_MACOS_APP_DELEGATE)
     list(APPEND glfw3_PATCH
         ${CMAKE_COMMAND} -E copy_if_different
