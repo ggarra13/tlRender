@@ -22,6 +22,8 @@ namespace tl
             "GeomSmooth");
         TLRENDER_ENUM_SERIALIZE_IMPL(DrawMode);
 
+        std::map<std::string, PXR_NS::UsdStageRefPtr > globalUSDStages;
+        
         struct Plugin::Private
         {
             int64_t id = -1;

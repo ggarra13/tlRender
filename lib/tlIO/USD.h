@@ -4,7 +4,11 @@
 
 #pragma once
 
+#include <map>
+
 #include <tlIO/Plugin.h>
+
+#include <pxr/usd/usd/stage.h>
 
 namespace tl
 {
@@ -12,7 +16,9 @@ namespace tl
     namespace usd
     {
         class Render;
-
+        
+        extern std::map<std::string, PXR_NS::UsdStageRefPtr > globalUSDStages;
+        
         //! USD draw modes.
         enum class DrawMode
         {

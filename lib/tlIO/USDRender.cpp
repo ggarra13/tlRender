@@ -525,6 +525,7 @@ namespace tl
                     {
                         _open(fileName, stageCacheItem.stage, stageCacheItem.engine);
                         p.thread.stageCache.add(fileName, stageCacheItem);
+                        globalUSDStages[fileName] = stageCacheItem.stage;
                     }
                     io::Info info;
                     if (stageCacheItem.stage)
@@ -646,6 +647,7 @@ namespace tl
                         {
                             _open(fileName, stageCacheItem.stage, stageCacheItem.engine);
                             p.thread.stageCache.add(fileName, stageCacheItem);
+                            globalUSDStages[fileName] = stageCacheItem.stage;
                         }
                         if (stageCacheItem.stage && stageCacheItem.engine)
                         {
