@@ -26,7 +26,13 @@ set(SOURCE
     ViewportModel.cpp)
 
 add_library(tlPlay ${HEADERS} ${SOURCE})
-target_link_libraries(tlPlay tlDevice)
+
+set(LIBRARIES tlDevice)
+if(TLRENDER_USD)
+    list(APPEND LIBRARIES_PRIVATE tf usd)
+endif()
+
+target_link_libraries(tlPlay PUBLIC ${LIBRARIES} PRIVATE ${LIBRARIES_PRIVATE})
 set_target_properties(tlPlay PROPERTIES FOLDER lib)
 set_target_properties(tlPlay PROPERTIES PUBLIC_HEADER "${HEADERS}")
 
