@@ -32,6 +32,11 @@ endif()
 list(APPEND USD_ARGS --no-examples --no-tutorials --no-usdview --no-tools)
 list(APPEND USD_ARGS --generator Ninja --verbose)
 
+set(USD_PATCH_COMMAND
+    ${CMAKE_COMMAND} -E copy_if_different
+    ${CMAKE_CURRENT_SOURCE_DIR}/USD-patch/cmake/defaults/Packages.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/USD/src/USD/cmake/defaults )
+
 set(USD_INSTALL_COMMAND )
 if(WIN32)
     # \todo On Windows the USD cmake build system installs the "*.dll" files
