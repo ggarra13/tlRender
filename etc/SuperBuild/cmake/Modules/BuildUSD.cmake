@@ -8,8 +8,13 @@ set(USD_GIT_TAG v24.05)
 
 string(TOLOWER ${CMAKE_BUILD_TYPE} cmake_build_type)
 
-set(USD_ARGS --build-variant ${cmake_build_type})
 
+set(USD_PATCH_COMMAND
+    ${CMAKE_COMMAND} -E copy_if_different
+    ${CMAKE_CURRENT_SOURCE_DIR}/USD-patch/build_scripts/build_usd.py
+    ${CMAKE_CURRENT_BINARY_DIR}/USD/src/USD/build_scripts/build_usd.py)
+
+set(USD_ARGS --build-variant ${cmake_build_type})
 if(CMAKE_OSX_ARCHITECTURES)
     list(APPEND USD_ARGS --build-target ${CMAKE_OSX_ARCHITECTURES})
 endif()
