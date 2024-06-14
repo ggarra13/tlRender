@@ -1,19 +1,6 @@
 
 include(ExternalProject)
 
-
-if(NOT DEFINED PYTHON_EXECUTABLE)
-  if(WIN32)
-      set(PYTHON_EXECUTABLE python)
-  else()
-      set(PYTHON_EXECUTABLE python3)
-  endif()
-endif()
-
-
-message(STATUS "USD will be built with ${PYTHON_EXECUTABLE}")
-
-
 set(USD_DEPS ${PYTHON_DEP})
 
 set(USD_GIT_REPOSITORY https://github.com/PixarAnimationStudios/OpenUSD.git)
@@ -22,6 +9,11 @@ set(USD_GIT_TAG v24.05)
 string(TOLOWER ${CMAKE_BUILD_TYPE} cmake_build_type)
 
 set(USD_ARGS --build-variant ${cmake_build_type})
+
+if(BUILD_PYTHON)
+    list(APPEND USD_ARGS --build-python-info ${PYTHON_EXECUTABLE} ${PYTHON_INCLUDE_DIR} ${PYTHON_LIBRARY} ${Python_VERSION})
+endif()
+
 if(CMAKE_OSX_ARCHITECTURES)
     list(APPEND USD_ARGS --build-target ${CMAKE_OSX_ARCHITECTURES})
 endif()
@@ -57,6 +49,6 @@ ExternalProject_Add(
     GIT_SHALLOW 1
     CONFIGURE_COMMAND ""
     PATCH_COMMAND ${USD_PATCH_COMMAND}
-    BUILD_COMMAND ${PYTHON_EXECUTABLE} build_scripts/build_usd.py ${CMAKE_INSTALL_PREFIX} ${USD_ARGS} 
+    BUILD_COMMAND ${TLRENDER_USD_PYTHON} build_scripts/build_usd.py ${CMAKE_INSTALL_PREFIX} ${USD_ARGS} 
     BUILD_IN_SOURCE 1
     INSTALL_COMMAND "${USD_INSTALL_COMMAND}")
