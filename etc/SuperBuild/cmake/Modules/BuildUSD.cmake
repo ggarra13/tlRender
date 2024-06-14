@@ -10,10 +10,6 @@ string(TOLOWER ${CMAKE_BUILD_TYPE} cmake_build_type)
 
 set(USD_ARGS --build-variant ${cmake_build_type})
 
-if(BUILD_PYTHON)
-    list(APPEND USD_ARGS --build-python-info ${PYTHON_EXECUTABLE} ${PYTHON_INCLUDE_DIR} ${PYTHON_LIBRARY} ${Python_VERSION})
-endif()
-
 if(CMAKE_OSX_ARCHITECTURES)
     list(APPEND USD_ARGS --build-target ${CMAKE_OSX_ARCHITECTURES})
 endif()
