@@ -10,6 +10,10 @@ if(NOT DEFINED PYTHON_EXECUTABLE)
   endif()
 endif()
 
+
+message(STATUS "USD will be built with ${PYTHON_EXECUTABLE}")
+
+
 set(USD_DEPS ${PYTHON_DEP})
 
 set(USD_GIT_REPOSITORY https://github.com/PixarAnimationStudios/OpenUSD.git)
