@@ -266,7 +266,7 @@ namespace tl
                 0;
             if (thumbnailWidth > 0)
             {
-                const int w = _sizeHint.w;
+                const int w = g.w();
                 for (int x = 0; x < w; x += thumbnailWidth)
                 {
                     const math::Box2i box(
@@ -280,7 +280,7 @@ namespace tl
                     {
                         const otime::RationalTime time = otime::RationalTime(
                             _timeRange.start_time().value() +
-                            (w > 0 ? (x / static_cast<double>(w - 1)) : 0) *
+                            (w > 1 ? (x / static_cast<double>(w - 1)) : 0) *
                             _timeRange.duration().value(),
                             _timeRange.duration().rate()).
                             floor();

@@ -565,8 +565,8 @@ namespace tl
         void ThumbnailGenerator::cancelRequests(const std::vector<uint64_t>& ids)
         {
             TLRENDER_P();
-            std::unique_lock<std::mutex> lock(p.infoMutex.mutex);
             {
+                std::unique_lock<std::mutex> lock(p.infoMutex.mutex);
                 auto i = p.infoMutex.requests.begin();
                 while (i != p.infoMutex.requests.end())
                 {
@@ -582,6 +582,7 @@ namespace tl
                 }
             }
             {
+                std::unique_lock<std::mutex> lock(p.thumbnailMutex.mutex);
                 auto i = p.thumbnailMutex.requests.begin();
                 while (i != p.thumbnailMutex.requests.end())
                 {
@@ -597,6 +598,7 @@ namespace tl
                 }
             }
             {
+                std::unique_lock<std::mutex> lock(p.waveformMutex.mutex);
                 auto i = p.waveformMutex.requests.begin();
                 while (i != p.waveformMutex.requests.end())
                 {
@@ -852,11 +854,11 @@ namespace tl
                             //std::cout << x << ": " << x0 << " " << x1 << std::endl;
                             audio::F32_T min = 0.F;
                             audio::F32_T max = 0.F;
-                            if (x0 < x1)
+                            if (x0 <= x1)
                             {
                                 min = audio::F32Range.getMax();
                                 max = audio::F32Range.getMin();
-                                for (int i = x0; i < x1; ++i)
+                                for (int i = x0; i <= x1 && i < sampleCount; ++i)
                                 {
                                     const audio::F32_T v = *(data + i * info.channelCount);
                                     min = std::min(min, v);
