@@ -507,8 +507,9 @@ else()
     set(FFmpeg_BUILD make)
     set(FFmpeg_INSTALL make install)
 endif()
-    
-    
+# Make the script executable
+file(COPY ${FFMPEG_CONFIGURE_SCRIPT} DESTINATION ${CMAKE_CURRENT_BINARY_DIR} FILE_PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ)
+
 ExternalProject_Add(
     FFmpeg
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/FFmpeg
@@ -518,3 +519,11 @@ ExternalProject_Add(
     BUILD_COMMAND ${FFmpeg_BUILD}
     INSTALL_COMMAND ${FFmpeg_INSTALL}
     BUILD_IN_SOURCE 1)
+
+ExternalProject_Add_Step(FFmpeg create_configure_script
+  COMMAND ${CMAKE_COMMAND} -E echo "#!/usr/bin/env bash" > ${CMAKE_CURRENT_BINARY_DIR}/FFmpeg/src/FFmpeg/ffmpeg_configure.sh
+  COMMAND ${CMAKE_COMMAND} -E echo "./configure ${FFmpeg_CONFIGURE}" >> ${CMAKE_CURRENT_BINARY_DIR}/FFmpeg/src/FFmpeg/ffmpeg_configure.sh
+  COMMAND ${CMAKE_COMMAND} -E chmod +x ${CMAKE_CURRENT_BINARY_DIR}/FFmpeg/src/FFmpeg/ffmpeg_configure.sh
+  DEPENDEES download
+  ALWAYS 1
+)
