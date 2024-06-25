@@ -493,7 +493,7 @@ if(WIN32)
     set(FFmpeg_CONFIGURE ${FFmpeg_MSYS2}
         -c "pacman -S diffutils make nasm pkg-config --noconfirm && \
         ${FFmpeg_OPENSSL_COPY} ${PKG_CONFIG_PATH_CMD} \
-        ./configure ${FFmpeg_CONFIGURE_ARGS_TMP}")
+        ./ffmpeg_configure.sh")
     set(FFmpeg_BUILD ${FFmpeg_MSYS2} -c "make")
     set(FFmpeg_INSTALL ${FFmpeg_MSYS2} -c "make install"
         COMMAND ${FFmpeg_MSYS2} -c "mv ${CMAKE_INSTALL_PREFIX}/bin/avcodec.lib ${CMAKE_INSTALL_PREFIX}/lib"
@@ -507,8 +507,7 @@ else()
     set(FFmpeg_BUILD make)
     set(FFmpeg_INSTALL make install)
 endif()
-    
-    
+
 ExternalProject_Add(
     FFmpeg
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/FFmpeg
@@ -518,3 +517,12 @@ ExternalProject_Add(
     BUILD_COMMAND ${FFmpeg_BUILD}
     INSTALL_COMMAND ${FFmpeg_INSTALL}
     BUILD_IN_SOURCE 1)
+
+if(WIN32)
+    ExternalProject_Add_Step(FFmpeg create_configure_script
+	COMMAND ${CMAKE_COMMAND} -E echo "#!/usr/bin/env bash" > ${CMAKE_CURRENT_BINARY_DIR}/FFmpeg/src/FFmpeg/ffmpeg_configure.sh
+	COMMAND ${CMAKE_COMMAND} -E echo "./configure ${FFmpeg_CONFIGURE_ARGS_TMP}" >> ${CMAKE_CURRENT_BINARY_DIR}/FFmpeg/src/FFmpeg/ffmpeg_configure.sh
+	DEPENDEES download
+	ALWAYS 1
+    )
+endif()
