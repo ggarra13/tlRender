@@ -430,6 +430,7 @@ namespace tl
                         // the timeline to read it backwards
                         if (mutex.playback == Playback::Stop &&
                             loop->get() == Loop::Loop &&
+                            range.start_time() != thread.inOutRange.start_time() &&
                             range.end_time_inclusive() == thread.inOutRange.end_time_inclusive())
                         {
                             const auto start = range.end_time_inclusive();
