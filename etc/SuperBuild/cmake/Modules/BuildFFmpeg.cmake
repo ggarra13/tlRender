@@ -119,7 +119,18 @@ if(TLRENDER_VPX)
 	--enable-libvpx)
     if(WIN32)
 	list(APPEND FFmpeg_CONFIGURE_ARGS
-            --extra-libs='vpx.lib kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib msvcrt.lib')
+            --extra-libs=vpx.lib
+	    --extra-libs=kernel32.lib
+	    --extra-libs=user32.lib
+	    --extra-libs=gdi32.lib
+	    --extra-libs=winspool.lib
+	    --extra-libs=shell32.lib
+	    --extra-libs=ole32.lib
+	    --extra-libs=oleaut32.lib
+	    --extra-libs=uuid.lib
+	    --extra-libs=comdlg32.lib
+	    --extra-libs=advapi32.lib
+	    --extra-libs=msvcrt.lib')
     else()
 	list(APPEND FFmpeg_LDFLAGS
 	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libvpx.a")
