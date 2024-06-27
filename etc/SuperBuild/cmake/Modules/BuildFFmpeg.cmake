@@ -492,6 +492,10 @@ if(WIN32)
     set(PKG_CONFIG_PATH_CMD "export PKG_CONFIG_PATH=${PKG_CONFIG_PATH_MSys2}:\$PKG_CONFIG_PATH &&")
     
     list(JOIN FFmpeg_CONFIGURE_ARGS " \\\n" FFmpeg_CONFIGURE_ARGS_TMP)
+
+    # Replace spaces with newline in FFmpeg_CONFIGURE_ARGS_TMP for the script
+    string(REPLACE " " " \\\n" FFmpeg_CONFIGURE_ARGS_SCRIPT ${FFmpeg_CONFIGURE_ARGS_TMP})
+
     set(FFmpeg_CONFIGURE ${FFmpeg_MSYS2}
         -c "pacman -S diffutils make nasm pkg-config --noconfirm && \
         ${FFmpeg_OPENSSL_COPY} ${PKG_CONFIG_PATH_CMD} \
@@ -521,10 +525,15 @@ ExternalProject_Add(
     BUILD_IN_SOURCE 1)
 
 if(WIN32)
+    file(GENERATE
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/FFmpeg/src/FFmpeg/ffmpeg_configure.sh.in
+        CONTENT "#!/usr/bin/env bash\n./configure ${FFmpeg_CONFIGURE_ARGS_SCRIPT}\n"
+    )
     ExternalProject_Add_Step(FFmpeg create_configure_script
-	COMMAND ${CMAKE_COMMAND} -E echo "#!/usr/bin/env bash" > ${CMAKE_CURRENT_BINARY_DIR}/FFmpeg/src/FFmpeg/ffmpeg_configure.sh
-	COMMAND ${CMAKE_COMMAND} -E echo "./configure ${FFmpeg_CONFIGURE_ARGS_TMP}" >> ${CMAKE_CURRENT_BINARY_DIR}/FFmpeg/src/FFmpeg/ffmpeg_configure.sh
-	DEPENDEES download
-	ALWAYS 1
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_CURRENT_BINARY_DIR}/ffmpeg_configure.sh.in
+            ${CMAKE_CURRENT_BINARY_DIR}/FFmpeg/src/FFmpeg/ffmpeg_configure.sh
+        DEPENDEES download
+        ALWAYS 1
     )
 endif()
