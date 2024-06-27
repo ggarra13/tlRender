@@ -526,7 +526,7 @@ ExternalProject_Add(
 
 if(WIN32)
     file(GENERATE
-        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/FFmpeg/src/FFmpeg/ffmpeg_configure.sh.in
+        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/ffmpeg_configure.sh.in
         CONTENT "#!/usr/bin/env bash\n./configure ${FFmpeg_CONFIGURE_ARGS_SCRIPT}\n"
     )
     ExternalProject_Add_Step(FFmpeg create_configure_script
