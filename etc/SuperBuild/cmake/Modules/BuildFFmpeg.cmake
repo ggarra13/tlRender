@@ -130,7 +130,7 @@ if(TLRENDER_VPX)
 	    --extra-libs=uuid.lib
 	    --extra-libs=comdlg32.lib
 	    --extra-libs=advapi32.lib
-	    --extra-libs=msvcrt.lib')
+	    --extra-libs=msvcrt.lib)
     else()
 	list(APPEND FFmpeg_LDFLAGS
 	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libvpx.a")
