@@ -225,6 +225,7 @@ if(TLRENDER_FFMPEG_MINIMAL)
         --enable-decoder=v408
         --enable-decoder=v410
         --enable-decoder=vorbis
+        --enable-decoder=vp8
         --enable-decoder=vp9
         --enable-decoder=yuv4
         --enable-decoder=wmalossless
@@ -406,6 +407,7 @@ if(TLRENDER_FFMPEG_MINIMAL)
         --enable-parser=mpegvideo
         --enable-parser=opus
         --enable-parser=vorbis
+        --enable-parser=vp8
         --enable-parser=vp9
 	
         --disable-protocols
@@ -489,7 +491,7 @@ if(WIN32)
     # Ensure PKG_CONFIG_PATH is set within the MSYS2 shell command
     set(PKG_CONFIG_PATH_CMD "export PKG_CONFIG_PATH=${PKG_CONFIG_PATH_MSys2}:\$PKG_CONFIG_PATH &&")
     
-    list(JOIN FFmpeg_CONFIGURE_ARGS " " FFmpeg_CONFIGURE_ARGS_TMP)
+    list(JOIN FFmpeg_CONFIGURE_ARGS " \\\n" FFmpeg_CONFIGURE_ARGS_TMP)
     set(FFmpeg_CONFIGURE ${FFmpeg_MSYS2}
         -c "pacman -S diffutils make nasm pkg-config --noconfirm && \
         ${FFmpeg_OPENSSL_COPY} ${PKG_CONFIG_PATH_CMD} \
