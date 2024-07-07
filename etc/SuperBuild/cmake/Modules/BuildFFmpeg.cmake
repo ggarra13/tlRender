@@ -132,7 +132,7 @@ if(TLRENDER_VPX)
 	    --extra-libs=advapi32.lib
 	    --extra-libs=msvcrt.lib)
     else()
-	list(APPEND FFmpeg_LDFLAGS
+	list(APPEND FFmpeg_CONFIGURE_ARGS
 	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libvpx.a")
 	list(APPEND FFmpeg_DEPS VPX)
     endif()
@@ -144,11 +144,11 @@ if(TLRENDER_AV1)
 	--enable-libsvtav1
         --enable-encoder=libsvtav1)
     if(UNIX)
-	list(APPEND FFmpeg_LDFLAGS
+	list(APPEND FFmpeg_CONFIGURE_ARGS
 	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libdav1d.a"
 	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libSvtAv1Enc.a")
 	if (NOT APPLE)
-	    list(APPEND FFmpeg_LDFLAGS
+	    list(APPEND FFmpeg_CONFIGURE_ARGS
 		--extra-libs=-lm
 		--extra-libs=-lpthread)
 	endif()
@@ -166,7 +166,7 @@ if(TLRENDER_X264)
 	    --enable-version3)
     endif()
     if(UNIX)
-	list(APPEND FFmpeg_LDFLAGS
+	list(APPEND FFmpeg_CONFIGURE_ARGS
 	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libx264.a")
 	list(APPEND FFmpeg_DEPS X264)
     endif()
