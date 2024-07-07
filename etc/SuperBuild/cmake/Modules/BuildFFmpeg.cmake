@@ -15,16 +15,33 @@ if(TLRENDER_NET AND NOT WIN32)
 endif()
 if(NOT WIN32)
     list(APPEND FFmpeg_DEPS NASM)
+else()
+    # Function to convert path to Msys2
+    function(convert_path_for_msys2 IN_PATH OUT_PATH)
+	# Split the path at the drive letter (if present)
+	string(REGEX REPLACE "^([A-Z]):/" "/\\1/" INTERMEDIATE_PATH "${IN_PATH}")
+
+	# Convert backslashes to forward slashes
+	string(REPLACE "\\" "/" INTERMEDIATE_PATH "${INTERMEDIATE_PATH}")
+
+	# Return the converted path
+	set(${OUT_PATH} "${INTERMEDIATE_PATH}" PARENT_SCOPE)
+    endfunction()
+endif()
+
+set(INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
+if(WIN32)
+    convert_path_for_msys2("${CMAKE_INSTALL_PREFIX}" INSTALL_PREFIX)
 endif()
 
 set(FFmpeg_SHARED_LIBS ON)
 set(FFmpeg_DEBUG OFF)
-set(FFmpeg_CFLAGS "--extra-cflags=-I${CMAKE_INSTALL_PREFIX}/include")
-set(FFmpeg_CXXFLAGS "--extra-cxxflags=-I${CMAKE_INSTALL_PREFIX}/include")
-set(FFmpeg_OBJCFLAGS "--extra-objcflags=-I${CMAKE_INSTALL_PREFIX}/include")
 set(FFmpeg_LDFLAGS)
+    set(FFmpeg_CFLAGS "--extra-cflags=-I${INSTALL_PREFIX}/include")
+    set(FFmpeg_CXXFLAGS "--extra-cxxflags=-I${INSTALL_PREFIX}/include")
+    set(FFmpeg_OBJCFLAGS "--extra-objcflags=-I${INSTALL_PREFIX}/include")
 if(WIN32)
-    list(APPEND FFmpeg_LDFLAGS "--extra-ldflags=-LIBPATH:${CMAKE_INSTALL_PREFIX}/lib/")
+    list(APPEND FFmpeg_LDFLAGS "--extra-ldflags=-LIBPATH:${INSTALL_PREFIX}/lib/")
     list(APPEND FFmpeg_CFLAGS "--extra-cflags='-wd4828 -wd4101 -wd4267 -wd4334 -wd4090'")
     if(CMAKE_BUILD_TYPE MATCHES "^Debug$")
         list(APPEND FFmpeg_CFLAGS "--extra-cflags=-MDd")
@@ -36,10 +53,10 @@ if(WIN32)
         list(APPEND FFmpeg_LDFLAGS "--extra-ldflags=-MD")
     endif()
 elseif(APPLE)
-    list(APPEND FFmpeg_LDFLAGS "--extra-ldflags=-L${CMAKE_INSTALL_PREFIX}/lib")
+    list(APPEND FFmpeg_LDFLAGS "--extra-ldflags=-L${INSTALL_PREFIX}/lib")
 else()
-    list(APPEND FFmpeg_LDFLAGS "--extra-ldflags=-L${CMAKE_INSTALL_PREFIX}/lib")
-    list(APPEND FFmpeg_LDFLAGS "--extra-ldflags=-L${CMAKE_INSTALL_PREFIX}/lib64")
+    list(APPEND FFmpeg_LDFLAGS "--extra-ldflags=-L${INSTALL_PREFIX}/lib")
+    list(APPEND FFmpeg_LDFLAGS "--extra-ldflags=-L${INSTALL_PREFIX}/lib64")
 endif()
 if(APPLE AND CMAKE_OSX_DEPLOYMENT_TARGET)
     list(APPEND FFmpeg_CFLAGS "--extra-cflags=-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
@@ -55,7 +72,7 @@ if(FFmpeg_DEBUG)
 endif()
 
 set(FFmpeg_CONFIGURE_ARGS
-    --prefix=${CMAKE_INSTALL_PREFIX}
+    --prefix=${INSTALL_PREFIX}
     --enable-pic
     --disable-programs
     --disable-doc
@@ -399,7 +416,7 @@ if(TLRENDER_VPX)
 	    --extra-libs=msvcrt.lib)
     else()
 	list(APPEND FFmpeg_CONFIGURE_ARGS
-	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libvpx.a")
+	    --extra-ldflags="${INSTALL_PREFIX}/lib/libvpx.a")
 	list(APPEND FFmpeg_DEPS VPX)
     endif()
 endif()
@@ -411,8 +428,8 @@ if(TLRENDER_AV1)
         --enable-encoder=libsvtav1)
     if(UNIX)
 	list(APPEND FFmpeg_CONFIGURE_ARGS
-	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libdav1d.a"
-	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libSvtAv1Enc.a")
+	    --extra-ldflags="${INSTALL_PREFIX}/lib/libdav1d.a"
+	    --extra-ldflags="${INSTALL_PREFIX}/lib/libSvtAv1Enc.a")
 	if (NOT APPLE)
 	    list(APPEND FFmpeg_CONFIGURE_ARGS
 		--extra-libs=-lm
@@ -433,14 +450,14 @@ if(TLRENDER_X264)
     endif()
     if(UNIX)
 	list(APPEND FFmpeg_CONFIGURE_ARGS
-	    --extra-ldflags="${CMAKE_INSTALL_PREFIX}/lib/libx264.a")
+	    --extra-ldflags="${INSTALL_PREFIX}/lib/libx264.a")
 	list(APPEND FFmpeg_DEPS X264)
     endif()
 endif()
 
 if(NOT WIN32)
     list(APPEND FFmpeg_CONFIGURE_ARGS
-	--x86asmexe=${CMAKE_INSTALL_PREFIX}/bin/nasm)
+	--x86asmexe=${INSTALL_PREFIX}/bin/nasm)
 endif()
 if(TLRENDER_NET)
     list(APPEND FFmpeg_CONFIGURE_ARGS
@@ -479,26 +496,11 @@ if(WIN32)
     set(FFmpeg_OPENSSL_COPY)
     # if(TLRENDER_NET)
     #     set(FFmpeg_OPENSSL_COPY
-    #         "cp ${CMAKE_INSTALL_PREFIX}/lib/libssl.lib ${CMAKE_INSTALL_PREFIX}/lib/ssl.lib && \
-    #         cp ${CMAKE_INSTALL_PREFIX}/lib/libcrypto.lib ${CMAKE_INSTALL_PREFIX}/lib/crypto.lib &&")
+    #         "cp ${INSTALL_PREFIX}/lib/libssl.lib ${INSTALL_PREFIX}/lib/ssl.lib && \
+    #         cp ${INSTALL_PREFIX}/lib/libcrypto.lib ${INSTALL_PREFIX}/lib/crypto.lib &&")
     # endif()
-    
-    # Function to convert path to Msys2
-    function(convert_path_for_msys2 IN_PATH OUT_PATH)
-	# Split the path at the drive letter (if present)
-	string(REGEX REPLACE "^([A-Z]):/" "/\\1/" INTERMEDIATE_PATH "${IN_PATH}")
 
-	# Convert backslashes to forward slashes
-	string(REPLACE "\\" "/" INTERMEDIATE_PATH "${INTERMEDIATE_PATH}")
-
-	# Return the converted path
-	set(${OUT_PATH} "${INTERMEDIATE_PATH}" PARENT_SCOPE)
-    endfunction()
-
-    set(PKG_CONFIG_PATH_MSys2 "")
-    set(PKG_CONFIG_PATH_NATIVE "${CMAKE_INSTALL_PREFIX}/lib/pkgconfig")
-    convert_path_for_msys2("${PKG_CONFIG_PATH_NATIVE}" PKG_CONFIG_PATH_MSys2)
-    message("Converted path: ${PKG_CONFIG_PATH_MSys2}")
+    set(PKG_CONFIG_PATH_MSys2 "${INSTALL_PREFIX}/lib/pkgconfig")
     
     # Ensure PKG_CONFIG_PATH is set within the MSYS2 shell command
     set(PKG_CONFIG_PATH_CMD "export PKG_CONFIG_PATH=${PKG_CONFIG_PATH_MSys2}:\$PKG_CONFIG_PATH &&")
@@ -511,12 +513,12 @@ if(WIN32)
         ./ffmpeg_configure.sh")
     set(FFmpeg_BUILD ${FFmpeg_MSYS2} -c "make")
     set(FFmpeg_INSTALL ${FFmpeg_MSYS2} -c "make install"
-        COMMAND ${FFmpeg_MSYS2} -c "mv ${CMAKE_INSTALL_PREFIX}/bin/avcodec.lib ${CMAKE_INSTALL_PREFIX}/lib"
-        COMMAND ${FFmpeg_MSYS2} -c "mv ${CMAKE_INSTALL_PREFIX}/bin/avdevice.lib ${CMAKE_INSTALL_PREFIX}/lib"
-        COMMAND ${FFmpeg_MSYS2} -c "mv ${CMAKE_INSTALL_PREFIX}/bin/avformat.lib ${CMAKE_INSTALL_PREFIX}/lib"
-        COMMAND ${FFmpeg_MSYS2} -c "mv ${CMAKE_INSTALL_PREFIX}/bin/avutil.lib ${CMAKE_INSTALL_PREFIX}/lib"
-        COMMAND ${FFmpeg_MSYS2} -c "mv ${CMAKE_INSTALL_PREFIX}/bin/swresample.lib ${CMAKE_INSTALL_PREFIX}/lib"
-        COMMAND ${FFmpeg_MSYS2} -c "mv ${CMAKE_INSTALL_PREFIX}/bin/swscale.lib ${CMAKE_INSTALL_PREFIX}/lib")
+        COMMAND ${FFmpeg_MSYS2} -c "mv ${INSTALL_PREFIX}/bin/avcodec.lib ${INSTALL_PREFIX}/lib"
+        COMMAND ${FFmpeg_MSYS2} -c "mv ${INSTALL_PREFIX}/bin/avdevice.lib ${INSTALL_PREFIX}/lib"
+        COMMAND ${FFmpeg_MSYS2} -c "mv ${INSTALL_PREFIX}/bin/avformat.lib ${INSTALL_PREFIX}/lib"
+        COMMAND ${FFmpeg_MSYS2} -c "mv ${INSTALL_PREFIX}/bin/avutil.lib ${INSTALL_PREFIX}/lib"
+        COMMAND ${FFmpeg_MSYS2} -c "mv ${INSTALL_PREFIX}/bin/swresample.lib ${INSTALL_PREFIX}/lib"
+        COMMAND ${FFmpeg_MSYS2} -c "mv ${INSTALL_PREFIX}/bin/swscale.lib ${INSTALL_PREFIX}/lib")
 else()
     set(FFmpeg_CONFIGURE ./configure ${FFmpeg_CONFIGURE_ARGS})
     set(FFmpeg_BUILD make)
