@@ -355,6 +355,7 @@ if(TLRENDER_FFMPEG_MINIMAL)
         --enable-muxer=rawvideo
         --enable-muxer=truehd
         --enable-muxer=wav
+	--enable-muxer=webm
         --enable-muxer=yuv4mpegpipe
 
         --disable-parsers
