@@ -87,6 +87,12 @@ namespace tl
             };
             return data[static_cast<size_t>(value)];
         }
+        
+        Compression fromImf(const Imf::Compression& value)
+        {
+            Compression out = static_cast<Compression>(value);
+            return out;
+        }
 
         std::string getLayerName(const std::vector<std::string>& value)
         {
@@ -677,7 +683,7 @@ namespace tl
                 tags["Channels"] = string::join(values, " ");
             }
             tags["Line Order"] = serialize(header.lineOrder());
-            tags["Compression"] = serialize(header.compression());
+            tags["Compression"] = serialize(fromImf(header.compression()));
 
             // Multipart attributes.
             if (header.hasName())
