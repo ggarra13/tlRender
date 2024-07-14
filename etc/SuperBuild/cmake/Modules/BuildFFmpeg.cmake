@@ -134,7 +134,6 @@ if(TLRENDER_FFMPEG_MINIMAL)
         --enable-decoder=aac
         --enable-decoder=ac3
         --enable-decoder=av1
-        --enable-decoder=ayuv
         --enable-decoder=cfhd
         --enable-decoder=dnxhd
         --enable-decoder=eac3
@@ -207,7 +206,6 @@ if(TLRENDER_FFMPEG_MINIMAL)
         --disable-encoders
         --enable-encoder=aac
         --enable-encoder=ac3
-        --enable-encoder=ayuv
         --enable-encoder=cfhd
         --enable-encoder=dnxhd
         --enable-encoder=eac3
