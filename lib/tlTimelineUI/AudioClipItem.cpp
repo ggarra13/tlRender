@@ -253,8 +253,7 @@ namespace tl
 
             if (_displayOptions.waveformWidth > 0 && p.ioInfo)
             {
-                const int w = g.w() >= _displayOptions.waveformWidth ?
-                              g.w() : 0;
+                const int w = g.w();
                 for (int x = 0; x < w; x += _displayOptions.waveformWidth)
                 {
                     const math::Box2i box(
