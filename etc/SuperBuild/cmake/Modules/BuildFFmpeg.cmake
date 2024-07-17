@@ -437,6 +437,12 @@ if(TLRENDER_AV1)
 	list(APPEND FFmpeg_DEPS SvtAV1 dav1d)
     endif()
 endif()
+if(TLRENDER_HAP)
+    list(APPEND FFmpeg_CONFIGURE_ARGS
+        --enable-encoder=hap
+        --enable-decoder=hap
+	--enable-libsnappy)
+endif()
 if(TLRENDER_X264)
     list(APPEND FFmpeg_CONFIGURE_ARGS
         --enable-encoder=libx264
