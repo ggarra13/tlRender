@@ -56,6 +56,10 @@ namespace tl
                     o = AV_PIX_FMT_YUV422P;
                 else if (s == "YUV_444P")
                     o = AV_PIX_FMT_YUV444P;
+                else if (s == "RGB_U8")
+                    o = AV_PIX_FMT_RGB24;
+                else if (s == "RGBA_U8")
+                    o = AV_PIX_FMT_RGBA;
 
                 // 10-bits pixel formats
 
@@ -990,6 +994,10 @@ namespace tl
                     break;
                 case Profile::AV1:
                     avCodecID = AV_CODEC_ID_AV1;
+                    avProfile = FF_PROFILE_UNKNOWN;
+                    break;
+                case Profile::HAP:
+                    avCodecID = AV_CODEC_ID_HAP;
                     avProfile = FF_PROFILE_UNKNOWN;
                     break;
                 default: break;

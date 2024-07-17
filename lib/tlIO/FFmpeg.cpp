@@ -37,7 +37,8 @@ namespace tl
             "ProRes_XQ",
             "VP9",
             "Cineform",
-            "AV1");
+            "AV1",
+            "HAP");
         TLRENDER_ENUM_SERIALIZE_IMPL(Profile);
     
         TLRENDER_ENUM_IMPL(

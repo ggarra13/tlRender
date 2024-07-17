@@ -37,6 +37,7 @@ namespace tl
             VP9,
             Cineform,
             AV1,
+            HAP,
             
             Count
         };
