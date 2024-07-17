@@ -13,7 +13,7 @@ list(APPEND libsnappy_ARGS
     -DBENCHMARK_USE_BUNDLED_GTEST=OFF
 )
 
-set(libsnappy_UPDATE_CMD "git submodule update --init")
+set(libsnappy_UPDATE_CMD git submodule update --init)
 
 
 ExternalProject_Add(
