@@ -442,6 +442,7 @@ if(TLRENDER_HAP)
         --enable-encoder=hap
         --enable-decoder=hap
 	--enable-libsnappy)
+    list(APPEND FFmpeg_DEPS libsnappy)
 endif()
 if(TLRENDER_X264)
     list(APPEND FFmpeg_CONFIGURE_ARGS
