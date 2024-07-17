@@ -899,7 +899,7 @@ namespace tl
                     {
                         std::memcpy(
                             data + w * 3 * i,
-                            data0 + linesize0 * 3 * i,
+                            data0 + linesize0 * i,
                             w * 3);
                     }
                     break;
@@ -917,7 +917,7 @@ namespace tl
                     {
                         std::memcpy(
                             data + w * 4 * i,
-                            data0 + linesize0 * 4 * i,
+                            data0 + linesize0 * i,
                             w * 4);
                     }
                     break;
