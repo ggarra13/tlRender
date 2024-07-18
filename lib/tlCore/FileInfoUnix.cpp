@@ -51,20 +51,27 @@ namespace tl
             std::vector<FileInfo>& out,
             const ListOptions& options)
         {
-            DIR* dir = opendir(!path.empty() ? path.c_str() : ".");
-            if (dir)
+            struct dirent **namelist;
+            int n;
+
+            n = scandir(!path.empty() ? path.c_str() : ".", &namelist, NULL, alphasort);
+            if (n < 0)
             {
-                const struct dirent* de = nullptr;
-                while ((de = readdir(dir)))
-                {
-                    const std::string fileName(de->d_name);
-                    if (!listFilter(fileName, options))
-                    {
-                        listSequence(path, fileName, out, options);
-                    }
-                }
-                closedir(dir);
+                return;
             }
+
+            // Print filenames
+            for (int i = 0; i < n; i++)
+            {
+                const std::string fileName(namelist[i]->d_name);
+                if (!listFilter(fileName, options))
+                {
+                    listSequence(path, fileName, out, options);
+                }
+                free(namelist[i]);
+            }
+            free(namelist);
         }
+        
     }
 }
