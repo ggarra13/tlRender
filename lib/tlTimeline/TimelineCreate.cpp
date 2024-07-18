@@ -366,6 +366,7 @@ namespace tl
             std::string error;
             file::Path path = inputPath;
             file::Path audioPath = inputAudioPath;
+            
             try
             {
                 auto ioSystem = context->getSystem<io::System>();
@@ -459,12 +460,25 @@ namespace tl
                     {
                         if (auto audioRead = ioSystem->read(audioPath, options.ioOptions))
                         {
+                            bool protocol = audioPath.isFileProtocol();
+                            if (file::exists(
+                                    audioPath.get(-1, file::PathType::Full)))
+                                protocol = false;
+                            const std::string cwd = file::getCWD();
+                            if (file::exists(cwd + audioPath.get()))
+                            {
+                                audioPath = file::Path(cwd + audioPath.get());
+                                protocol = false;
+                            }
+                            
                             const auto audioInfo = audioRead->getInfo().get();
 
                             auto audioClip = new otio::Clip;
                             audioClip->set_source_range(audioInfo.audioTime);
                             audioClip->set_media_reference(new otio::ExternalReference(
-                                audioPath.get(-1, path.isFileProtocol() ? file::PathType::FileName : file::PathType::Full),
+                                audioPath.get(-1, protocol ?
+                                              file::PathType::FileName :
+                                              file::PathType::Full),
                                 audioInfo.audioTime));
 
                             audioTrack = new otio::Track("Audio", std::nullopt, otio::Track::Kind::audio);
