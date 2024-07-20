@@ -8,6 +8,7 @@
 #include <tlIO/FFmpegReadPrivate.h>
 #include <tlIO/FFmpegMacros.h>
 
+#include <tlCore/Path.h>
 #include <tlCore/String.h>
 #include <tlCore/StringFormat.h>
 
@@ -134,6 +135,15 @@ namespace tl
                 
                 if (!avVideoCodec)
                 {
+                    // Check if we are reading a .wav file, potentially with
+                    // an embedded PNG file.
+                    file::Path path(fileName);
+                    if (string::compare(path.getExtension(), ".wav",
+                                        string::Compare::CaseInsensitive))
+                    {
+                        _avStream = -1;
+                        return;
+                    }
                     throw std::runtime_error(string::Format("{0}: No video codec found").arg(fileName));
                 }
                 _avCodecParameters[_avStream] = avcodec_parameters_alloc();
