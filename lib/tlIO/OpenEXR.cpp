@@ -683,7 +683,6 @@ namespace tl
                 tags["Channels"] = string::join(values, " ");
             }
             tags["Line Order"] = serialize(header.lineOrder());
-            tags["Compression"] = serialize(fromImf(header.compression()));
 
             // Multipart attributes.
             if (header.hasName())

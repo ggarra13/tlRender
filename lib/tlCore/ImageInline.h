@@ -139,6 +139,7 @@ namespace tl
         inline bool Info::operator == (const Info& other) const
         {
             return name == other.name &&
+                compression == other.compression &&
                 size == other.size &&
                 pixelType == other.pixelType &&
                 videoLevels == other.videoLevels &&

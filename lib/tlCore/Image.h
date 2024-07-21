@@ -241,6 +241,7 @@ namespace tl
             Info(int w, int h, PixelType);
 
             std::string     name             = "Default";
+            std::string     compression      = "Unknown";
             Size            size;
             PixelType       pixelType        = PixelType::None;
             VideoLevels     videoLevels      = VideoLevels::FullRange;

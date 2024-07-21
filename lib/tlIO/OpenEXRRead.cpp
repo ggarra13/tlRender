@@ -217,6 +217,7 @@ namespace tl
                         std::vector<Layer> layers = getLayers(header.channels(), channelGrouping);
                         size_t offset = _info.video.size();
                         _info.video.resize(offset + layers.size());
+                        _info.video[partNumber].compression = getLabel(header.compression());
                         for (size_t i = 0; i < layers.size(); ++i)
                         {
                             layers[i].partNumber = partNumber;
