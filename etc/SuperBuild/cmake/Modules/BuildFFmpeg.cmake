@@ -411,8 +411,7 @@ if(TLRENDER_VPX)
 	    --extra-libs=oleaut32.lib
 	    --extra-libs=uuid.lib
 	    --extra-libs=comdlg32.lib
-	    --extra-libs=advapi32.lib
-	    --extra-libs=msvcrt.lib)
+	    --extra-libs=advapi32.lib)
     else()
 	list(APPEND FFmpeg_CONFIGURE_ARGS
 	    --extra-ldflags="${INSTALL_PREFIX}/lib/libvpx.a")
