@@ -2,7 +2,7 @@ include(ExternalProject)
 
 include(GNUInstallDirs)
 
-set(SvtAV1_TAG v1.8.0)
+set(SvtAV1_TAG v2.1.2)
 set(SvtAV1_ARGS ${TLRENDER_EXTERNAL_ARGS})
 
 list(APPEND SvtAV1_ARGS
