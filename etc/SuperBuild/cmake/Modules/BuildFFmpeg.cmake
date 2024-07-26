@@ -431,8 +431,9 @@ if(TLRENDER_AV1)
 		--extra-libs=-lm
 		--extra-libs=-lpthread)
 	endif()
-	list(APPEND FFmpeg_DEPS SvtAV1 dav1d)
+	list(APPEND FFmpeg_DEPS dav1d)
     endif()
+    list(APPEND FFmpeg_DEPS SvtAV1)
 endif()
 if(TLRENDER_HAP)
     list(APPEND FFmpeg_CONFIGURE_ARGS
