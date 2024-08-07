@@ -96,6 +96,8 @@ namespace tl
 
         ///@}
 
+        class Info;
+        
         //! Audio data information.
         class Info
         {
@@ -111,7 +113,7 @@ namespace tl
             DataType    dataType     = DataType::None;
             size_t      sampleRate   = 0;
             unsigned    trackCount   = 1;
-            std::vector<Info> audioInfo;
+            std::vector<std::shared_ptr<Info>> audioInfo;
 
             //! Is the audio valid?
             bool isValid() const;
