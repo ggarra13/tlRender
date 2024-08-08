@@ -57,6 +57,10 @@ namespace tl
                 const file::MemoryRead*,
                 const otime::RationalTime&,
                 const io::Options&) override;
+
+        private:
+            bool _autoNormalize = false;
+            bool _invalidValues = false;
         };
 
         //! STB writer.

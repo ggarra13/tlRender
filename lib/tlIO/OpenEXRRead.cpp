@@ -159,6 +159,7 @@ namespace tl
                     ChannelGrouping channelGrouping,
                     const bool ignoreDisplayWindow,
                     const bool autoNormalize,
+                    const bool invalidValues,
                     const std::weak_ptr<log::System>& logSystemWeak)
                 {
                     // Open the file.
@@ -176,6 +177,7 @@ namespace tl
 
                     _ignoreDisplayWindow = ignoreDisplayWindow;
                     _autoNormalize = autoNormalize;
+                    _invalidValues = invalidValues;
 
                     for (partNumber = 0; partNumber < numberOfParts; ++partNumber)
                     {
@@ -420,10 +422,21 @@ namespace tl
                     
                     _info.tags["Autonormalize"] =
                         string::Format("{0}").arg(_autoNormalize);
+                    _info.tags["InvalidValues"] =
+                        string::Format("{0}").arg(_invalidValues);
 
                     if (_autoNormalize)
                     {
                         io::normalizeImage(out.image, imageInfo, minX, maxX, minY, maxY);
+                    }
+                    else
+                    {
+                        if (_invalidValues)
+                        {
+                            io::invalidValues(out.image, imageInfo,
+                                              0, imageInfo.size.w-1,
+                                              0, imageInfo.size.h-1);
+                        }
                     }
 
                     out.image->setTags(_info.tags);
@@ -432,6 +445,7 @@ namespace tl
 
             private:
                 ChannelGrouping                 _channelGrouping = ChannelGrouping::Known;
+                bool                            _invalidValues = false;
                 bool                            _autoNormalize = false;
                 bool                            _ignoreDisplayWindow = false;
                 std::unique_ptr<Imf::IStream>   _s;
@@ -468,10 +482,17 @@ namespace tl
                     static_cast<bool>(std::atoi(option->second.c_str()));
             }
             
-            option = options.find("OpenEXR/AutoNormalize");
+            option = options.find("AutoNormalize");
             if (option != options.end())
             {
                 _autoNormalize =
+                    static_cast<bool>(std::atoi(option->second.c_str()));
+            }
+            
+            option = options.find("InvalidValues");
+            if (option != options.end())
+            {
+                _invalidValues =
                     static_cast<bool>(std::atoi(option->second.c_str()));
             }
         }
@@ -511,7 +532,7 @@ namespace tl
             const std::string& fileName,
             const file::MemoryRead* memory)
         {
-            io::Info out = File(fileName, memory, _channelGrouping, _ignoreDisplayWindow, false, _logSystem.lock()).getInfo();
+            io::Info out = File(fileName, memory, _channelGrouping, _ignoreDisplayWindow, false, false, _logSystem.lock()).getInfo();
             float speed = _defaultSpeed;
             auto i = out.tags.find("Frame Per Second");
             if (i != out.tags.end())
@@ -540,7 +561,7 @@ namespace tl
             const otime::RationalTime& time,
             const io::Options& options)
         {
-            return File(fileName, memory, _channelGrouping, _ignoreDisplayWindow, _autoNormalize, _logSystem).read(fileName, time, options);
+            return File(fileName, memory, _channelGrouping, _ignoreDisplayWindow, _autoNormalize, _invalidValues, _logSystem).read(fileName, time, options);
         }
     }
 }

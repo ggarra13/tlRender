@@ -9,6 +9,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
 
+#include <tlIO/Normalize.h>
 #include <tlIO/STB.h>
 
 #include <tlCore/StringFormat.h>
@@ -23,12 +24,18 @@ namespace tl
             class File
             {
             public:
-                File(const std::string& fileName, const file::MemoryRead* memory)
+                File(const std::string& fileName,
+                     const file::MemoryRead* memory,
+                     const bool autoNormalize,
+                     const bool invalidValues)
                 {
+                    image::Info info;
                     int res = 0, w = 0, h = 0, n = 0, bits = 8;
 
                     _memory = memory;
-                        
+                    _autoNormalize = autoNormalize;
+                    _invalidValues = invalidValues;
+                    
                     if (memory)
                     {
                         res = stbi_info_from_memory(memory->p, memory->size, &w,
@@ -39,22 +46,22 @@ namespace tl
                                     .arg(fileName)
                                     .arg("Corrupted image type"));
                             
-                        _info.size.w = w;
-                        _info.size.h = h;
+                        info.size.w = w;
+                        info.size.h = h;
                             
                         res = stbi_is_16_bit_from_memory(memory->p, memory->size);
                         if (res) bits = 16;
                             
-                        _info.pixelType = image::getIntType(n, bits);
+                        info.pixelType = image::getIntType(n, bits);
                             
-                        if (image::PixelType::None == _info.pixelType)
+                        if (image::PixelType::None == info.pixelType)
                         {
                             throw std::runtime_error(
                                 string::Format("{0}: {1}")
                                     .arg(fileName)
                                     .arg("Unsupported image type"));
                         }
-                        _info.layout.endian = memory::Endian::MSB;
+                        info.layout.endian = memory::Endian::MSB;
                     }
                     else
                     {
@@ -65,32 +72,34 @@ namespace tl
                                 .arg(fileName)
                                 .arg("Corrupted image type"));
                         
-                        _info.size.w = w;
-                        _info.size.h = h;
+                        info.size.w = w;
+                        info.size.h = h;
 
                         if (stbi_is_hdr(fileName.c_str()))
                         {
-                            _info.pixelType = image::PixelType::RGB_F32;
+                            info.pixelType = image::PixelType::RGB_F32;
                         }
                         else
                         {
                             res = stbi_is_16_bit(fileName.c_str());
                             if (res) bits = 16;
                     
-                            _info.pixelType = image::getIntType(n, bits);
-                            if (image::PixelType::None == _info.pixelType)
+                            info.pixelType = image::getIntType(n, bits);
+                            if (image::PixelType::None == info.pixelType)
                             {
                                 throw std::runtime_error(
                                     string::Format("{0}: {1}")
                                     .arg(fileName)
                                     .arg("Unsupported image type"));
                             }
-                            _info.layout.endian = memory::Endian::MSB;
+                            info.layout.endian = memory::Endian::MSB;
                         }
                     }
+
+                    _info.video.push_back(info);
                 }
 
-                const image::Info& getInfo() const
+                const io::Info& getInfo() const
                 {
                     return _info;
                 }
@@ -101,10 +110,12 @@ namespace tl
                 {
                     io::VideoData out;
                     out.time = time;
-                    out.image = image::Image::create(_info);
+                    
+                    image::Info imageInfo = _info.video[0];
+                    out.image = image::Image::create(imageInfo);
 
-                    const int channels = image::getChannelCount(_info.pixelType);
-                    const size_t bytes = image::getBitDepth(_info.pixelType) / 8;
+                    const int channels = image::getChannelCount(imageInfo.pixelType);
+                    const size_t bytes = image::getBitDepth(imageInfo.pixelType) / 8;
                     
                     stbi_set_flip_vertically_on_load(1);
 
@@ -139,15 +150,43 @@ namespace tl
                                                        
                     memcpy(
                         out.image->getData(), data,
-                        _info.size.w * _info.size.h * channels * bytes);
-
+                        imageInfo.size.w * imageInfo.size.h * channels * bytes);
+                    
                     stbi_image_free(data);
 
+                    if (imageInfo.pixelType == image::PixelType::RGB_F32 &&
+                        imageInfo.size.w > 0 && imageInfo.size.h > 0)
+                    {
+                        _info.tags["Autonormalize"] =
+                            string::Format("{0}").arg(_autoNormalize);
+                        _info.tags["InvalidValues"] =
+                            string::Format("{0}").arg(_invalidValues);
+                        
+                        if (_autoNormalize)
+                        {
+                            io::normalizeImage(out.image, imageInfo,
+                                               0, imageInfo.size.w-1,
+                                               0, imageInfo.size.h-1);
+                        }
+                        else
+                        {
+                            if (_invalidValues)
+                            {
+                                io::invalidValues(out.image, imageInfo,
+                                                  0, imageInfo.size.w-1,
+                                                  0, imageInfo.size.h-1);
+                            }
+                        }
+                        out.image->setTags(_info.tags);
+                    }
+                    
                     return out;
                 }
 
             private:
-                image::Info _info;
+                io::Info    _info;
+                bool        _autoNormalize = false;
+                bool        _invalidValues = false;
                 const file::MemoryRead* _memory;
             };
         }
@@ -160,6 +199,19 @@ namespace tl
             const std::weak_ptr<log::System>& logSystem)
         {
             ISequenceRead::_init(path, memory, options, cache, logSystem);
+            
+            auto option = options.find("AutoNormalize");
+            if (option != options.end())
+            {
+                _autoNormalize =
+                    static_cast<bool>(std::atoi(option->second.c_str()));
+            }
+            option = options.find("InvalidValues");
+            if (option != options.end())
+            {
+                _invalidValues =
+                    static_cast<bool>(std::atoi(option->second.c_str()));
+            }
         }
 
         Read::Read()
@@ -197,8 +249,7 @@ namespace tl
             const std::string& fileName,
             const file::MemoryRead* memory)
         {
-            io::Info out;
-            out.video.push_back(File(fileName, memory).getInfo());
+            io::Info out = File(fileName, memory, false, false).getInfo();
             out.videoTime = otime::TimeRange::range_from_start_end_time_inclusive(
                 otime::RationalTime(_startFrame, _defaultSpeed),
                 otime::RationalTime(_endFrame, _defaultSpeed));
@@ -211,7 +262,7 @@ namespace tl
             const otime::RationalTime& time,
             const io::Options&)
         {
-            return File(fileName, memory).read(fileName, time);
+            return File(fileName, memory, _autoNormalize, _invalidValues).read(fileName, time);
         }
     }
 }
