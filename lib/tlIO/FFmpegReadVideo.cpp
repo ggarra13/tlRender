@@ -540,7 +540,6 @@ namespace tl
             }
             for (auto i : _avCodecContext)
             {
-                avcodec_close(i.second);
                 avcodec_free_context(&i.second);
             }
             for (auto i : _avCodecParameters)

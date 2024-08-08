@@ -2,6 +2,7 @@
 // Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
+#include <tlIO/Normalize.h>
 #include <tlIO/OpenEXRPrivate.h>
 
 #include <tlCore/FileIO.h>
@@ -157,6 +158,7 @@ namespace tl
                     const file::MemoryRead* memory,
                     ChannelGrouping channelGrouping,
                     const bool ignoreDisplayWindow,
+                    const bool autoNormalize,
                     const std::weak_ptr<log::System>& logSystemWeak)
                 {
                     // Open the file.
@@ -173,6 +175,7 @@ namespace tl
                     int partNumber;
 
                     _ignoreDisplayWindow = ignoreDisplayWindow;
+                    _autoNormalize = autoNormalize;
 
                     for (partNumber = 0; partNumber < numberOfParts; ++partNumber)
                     {
@@ -305,6 +308,11 @@ namespace tl
                     const size_t channelByteCount = image::getBitDepth(imageInfo.pixelType) / 8;
                     const size_t cb = channels * channelByteCount;
                     const size_t scb = imageInfo.size.w * channels * channelByteCount;
+                    const int minY = std::min(_dataWindow.min.y, _displayWindow.min.y);
+                    const int minX = std::min(_dataWindow.min.x, _displayWindow.min.x);
+                    const int maxY = std::max(_dataWindow.max.y, _displayWindow.max.y);
+                    const int maxX = std::max(_dataWindow.max.x, _displayWindow.max.x);
+
                     if (_fast)
                     {
                         Imf::FrameBuffer frameBuffer;
@@ -328,16 +336,7 @@ namespace tl
                         in.readPixels(_displayWindow.min.y, _displayWindow.max.y);
                     }
                     else
-                    {
-                        int minY = std::min(_dataWindow.min.y,
-                                            _displayWindow.min.y);
-                        int minX = std::min(_dataWindow.min.x,
-                                            _displayWindow.min.x);
-                        int maxY = std::max(_dataWindow.max.y,
-                                            _displayWindow.max.y);
-                        int maxX = std::max(_dataWindow.max.x,
-                                            _displayWindow.max.x);
-                        
+                    {   
                         Imf::FrameBuffer frameBuffer;
                         std::vector<char> buf(_dataWindow.w() * cb);
                         for (int c = 0; c < channels; ++c)
@@ -418,12 +417,22 @@ namespace tl
                             _info.tags["Data Window"] = serialize(data);
                         }
                     }
+                    
+                    _info.tags["Autonormalize"] =
+                        string::Format("{0}").arg(_autoNormalize);
+
+                    if (_autoNormalize)
+                    {
+                        io::normalizeImage(out.image, imageInfo, minX, maxX, minY, maxY);
+                    }
+
                     out.image->setTags(_info.tags);
                     return out;
                 }
 
             private:
                 ChannelGrouping                 _channelGrouping = ChannelGrouping::Known;
+                bool                            _autoNormalize = false;
                 bool                            _ignoreDisplayWindow = false;
                 std::unique_ptr<Imf::IStream>   _s;
                 std::unique_ptr<Imf::MultiPartInputFile> _f;
@@ -456,6 +465,13 @@ namespace tl
             if (option != options.end())
             {
                 _ignoreDisplayWindow =
+                    static_cast<bool>(std::atoi(option->second.c_str()));
+            }
+            
+            option = options.find("OpenEXR/AutoNormalize");
+            if (option != options.end())
+            {
+                _autoNormalize =
                     static_cast<bool>(std::atoi(option->second.c_str()));
             }
         }
@@ -495,7 +511,7 @@ namespace tl
             const std::string& fileName,
             const file::MemoryRead* memory)
         {
-            io::Info out = File(fileName, memory, _channelGrouping, _ignoreDisplayWindow, _logSystem.lock()).getInfo();
+            io::Info out = File(fileName, memory, _channelGrouping, _ignoreDisplayWindow, false, _logSystem.lock()).getInfo();
             float speed = _defaultSpeed;
             auto i = out.tags.find("Frame Per Second");
             if (i != out.tags.end())
@@ -524,7 +540,7 @@ namespace tl
             const otime::RationalTime& time,
             const io::Options& options)
         {
-            return File(fileName, memory, _channelGrouping, _ignoreDisplayWindow, _logSystem).read(fileName, time, options);
+            return File(fileName, memory, _channelGrouping, _ignoreDisplayWindow, _autoNormalize, _logSystem).read(fileName, time, options);
         }
     }
 }

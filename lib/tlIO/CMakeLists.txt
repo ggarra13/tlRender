@@ -14,6 +14,7 @@ set(HEADERS
     System.h
     SystemInline.h)
 set(HEADERS_PRIVATE
+    Normalize.h
     SequenceIOReadPrivate.h)
 
 set(SOURCE
@@ -26,6 +27,7 @@ set(SOURCE
     DPX.cpp
     IO.cpp
     Init.cpp
+    Normalize.cpp
     PPM.cpp
     PPMRead.cpp
     PPMWrite.cpp
