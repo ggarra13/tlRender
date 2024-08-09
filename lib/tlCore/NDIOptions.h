@@ -18,6 +18,7 @@ namespace tl
         {
             std::string sourceName;
             bool        noAudio     = false;
+            bool        bestFormat  = true;
 
             // These are used internally by NDIRead
             size_t requestTimeout = 5;

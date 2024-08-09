@@ -4,12 +4,17 @@
 
 #include <fstream>
 
+#include <tlIO/FFmpegMacros.h>
 #include <tlIO/NDIReadPrivate.h>
 
 #include <tlCore/Assert.h>
 #include <tlCore/LogSystem.h>
 #include <tlCore/StringFormat.h>
 
+namespace
+{
+    const char* kModule = "ndi";
+}
 
 namespace tl
 {
@@ -109,6 +114,8 @@ namespace tl
             //      No alpha channel : UYVY.
             //      Alpha channel    : RGBA.
             // this is the best 8-bit format so far.
+
+
             recv_desc.color_format = NDIlib_recv_color_format_UYVY_RGBA;
 
             
@@ -117,7 +124,8 @@ namespace tl
             // code:
             //      No alpha channel : P216, or UYVY
             //      Alpha channel    : PA16 or UYVA
-            // recv_desc.color_format = NDIlib_recv_color_format_best;
+            if (p.options.bestFormat)
+                recv_desc.color_format = NDIlib_recv_color_format_best;
             
             recv_desc.bandwidth = NDIlib_recv_bandwidth_highest;
             recv_desc.allow_video_fields = false;
@@ -149,7 +157,9 @@ namespace tl
 
             // Preroll to find video and (potentially) audio stream
             unsigned videoCounter = 0;
-            bool noAudio = false;
+            bool noAudio = p.options.noAudio;
+            if (noAudio)
+                LOG_STATUS("NDI Stream with no Audio");
             bool hasStreams = false;
             while (type_e != NDIlib_frame_type_error && !hasStreams)
             {

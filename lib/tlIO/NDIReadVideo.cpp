@@ -124,6 +124,7 @@ namespace tl
                 switch(v.FourCC)
                 {
                 case NDIlib_FourCC_type_UYVY:
+                    LOG_STATUS("NDI Stream is UYVY pixel format");
                     // YCbCr color space packed, not planar using 4:2:2. (works)
                     _avInputPixelFormat = AV_PIX_FMT_UYVY422;
                     _avOutputPixelFormat = AV_PIX_FMT_RGB24;
@@ -131,23 +132,24 @@ namespace tl
                     break;
                 case NDIlib_FourCC_type_UYVA:
                     // @todo: This is 4:2:2:4 YUV with an alpha plane following.
-                    LOG_ERROR("UVYVA pixel format will not have an alpha channel.");
+                    LOG_STATUS("NDI Stream is UYVA pixel format");
+                    LOG_ERROR("UVVA pixel format will not have an alpha channel.");
                     // YCbCr color space packed, not planar using 4:2:2:4.
                     _avInputPixelFormat = AV_PIX_FMT_UYVY422;
                     _avOutputPixelFormat = AV_PIX_FMT_RGBA;
                     _info.pixelType = image::PixelType::RGBA_U8;
                     break;
                 case NDIlib_FourCC_type_P216:
-                    LOG_ERROR("P216 pixel format is buggy");
+                    LOG_STATUS("NDI Stream is P216");
                     // This is a 16bpp version of NV12 (semi-planar 4:2:2).
-                    _avInputPixelFormat = AV_PIX_FMT_P016LE;
+                    _avInputPixelFormat = AV_PIX_FMT_P216LE;
                     _avOutputPixelFormat = AV_PIX_FMT_YUV422P16LE;
                     _info.pixelType = image::PixelType::YUV_422P_U16;
                     // _avOutputPixelFormat = AV_PIX_FMT_RGB48;
                     // _info.pixelType = image::PixelType::RGB_U16;
                     break;
                 case NDIlib_FourCC_type_PA16:
-                    LOG_ERROR("PA16 pixel format is buggy and not supported yet");
+                    LOG_ERROR("NDI Stream is PA16.  Not supported yet");
                     // This is 4:2:2:4 in 16bpp.
                     _avInputPixelFormat = AV_PIX_FMT_P016LE;
                     _avOutputPixelFormat = AV_PIX_FMT_RGBA64;
@@ -186,6 +188,7 @@ namespace tl
                     break;
                 case NDIlib_FourCC_type_I420:
                     // @todo: Not tested yet, this is 4:2:0 YUV with UV reversed
+                    LOG_STATUS("NDI Stream is I420");
                     LOG_WARNING("I420 pixel format not tested");
                     _avInputPixelFormat = AV_PIX_FMT_YUV420P;
                     _avOutputPixelFormat = _avInputPixelFormat;

@@ -11,6 +11,7 @@ namespace tl
             {
                 { "sourceName", value.sourceName },
                 { "noAudio", value.noAudio },
+                { "bestFormat", value.bestFormat },
             };
         }
 
@@ -18,6 +19,7 @@ namespace tl
         {
             json.at("sourceName").get_to(value.sourceName);
             json.at("noAudio").get_to(value.noAudio);
+            json.at("bestFormat").get_to(value.bestFormat);
         }
 
     }
