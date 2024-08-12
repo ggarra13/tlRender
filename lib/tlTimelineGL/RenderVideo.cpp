@@ -840,6 +840,14 @@ namespace tl
                 p.shaders["display"]->setUniform(
                     "videoLevels",
                     static_cast<int>(displayOptions.videoLevels));
+                p.shaders["display"]->setUniform("normalizeEnabled", displayOptions.normalize.enabled);
+                if (displayOptions.normalize.enabled)
+                {
+                    p.shaders["display"]->setUniform("normalizeDisplay.minimum", displayOptions.normalize.minimum);
+                    p.shaders["display"]->setUniform("normalizeDisplay.maximum", displayOptions.normalize.maximum);
+                }
+                p.shaders["display"]->setUniform("invalidValues",
+                                                 displayOptions.invalidValues);
 
                 glActiveTexture(static_cast<GLenum>(GL_TEXTURE0));
                 glBindTexture(GL_TEXTURE_2D, p.buffers["video"]->getColorID());

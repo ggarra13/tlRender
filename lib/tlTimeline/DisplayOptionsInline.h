@@ -65,6 +65,19 @@ namespace tl
         {
             return !(*this == other);
         }
+        
+        inline bool Normalize::operator == (const Normalize& other) const
+        {
+            return
+                enabled == other.enabled &&
+                minimum == other.minimum &&
+                maximum == other.maximum;
+        }
+
+        inline bool Normalize::operator != (const Normalize& other) const
+        {
+            return !(*this == other);
+        }
 
         inline bool DisplayOptions::operator == (const DisplayOptions& other) const
         {
@@ -76,7 +89,9 @@ namespace tl
                 exrDisplay == other.exrDisplay &&
                 softClip == other.softClip &&
                 imageFilters == other.imageFilters &&
-                videoLevels == other.videoLevels;
+                videoLevels == other.videoLevels &&
+                normalize == other.normalize &&
+                invalidValues == other.invalidValues;
         }
 
         inline bool DisplayOptions::operator != (const DisplayOptions& other) const

@@ -20,21 +20,28 @@ namespace tl
     {
         namespace
         {
+            std::string serialize(const math::Vector4f& value)
+            {
+                std::stringstream ss;
+                ss << value;
+                return ss.str();
+            }
+        }
+        namespace
+        {
             
             class File
             {
             public:
                 File(const std::string& fileName,
                      const file::MemoryRead* memory,
-                     const bool autoNormalize,
-                     const bool invalidValues)
+                     const bool autoNormalize)
                 {
                     image::Info info;
                     int res = 0, w = 0, h = 0, n = 0, bits = 8;
 
                     _memory = memory;
                     _autoNormalize = autoNormalize;
-                    _invalidValues = invalidValues;
                     
                     if (memory)
                     {
@@ -157,26 +164,17 @@ namespace tl
                     if (imageInfo.pixelType == image::PixelType::RGB_F32 &&
                         imageInfo.size.w > 0 && imageInfo.size.h > 0)
                     {
-                        _info.tags["Autonormalize"] =
-                            string::Format("{0}").arg(_autoNormalize);
-                        _info.tags["InvalidValues"] =
-                            string::Format("{0}").arg(_invalidValues);
-                        
                         if (_autoNormalize)
                         {
-                            io::normalizeImage(out.image, imageInfo,
+                            math::Vector4f minimum, maximum;
+                            io::normalizeImage(minimum, maximum, out.image, imageInfo,
                                                0, imageInfo.size.w-1,
                                                0, imageInfo.size.h-1);
+                        
+                            _info.tags["Autonormalize Minimum"] = serialize(minimum);
+                            _info.tags["Autonormalize Maximum"] = serialize(maximum);
                         }
-                        else
-                        {
-                            if (_invalidValues)
-                            {
-                                io::invalidValues(out.image, imageInfo,
-                                                  0, imageInfo.size.w-1,
-                                                  0, imageInfo.size.h-1);
-                            }
-                        }
+                        
                         out.image->setTags(_info.tags);
                     }
                     
@@ -186,7 +184,6 @@ namespace tl
             private:
                 io::Info    _info;
                 bool        _autoNormalize = false;
-                bool        _invalidValues = false;
                 const file::MemoryRead* _memory;
             };
         }
@@ -204,12 +201,6 @@ namespace tl
             if (option != options.end())
             {
                 _autoNormalize =
-                    static_cast<bool>(std::atoi(option->second.c_str()));
-            }
-            option = options.find("InvalidValues");
-            if (option != options.end())
-            {
-                _invalidValues =
                     static_cast<bool>(std::atoi(option->second.c_str()));
             }
         }
@@ -249,7 +240,7 @@ namespace tl
             const std::string& fileName,
             const file::MemoryRead* memory)
         {
-            io::Info out = File(fileName, memory, false, false).getInfo();
+            io::Info out = File(fileName, memory, false).getInfo();
             out.videoTime = otime::TimeRange::range_from_start_end_time_inclusive(
                 otime::RationalTime(_startFrame, _defaultSpeed),
                 otime::RationalTime(_endFrame, _defaultSpeed));
@@ -262,7 +253,7 @@ namespace tl
             const otime::RationalTime& time,
             const io::Options&)
         {
-            return File(fileName, memory, _autoNormalize, _invalidValues).read(fileName, time);
+            return File(fileName, memory, _autoNormalize).read(fileName, time);
         }
     }
 }

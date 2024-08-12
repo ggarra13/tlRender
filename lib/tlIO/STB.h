@@ -60,7 +60,6 @@ namespace tl
 
         private:
             bool _autoNormalize = false;
-            bool _invalidValues = false;
         };
 
         //! STB writer.

@@ -98,6 +98,17 @@ namespace tl
             bool operator != (const SoftClip&) const;
         };
 
+        //! Autonormalize.
+        struct Normalize
+        {
+            bool           enabled = false;
+            math::Vector4f minimum = math::Vector4f(0.F, 0.F, 0.F, 0.F);
+            math::Vector4f maximum = math::Vector4f(1.F, 1.F, 1.F, 1.F);
+            
+            bool operator == (const Normalize&) const;
+            bool operator != (const Normalize&) const;
+        };
+        
         //! Display options.
         struct DisplayOptions
         {
@@ -109,7 +120,9 @@ namespace tl
             SoftClip           softClip;
             ImageFilters       imageFilters;
             image::VideoLevels videoLevels  = image::VideoLevels::FullRange;
-
+            Normalize          normalize;
+            bool               invalidValues = false;
+            
             bool operator == (const DisplayOptions&) const;
             bool operator != (const DisplayOptions&) const;
         };
