@@ -33,8 +33,16 @@ namespace tl
             
             uint8_t* p = inout->getData();
                         
-            float minValue = std::numeric_limits<float>::max();
-            float maxValue = std::numeric_limits<float>::min();
+            float minValue[4];
+            float maxValue[4];
+            float range[4];
+
+            for (short i = 0; i < 4; ++i)
+            {
+                minValue[i] = std::numeric_limits<float>::max();
+                maxValue[i] = std::numeric_limits<float>::min();
+            }
+            
             for (int y = minY; y <= maxY; ++y)
             {
                 for (int x = minX; x <= maxX; ++x)
@@ -44,66 +52,66 @@ namespace tl
                     case image::PixelType::L_F16:
                     {
                         float value = static_cast<float>(static_cast<half>(*p));
-                        if (value < minValue)
-                            minValue = value;
-                        if (value > maxValue)
-                            maxValue = value;
+                        if (value < minValue[0])
+                            minValue[0] = value;
+                        if (value > maxValue[0])
+                            maxValue[0] = value;
                         break;
                     }
                     case image::PixelType::L_F32:
                     {
                         float value = static_cast<float>(*p);
-                        if (value < minValue)
-                            minValue = value;
-                        if (value > maxValue)
-                            maxValue = value;
+                        if (value < minValue[0])
+                            minValue[0] = value;
+                        if (value > maxValue[0])
+                            maxValue[0] = value;
                         break;
                     }
                     case image::PixelType::RGB_F16:
                     {
                         half* values = reinterpret_cast<half*>(p);
-                        for (int i = 0; i < 3; ++i)
+                        for (short i = 0; i < 3; ++i)
                         {
-                            if (values[i] < minValue)
-                                minValue = values[i];
-                            if (values[i] > maxValue)
-                                maxValue = values[i];
+                            if (values[i] < minValue[i])
+                                minValue[i] = values[i];
+                            if (values[i] > maxValue[i])
+                                maxValue[i] = values[i];
                         }
                         break;
                     }
                     case image::PixelType::RGB_F32:
                     {
                         float* values = reinterpret_cast<float*>(p);
-                        for (int i = 0; i < 3; ++i)
+                        for (short i = 0; i < 3; ++i)
                         {
-                            if (values[i] < minValue)
-                                minValue = values[i];
-                            if (values[i] > maxValue)
-                                maxValue = values[i];
+                            if (values[i] < minValue[i])
+                                minValue[i] = values[i];
+                            if (values[i] > maxValue[i])
+                                maxValue[i] = values[i];
                         }
                         break;
                     }
                     case image::PixelType::RGBA_F16:
                     {
                         half* values = reinterpret_cast<half*>(p);
-                        for (int i = 0; i < 4; ++i)
+                        for (short i = 0; i < 4; ++i)
                         {
-                            if (values[i] < minValue)
-                                minValue = values[i];
-                            if (values[i] > maxValue)
-                                maxValue = values[i];
+                            if (values[i] < minValue[i])
+                                minValue[i] = values[i];
+                            if (values[i] > maxValue[i])
+                                maxValue[i] = values[i];
                         }
                         break;
                     }
                     case image::PixelType::RGBA_F32:
                     {
                         float* values = reinterpret_cast<float*>(p);
-                        for (int i = 0; i < 4; ++i)
+                        for (short i = 0; i < 4; ++i)
                         {
-                            if (values[i] < minValue)
-                                minValue = values[i];
-                            if (values[i] > maxValue)
-                                maxValue = values[i];
+                            if (values[i] < minValue[i])
+                                minValue[i] = values[i];
+                            if (values[i] > maxValue[i])
+                                maxValue[i] = values[i];
                         }
                         break;
                     }
@@ -116,9 +124,15 @@ namespace tl
 
             p = inout->getData();
 
-            const float range = maxValue - minValue;
-            if (range < 0.00001F)
-                return;
+            for (short i = 0; i < 4; ++i)
+            {
+                range[i] = maxValue[i] - minValue[i];
+                if (range[i] < 0.00001F)
+                {
+                    minValue[i] = 0.F;
+                    range[i] = 1.F;
+                }
+            }
             
             for (int y = minY; y <= maxY; ++y)
             {
@@ -129,13 +143,13 @@ namespace tl
                     case image::PixelType::L_F16:
                     {
                         half* n = reinterpret_cast<half*>(p);
-                        *n = (*n - minValue) / range;
+                        *n = (*n - minValue[0]) / range[0];
                         break;
                     }
                     case image::PixelType::L_F32:
                     {
                         float* n = reinterpret_cast<float*>(p);
-                        *n = (*n - minValue) / range;
+                        *n = (*n - minValue[0]) / range[0];
                         break;
                     }
                     case image::PixelType::RGB_F16:
@@ -143,7 +157,7 @@ namespace tl
                         half* n = reinterpret_cast<half*>(p);
                         for (short i = 0; i < 3; ++i)
                         {
-                            n[i] = (n[i] - minValue) / range;
+                            n[i] = (n[i] - minValue[i]) / range[i];
                         }
                         break;
                     }
@@ -152,25 +166,25 @@ namespace tl
                         float* n = reinterpret_cast<float*>(p);
                         for (short i = 0; i < 3; ++i)
                         {
-                            n[i] = (n[i] - minValue) / range;
+                            n[i] = (n[i] - minValue[i]) / range[i];
                         }
                         break;
                     }
                     case image::PixelType::RGBA_F16:
                     {
                         half* n = reinterpret_cast<half*>(p);
-                        for (short i = 0; i < 3; ++i)
+                        for (short i = 0; i < 4; ++i)
                         {
-                            n[i] = (n[i] - minValue) / range;
+                            n[i] = (n[i] - minValue[i]) / range[i];
                         }
                         break;
                     }
                     case image::PixelType::RGBA_F32:
                     {
                         float* n = reinterpret_cast<float*>(p);
-                        for (short i = 0; i < 3; ++i)
+                        for (short i = 0; i < 4; ++i)
                         {
-                            n[i] = (n[i] - minValue) / range;
+                            n[i] = (n[i] - minValue[i]) / range[i];
                         }
                         break;
                     }
