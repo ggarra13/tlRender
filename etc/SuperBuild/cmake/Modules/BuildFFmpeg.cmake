@@ -264,6 +264,7 @@ if(TLRENDER_FFMPEG_MINIMAL)
         --enable-demuxer=aiff
         --enable-demuxer=asf
         --enable-demuxer=av1
+	--enable-demuxer=avi
         --enable-demuxer=dnxhd
         --enable-demuxer=dts
         --enable-demuxer=dtshd
@@ -311,6 +312,7 @@ if(TLRENDER_FFMPEG_MINIMAL)
         --enable-muxer=ac3
         --enable-muxer=aiff
         --enable-muxer=asf
+	--enable-muxer=avi
         --enable-muxer=dnxhd
         --enable-muxer=dts
         --enable-muxer=eac3
