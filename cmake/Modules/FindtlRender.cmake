@@ -33,7 +33,6 @@ find_package(OTIO REQUIRED)
 find_package(PNG REQUIRED)
 find_package(glfw3 REQUIRED)
 find_package(RtAudio)
-find_package(libjpeg-turbo)
 find_package(LibRaw)
 find_package(TIFF)
 
@@ -52,6 +51,9 @@ endif()
 if(TLRENDER_NDI)
     find_package(NDI)
 endif()
+if(TLRENDER_JPEG)
+    find_package(libjpeg-turbo)
+endif()
 
 find_path(tlRender_INCLUDE_DIR NAMES tlCore/Util.h PATH_SUFFIXES tlRender)
 set(tlRender_INCLUDE_DIRS
@@ -60,7 +62,6 @@ set(tlRender_INCLUDE_DIRS
     ${nlohmann_json_INCLUDE_DIRS}
     ${FREETYPE_INCLUDE_DIRS}
     ${OTIO_INCLUDE_DIRS}
-    ${libjpeg-turbo_INCLUDE_DIRS}
     ${glfw3_INCLUDE_DIRS})
 
 if(RtAudio_FOUND)
@@ -83,6 +84,9 @@ if(LibRaw_FOUND)
 endif()
 if(NDI_FOUND)
     list(APPEND tlRender_INCLUDE_DIRS ${NDI_INCLUDE_DIRS})
+endif()
+if(libjpeg-turbo_FOUND)
+    list(APPEND tlRender_INCLUDE_DIRS ${libjpeg-turbo_INCLUDE_DIRS})
 endif()
 
 if(CMAKE_BUILD_TYPE MATCHES "^Debug$")
@@ -125,7 +129,6 @@ set(tlRender_LIBRARIES
     ${FREETYPE_LIBRARIES}
     ${OTIO_LIBRARIES}
     ${RtAudio_LIBRARIES}
-    ${libjpeg-turbo_LIBRARIES}
     ${TIFF_LIBRARIES}
     ${PNG_LIBRARIES}
     ${OpenEXR_LIBRARIES}
