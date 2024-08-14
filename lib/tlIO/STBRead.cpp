@@ -166,6 +166,7 @@ namespace tl
                     {
                         if (_autoNormalize)
                         {
+#ifdef TLRENDER_EXR
                             math::Vector4f minimum, maximum;
                             io::normalizeImage(minimum, maximum, out.image, imageInfo,
                                                0, imageInfo.size.w-1,
@@ -173,6 +174,7 @@ namespace tl
                         
                             _info.tags["Autonormalize Minimum"] = serialize(minimum);
                             _info.tags["Autonormalize Maximum"] = serialize(maximum);
+#endif
                         }
                         
                         out.image->setTags(_info.tags);

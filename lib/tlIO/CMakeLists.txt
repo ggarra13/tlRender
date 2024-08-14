@@ -14,7 +14,6 @@ set(HEADERS
     System.h
     SystemInline.h)
 set(HEADERS_PRIVATE
-    Normalize.h
     SequenceIOReadPrivate.h)
 
 set(SOURCE
@@ -27,7 +26,6 @@ set(SOURCE
     DPX.cpp
     IO.cpp
     Init.cpp
-    Normalize.cpp
     PPM.cpp
     PPMRead.cpp
     PPMWrite.cpp
@@ -64,8 +62,9 @@ if(TLRENDER_PNG)
     list(APPEND LIBRARIES_PRIVATE PNG)
 endif()
 if(TLRENDER_EXR)
-    list(APPEND HEADERS_PRIVATE OpenEXR.h)
-    list(APPEND SOURCE OpenEXR.cpp OpenEXRRead.cpp OpenEXRWrite.cpp)
+    list(APPEND HEADERS_PRIVATE OpenEXR.h Normalize.h)
+    list(APPEND SOURCE Normalize.cpp OpenEXR.cpp OpenEXRRead.cpp
+	               OpenEXRWrite.cpp)
     list(APPEND LIBRARIES_PRIVATE OpenEXR::OpenEXR)
 endif()
 if(TLRENDER_FFMPEG)
