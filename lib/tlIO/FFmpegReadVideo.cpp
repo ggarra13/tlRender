@@ -240,6 +240,19 @@ namespace tl
                     _avOutputPixelFormat = _avInputPixelFormat;
                     _info.pixelType = image::PixelType::RGBA_U8;
                     break;
+                case AV_PIX_FMT_YUVJ420P:  // Deprecated format.
+                    if (options.yuvToRGBConversion)
+                    {
+                        _avOutputPixelFormat = AV_PIX_FMT_RGB24;
+                        _info.pixelType = image::PixelType::RGB_U8;
+                    }
+                    else
+                    {
+                        _fastYUV420PConversion = true;
+                        _avOutputPixelFormat = _avInputPixelFormat;
+                        _info.pixelType = image::PixelType::YUV_420P_U8;
+                    }
+                    break;
                 case AV_PIX_FMT_YUV420P:
                     if (options.yuvToRGBConversion)
                     {
@@ -376,6 +389,7 @@ namespace tl
                     }
                     else
                     {
+                        _fastYUV420PConversion = options.fastYUV420PConversion;
                         _avOutputPixelFormat = AV_PIX_FMT_YUV420P;
                         _info.pixelType = image::PixelType::YUV_420P_U8;
                     }
@@ -590,7 +604,8 @@ namespace tl
                     (AV_PIX_FMT_RGB24   == in ||
                      AV_PIX_FMT_GRAY8   == in ||
                      AV_PIX_FMT_RGBA    == in ||
-                     (AV_PIX_FMT_YUV420P == in &&
+                     ((AV_PIX_FMT_YUV420P == in ||
+                       AV_PIX_FMT_YUVJ420P == in) &&
                       fastYUV420PConversion));
             }
         }
@@ -608,6 +623,18 @@ namespace tl
                 if (!canCopy(_avInputPixelFormat, _avOutputPixelFormat,
                              _fastYUV420PConversion))
                 {
+                    std::string msg;
+                    std::stringstream s;
+                    const char* in_pix_fmt = av_get_pix_fmt_name(_avInputPixelFormat);
+                    const char* out_pix_fmt =
+                        av_get_pix_fmt_name(_avOutputPixelFormat);
+                    if (!in_pix_fmt)  in_pix_fmt = "Unknown";
+                    if (!out_pix_fmt) out_pix_fmt = "Unknown";
+                    s << "Using sws_scaler conversion from "
+                      << in_pix_fmt
+                      << " to "
+                      << out_pix_fmt;
+                    LOG_STATUS(s.str());
                     _avFrame2 = av_frame_alloc();
                     if (!_avFrame2)
                     {
@@ -930,6 +957,7 @@ namespace tl
                             w * 4);
                     }
                     break;
+                case AV_PIX_FMT_YUVJ420P:
                 case AV_PIX_FMT_YUV420P:
                 {
                     const std::size_t w2 = w / 2;
