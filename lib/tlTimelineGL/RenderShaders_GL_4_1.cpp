@@ -292,6 +292,8 @@ namespace tl
         }
 
         std::string displayFragmentSource(
+            const std::string& ocioICSDef,
+            const std::string& ocioICS,
             const std::string& ocioDef,
             const std::string& ocio,
             const std::string& lutDef,
@@ -300,8 +302,10 @@ namespace tl
         {
             std::vector<std::string> args;
             args.push_back(videoLevels);
+            args.push_back(ocioICSDef);
             args.push_back(ocioDef);
             args.push_back(lutDef);
+            args.push_back(ocioICS);
             switch (lutOrder)
             {
             case timeline::LUTOrder::PreColorConfig:
@@ -453,6 +457,8 @@ namespace tl
                 "\n"
                 "{2}\n"
                 "\n"
+                "{3}\n"
+                "\n"
                 "void main()\n"
                 "{\n"
                 "    vec2 t = fTexture;\n"
@@ -477,6 +483,9 @@ namespace tl
                 "        outColor.b = outColor.b * scale + offset;\n"
                 "    }\n"
                 "\n"
+                "    // Apply color tranform to linear space.\n"
+                "    {4}\n"
+                "\n"
                 "    // Apply color transformations.\n"
                 "    if (colorEnabled)\n"
                 "    {\n"
@@ -498,8 +507,8 @@ namespace tl
                 "    }\n"
                 "\n"
                 "    // Apply color management.\n"
-                "    {3}\n"
-                "    {4}\n"
+                "    {5}\n"
+                "    {6}\n"
                 "\n"
                 "    if (levelsEnabled)\n"
                 "    {\n"
@@ -548,7 +557,9 @@ namespace tl
                 arg(args[1]).
                 arg(args[2]).
                 arg(args[3]).
-                arg(args[4]);
+                arg(args[4]).
+                arg(args[5]).
+                arg(args[6]);
         }
 
         std::string differenceFragmentSource()

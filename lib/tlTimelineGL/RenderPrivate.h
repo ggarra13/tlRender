@@ -33,6 +33,8 @@ namespace tl
         std::string textureFragmentSource();
         std::string imageFragmentSource();
         std::string displayFragmentSource(
+            const std::string& ocioICSDef,
+            const std::string& ocioICS,
             const std::string& ocioDef,
             const std::string& ocio,
             const std::string& lutDef,
@@ -79,10 +81,11 @@ namespace tl
             OCIO::LegacyViewingPipelineRcPtr lvp;
             OCIO::ConstProcessorRcPtr processor;
             OCIO::ConstGPUProcessorRcPtr gpuProcessor;
+            OCIO::GpuShaderDescRcPtr icsDesc;
             OCIO::GpuShaderDescRcPtr shaderDesc;
             std::vector<OCIOTexture> textures;
-        };
-
+        }; 
+        
         struct OCIOLUTData
         {
             ~OCIOLUTData();
