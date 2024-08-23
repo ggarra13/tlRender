@@ -767,10 +767,7 @@ namespace tl
             p.ocioOptions = value;
 
 #if defined(TLRENDER_OCIO)
-            if (p.ocioOptions.enabled &&
-                !p.ocioOptions.input.empty() &&
-                !p.ocioOptions.display.empty() &&
-                !p.ocioOptions.view.empty())
+            if (p.ocioOptions.enabled)
             {
                 p.ocioData.reset(new OCIOData);
 
@@ -804,6 +801,11 @@ namespace tl
                     p.ocioData->processor = p.ocioData->config->getProcessor(
                         p.ocioData->config->getCurrentContext(),
                         srcCS, dstCS);
+                    if (!p.ocioData->processor)
+                    {
+                        p.ocioData.reset();
+                        throw std::runtime_error("Cannot get OCIO processor");
+                    }
 
                     p.ocioData->gpuProcessor =
                         p.ocioData->processor->getOptimizedGPUProcessor(
@@ -835,55 +837,59 @@ namespace tl
                         throw e;
                     }
                 }
-                p.ocioData->transform->setSrc(OCIO::ROLE_SCENE_LINEAR);
-                p.ocioData->transform->setDisplay(p.ocioOptions.display.c_str());
-                p.ocioData->transform->setView(p.ocioOptions.view.c_str());
+                if (!p.ocioOptions.display.empty() &&
+                    !p.ocioOptions.view.empty())
+                {
+                    p.ocioData->transform->setSrc(OCIO::ROLE_SCENE_LINEAR);
+                    p.ocioData->transform->setDisplay(p.ocioOptions.display.c_str());
+                    p.ocioData->transform->setView(p.ocioOptions.view.c_str());
 
-                p.ocioData->lvp = OCIO::LegacyViewingPipeline::Create();
-                if (!p.ocioData->lvp)
-                {
-                    p.ocioData.reset();
-                    throw std::runtime_error("Cannot create OCIO viewing pipeline");
-                }
-                p.ocioData->lvp->setDisplayViewTransform(p.ocioData->transform);
-                p.ocioData->lvp->setLooksOverrideEnabled(true);
-                p.ocioData->lvp->setLooksOverride(p.ocioOptions.look.c_str());
+                    p.ocioData->lvp = OCIO::LegacyViewingPipeline::Create();
+                    if (!p.ocioData->lvp)
+                    {
+                        p.ocioData.reset();
+                        throw std::runtime_error("Cannot create OCIO viewing pipeline");
+                    }
+                    p.ocioData->lvp->setDisplayViewTransform(p.ocioData->transform);
+                    p.ocioData->lvp->setLooksOverrideEnabled(true);
+                    p.ocioData->lvp->setLooksOverride(p.ocioOptions.look.c_str());
                 
-                p.ocioData->processor = p.ocioData->lvp->getProcessor(
-                    p.ocioData->config,
-                    p.ocioData->config->getCurrentContext());
-                if (!p.ocioData->processor)
-                {
-                    p.ocioData.reset();
-                    throw std::runtime_error("Cannot get OCIO processor");
-                }
-                p.ocioData->gpuProcessor =
-                    p.ocioData->processor->getOptimizedGPUProcessor(
-                        OCIO::OPTIMIZATION_DEFAULT);
-                if (!p.ocioData->gpuProcessor)
-                {
-                    p.ocioData.reset();
-                    throw std::runtime_error("Cannot get OCIO GPU processor");
-                }
-                p.ocioData->shaderDesc = OCIO::GpuShaderDesc::CreateShaderDesc();
-                if (!p.ocioData->shaderDesc)
-                {
-                    p.ocioData.reset();
-                    throw std::runtime_error("Cannot create OCIO shader description");
-                }
-                p.ocioData->shaderDesc->setLanguage(OCIO::GPU_LANGUAGE_GLSL_4_0);
-                p.ocioData->shaderDesc->setFunctionName("ocioDisplayFunc");
-                p.ocioData->shaderDesc->setResourcePrefix("ocio");
-                p.ocioData->gpuProcessor->extractGpuShaderInfo(p.ocioData->shaderDesc);
-                try
-                {
-                    addGPUTextures(p.ocioData->textures,
-                                   p.ocioData->shaderDesc);
-                }
-                catch(const std::exception& e)
-                {
-                    p.ocioData.reset();
-                    throw e;
+                    p.ocioData->processor = p.ocioData->lvp->getProcessor(
+                        p.ocioData->config,
+                        p.ocioData->config->getCurrentContext());
+                    if (!p.ocioData->processor)
+                    {
+                        p.ocioData.reset();
+                        throw std::runtime_error("Cannot get OCIO processor");
+                    }
+                    p.ocioData->gpuProcessor =
+                        p.ocioData->processor->getOptimizedGPUProcessor(
+                            OCIO::OPTIMIZATION_DEFAULT);
+                    if (!p.ocioData->gpuProcessor)
+                    {
+                        p.ocioData.reset();
+                        throw std::runtime_error("Cannot get OCIO GPU processor");
+                    }
+                    p.ocioData->shaderDesc = OCIO::GpuShaderDesc::CreateShaderDesc();
+                    if (!p.ocioData->shaderDesc)
+                    {
+                        p.ocioData.reset();
+                        throw std::runtime_error("Cannot create OCIO shader description");
+                    }
+                    p.ocioData->shaderDesc->setLanguage(OCIO::GPU_LANGUAGE_GLSL_4_0);
+                    p.ocioData->shaderDesc->setFunctionName("ocioDisplayFunc");
+                    p.ocioData->shaderDesc->setResourcePrefix("ocio");
+                    p.ocioData->gpuProcessor->extractGpuShaderInfo(p.ocioData->shaderDesc);
+                    try
+                    {
+                        addGPUTextures(p.ocioData->textures,
+                                       p.ocioData->shaderDesc);
+                    }
+                    catch(const std::exception& e)
+                    {
+                        p.ocioData.reset();
+                        throw e;
+                    }
                 }
             }
 #endif // TLRENDER_OCIO
