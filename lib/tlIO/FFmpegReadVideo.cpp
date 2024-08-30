@@ -473,7 +473,6 @@ namespace tl
                     _tags[i.first] = i.second;
                 }
                 _rotation = _getRotation(avVideoStream);
-                if (_rotation != 0.F)
                 {
                     std::stringstream ss;
                     ss << std::fixed;
