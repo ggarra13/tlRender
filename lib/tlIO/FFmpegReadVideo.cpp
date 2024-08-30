@@ -1013,9 +1013,16 @@ namespace tl
         float ReadVideo::_getRotation(const AVStream* st)
         {
             float out = 0.F;
- 
-            uint8_t* displaymatrix =
-                av_stream_get_side_data(st, AV_PKT_DATA_DISPLAYMATRIX, NULL);
+            
+            int32_t *displaymatrix = NULL;
+
+            const AVPacketSideData* psd = av_packet_side_data_get(
+                st->codecpar->coded_side_data, st->codecpar->nb_coded_side_data,
+                AV_PKT_DATA_DISPLAYMATRIX);
+            if (psd)
+            {
+                displaymatrix = reinterpret_cast<int32_t*>(psd->data);
+            }
             if (displaymatrix)
             {
                 out = av_display_rotation_get(
