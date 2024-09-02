@@ -20,7 +20,8 @@ namespace tl
             "Red",
             "Green",
             "Blue",
-            "Alpha");
+            "Alpha",
+            "Lumma");
         TLRENDER_ENUM_SERIALIZE_IMPL(Channels);
 
         math::Matrix4x4f brightness(const math::Vector3f& value)

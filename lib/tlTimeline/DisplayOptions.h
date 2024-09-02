@@ -22,6 +22,7 @@ namespace tl
             Green,
             Blue,
             Alpha,
+            Lumma,
 
             Count,
             First = Color

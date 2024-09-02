@@ -331,6 +331,7 @@ namespace tl
                 "const uint Channels_Green = 2;\n"
                 "const uint Channels_Blue  = 3;\n"
                 "const uint Channels_Alpha = 4;\n"
+                "const uint Channels_Lumma = 5;\n"
                 "\n"
                 "struct Levels\n"
                 "{\n"
@@ -552,6 +553,13 @@ namespace tl
                 "        outColor.r = outColor.a;\n"
                 "        outColor.g = outColor.a;\n"
                 "        outColor.b = outColor.a;\n"
+                "    }\n"
+                "    else if (Channels_Lumma == channels)\n"
+                "    {\n"
+                "        float t = (outColor.r + outColor.g + outColor.b) / 3.0;\n"
+                "        outColor.r = t;\n"
+                "        outColor.g = t;\n"
+                "        outColor.b = t;\n"
                 "    }\n"
                 "}\n").
                 arg(args[0]).
