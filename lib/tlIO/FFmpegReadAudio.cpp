@@ -72,6 +72,7 @@ namespace tl
                     if (options.audioTrack == _info.audioInfo.size())
                     {
                         _avStream = i;
+                        _info.currentTrack = _info.audioInfo.size();
                     }
 
                     std::string fileLanguage = "Default";

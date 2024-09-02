@@ -112,6 +112,7 @@ namespace tl
             size_t      channelCount = 0;
             DataType    dataType     = DataType::None;
             size_t      sampleRate   = 0;
+            unsigned    currentTrack = 0;
             unsigned    trackCount   = 1;
             std::vector<std::shared_ptr<Info>> audioInfo;
 
