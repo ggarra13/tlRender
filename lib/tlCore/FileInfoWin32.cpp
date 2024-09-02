@@ -2,6 +2,8 @@
 // Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
+#include <algorithm> // for std::sort
+
 #include <tlCore/FileInfoPrivate.h>
 
 #include <tlCore/String.h>
@@ -59,17 +61,36 @@ namespace tl
             HANDLE hFind = FindFirstFileW(string::toWide(glob).c_str(), &ffd);
             if (hFind != INVALID_HANDLE_VALUE)
             {
+                // Container to store file names
+                std::vector<std::wstring> fileNames;
+                
+                // Collect file names
                 do
                 {
-                    const std::string fileName = string::fromWide(ffd.cFileName);
-                    if (!listFilter(fileName, options))
+                    const std::wstring fileName(ffd.cFileName);
+                    // Skip current and parent directories
+                    if (fileName != L"." && fileName != L"..")
                     {
-                        listSequence(path, fileName, out, options);
+                        fileNames.push_back(fileName);
+                    }
+                } while (FindNextFileW(hFind, &ffd) != 0);
+
+                FindClose(hFind);
+
+                // Sort the file names alphabetically
+                std::sort(fileNames.begin(), fileNames.end());
+                
+                // Process the sorted file names
+                for (const auto& fileName : fileNames)
+                {
+                    const std::string fileNameStr = string::fromWide(fileName);
+                    if (!listFilter(fileNameStr, options))
+                    {
+                        listSequence(path, fileNameStr, out, options);
                     }
                 }
-                while (FindNextFileW(hFind, &ffd) != 0);
-                FindClose(hFind);
             }
         }
+
     }
 }
