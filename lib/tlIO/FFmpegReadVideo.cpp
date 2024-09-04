@@ -414,7 +414,15 @@ namespace tl
                     avVideoStream->avg_frame_rate.den != 0)
                     _avSpeed = avVideoStream->avg_frame_rate;
                 
+                if (_avSpeed.num == 1000)
+                {
+                    LOG_WARNING("Movie has variable frame rate.  "
+                                "This is not supported.");
+                    _avSpeed.num = 12;
+                }
+                
                 const double speed = av_q2d(_avSpeed);
+
 
                 std::size_t sequenceSize = 0;
                 if (avVideoStream->nb_frames > 0)
@@ -426,14 +434,14 @@ namespace tl
                     sequenceSize = av_rescale_q(
                         avVideoStream->duration,
                         avVideoStream->time_base,
-                        swap(avVideoStream->r_frame_rate));
+                        swap(_avSpeed));
                 }
                 else if (_avFormatContext->duration != AV_NOPTS_VALUE)
                 {
                     sequenceSize = av_rescale_q(
                         _avFormatContext->duration,
                         av_get_time_base_q(),
-                        swap(avVideoStream->r_frame_rate));
+                        swap(_avSpeed));
                 }
         
                 image::Tags tags;
