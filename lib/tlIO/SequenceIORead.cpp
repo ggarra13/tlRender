@@ -215,7 +215,7 @@ namespace tl
                     bool readSequence = true;
                     if (_cache)
                     {
-                        const std::string cacheKey = getCacheKey(
+                        const std::string cacheKey = getVideoCacheKey(
                             _path,
                             request->time,
                             _options,
@@ -297,7 +297,7 @@ namespace tl
                         
                         if (_cache)
                         {
-                            const std::string cacheKey = getCacheKey(
+                            const std::string cacheKey = getVideoCacheKey(
                                 _path,
                                 (*requestIt)->time,
                                 _options,
