@@ -68,7 +68,8 @@ namespace tl
             p.memoryRead = timeline::getMemoryRead(clip->media_reference());
             p.thumbnailGenerator = thumbnailGenerator;
 
-            const auto i = itemData->info.find(path.get());
+            const std::string infoCacheKey = io::getInfoCacheKey(path, _data->options.ioOptions);
+            const auto i = itemData->info.find(infoCacheKey);
             if (i != itemData->info.end())
             {
                 p.ioInfo = i->second;
@@ -145,12 +146,12 @@ namespace tl
             TLRENDER_P();
 
             // Check if the I/O information is finished.
-            const std::string fileName = p.path.get();
             if (p.infoRequest.future.valid() &&
                 p.infoRequest.future.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
             {
                 p.ioInfo = std::make_shared<io::Info>(p.infoRequest.future.get());
-                _data->info[fileName] = p.ioInfo;
+                const std::string infoCacheKey = io::getInfoCacheKey(p.path, _data->options.ioOptions);
+                _data->info[infoCacheKey] = p.ioInfo;
                 _updates |= ui::Update::Size;
                 _updates |= ui::Update::Draw;
             }
@@ -163,7 +164,7 @@ namespace tl
                     i->second.future.wait_for(std::chrono::seconds(0)) == std::future_status::ready)
                 {
                     const auto mesh = i->second.future.get();
-                    const std::string cacheKey = io::getCacheKey(
+                    const std::string cacheKey = io::getAudioCacheKey(
                         p.path,
                         i->second.timeRange,
                         _data->options.ioOptions,
@@ -223,11 +224,12 @@ namespace tl
 
             const math::Box2i g = _getInsideGeometry();
             const int m = _getMargin();
+            const int lineHeight = _getLineHeight();
 
             const math::Box2i box(
                 g.min.x,
                 g.min.y +
-                (_displayOptions.clipInfo ? (_getLineHeight() + m * 2) : 0),
+                (_displayOptions.clipInfo ? (lineHeight + m * 2) : 0),
                 g.w(),
                 _displayOptions.waveformHeight);
             event.render->drawRect(
@@ -247,7 +249,8 @@ namespace tl
                 {
                     p.infoRequest = p.thumbnailGenerator->getInfo(
                         p.path,
-                        p.memoryRead);
+                        p.memoryRead,
+                        _data->options.ioOptions);
                 }
             }
 
@@ -260,7 +263,7 @@ namespace tl
                         g.min.x +
                         x,
                         g.min.y +
-                        (_displayOptions.clipInfo ? (_getLineHeight() + m * 2) : 0),
+                        (_displayOptions.clipInfo ? (lineHeight + m * 2) : 0),
                         _displayOptions.waveformWidth,
                         _displayOptions.waveformHeight);
                     if (box.intersects(clipRect))
@@ -283,7 +286,7 @@ namespace tl
                             _trimmedRange,
                             p.ioInfo->audio.sampleRate);
 
-                        const std::string cacheKey = io::getCacheKey(
+                        const std::string cacheKey = io::getAudioCacheKey(
                             p.path,
                             mediaRange,
                             _data->options.ioOptions,
