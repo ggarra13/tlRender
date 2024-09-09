@@ -17,7 +17,7 @@ namespace tl
             const image::Info& info, const int minX,
             const int maxX, const int minY, const int maxY);
         
-        std::string serialize(const math::Vector4f& value)
+        inline std::string serialize(const math::Vector4f& value)
         {
             std::stringstream ss;
             ss << value;
