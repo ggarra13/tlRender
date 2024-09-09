@@ -315,10 +315,10 @@ namespace tl
                     const size_t channelByteCount = image::getBitDepth(imageInfo.pixelType) / 8;
                     const size_t cb = channels * channelByteCount;
                     const size_t scb = imageInfo.size.w * channels * channelByteCount;
-                    const int minY = std::min(_dataWindow.min.y, _displayWindow.min.y);
-                    const int minX = std::min(_dataWindow.min.x, _displayWindow.min.x);
-                    const int maxY = std::max(_dataWindow.max.y, _displayWindow.max.y);
-                    const int maxX = std::max(_dataWindow.max.x, _displayWindow.max.x);
+                    int minY = std::min(_dataWindow.min.y, _displayWindow.min.y);
+                    int minX = std::min(_dataWindow.min.x, _displayWindow.min.x);
+                    int maxY = std::max(_dataWindow.max.y, _displayWindow.max.y);
+                    int maxX = std::max(_dataWindow.max.x, _displayWindow.max.x);
 
                     if (_fast)
                     {
@@ -389,6 +389,11 @@ namespace tl
                                 }
                                 std::memset(p, 0, end - p);
                             }
+
+                            minY = _displayWindow.min.y;
+                            maxY = _displayWindow.max.y;
+                            minX = _intersectedWindow.min.x;
+                            maxX = _intersectedWindow.max.x;
                         }
                         else
                         {
