@@ -2,26 +2,23 @@
 // Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
-#include <tlIO/OpenEXRPrivate.h>
+#include <tlIO/Normalize.h>
 
-#include <tlCore/FileIO.h>
-#include <tlCore/Locale.h>
-#include <tlCore/LogSystem.h>
-#include <tlCore/StringFormat.h>
+#include <half.h>
 
-#include <ImfInputPart.h>
-#include <ImfChannelList.h>
-#include <ImfRgbaFile.h>
-
-#include <array>
-#include <cstring>
 #include <sstream>
 
 namespace tl
 {
     namespace io
     {
-
+        std::string serialize(const math::Vector4f& value)
+        {
+            std::stringstream ss;
+            ss << value;
+            return ss.str();
+        }
+        
         void normalizeImage(
             math::Vector4f& minValue,
             math::Vector4f& maxValue,
