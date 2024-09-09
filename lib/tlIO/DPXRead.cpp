@@ -2,6 +2,7 @@
 // Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
+#include <tlIO/Normalize.h>
 #include <tlIO/DPX.h>
 
 #include <tlCore/Locale.h>
@@ -21,6 +22,13 @@ namespace tl
             const std::weak_ptr<log::System>& logSystem)
         {
             ISequenceRead::_init(path, memory, options, cache, logSystem);
+            
+            auto option = options.find("AutoNormalize");
+            if (option != options.end())
+            {
+                _autoNormalize =
+                    static_cast<bool>(std::atoi(option->second.c_str()));
+            }
         }
 
         Read::Read()
@@ -103,8 +111,19 @@ namespace tl
             read(io, info, transfer);
 
             out.image = image::Image::create(info.video[0]);
-            out.image->setTags(info.tags);
             io->read(out.image->getData(), image::getDataByteCount(info.video[0]));
+            
+            if (_autoNormalize)
+            {
+                math::Vector4f minimum, maximum;
+                io::normalizeImage(minimum, maximum, out.image, info.video[0],
+                                   0, info.video[0].size.w,
+                                   0, info.video[0].size.h);
+                info.tags["Autonormalize Minimum"] = io::serialize(minimum);
+                info.tags["Autonormalize Maximum"] = io::serialize(maximum);
+            }
+            
+            out.image->setTags(info.tags);
             return out;
         }
     }

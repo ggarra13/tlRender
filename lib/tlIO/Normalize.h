@@ -16,5 +16,12 @@ namespace tl
             const std::shared_ptr<image::Image> in,
             const image::Info& info, const int minX,
             const int maxX, const int minY, const int maxY);
+        
+        std::string serialize(const math::Vector4f& value)
+        {
+            std::stringstream ss;
+            ss << value;
+            return ss.str();
+        }
     }
 }

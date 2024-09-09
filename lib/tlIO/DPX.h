@@ -335,6 +335,8 @@ namespace tl
                 const file::MemoryRead*,
                 const otime::RationalTime&,
                 const io::Options&) override;
+
+            bool _autoNormalize = false;
         };
 
         //! DPX writer.

@@ -20,15 +20,6 @@ namespace tl
     {
         namespace
         {
-            std::string serialize(const math::Vector4f& value)
-            {
-                std::stringstream ss;
-                ss << value;
-                return ss.str();
-            }
-        }
-        namespace
-        {
             
             class File
             {
@@ -172,8 +163,8 @@ namespace tl
                                                0, imageInfo.size.w-1,
                                                0, imageInfo.size.h-1);
                         
-                            _info.tags["Autonormalize Minimum"] = serialize(minimum);
-                            _info.tags["Autonormalize Maximum"] = serialize(maximum);
+                            _info.tags["Autonormalize Minimum"] = io::serialize(minimum);
+                            _info.tags["Autonormalize Maximum"] = io::serialize(maximum);
 #endif
                         }
                         

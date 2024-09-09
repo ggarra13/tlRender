@@ -32,13 +32,6 @@ namespace tl
                     value.max.x << " " << value.max.y;
                 return ss.str();
             }
-            
-            std::string serialize(const math::Vector4f& value)
-            {
-                std::stringstream ss;
-                ss << value;
-                return ss.str();
-            }
         }
         
         struct IStream::Private
@@ -435,8 +428,8 @@ namespace tl
                         math::Vector4f minimum, maximum;
                         io::normalizeImage(minimum, maximum, out.image, imageInfo, minX, maxX, minY, maxY);
                         
-                        _info.tags["Autonormalize Minimum"] = serialize(minimum);
-                        _info.tags["Autonormalize Maximum"] = serialize(maximum);
+                        _info.tags["Autonormalize Minimum"] = io::serialize(minimum);
+                        _info.tags["Autonormalize Maximum"] = io::serialize(maximum);
                     }
 
                     out.image->setTags(_info.tags);
