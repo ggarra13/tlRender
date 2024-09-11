@@ -332,8 +332,18 @@ namespace tl
                 case AV_PIX_FMT_YUV444P10LE:
                 case AV_PIX_FMT_YUV444P12BE:
                 case AV_PIX_FMT_YUV444P12LE:
-                    _avOutputPixelFormat = AV_PIX_FMT_RGB48;
-                    _info.pixelType = image::PixelType::RGB_U16;
+                    if (options.yuvToRGBConversion)
+                    {
+                        _avOutputPixelFormat = AV_PIX_FMT_RGB48;
+                        _info.pixelType = image::PixelType::RGB_U16;
+                    }
+                    else
+                    {
+                        //! \todo Use the _info.layout.endian field instead of
+                        //! converting endianness.
+                        _avOutputPixelFormat = AV_PIX_FMT_YUV444P16LE;
+                        _info.pixelType = image::PixelType::YUV_444P_U16;
+                    }
                     break;
                 case AV_PIX_FMT_YUV444P16BE:
                 case AV_PIX_FMT_YUV444P16LE:
