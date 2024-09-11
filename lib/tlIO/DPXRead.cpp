@@ -88,6 +88,9 @@ namespace tl
                     speed = std::stof(i->second);
                 }
             }
+            // Film/TV Rate can be corrupt.  Sanity check here.
+            if (speed <= 0.F)
+                speed = _defaultSpeed;
             out.videoTime = otime::TimeRange::range_from_start_end_time_inclusive(
                 otime::RationalTime(_startFrame, speed),
                 otime::RationalTime(_endFrame, speed));
