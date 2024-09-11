@@ -42,7 +42,7 @@ namespace tl
         {
             otime::RationalTime startTime = time::invalidTime;
             bool yuvToRGBConversion = false;
-            bool fastYUV420PConversion = false;
+            bool fastYUV420PConversion = true;
             audio::Info audioConvertInfo;
             int    audioTrack = -1;
             size_t threadCount = ffmpeg::threadCount;
@@ -105,7 +105,7 @@ namespace tl
             AVFrame* _avFrame2 = nullptr;
             AVPixelFormat _avInputPixelFormat = AV_PIX_FMT_NONE;
             AVPixelFormat _avOutputPixelFormat = AV_PIX_FMT_NONE;
-            bool          _fastYUV420PConversion = false;
+            bool          _fastYUV420PConversion = true;
             SwsContext* _swsContext = nullptr;
             std::list<std::shared_ptr<image::Image> > _buffer;
             bool _eof = false;
