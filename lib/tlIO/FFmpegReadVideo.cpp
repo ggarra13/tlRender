@@ -652,6 +652,10 @@ namespace tl
                       << " to "
                       << out_pix_fmt;
                     LOG_STATUS(s.str());
+                    if (!_fastYUV420PConversion &&
+                        _avInputPixelFormat == _avOutputPixelFormat)
+                        LOG_STATUS("due to Setttings->Performance/FFmpeg Color "
+                                   "Accuracy being on.");
                     _avFrame2 = av_frame_alloc();
                     if (!_avFrame2)
                     {
