@@ -5,6 +5,7 @@
 #include <tlCore/Time.h>
 
 #include <tlCore/Error.h>
+#include <tlCore/Locale.h>
 #include <tlCore/Math.h>
 #include <tlCore/String.h>
 
@@ -261,10 +262,8 @@ namespace opentime
             {
                 throw tl::error::ParseError();
             }
-            std::string savedLocale = std::setlocale(LC_NUMERIC, NULL);
-            std::setlocale(LC_NUMERIC, "C");
+            tl::locale::SetAndRestore saved(LC_NUMERIC, "C");
             out = RationalTime(std::stof(split[0]), std::stof(split[1]));
-            std::setlocale(LC_NUMERIC, savedLocale.c_str());
             return is;
         }
 
