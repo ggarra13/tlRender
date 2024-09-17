@@ -59,14 +59,16 @@ namespace tl
             return AVRational({ value.den, value.num });
         }
 
-        void toHDRData(AVFrameSideData** sideData, int size, image::HDRData& hdr)
+        bool toHDRData(AVFrameSideData** sideData, int size, image::HDRData& hdr)
         {
+            bool out = false;
             for (int i = 0; i < size; ++i)
             {
                 switch (sideData[i]->type)
                 {
                 case AV_FRAME_DATA_MASTERING_DISPLAY_METADATA:
                 {
+                    out = true;
                     auto data = reinterpret_cast<AVMasteringDisplayMetadata*>(sideData[i]->data);
                     hdr.displayMasteringLuminance = math::FloatRange(
                         data->min_luminance.num / data->min_luminance.den,
@@ -75,6 +77,7 @@ namespace tl
                 }
                 case AV_FRAME_DATA_CONTENT_LIGHT_LEVEL:
                 {
+                    out = true;
                     auto data = reinterpret_cast<AVContentLightMetadata*>(sideData[i]->data);
                     hdr.maxCLL = data->MaxCLL;
                     hdr.maxFALL = data->MaxFALL;
@@ -82,12 +85,14 @@ namespace tl
                 }
                 case AV_FRAME_DATA_DYNAMIC_HDR_PLUS:
                 {
+                    out = true;
                     auto data = reinterpret_cast<AVDynamicHDRPlus*>(sideData[i]->data);
                     break;
                 }
                 default: break;
                 }
             }
+            return out;
         }
 
         audio::DataType toAudioType(AVSampleFormat value)

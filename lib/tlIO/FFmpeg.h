@@ -73,7 +73,7 @@ namespace tl
         AVRational swap(AVRational);
 
         //! Convert to HDR data.
-        void toHDRData(AVFrameSideData**, int size, image::HDRData&);
+        bool toHDRData(AVFrameSideData**, int size, image::HDRData&);
 
         //! Convert from FFmpeg.
         audio::DataType toAudioType(AVSampleFormat);

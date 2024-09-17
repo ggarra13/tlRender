@@ -924,8 +924,10 @@ namespace tl
                         tags[tag->key] = tag->value;
                     }
                     image::HDRData hdrData;
-                    toHDRData(_avFrame->side_data, _avFrame->nb_side_data, hdrData);
-                    tags["hdr"] = nlohmann::json(hdrData).dump();
+                    bool hasHDR = toHDRData(_avFrame->side_data,
+                                            _avFrame->nb_side_data, hdrData);
+                    if (hasHDR)
+                        tags["hdr"] = nlohmann::json(hdrData).dump();
                     image->setTags(tags);
 
                     _copy(image);
