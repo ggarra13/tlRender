@@ -276,6 +276,8 @@ namespace tl
                 const std::string& s = string::toLower(c);
                 if (s == "reserved")
                     out = AVCOL_TRC_RESERVED;
+                else if (s == "bt709" || s == "bt1361")
+                    out = AVCOL_TRC_BT709;
                 else if (s == "unspecified")
                     out = AVCOL_TRC_UNSPECIFIED;
                 else if (s == "gamma22")
@@ -312,9 +314,13 @@ namespace tl
 
             AVColorSpace parseColorSpace(const std::string& c)
             {
-                AVColorSpace out = AVCOL_SPC_RGB;
+                AVColorSpace out = AVCOL_SPC_BT709;
                 const std::string& s = string::toLower(c);
-                if (s == "bt709")
+                if (s == "rgb" || s == "bgr")
+                {
+                    out = AVCOL_SPC_RGB;
+                }
+                else if (s == "bt709")
                 {
                     out = AVCOL_SPC_BT709;
                 }
@@ -322,18 +328,33 @@ namespace tl
                 {
                     out = AVCOL_SPC_FCC;
                 }
+                else if (s == "bt601" || s == "bt470")
+                {
+                    out = AVCOL_SPC_BT470BG;
+                }
+                else if (s == "smpte170m")
+                {
+                    out = AVCOL_SPC_SMPTE170M;
+                }
                 else if (s == "smpte240m")
                 {
                     out = AVCOL_SPC_SMPTE240M;
                 }
-                else if (s == "bt601" || s == "bt470" ||
-                         s == "smpte170m")
+                else if (s == "ycgco" || s == "ycocg")
                 {
-                    out = AVCOL_SPC_BT470BG;
+                    out = AVCOL_SPC_YCGCO;
                 }
                 else if (s == "bt2020")
                 {
                     out = AVCOL_SPC_BT2020_NCL;
+                }
+                else if (s == "smpte2085")
+                {
+                    out = AVCOL_SPC_SMPTE2085;
+                }
+                else if (s == "ictcp" || s == "bt2100")
+                {
+                    out = AVCOL_SPC_SMPTE2085;
                 }
                 else if (s == "unspecified")
                 {
@@ -1110,10 +1131,10 @@ namespace tl
                     p.avCodecContext->color_range = AVCOL_RANGE_JPEG;
                 }
                 
+                std::string value;
                 option = options.find("FFmpeg/ColorRange");
                 if (option != options.end())
                 {
-                    std::string value;
                     std::stringstream ss(option->second);
                     ss >> value;
                     LOG_STATUS(
@@ -1126,20 +1147,20 @@ namespace tl
                 option = options.find("FFmpeg/ColorSpace");
                 if (option != options.end())
                 {
-                    std::string value;
                     std::stringstream ss(option->second);
                     ss >> value;
                     LOG_STATUS(
                         string::Format("Parsing color space {0}").arg(value));
                     p.avCodecContext->colorspace = parseColorSpace(value);
                 }
+                value = av_color_space_name(p.avCodecContext->colorspace);
+                LOG_STATUS(string::Format("Color Space is {0}").arg(value));
 
                 // Equivalent to -color_primaries bt709
                 p.avCodecContext->color_primaries = AVCOL_PRI_BT709;
                 option = options.find("FFmpeg/ColorPrimaries");
                 if (option != options.end())
                 {
-                    std::string value;
                     std::stringstream ss(option->second);
                     ss >> value;
                     LOG_STATUS(
@@ -1148,6 +1169,9 @@ namespace tl
                     p.avCodecContext->color_primaries =
                         parseColorPrimaries(value);
                 }
+                
+                value = av_color_primaries_name(p.avCodecContext->color_primaries);
+                LOG_STATUS(string::Format("Color Primaries is {0}").arg(value));
 
                 // Equivalent to -color_trc iec61966-2-1 (ie. sRGB)
                 if (!hardwareEncode)
@@ -1157,13 +1181,14 @@ namespace tl
                 option = options.find("FFmpeg/ColorTRC");
                 if (option != options.end())
                 {
-                    std::string value;
                     std::stringstream ss(option->second);
                     ss >> value;
                     LOG_STATUS(
                         string::Format("Parsing color trc {0}").arg(value));
                     p.avCodecContext->color_trc = parseColorTRC(value);
                 }
+                value = av_color_transfer_name(p.avCodecContext->color_trc);
+                LOG_STATUS(string::Format("Color TRC is {0}").arg(value));
                 
                 if (p.avFormatContext->oformat->flags & AVFMT_GLOBALHEADER)
                 {
