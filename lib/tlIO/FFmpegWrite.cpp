@@ -1141,6 +1141,11 @@ namespace tl
                         string::Format("Parsing color range {0}").arg(value));
                     p.avCodecContext->color_range = parseColorRange(value);
                 }
+                if (p.avCodecContext->color_range = AVCOL_RANGE_MPEG)
+                    value = "TV (Legal Range)";
+                else
+                    value = "PC (Full Range)";
+                LOG_STATUS(string::Format("Color Range is {0}").arg(value));
 
                 // Equivalent to -colorspace bt709
                 p.avCodecContext->colorspace = AVCOL_SPC_BT709;
