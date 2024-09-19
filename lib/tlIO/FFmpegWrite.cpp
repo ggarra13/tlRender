@@ -1141,7 +1141,7 @@ namespace tl
                         string::Format("Parsing color range {0}").arg(value));
                     p.avCodecContext->color_range = parseColorRange(value);
                 }
-                if (p.avCodecContext->color_range = AVCOL_RANGE_MPEG)
+                if (p.avCodecContext->color_range == AVCOL_RANGE_MPEG)
                     value = "TV (Legal Range)";
                 else
                     value = "PC (Full Range)";
