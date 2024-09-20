@@ -231,7 +231,7 @@ namespace tl
             AVColorRange parseColorRange(const std::string& c)
             {
                 AVColorRange out = AVCOL_RANGE_UNSPECIFIED;
-                range = c;
+                std::string range = c;
                 std::size_t pos = c.find(' ');
                 if (pos != std::string::npos)
                 {
