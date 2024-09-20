@@ -95,7 +95,7 @@ namespace tl
             {
                 for (unsigned int i = 0; i < _avFormatContext->nb_streams; ++i)
                 {
-                    if (AVMEDIA_TYPE_VIDEO == _avFormatContext->streams[i]->codecpar->codec_type)
+                    if (AVMEDIA_TYPE_VIDEO == _avFormatContext->streams[i]->codecpar->codec_type && !(AV_DISPOSITION_ATTACHED_PIC & _avFormatContext->streams[i]->disposition || AV_DISPOSITION_STILL_IMAGE & _avFormatContext->streams[i]->disposition))
                     {
                         _avStream = i;
                         break;
