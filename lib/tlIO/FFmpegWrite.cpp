@@ -237,7 +237,7 @@ namespace tl
                 {
                     range = c.substr(0, pos-1);
                 }
-                const std::string& s = string::toLower(range));
+                const std::string& s = string::toLower(range);
                 if (s == "mpeg" || s == "tv")
                     out = AVCOL_RANGE_MPEG;
                 else if (s == "jpeg" || s == "pc")
