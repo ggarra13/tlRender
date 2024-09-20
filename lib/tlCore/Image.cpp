@@ -114,7 +114,7 @@ namespace tl
             const std::array<math::Vector4f, static_cast<size_t>(YUVCoefficients::Count)> data =
             {
                 math::Vector4f(1.5748, 0.468124273, 0.187324273, 1.8556),
-                math::Vector4f(1.4746, 0.571353127, 0.164553127, 1.8814)
+                math::Vector4f(1.4746, 0.6780, 0.0593, 1.8814)
             };
             return data[static_cast<size_t>(value)];
         }
