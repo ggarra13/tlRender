@@ -231,7 +231,13 @@ namespace tl
             AVColorRange parseColorRange(const std::string& c)
             {
                 AVColorRange out = AVCOL_RANGE_UNSPECIFIED;
-                const std::string& s = string::toLower(c);
+                range = c;
+                std::size_t pos = c.find(' ');
+                if (pos != std::string::npos)
+                {
+                    range = c.substr(0, pos-1);
+                }
+                const std::string& s = string::toLower(range));
                 if (s == "mpeg" || s == "tv")
                     out = AVCOL_RANGE_MPEG;
                 else if (s == "jpeg" || s == "pc")
