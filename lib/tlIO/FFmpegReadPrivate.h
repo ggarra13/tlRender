@@ -91,6 +91,7 @@ namespace tl
             image::Tags _tags;
             float _rotation = 0.F;
             std::weak_ptr<log::System> _logSystem;
+            std::shared_ptr<image::Image> _singleImage;
             
             //! FFmpeg variables
             AVFormatContext* _avFormatContext = nullptr;
@@ -99,6 +100,7 @@ namespace tl
             AVIOContext* _avIOContext = nullptr;
             AVRational _avSpeed = { 24, 1 };
             int _avStream = -1;
+            int _avAudioStream = -1;
             std::map<int, AVCodecParameters*> _avCodecParameters;
             std::map<int, AVCodecContext*> _avCodecContext;
             AVFrame* _avFrame = nullptr;

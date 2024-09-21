@@ -79,11 +79,14 @@ namespace tl
             {
                 throw std::runtime_error(string::Format("{0}: {1}").arg(fileName).arg(getErrorLabel(r)));
             }
-            
+
+            bool useAudioOnly = false;
             for (unsigned int i = 0; i < _avFormatContext->nb_streams; ++i)
             {
-                //av_dump_format(_avFormatContext, 0, fileName.c_str(), 0);
-
+                if (AVMEDIA_TYPE_VIDEO == _avFormatContext->streams[i]->codecpar->codec_type && (AV_DISPOSITION_ATTACHED_PIC & _avFormatContext->streams[i]->disposition || AV_DISPOSITION_STILL_IMAGE & _avFormatContext->streams[i]->disposition))
+                {
+                    useAudioOnly = true;
+                }
                 if (AVMEDIA_TYPE_VIDEO == _avFormatContext->streams[i]->codecpar->codec_type &&
                     AV_DISPOSITION_DEFAULT == _avFormatContext->streams[i]->disposition)
                 {
@@ -93,19 +96,31 @@ namespace tl
             }
             if (-1 == _avStream)
             {
+                if (useAudioOnly)
+                {
+                    for (unsigned int i = 0; i < _avFormatContext->nb_streams; ++i)
+                    {
+                        if (AVMEDIA_TYPE_AUDIO == _avFormatContext->streams[i]->codecpar->codec_type)
+                        {
+                            _avAudioStream = i;
+                            break;
+                        }
+                    }
+                }
                 for (unsigned int i = 0; i < _avFormatContext->nb_streams; ++i)
                 {
-                    if (AVMEDIA_TYPE_VIDEO == _avFormatContext->streams[i]->codecpar->codec_type && !(AV_DISPOSITION_ATTACHED_PIC & _avFormatContext->streams[i]->disposition || AV_DISPOSITION_STILL_IMAGE & _avFormatContext->streams[i]->disposition))
+                    
+                    if (AVMEDIA_TYPE_VIDEO == _avFormatContext->streams[i]->codecpar->codec_type)
                     {
                         _avStream = i;
                         break;
-                    }
+                    }   
                 }
             }
             std::string timecode = getTimecodeFromDataStream(_avFormatContext);
             if (_avStream != -1)
             {
-                //av_dump_format(_avFormatContext, _avStream, fileName.c_str(), 0);
+                // av_dump_format(_avFormatContext, _avStream, fileName.c_str(), 0);
 
                 auto avVideoStream = _avFormatContext->streams[_avStream];
                 auto avVideoCodecParameters = avVideoStream->codecpar;
@@ -418,74 +433,140 @@ namespace tl
                 default: break;
                 }
 
-                _avSpeed = avVideoStream->r_frame_rate;
-                // Use avg_frame_rate if set
-                if (avVideoStream->avg_frame_rate.num != 0 &&
-                    avVideoStream->avg_frame_rate.den != 0)
-                    _avSpeed = avVideoStream->avg_frame_rate;
-                
-                if (_avSpeed.num == 1000)
-                {
-                    LOG_WARNING("Movie has variable frame rate.  "
-                                "This is not supported.");
-                    _avSpeed.num = 12;
-                }
-                
-                const double speed = av_q2d(_avSpeed);
 
-
-                std::size_t sequenceSize = 0;
-                if (avVideoStream->nb_frames > 0)
-                {
-                    sequenceSize = avVideoStream->nb_frames;
-                }
-                else if (avVideoStream->duration != AV_NOPTS_VALUE)
-                {
-                    sequenceSize = av_rescale_q(
-                        avVideoStream->duration,
-                        avVideoStream->time_base,
-                        swap(_avSpeed));
-                }
-                else if (_avFormatContext->duration != AV_NOPTS_VALUE)
-                {
-                    sequenceSize = av_rescale_q(
-                        _avFormatContext->duration,
-                        av_get_time_base_q(),
-                        swap(_avSpeed));
-                }
-        
                 image::Tags tags;
-                while ((tag = av_dict_get(_avFormatContext->metadata, "", tag, AV_DICT_IGNORE_SUFFIX)))
+                std::size_t sequenceSize = 0;
+                double speed = 24;
+                
+                if (useAudioOnly)
                 {
-                    const std::string key(tag->key);
-                    const std::string value(tag->value);
-                    tags[key] = value;
-                    if (string::compare(
-                        key,
-                        "timecode",
-                        string::Compare::CaseInsensitive))
+                    auto avAudioStream =
+                        _avFormatContext->streams[_avAudioStream];
+                    auto avAudioCodecParameters = avAudioStream->codecpar;
+                    auto avAudioCodec = avcodec_find_decoder(avAudioCodecParameters->codec_id);
+                    if (!avAudioCodec)
                     {
-                        timecode = value;
+                        throw std::runtime_error(string::Format("{0}: No audio codec found").arg(fileName));
                     }
+                    
+                    const size_t sampleRate = avAudioCodecParameters->sample_rate;
+                    int64_t sampleCount = 0;
+                    if (avAudioStream->duration != AV_NOPTS_VALUE)
+                    {
+                        AVRational r;
+                        r.num = 1;
+                        r.den = sampleRate;
+                        sampleCount = av_rescale_q(
+                            avAudioStream->duration,
+                            avAudioStream->time_base,
+                            r);
+                    }
+                    else if (_avFormatContext->duration != AV_NOPTS_VALUE)
+                    {
+                        AVRational r;
+                        r.num = 1;
+                        r.den = sampleRate;
+                        sampleCount = av_rescale_q(
+                            _avFormatContext->duration,
+                            av_get_time_base_q(),
+                            r);
+                    }
+                    
+                    otime::RationalTime timeReference = time::invalidTime;
+                    AVDictionaryEntry* tag = nullptr;
+                    while ((tag = av_dict_get(_avFormatContext->metadata, "", tag, AV_DICT_IGNORE_SUFFIX)))
+                    {
+                        const std::string key(tag->key);
+                        const std::string value(tag->value);
+                        tags[key] = value;
+                        if (string::compare(
+                                key,
+                                "time_reference",
+                                string::Compare::CaseInsensitive))
+                        {
+                            timeReference = otime::RationalTime(std::atoi(value.c_str()), sampleRate);
+                        }
+                    }
+                
+                    otime::RationalTime startTime(0.0, sampleRate);
+                    if (!timeReference.is_invalid_time())
+                    {
+                        startTime = timeReference;
+                    }
+                    _timeRange = otime::TimeRange(
+                        startTime.rescaled_to(60.0),
+                        otime::RationalTime(sampleCount, sampleRate)
+                            .rescaled_to(60.0));
                 }
-
-                otime::RationalTime startTime(0.0, speed);
-                if (!timecode.empty())
+                else
                 {
-                    otime::ErrorStatus errorStatus;
-                    const otime::RationalTime time = otime::RationalTime::from_timecode(
-                        timecode,
-                        speed,
-                        &errorStatus);
-                    if (!otime::is_error(errorStatus))
+                    _avSpeed = avVideoStream->r_frame_rate;
+                    // Use avg_frame_rate if set
+                    if (avVideoStream->avg_frame_rate.num != 0 &&
+                        avVideoStream->avg_frame_rate.den != 0)
+                        _avSpeed = avVideoStream->avg_frame_rate;
+                    
+                    if (_avSpeed.num == 1000)
                     {
-                        startTime = time.floor();
+                        LOG_WARNING("Movie has variable frame rate.  "
+                                    "This is not supported.");
+                        _avSpeed.num = 12;
                     }
-                }
-                _timeRange = otime::TimeRange(
-                    startTime,
-                    otime::RationalTime(sequenceSize, speed));
+                
+                    speed = av_q2d(_avSpeed);
+                
+                    if (avVideoStream->nb_frames > 0)
+                    {
+                        sequenceSize = avVideoStream->nb_frames;
+                    }
+                    else if (avVideoStream->duration != AV_NOPTS_VALUE)
+                    {
+                        sequenceSize = av_rescale_q(
+                            avVideoStream->duration,
+                            avVideoStream->time_base,
+                            swap(_avSpeed));
+                    }
+                    else if (_avFormatContext->duration != AV_NOPTS_VALUE)
+                    {
+                        sequenceSize = av_rescale_q(
+                            _avFormatContext->duration,
+                            av_get_time_base_q(),
+                            swap(_avSpeed));
+                    }
+                    
+                    while ((tag = av_dict_get(_avFormatContext->metadata, "", tag, AV_DICT_IGNORE_SUFFIX)))
+                    {
+                        const std::string key(tag->key);
+                        const std::string value(tag->value);
+                        tags[key] = value;
+                        if (string::compare(
+                                key,
+                                "timecode",
+                                string::Compare::CaseInsensitive))
+                        {
+                            timecode = value;
+                        }
+                    }
 
+                    otime::RationalTime startTime(0.0, speed);
+                    if (!timecode.empty())
+                    {
+                        otime::ErrorStatus errorStatus;
+                        const otime::RationalTime time = otime::RationalTime::from_timecode(
+                            timecode,
+                            speed,
+                            &errorStatus);
+                        if (!otime::is_error(errorStatus))
+                        {
+                            startTime = time.floor();
+                        }
+                    }
+                    _timeRange = otime::TimeRange(
+                        startTime,
+                        otime::RationalTime(sequenceSize, speed));
+
+                }
+                
                 for (const auto& i : tags)
                 {
                     _tags[i.first] = i.second;
@@ -882,6 +963,13 @@ namespace tl
                                otime::RationalTime& currentTime)
         {
             int out = 0;
+            if (_singleImage && _singleImage->isValid())
+            {
+                _buffer.push_back(_singleImage);
+                out = 1;
+                return out;
+            }
+            
             while (0 == out)
             {
                 out = avcodec_receive_frame(_avCodecContext[_avStream], _avFrame);
@@ -891,7 +979,6 @@ namespace tl
                 }
                 const int64_t timestamp = _avFrame->pts != AV_NOPTS_VALUE ? _avFrame->pts : _avFrame->pkt_dts;
                 // std::cout << "video timestamp: " << timestamp << std::endl;
-
                 const auto& avVideoStream = _avFormatContext->streams[_avStream];
                 
                 const otime::RationalTime time(
@@ -901,7 +988,7 @@ namespace tl
                             swap(avVideoStream->r_frame_rate)),
                     _timeRange.duration().rate());
 
-                if (time >= targetTime || backwards)
+                if (time >= targetTime || backwards || _avFrame->duration == 0)
                 {
                     if (time >= targetTime)
                         currentTime = targetTime;
@@ -933,6 +1020,12 @@ namespace tl
                     _copy(image);
                     _buffer.push_back(image);
                     out = 1;
+
+                    if (_avFrame->duration == 0)
+                    {
+                        _singleImage = image;
+                        currentTime = targetTime;
+                    }
                     break;
                 }
             }
