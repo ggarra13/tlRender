@@ -837,7 +837,7 @@ namespace tl
 
         void ReadVideo::seek(const otime::RationalTime& time)
         {
-            if (_avStream != -1)
+            if (_avStream != -1 && !_useAudioOnly)
             {
                 avcodec_flush_buffers(_avCodecContext[_avStream]);
                 
@@ -955,6 +955,7 @@ namespace tl
             int out = 0;
             if (_singleImage && _singleImage->isValid())
             {
+                currentTime = targetTime;
                 _buffer.push_back(_singleImage);
                 out = 1;
                 return out;
