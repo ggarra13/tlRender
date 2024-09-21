@@ -80,12 +80,11 @@ namespace tl
                 throw std::runtime_error(string::Format("{0}: {1}").arg(fileName).arg(getErrorLabel(r)));
             }
 
-            bool useAudioOnly = false;
             for (unsigned int i = 0; i < _avFormatContext->nb_streams; ++i)
             {
                 if (AVMEDIA_TYPE_VIDEO == _avFormatContext->streams[i]->codecpar->codec_type && (AV_DISPOSITION_ATTACHED_PIC & _avFormatContext->streams[i]->disposition || AV_DISPOSITION_STILL_IMAGE & _avFormatContext->streams[i]->disposition))
                 {
-                    useAudioOnly = true;
+                    _useAudioOnly = true;
                 }
                 if (AVMEDIA_TYPE_VIDEO == _avFormatContext->streams[i]->codecpar->codec_type &&
                     AV_DISPOSITION_DEFAULT == _avFormatContext->streams[i]->disposition)
@@ -96,7 +95,7 @@ namespace tl
             }
             if (-1 == _avStream)
             {
-                if (useAudioOnly)
+                if (_useAudioOnly)
                 {
                     for (unsigned int i = 0; i < _avFormatContext->nb_streams; ++i)
                     {
@@ -438,7 +437,7 @@ namespace tl
                 std::size_t sequenceSize = 0;
                 double speed = 24;
                 
-                if (useAudioOnly)
+                if (_useAudioOnly)
                 {
                     auto avAudioStream =
                         _avFormatContext->streams[_avAudioStream];
@@ -1021,7 +1020,7 @@ namespace tl
                     _buffer.push_back(image);
                     out = 1;
 
-                    if (_avFrame->duration == 0)
+                    if (_useAudioOnly && _avFrame->duration == 0)
                     {
                         _singleImage = image;
                         currentTime = targetTime;

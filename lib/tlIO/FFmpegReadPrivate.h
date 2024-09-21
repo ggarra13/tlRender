@@ -91,6 +91,7 @@ namespace tl
             image::Tags _tags;
             float _rotation = 0.F;
             std::weak_ptr<log::System> _logSystem;
+            bool _useAudioOnly = false;
             std::shared_ptr<image::Image> _singleImage;
             
             //! FFmpeg variables
