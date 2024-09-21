@@ -179,6 +179,7 @@ if(TLRENDER_FFMPEG_MINIMAL)
         --enable-decoder=pcm_u32le
         --enable-decoder=pcm_u8
         --enable-decoder=pcm_vidc
+	--enable-decoder=png
         --enable-decoder=prores
         --enable-decoder=rawvideo
 	--enable-decoder=truehd
