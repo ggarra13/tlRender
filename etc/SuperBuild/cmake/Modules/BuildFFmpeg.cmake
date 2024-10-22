@@ -115,15 +115,6 @@ set(FFmpeg_CONFIGURE_ARGS
     ${FFmpeg_CXXFLAGS}
     ${FFmpeg_OBJCFLAGS}
     ${FFmpeg_LDFLAGS})
-if(NOT APPLE)
-    list(APPEND FFmpeg_CONFIGURE_ARGS
-	--disable-videotoolbox
-	--disable-audiotoolbox)
-else()
-    list(APPEND FFmpeg_CONFIGURE_ARGS
-	--enable-videotoolbox
-	--enable-audiotoolbox)
-endif()
 
 if(TLRENDER_FFMPEG_MINIMAL)
     list(APPEND FFmpeg_CONFIGURE_ARGS
@@ -391,6 +382,20 @@ if(TLRENDER_FFMPEG_MINIMAL)
 	    --enable-encoder=pcm_mulaw_at
 	    --enable-decoder=pcm_mulaw_at)
     endif()
+endif()
+
+if(NOT APPLE)
+    list(APPEND FFmpeg_CONFIGURE_ARGS
+	--disable-videotoolbox
+	--disable-audiotoolbox)
+else()
+    list(APPEND FFmpeg_CONFIGURE_ARGS
+	--enable-videotoolbox
+	--enable-decoder=h264_videotoolbox
+	--enable-hwaccel=h264_videotoolbox
+	--enable-decoder=hevc_videotoolbox
+	--enable-hwaccel=hevc_videotoolbox
+	--enable-audiotoolbox)
 endif()
 
 if(TLRENDER_VPX)

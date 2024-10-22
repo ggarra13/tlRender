@@ -119,8 +119,10 @@ namespace tl
             std::string timecode = getTimecodeFromDataStream(_avFormatContext);
             if (_avStream != -1)
             {
-                // av_dump_format(_avFormatContext, _avStream, fileName.c_str(), 0);
+                // av_dump_format(_avFormatContext, _avStream,
+                //                fileName.c_str(), 0);
 
+                bool hardware = false;
                 auto avVideoStream = _avFormatContext->streams[_avStream];
                 auto avVideoCodecParameters = avVideoStream->codecpar;
                 auto avVideoCodec = avcodec_find_decoder(avVideoCodecParameters->codec_id);
@@ -129,12 +131,28 @@ namespace tl
                 unsigned trackNumber = 1; // we only support one video stream
                 while ((tag = av_dict_get(avVideoStream->metadata, "",
                                               tag, AV_DICT_IGNORE_SUFFIX)))
+                {
+                    std::string key(string::Format("Video Stream #{0}: {1}")
+                                    .arg(trackNumber)
+                                    .arg(tag->key));
+                    _tags[key] = tag->value;
+                }
+#ifdef __APPLE__
+                if (avVideoCodecParameters->codec_id == AV_CODEC_ID_HEVC)
+                {
+                    // Find the decoder
+                    auto avHWVideoCodec =
+                        avcodec_find_decoder_by_name("hevc_videotoolbox");
+                    if (avHWVideoCodec)
                     {
-                        std::string key(string::Format("Video Stream #{0}: {1}")
-                                        .arg(trackNumber)
-                                        .arg(tag->key));
-                        _tags[key] = tag->value;
+                        avVideoCodec = avHWVideoCodec;
+                        avVideoCodecParameters->codec_id = avVideoCodec->id;
+                        hardware = true;
+                        LOG_STATUS("Using video toolbox decoding.")
                     }
+                }
+#endif
+
                 // If we are reading VPX, use libvpx-vp9 external lib if available so
                 // we can read an alpha channel.
                 if (avVideoCodecParameters->codec_id == AV_CODEC_ID_VP9)
@@ -171,6 +189,17 @@ namespace tl
                 {
                     throw std::runtime_error(string::Format("{0}: {1}").arg(fileName).arg(getErrorLabel(r)));
                 }
+                if (hardware)
+                {
+                    // Set hardware device context
+                    AVHWDeviceType hw_device_type = av_hwdevice_find_type_by_name("videotoolbox");
+                    AVBufferRef *hw_device_ctx = NULL;
+                    av_hwdevice_ctx_create(&hw_device_ctx, hw_device_type,
+                                           NULL, NULL, 0);
+                    _avCodecContext[_avStream]->hw_device_ctx =
+                        av_buffer_ref(hw_device_ctx);
+                }
+
                 _avCodecContext[_avStream]->thread_count = options.threadCount;
                 _avCodecContext[_avStream]->thread_type = FF_THREAD_FRAME;
 
@@ -413,6 +442,7 @@ namespace tl
                 switch (params->color_space)
                 {
                 case AVCOL_SPC_BT2020_NCL:
+                case AVCOL_SPC_BT2020_CL:
                     _info.yuvCoefficients = image::YUVCoefficients::BT2020;
                     break;
                 default: break;
@@ -766,6 +796,7 @@ namespace tl
                     // \@bug:
                     //    We don't do a BT2020_NCL to BT709 conversion in
                     //    software which is slow.
+                    
                     if (params->color_space != AVCOL_SPC_BT2020_NCL &&
                         (params->color_space != AVCOL_SPC_UNSPECIFIED ||
                           width < 4096 || height < 2160))
