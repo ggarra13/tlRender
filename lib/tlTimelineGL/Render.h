@@ -61,6 +61,7 @@ namespace tl
             void setTransform(const math::Matrix4x4f&) override;
             void setOCIOOptions(const timeline::OCIOOptions&) override;
             void setLUTOptions(const timeline::LUTOptions&) override;
+            void setToneMapOptions(const timeline::ToneMapOptions&) override;
 
             void drawRect(
                 const math::Box2i&,

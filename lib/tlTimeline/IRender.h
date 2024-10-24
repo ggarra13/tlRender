@@ -10,6 +10,7 @@
 #include <tlTimeline/LUTOptions.h>
 #include <tlTimeline/OCIOOptions.h>
 #include <tlTimeline/RenderOptions.h>
+#include <tlTimeline/ToneMapOptions.h>
 #include <tlTimeline/Video.h>
 
 #include <tlCore/Context.h>
@@ -78,6 +79,9 @@ namespace tl
 
             //! Set the LUT options.
             virtual void setLUTOptions(const LUTOptions&) = 0;
+
+            //! Set the ToneMap options.
+            virtual void setToneMapOptions(const ToneMapOptions&) = 0;
 
             //! Draw a rectangle.
             virtual void drawRect(

@@ -26,6 +26,7 @@ set(HEADERS
     RenderUtil.h
     TimeUnits.h
     Timeline.h
+    ToneMapOptions.h
     Transition.h
     Util.h
     UtilInline.h
@@ -55,6 +56,7 @@ set(SOURCE
     Timeline.cpp
     TimelineCreate.cpp
     TimelinePrivate.cpp
+    ToneMapOptions.cpp
     Transition.cpp
     Util.cpp)
 

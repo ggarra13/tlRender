@@ -71,11 +71,11 @@ namespace tl
             std::string sampler;
             unsigned    type = -1;
         };
-
+        
         struct OCIOData
         {
             ~OCIOData();
-
+            
             OCIO::ConstConfigRcPtr config;
             OCIO::DisplayViewTransformRcPtr transform;
             OCIO::LegacyViewingPipelineRcPtr lvp;
@@ -97,6 +97,7 @@ namespace tl
             OCIO::GpuShaderDescRcPtr shaderDesc;
             std::vector<OCIOTexture> textures;
         };
+        
 #endif // TLRENDER_OCIO
 
         struct Render::Private
@@ -104,6 +105,7 @@ namespace tl
             math::Size2i renderSize;
             timeline::OCIOOptions ocioOptions;
             timeline::LUTOptions lutOptions;
+            timeline::ToneMapOptions tonemapOptions;
             timeline::RenderOptions renderOptions;
 
 #if defined(TLRENDER_OCIO)

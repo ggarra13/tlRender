@@ -754,10 +754,21 @@ namespace tl
 #endif // TLRENDER_OCIO
         }
 
+        void Render::setToneMapOptions(const timeline::ToneMapOptions& value)
+        {
+            TLRENDER_P();
+            if (value == p.tonemapOptions)
+                return;
+
+            std::cerr << "set tonemapOptions.enabled=" << value.enabled
+                      << std::endl;
+            p.tonemapOptions = value;
+        }
+
         void Render::setOCIOOptions(const timeline::OCIOOptions& value)
         {
             TLRENDER_P();
-            if (value == p.ocioOptions)
+            if (value == p.ocioOptions && !p.tonemapOptions.enabled)
                 return;
 
 #if defined(TLRENDER_OCIO)
@@ -767,7 +778,7 @@ namespace tl
             p.ocioOptions = value;
 
 #if defined(TLRENDER_OCIO)
-            if (p.ocioOptions.enabled)
+            if (p.ocioOptions.enabled || p.tonemapOptions.enabled)
             {
                 p.ocioData.reset(new OCIOData);
 
@@ -824,7 +835,7 @@ namespace tl
                     
                     p.ocioData->icsDesc->setLanguage(OCIO::GPU_LANGUAGE_GLSL_4_0);
                     p.ocioData->icsDesc->setFunctionName("ocioICSFunc");
-                    p.ocioData->icsDesc->setResourcePrefix("ocioICS"); // ocio?
+                    p.ocioData->icsDesc->setResourcePrefix("ocioICS");
                     p.ocioData->gpuProcessor->extractGpuShaderInfo(p.ocioData->icsDesc);
                     try
                     {
@@ -837,26 +848,92 @@ namespace tl
                         throw e;
                     }
                 }
-                if (!p.ocioOptions.display.empty() &&
-                    !p.ocioOptions.view.empty())
+                if (p.tonemapOptions.enabled ||
+                    (!p.ocioOptions.display.empty() &&
+                     !p.ocioOptions.view.empty()))
                 {
-                    p.ocioData->transform->setSrc(OCIO::ROLE_SCENE_LINEAR);
-                    p.ocioData->transform->setDisplay(p.ocioOptions.display.c_str());
-                    p.ocioData->transform->setView(p.ocioOptions.view.c_str());
-
-                    p.ocioData->lvp = OCIO::LegacyViewingPipeline::Create();
-                    if (!p.ocioData->lvp)
+                    if (!p.tonemapOptions.enabled)
                     {
-                        p.ocioData.reset();
-                        throw std::runtime_error("Cannot create OCIO viewing pipeline");
-                    }
-                    p.ocioData->lvp->setDisplayViewTransform(p.ocioData->transform);
-                    p.ocioData->lvp->setLooksOverrideEnabled(true);
-                    p.ocioData->lvp->setLooksOverride(p.ocioOptions.look.c_str());
+                        p.ocioData->transform->setSrc(OCIO::ROLE_SCENE_LINEAR);
+                        p.ocioData->transform->setDisplay(p.ocioOptions.display.c_str());
+                        p.ocioData->transform->setView(p.ocioOptions.view.c_str());
+
+                        p.ocioData->lvp = OCIO::LegacyViewingPipeline::Create();
+                        if (!p.ocioData->lvp)
+                        {
+                            p.ocioData.reset();
+                            throw std::runtime_error("Cannot create OCIO viewing pipeline");
+                        }
+                        p.ocioData->lvp->setDisplayViewTransform(p.ocioData->transform);
+                        p.ocioData->lvp->setLooksOverrideEnabled(true);
+                        p.ocioData->lvp->setLooksOverride(p.ocioOptions.look.c_str());
                 
-                    p.ocioData->processor = p.ocioData->lvp->getProcessor(
-                        p.ocioData->config,
-                        p.ocioData->config->getCurrentContext());
+                        p.ocioData->processor = p.ocioData->lvp->getProcessor(
+                            p.ocioData->config,
+                            p.ocioData->config->getCurrentContext());
+                    }
+                    else
+                    {
+                        std::cerr << "tonemapping..." << std::endl;
+                        //
+                        // TONE-MAPPING
+                        //
+                        const image::HDRData& hdrData = p.tonemapOptions.hdrData; 
+                        // Step 1: Color Primaries (Rec. 2020 to ACES)
+                        OCIO::TransformRcPtr colorSpaceTransform;
+                        OCIO::MatrixTransformRcPtr customPrimaryTransform = OCIO::MatrixTransform::Create();
+                        // Use your custom primaries
+
+                        using image::HDRPrimaries;
+                        const std::array<math::Vector2f,
+                                         image::HDRPrimaries::Count>& v = hdrData.primaries;
+                        math::Matrix4x4<double> m(
+                            v[HDRPrimaries::Red].x,   v[HDRPrimaries::Red].y, 0.F, 0.F,
+                            v[HDRPrimaries::Green].x, v[HDRPrimaries::Green].y, 0.F, 0.F,
+                            v[HDRPrimaries::Blue].x,  v[HDRPrimaries::Blue].y, 0.F, 0.F,
+                            v[HDRPrimaries::White].x, v[HDRPrimaries::White].y, 0.F, 1.F);
+                        
+                        customPrimaryTransform->setMatrix(m.e);
+                        colorSpaceTransform = customPrimaryTransform;
+
+                        // Step 2: EOTF (PQ or HLG to Linear)
+                        OCIO::ColorSpaceTransformRcPtr eotfToLinear;
+                        if (hdrData.eotf == 0) { // PQ
+                            eotfToLinear = OCIO::ColorSpaceTransform::Create();
+                            eotfToLinear->setSrc("Rec.2100-PQ - Display");
+                            eotfToLinear->setDst(OCIO::ROLE_SCENE_LINEAR);
+                            //eotfToLinear->setDst("Linear");
+                        }
+                        else if (hdrData.eotf == 1)
+                        { // HLG
+                            eotfToLinear = OCIO::ColorSpaceTransform::Create();
+                            eotfToLinear->setSrc("Rec.2100-HLG - Display");
+                            eotfToLinear->setDst(OCIO::ROLE_SCENE_LINEAR);
+                            //eotfToLinear->setDst("Linear");
+                        }
+
+                        // Step 3: Luminance Adjustment (MaxCLL, MaxFALL,
+                        //         Mastering Luminance)
+                        float maxLuminance = hdrData.displayMasteringLuminance.getMax();
+                        OCIO::ExposureContrastTransformRcPtr luminanceTransform = OCIO::ExposureContrastTransform::Create();
+                        luminanceTransform->setExposure(log2(100.0F / maxLuminance)); // Normalize to 100 nits SDR
+
+                        // Step 4: ACES Tone Mapping (RRT + ODT for Rec. 709 SDR)
+                        p.ocioData->transform = OCIO::DisplayViewTransform::Create();
+                        p.ocioData->transform->setSrc(OCIO::ROLE_SCENE_LINEAR);
+                        p.ocioData->transform->setDisplay("sRGB - Display");
+                        p.ocioData->transform->setView("ACES 1.0 - SDR Video");
+
+                        // Combine all transforms into a processor
+                        OCIO::GroupTransformRcPtr group = OCIO::GroupTransform::Create();
+                        group->appendTransform(colorSpaceTransform);
+                        group->appendTransform(eotfToLinear);
+                        group->appendTransform(luminanceTransform);
+                        group->appendTransform(p.ocioData->transform);
+
+                        p.ocioData->processor = p.ocioData->config->getProcessor(group);
+                    }
+                
                     if (!p.ocioData->processor)
                     {
                         p.ocioData.reset();
@@ -990,6 +1067,7 @@ namespace tl
                 if (p.ocioData && p.ocioData->shaderDesc)
                 {
                     ocioDef = p.ocioData->shaderDesc->getShaderText();
+                    std::cerr << ocioDef << std::endl;
                     ocio = "outColor = ocioDisplayFunc(outColor);";
                 }
                 if (p.lutData && p.lutData->shaderDesc)
