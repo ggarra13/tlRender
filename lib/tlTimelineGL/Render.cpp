@@ -911,12 +911,22 @@ namespace tl
                             eotfToLinear->setDst(OCIO::ROLE_SCENE_LINEAR);
                             //eotfToLinear->setDst("Linear");
                         }
-
-                        // Step 3: Luminance Adjustment (MaxCLL, MaxFALL,
-                        //         Mastering Luminance)
+                        
+                        // Step 3: Luminance Adjustment with MaxLuminance, MaxCLL, and MaxFALL
                         float maxLuminance = hdrData.displayMasteringLuminance.getMax();
+                        float maxCLL = hdrData.maxCLL;
+                        float maxFALL = hdrData.maxFALL;
+
+                        // Compute the required exposure adjustment to normalize HDR to SDR
+                        // range (100 nits)
+                        float exposureAdjustment = std::min({
+                                log2(100.0F / maxLuminance),
+                                log2(100.0F / maxCLL),
+                                log2(100.0F / maxFALL)
+                            });
+
                         OCIO::ExposureContrastTransformRcPtr luminanceTransform = OCIO::ExposureContrastTransform::Create();
-                        luminanceTransform->setExposure(log2(100.0F / maxLuminance)); // Normalize to 100 nits SDR
+                        luminanceTransform->setExposure(exposureAdjustment);
 
                         // Step 4: ACES Tone Mapping (RRT + ODT for Rec. 709 SDR)
                         p.ocioData->transform = OCIO::DisplayViewTransform::Create();
@@ -927,7 +937,7 @@ namespace tl
                         // Combine all transforms into a processor
                         OCIO::GroupTransformRcPtr group = OCIO::GroupTransform::Create();
                         group->appendTransform(colorSpaceTransform);
-                        group->appendTransform(eotfToLinear);
+                        // group->appendTransform(eotfToLinear);
                         group->appendTransform(luminanceTransform);
                         group->appendTransform(p.ocioData->transform);
 
