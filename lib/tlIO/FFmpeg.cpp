@@ -59,6 +59,66 @@ namespace tl
             return AVRational({ value.den, value.num });
         }
 
+        bool toHDRData(AVPacketSideData* sideData, int size, image::HDRData& hdr)
+        {
+            bool out = false;
+            for (int i = 0; i < size; ++i)
+            {
+                switch (sideData[i].type)
+                {
+                case AV_PKT_DATA_MASTERING_DISPLAY_METADATA:
+                {
+                    out = true;
+                    auto data = reinterpret_cast<AVMasteringDisplayMetadata*>(sideData[i].data);
+                    if (data->has_luminance)
+                    {
+                        hdr.displayMasteringLuminance = math::FloatRange(
+                            av_q2d(data->min_luminance), av_q2d(data->max_luminance));
+                    }
+                    if (data->has_primaries)
+                    {
+                        hdr.primaries[image::HDRPrimaries::Red].x =
+                            av_q2d(data->display_primaries[0][0]);
+                        hdr.primaries[image::HDRPrimaries::Red].y =
+                            av_q2d(data->display_primaries[0][1]);
+                        
+                        hdr.primaries[image::HDRPrimaries::Green].x =
+                            av_q2d(data->display_primaries[1][0]);
+                        hdr.primaries[image::HDRPrimaries::Green].y =
+                            av_q2d(data->display_primaries[1][1]);
+                        
+                        hdr.primaries[image::HDRPrimaries::Blue].x =
+                            av_q2d(data->display_primaries[2][0]);
+                        hdr.primaries[image::HDRPrimaries::Blue].y =
+                            av_q2d(data->display_primaries[2][1]);
+                        
+                        hdr.primaries[image::HDRPrimaries::White].x =
+                            av_q2d(data->white_point[0]);
+                        hdr.primaries[image::HDRPrimaries::White].y =
+                            av_q2d(data->white_point[1]);
+                    }
+                    break;
+                }
+                case AV_PKT_DATA_CONTENT_LIGHT_LEVEL:
+                {
+                    out = true;
+                    auto data = reinterpret_cast<AVContentLightMetadata*>(sideData[i].data);
+                    hdr.maxCLL = data->MaxCLL;
+                    hdr.maxFALL = data->MaxFALL;
+                    break;
+                }
+                case AV_PKT_DATA_DYNAMIC_HDR10_PLUS:
+                {
+                    out = true;
+                    auto data = reinterpret_cast<AVDynamicHDRPlus*>(sideData[i].data);
+                    break;
+                }
+                default: break;
+                }
+            }
+            return out;
+        }
+        
         bool toHDRData(AVFrameSideData** sideData, int size, image::HDRData& hdr)
         {
             bool out = false;
@@ -73,8 +133,7 @@ namespace tl
                     if (data->has_luminance)
                     {
                         hdr.displayMasteringLuminance = math::FloatRange(
-                            data->min_luminance.num / data->min_luminance.den,
-                            data->max_luminance.num / data->max_luminance.den);
+                            av_q2d(data->min_luminance), av_q2d(data->max_luminance));
                     }
                     if (data->has_primaries)
                     {
