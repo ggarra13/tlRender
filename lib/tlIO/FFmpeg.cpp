@@ -70,9 +70,39 @@ namespace tl
                 {
                     out = true;
                     auto data = reinterpret_cast<AVMasteringDisplayMetadata*>(sideData[i]->data);
-                    hdr.displayMasteringLuminance = math::FloatRange(
-                        data->min_luminance.num / data->min_luminance.den,
-                        data->max_luminance.num / data->max_luminance.den);
+                    if (data->has_luminance)
+                    {
+                        hdr.displayMasteringLuminance = math::FloatRange(
+                            data->min_luminance.num / data->min_luminance.den,
+                            data->max_luminance.num / data->max_luminance.den);
+                    }
+                    if (data->has_primaries)
+                    {
+                        hdr.primaries[image::HDRPrimaries::Red].x =
+                            data->display_primaries[0][0].num /
+                            data->display_primaries[0][0].den;
+                        hdr.primaries[image::HDRPrimaries::Red].y =
+                            data->display_primaries[0][1].num /
+                            data->display_primaries[0][1].den;
+                        hdr.primaries[image::HDRPrimaries::Green].x =
+                            data->display_primaries[1][0].num /
+                            data->display_primaries[1][0].den;
+                        hdr.primaries[image::HDRPrimaries::Green].y =
+                            data->display_primaries[1][1].num /
+                            data->display_primaries[1][1].den;
+                        hdr.primaries[image::HDRPrimaries::Blue].x =
+                            data->display_primaries[2][0].num /
+                            data->display_primaries[2][0].den;
+                        hdr.primaries[image::HDRPrimaries::Blue].y =
+                            data->display_primaries[2][1].num /
+                            data->display_primaries[2][1].den;
+                        hdr.primaries[image::HDRPrimaries::White].x =
+                            data->display_primaries[3][0].num /
+                            data->display_primaries[3][0].den;
+                        hdr.primaries[image::HDRPrimaries::White].y =
+                            data->display_primaries[3][1].num /
+                            data->display_primaries[3][1].den;
+                    }
                     break;
                 }
                 case AV_FRAME_DATA_CONTENT_LIGHT_LEVEL:
