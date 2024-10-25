@@ -110,6 +110,15 @@ namespace tl
             bool operator != (const Normalize&) const;
         };
         
+        //! Tonemap.
+        struct Tonemap
+        {
+            bool           enabled = false;
+            
+            bool operator == (const Tonemap&) const;
+            bool operator != (const Tonemap&) const;
+        };
+        
         //! Display options.
         struct DisplayOptions
         {
@@ -122,6 +131,7 @@ namespace tl
             ImageFilters       imageFilters;
             image::VideoLevels videoLevels  = image::VideoLevels::FullRange;
             Normalize          normalize;
+            Tonemap            tonemap;
             bool               invalidValues = false;
             
             bool operator == (const DisplayOptions&) const;
