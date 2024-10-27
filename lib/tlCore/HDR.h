@@ -28,6 +28,15 @@ namespace tl
         TLRENDER_ENUM(HDRPrimaries);
         TLRENDER_ENUM_SERIALIZE(HDRPrimaries);
 
+        //! Bezier curve for HDR metadata
+        struct HDRbezier
+        {
+            float targetLuma;
+            float kneeX, kneeY;
+            float anchors[15];
+            uint8_t numAnchors;
+        };
+        
         //! HDR data.
         struct HDRData
         {
@@ -44,6 +53,16 @@ namespace tl
             float maxCLL  = 1000.F;
             float maxFALL = 400.F;
 
+            // HDR10+ Metadata
+            float sceneMax[3];
+            float sceneAvg;
+            HDRbezier ootf;
+
+            // HDR CieY Metadata
+            float maxPQY;
+            float avgPQY;
+        
+        
             bool operator == (const HDRData&) const;
             bool operator != (const HDRData&) const;
         };

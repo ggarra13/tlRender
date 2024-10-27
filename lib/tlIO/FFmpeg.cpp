@@ -171,6 +171,47 @@ namespace tl
                 {
                     out = true;
                     auto data = reinterpret_cast<AVDynamicHDRPlus*>(sideData[i]->data);
+                    if (data->application_version < 1)
+                    {
+                        const AVHDRPlusColorTransformParams* p = data->params;
+                        hdr.sceneMax[0] = 10000.F * av_q2d(p->maxscl[0]);
+                        hdr.sceneMax[1] = 10000.F * av_q2d(p->maxscl[1]);
+                        hdr.sceneMax[2] = 10000.F * av_q2d(p->maxscl[2]);
+                        hdr.sceneAvg    = 10000.F * av_q2d(p->average_maxrgb);
+
+                        float histogramMax = 0.F;
+                        
+                        for (int i = 0;
+                             i < p->num_distribution_maxrgb_percentiles; i++)
+                        {
+                            float value = av_q2d(p->distribution_maxrgb[i].percentile);
+                            if (value > histogramMax)
+                                histogramMax = value;
+                        }
+                        
+                        histogramMax *= 10000.F;
+                        if (!hdr.sceneMax[0])
+                            hdr.sceneMax[0] = histogramMax;
+                        if (!hdr.sceneMax[1])
+                            hdr.sceneMax[1] = histogramMax;
+                        if (!hdr.sceneMax[2])
+                            hdr.sceneMax[2] = histogramMax;
+
+                        if (p->tone_mapping_flag == 1)
+                        {
+                            hdr.ootf.targetLuma = av_q2d(data->targeted_system_display_maximum_luminance);
+                            hdr.ootf.kneeX = av_q2d(p->knee_point_x);
+                            hdr.ootf.kneeY = av_q2d(p->knee_point_y);
+                            if (p->num_bezier_curve_anchors < 16)
+                            {
+                                hdr.ootf.numAnchors = p->num_bezier_curve_anchors;
+                                for (int i = 0; i < hdr.ootf.numAnchors; ++i)
+                                    hdr.ootf.anchors[i] = av_q2d(p->bezier_curve_anchors[i]);
+                                
+                            }
+                        }
+
+                    }
                     break;
                 }
                 default: break;
