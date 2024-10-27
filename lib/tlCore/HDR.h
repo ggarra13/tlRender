@@ -29,13 +29,26 @@ namespace tl
         TLRENDER_ENUM_SERIALIZE(HDRPrimaries);
 
         //! Bezier curve for HDR metadata
-        struct HDRbezier
+        struct HDRBezier
         {
-            float targetLuma;
-            float kneeX, kneeY;
+            float targetLuma = 1.F;
+            float kneeX = 0.5F;
+            float kneeY = 0.5F;
+            uint8_t numAnchors = 0;
             float anchors[15];
-            uint8_t numAnchors;
+            
+            bool operator == (const HDRBezier&) const;
+            bool operator != (const HDRBezier&) const;
         };
+        
+        //! \name Serialize
+        ///@{
+
+        void to_json(nlohmann::json&, const HDRBezier&);
+
+        void from_json(const nlohmann::json&, HDRBezier&);
+
+        ///@}
         
         //! HDR data.
         struct HDRData
@@ -56,11 +69,11 @@ namespace tl
             // HDR10+ Metadata
             float sceneMax[3];
             float sceneAvg;
-            HDRbezier ootf;
+            HDRBezier ootf;
 
-            // HDR CieY Metadata
-            float maxPQY;
-            float avgPQY;
+            // HDR CieY Metadata (DolbyVision)
+            float maxPQY = 0.F;
+            float avgPQY = 0.F;
         
         
             bool operator == (const HDRData&) const;
