@@ -1078,7 +1078,8 @@ namespace tl
                 pl_color_space dst_colorspace;
                 memset(&dst_colorspace, 0, sizeof(pl_color_space));
                 dst_colorspace.primaries = PL_COLOR_PRIM_BT_709;
-                dst_colorspace.transfer  = PL_COLOR_TRC_LINEAR;
+                // dst_colorspace.transfer  = PL_COLOR_TRC_LINEAR;
+                dst_colorspace.transfer  = PL_COLOR_TRC_SRGB;
     
                 pl_color_map_args color_map_args;
                 memset(&color_map_args, 0, sizeof(pl_color_map_args));
@@ -1123,9 +1124,10 @@ namespace tl
                 const pl_shader_res* res = pl_shader_finalize(shader);
                 if (!res)
                 {
+                    pl_shader_free(&shader);
                     throw std::runtime_error("pl_shader_finalize failed!");
                 }
-    
+                    
                 // printf("num_vertex_attribs=%d\n", res->num_vertex_attribs);
                 // printf("num_variables=%d\n", res->num_variables);
                 // printf("num_descriptors=%d\n", res->num_descriptors);
@@ -1151,9 +1153,17 @@ namespace tl
                             switch(var.type)
                             {
                             case PL_VAR_SINT:
+                            {
+                                int* m = (int*) shader_var.data;
+                                s << " = " << m[0] << ";" << std::endl;
                                 break;
+                            }
                             case PL_VAR_UINT:
+                            {
+                                unsigned* m = (unsigned*) shader_var.data;
+                                s << " = " << m[0] << ";" << std::endl;
                                 break;
+                            }
                             case PL_VAR_FLOAT:
                             {
                                 float* m = (float*) shader_var.data;
@@ -1236,6 +1246,8 @@ namespace tl
                 s << "outColor = " << res->name << "(outColor);"
                   << std::endl;
                 toneMap = s.str();
+    
+                pl_shader_free(&shader);
 #endif
             const std::string source = displayFragmentSource(
                 ocioICSDef,
