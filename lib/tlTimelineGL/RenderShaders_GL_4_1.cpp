@@ -298,22 +298,27 @@ namespace tl
             const std::string& ocio,
             const std::string& lutDef,
             const std::string& lut,
-            timeline::LUTOrder lutOrder)
+            timeline::LUTOrder lutOrder,
+            const std::string& toneMapDef,
+            const std::string& toneMap)
         {
             std::vector<std::string> args;
-            args.push_back(videoLevels);
-            args.push_back(ocioICSDef);
-            args.push_back(ocioDef);
-            args.push_back(lutDef);
+            args.push_back(videoLevels);  // 0 
+            args.push_back(ocioICSDef);   // 1
+            args.push_back(ocioDef);      // 2
+            args.push_back(lutDef);       // 3
+            args.push_back(toneMapDef);   // 4
             switch (lutOrder)
             {
             case timeline::LUTOrder::PreColorConfig:
                 args.push_back(lut);
                 args.push_back(ocioICS);
+                args.push_back(toneMap);
                 args.push_back(ocio);
                 break;
             case timeline::LUTOrder::PostColorConfig:
                 args.push_back(ocioICS);
+                args.push_back(toneMap);
                 args.push_back(lut);
                 args.push_back(ocio);
                 break;
@@ -461,6 +466,8 @@ namespace tl
                 "\n"
                 "{3}\n"
                 "\n"
+                "{4}\n"
+                "\n"
                 "void main()\n"
                 "{\n"
                 "    vec2 t = fTexture;\n"
@@ -486,8 +493,8 @@ namespace tl
                 "    }\n"
                 "\n"
                 "    // Apply color tranform to linear space and LUT.\n"
-                "    {4}\n"
                 "    {5}\n"
+                "    {6}\n"
                 "\n"
                 "    // Apply color transformations.\n"
                 "    if (colorEnabled)\n"
@@ -509,8 +516,9 @@ namespace tl
                 "        outColor = softClipFunc(outColor, softClip);\n"
                 "    }\n"
                 "\n"
+                "    {7}\n"
                 "    // Apply OCIO Display/View.\n"
-                "    {6}\n"
+                "    {8}\n"
                 "\n"
                 "    if (levelsEnabled)\n"
                 "    {\n"
@@ -568,7 +576,9 @@ namespace tl
                 arg(args[3]).
                 arg(args[4]).
                 arg(args[5]).
-                arg(args[6]);
+                arg(args[6]).
+                arg(args[7]).
+                arg(args[8]);
         }
 
         std::string differenceFragmentSource()

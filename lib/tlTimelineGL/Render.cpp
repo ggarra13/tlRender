@@ -14,6 +14,15 @@
 #include <tlCore/String.h>
 #include <tlCore/StringFormat.h>
 
+#if defined(TLRENDER_LIBPLACEBO)
+extern "C"
+{
+#include <libplacebo/shaders/colorspace.h>
+#include <libplacebo/dummy.h>
+#include <libplacebo/shaders.h>
+}
+#endif
+
 #include <array>
 #include <list>
 
@@ -980,6 +989,8 @@ namespace tl
                 std::string ocio;
                 std::string lutDef;
                 std::string lut;
+                std::string toneMapDef;
+                std::string toneMap;
 
 #if defined(TLRENDER_OCIO)
                 if (p.ocioData && p.ocioData->icsDesc)
@@ -998,46 +1009,252 @@ namespace tl
                     lut = "outColor = lutFunc(outColor);";
                 }
 #endif // TLRENDER_OCIO
-                const std::string source = displayFragmentSource(
-                    ocioICSDef,
-                    ocioICS,
-                    ocioDef,
-                    ocio,
-                    lutDef,
-                    lut,
-                    p.lutOptions.order);
-                if (auto context = _context.lock())
+#if defined(TLRENDER_LIBPLACEBO)
+                pl_log log = pl_log_create(PL_API_VER, NULL);
+                if (!log)
                 {
-                    //context->log("tl::gl::GLRender", source);
-                    context->log("tl::gl::GLRender", "Creating display shader");
+                    throw std::runtime_error("log creation failed");
                 }
-                p.shaders["display"] = gl::Shader::create(vertexSource(), source);
-            }
-            p.shaders["display"]->bind();
-            p.shaders["display"]->setUniform("transform.mvp", p.transform);
-#if defined(TLRENDER_OCIO)
-            size_t texturesOffset = 1;
-            if (p.ocioData)
+
+                struct pl_gpu_dummy_params gpu_dummy;
+                memset(&gpu_dummy, 0, sizeof(pl_gpu_dummy_params));
+    
+                gpu_dummy.glsl.version = 410;
+                gpu_dummy.glsl.gles = false;
+                gpu_dummy.glsl.vulkan = false;
+                gpu_dummy.glsl.compute = false;
+
+                gpu_dummy.limits.callbacks = false;
+                gpu_dummy.limits.thread_safe = true;
+                /* pl_buf */  
+                gpu_dummy.limits.max_buf_size  = SIZE_MAX;  
+                gpu_dummy.limits.max_ubo_size  = SIZE_MAX;   
+                gpu_dummy.limits.max_ssbo_size = SIZE_MAX;  
+                gpu_dummy.limits.max_vbo_size  = SIZE_MAX;
+                gpu_dummy.limits.max_mapped_size    = SIZE_MAX;   
+                gpu_dummy.limits.max_buffer_texels  = UINT64_MAX;  
+                /* pl_tex */  
+                gpu_dummy.limits.max_tex_1d_dim= UINT32_MAX;
+                gpu_dummy.limits.max_tex_2d_dim= UINT32_MAX;
+                gpu_dummy.limits.max_tex_3d_dim= UINT32_MAX;    
+                gpu_dummy.limits.buf_transfer  = true;  
+                gpu_dummy.limits.align_tex_xfer_pitch = 1; 
+                gpu_dummy.limits.align_tex_xfer_offset = 1;
+    
+                /* pl_pass */ 
+                gpu_dummy.limits.max_variable_comps = SIZE_MAX; 
+                gpu_dummy.limits.max_constants = SIZE_MAX;
+                gpu_dummy.limits.max_pushc_size= SIZE_MAX;   
+                gpu_dummy.limits.max_dispatch[0]    = UINT32_MAX;   
+                gpu_dummy.limits.max_dispatch[1]    = UINT32_MAX;   
+                gpu_dummy.limits.max_dispatch[2]    = UINT32_MAX;
+                gpu_dummy.limits.fragment_queues    = 0;   
+                gpu_dummy.limits.compute_queues= 0;
+    
+                pl_gpu gpu = pl_gpu_dummy_create(log, &gpu_dummy);
+                if (!gpu)
+                {
+                    throw std::runtime_error("pl_gpu_dummy_create failed!");
+                }
+
+                pl_shader_params shader_params;
+                memset(&shader_params, 0, sizeof(pl_shader_params));
+    
+                shader_params.id = 1;
+                shader_params.gpu = gpu;
+                shader_params.dynamic_constants = false;
+    
+                pl_shader shader = pl_shader_alloc(log, &shader_params);
+                if (!shader)
+                {
+                    throw std::runtime_error("pl_shader_alloc failed!");
+                }
+
+                pl_color_space src_colorspace;
+                memset(&src_colorspace, 0, sizeof(pl_color_space));
+                src_colorspace.primaries = PL_COLOR_PRIM_BT_2020;
+                src_colorspace.transfer  = PL_COLOR_TRC_PQ;
+    
+                pl_color_space dst_colorspace;
+                memset(&dst_colorspace, 0, sizeof(pl_color_space));
+                dst_colorspace.primaries = PL_COLOR_PRIM_BT_709;
+                dst_colorspace.transfer  = PL_COLOR_TRC_LINEAR;
+    
+                pl_color_map_args color_map_args;
+                memset(&color_map_args, 0, sizeof(pl_color_map_args));
+    
+                color_map_args.src = src_colorspace;
+                color_map_args.dst = dst_colorspace;
+                color_map_args.prelinearized = false;
+                color_map_args.state = NULL;
+
+                pl_color_map_params color_map_params;
+                memset(&color_map_params, 0, sizeof(pl_color_map_params));
+                
+                //color_map_params.tone_mapping_function = &pl_tone_map_spline; // default
+                color_map_params.gamut_mapping = &pl_gamut_map_perceptual;
+                color_map_params.tone_mapping_function = &pl_tone_map_reinhard;
+
+                // PL_GAMUT_MAP_CONSTANTS is defined in wrong order for C++
+#define MRV2_GAMUT_MAP_CONSTANTS                \
+                .perceptual_deadzone = 0.30f,   \
+                .perceptual_strength = 0.80f,   \
+                .colorimetric_gamma  = 1.80f,   \
+                     .softclip_knee  = 0.70f,   \
+                     .softclip_desat = 0.35f, 
+    
+                color_map_params.gamut_constants = { MRV2_GAMUT_MAP_CONSTANTS };
+                color_map_params.tone_constants  = { PL_TONE_MAP_CONSTANTS };
+                color_map_params.metadata   = PL_HDR_METADATA_ANY;
+                color_map_params.lut3d_size[0] = 48;
+                color_map_params.lut3d_size[1] = 32;
+                color_map_params.lut3d_size[2] = 256;
+                color_map_params.lut_size = 256;
+                color_map_params.visualize_rect.x0 = 0;
+                color_map_params.visualize_rect.y0 = 0;
+                color_map_params.visualize_rect.x1 = 1;
+                color_map_params.visualize_rect.y1 = 1;
+                color_map_params.contrast_smoothness = 3.5f;
+    
+                pl_shader_color_map_ex(shader,
+                                       &color_map_params,
+                                       &color_map_args);
+    
+                const pl_shader_res* res = pl_shader_finalize(shader);
+                if (!res)
+                {
+                    throw std::runtime_error("pl_shader_finalize failed!");
+                }
+    
+                printf("num_vertex_attribs=%d\n", res->num_vertex_attribs);
+                printf("num_variables=%d\n", res->num_variables);
+                printf("num_descriptors=%d\n", res->num_descriptors);
+                printf("num_constants=%d\n", res->num_constants);
+                {
+                    std::stringstream s;
+    
+                    s << "// Variables" << std::endl << std::endl;
+                    for (int i = 0; i < res->num_variables; ++i)
+                    {
+                        const struct pl_shader_var shader_var = res->variables[i];
+                        const struct pl_var var = shader_var.var;
+                        std::string glsl_type = pl_var_glsl_type_name(var);
+                        s << glsl_type << " " << var.name;
+                        if (!shader_var.data)
+                        {
+                            s << ";" << std::endl;
+                        }
+                        else
+                        {
+                            switch(var.type)
+                            {
+                            case PL_VAR_SINT:
+                                break;
+                            case PL_VAR_UINT:
+                                break;
+                            case PL_VAR_FLOAT:
+                            {
+                                s << " = { ";
+                                float* m = (float*) shader_var.data;
+                                for (int r = 0; r < var.dim_m; ++r)
+                                {
+                                    for (int c = 0; c < var.dim_v; ++c)
+                                    {
+                                        int index = r * var.dim_v + c;
+                                        s << m[index];
+
+                                        // Check if it's the last element
+                                        if (!(r == var.dim_m - 1 &&
+                                              c == var.dim_v - 1))
+                                        {
+                                            s << ", ";
+                                        }
+                                    }
+                                }
+                                s << "};" << std::endl;
+                                break;
+                            }
+                            }
+                        }
+                    }
+
+                    s << std::endl
+                      << "//" << std::endl
+                      << "// Constants" << std::endl 
+                      << "//" << std::endl << std::endl;
+                    for (int i = 0; i < res->num_constants; ++i)
+                    {
+                        const struct pl_shader_const constant = res->constants[i];
+                        switch(constant.type)
+                        {
+                        case PL_VAR_SINT:
+                            s << "const int " << constant.name << " = "
+                              << *(reinterpret_cast<const int*>(constant.data));
+                            break;
+                        case PL_VAR_UINT:
+                            s << "const uint " << constant.name << " = "
+                              << *(reinterpret_cast<const unsigned*>(constant.data));
+                            break;
+                        case PL_VAR_FLOAT:
+                            s << "const float " << constant.name << " = "
+                              << *(reinterpret_cast<const float*>(constant.data));
+                            break;
+                        }
+                        s << ";" << std::endl;
+                    }
+ 
+                    s << res->glsl << std::endl;
+ 
+                    toneMapDef = s.str();
+                }
+
+                std::stringstream s;
+                s << "outColor = " << res->name << "(outColor);"
+                  << std::endl;
+                toneMap = s.str();
+#endif
+            const std::string source = displayFragmentSource(
+                ocioICSDef,
+                ocioICS,
+                ocioDef,
+                ocio,
+                lutDef,
+                lut,
+                p.lutOptions.order,
+                toneMapDef,
+                toneMap);
+            if (auto context = _context.lock())
             {
-                for (size_t i = 0; i < p.ocioData->textures.size(); ++i)
-                {
-                    p.shaders["display"]->setUniform(
-                        p.ocioData->textures[i].sampler,
-                        static_cast<int>(texturesOffset + i));
-                }
-                texturesOffset += p.ocioData->textures.size();
+//context->log("tl::gl::GLRender", source);
+                context->log("tl::gl::GLRender", "Creating display shader");
             }
-            if (p.lutData)
-            {
-                for (size_t i = 0; i < p.lutData->textures.size(); ++i)
-                {
-                    p.shaders["display"]->setUniform(
-                        p.lutData->textures[i].sampler,
-                        static_cast<int>(texturesOffset + i));
-                }
-                texturesOffset += p.lutData->textures.size();
-            }
-#endif // TLRENDER_OCIO
+            p.shaders["display"] = gl::Shader::create(vertexSource(), source);
         }
+p.shaders["display"]->bind();
+p.shaders["display"]->setUniform("transform.mvp", p.transform);
+#if defined(TLRENDER_OCIO)
+size_t texturesOffset = 1;
+if (p.ocioData)
+{
+    for (size_t i = 0; i < p.ocioData->textures.size(); ++i)
+    {
+        p.shaders["display"]->setUniform(
+            p.ocioData->textures[i].sampler,
+            static_cast<int>(texturesOffset + i));
     }
+    texturesOffset += p.ocioData->textures.size();
+}
+if (p.lutData)
+{
+    for (size_t i = 0; i < p.lutData->textures.size(); ++i)
+    {
+        p.shaders["display"]->setUniform(
+            p.lutData->textures[i].sampler,
+            static_cast<int>(texturesOffset + i));
+    }
+    texturesOffset += p.lutData->textures.size();
+}
+#endif // TLRENDER_OCIO
+}
+}
 }

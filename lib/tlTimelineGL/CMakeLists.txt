@@ -13,8 +13,13 @@ elseif("${TLRENDER_API}" STREQUAL "GLES_2")
     list(APPEND SOURCE RenderShaders_GLES_2.cpp)
 endif()
 
+set(LIBPLACEBO_LIBRARY)
+if(TLRENDER_LIBPLACEBO)
+    set(LIBPLACEBO_LIBRARY libplacebo::libplacebo)
+endif()
+
 add_library(tlTimelineGL ${HEADERS} ${PRIVATE_HEADERS} ${SOURCE})
-target_link_libraries(tlTimelineGL tlTimeline)
+target_link_libraries(tlTimelineGL tlTimeline ${LIBPLACEBO_LIBRARY})
 set_target_properties(tlTimelineGL PROPERTIES FOLDER lib)
 set_target_properties(tlTimelineGL PROPERTIES PUBLIC_HEADER "${HEADERS}")
 
