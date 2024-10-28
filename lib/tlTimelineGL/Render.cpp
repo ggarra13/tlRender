@@ -1126,10 +1126,10 @@ namespace tl
                     throw std::runtime_error("pl_shader_finalize failed!");
                 }
     
-                printf("num_vertex_attribs=%d\n", res->num_vertex_attribs);
-                printf("num_variables=%d\n", res->num_variables);
-                printf("num_descriptors=%d\n", res->num_descriptors);
-                printf("num_constants=%d\n", res->num_constants);
+                // printf("num_vertex_attribs=%d\n", res->num_vertex_attribs);
+                // printf("num_variables=%d\n", res->num_variables);
+                // printf("num_descriptors=%d\n", res->num_descriptors);
+                // printf("num_constants=%d\n", res->num_constants);
                 {
                     std::stringstream s;
     
@@ -1139,13 +1139,15 @@ namespace tl
                         const struct pl_shader_var shader_var = res->variables[i];
                         const struct pl_var var = shader_var.var;
                         std::string glsl_type = pl_var_glsl_type_name(var);
-                        s << glsl_type << " " << var.name;
+                        s << "uniform " << glsl_type << " " << var.name;
                         if (!shader_var.data)
                         {
                             s << ";" << std::endl;
                         }
                         else
                         {
+                            int dim_v = var.dim_v;
+                            int dim_m = var.dim_m;
                             switch(var.type)
                             {
                             case PL_VAR_SINT:
@@ -1154,24 +1156,46 @@ namespace tl
                                 break;
                             case PL_VAR_FLOAT:
                             {
-                                s << " = { ";
                                 float* m = (float*) shader_var.data;
-                                for (int r = 0; r < var.dim_m; ++r)
+                                if (dim_m > 1 && dim_v > 1)
                                 {
-                                    for (int c = 0; c < var.dim_v; ++c)
+                                    s << " = " << glsl_type << "(";
+                                    for (int r = 0; r < dim_m; ++r)
                                     {
-                                        int index = r * var.dim_v + c;
-                                        s << m[index];
+                                        for (int c = 0; c < dim_v; ++c)
+                                        {
+                                            int index = r * dim_v + c;
+                                            s << m[index];
+
+                                            // Check if it's the last element
+                                            if (!(r == dim_m - 1 &&
+                                                  c == dim_v - 1))
+                                            {
+                                                s << ", ";
+                                            }
+                                        }
+                                    }
+                                    s << ");" << std::endl;
+                                }
+                                else if (dim_v > 1)
+                                {
+                                    s << " = " << glsl_type << "(";
+                                    for (int c = 0; c < dim_v; ++c)
+                                    {
+                                        s << m[c];
 
                                         // Check if it's the last element
-                                        if (!(r == var.dim_m - 1 &&
-                                              c == var.dim_v - 1))
+                                        if (!(c == dim_v - 1))
                                         {
                                             s << ", ";
                                         }
                                     }
+                                    s << ");" << std::endl;
                                 }
-                                s << "};" << std::endl;
+                                else
+                                {
+                                    s << " = " << m[0] << ";" << std::endl;
+                                }
                                 break;
                             }
                             }
