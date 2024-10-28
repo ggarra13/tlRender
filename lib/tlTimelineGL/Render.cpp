@@ -1070,24 +1070,6 @@ namespace tl
                     throw std::runtime_error("pl_shader_alloc failed!");
                 }
 
-                pl_color_space src_colorspace;
-                memset(&src_colorspace, 0, sizeof(pl_color_space));
-                src_colorspace.primaries = PL_COLOR_PRIM_BT_2020;
-                src_colorspace.transfer  = PL_COLOR_TRC_PQ;
-    
-                pl_color_space dst_colorspace;
-                memset(&dst_colorspace, 0, sizeof(pl_color_space));
-                dst_colorspace.primaries = PL_COLOR_PRIM_BT_709;
-                // dst_colorspace.transfer  = PL_COLOR_TRC_LINEAR;
-                dst_colorspace.transfer  = PL_COLOR_TRC_SRGB;
-    
-                pl_color_map_args color_map_args;
-                memset(&color_map_args, 0, sizeof(pl_color_map_args));
-    
-                color_map_args.src = src_colorspace;
-                color_map_args.dst = dst_colorspace;
-                color_map_args.prelinearized = false;
-                color_map_args.state = NULL;
 
                 pl_color_map_params color_map_params;
                 memset(&color_map_params, 0, sizeof(pl_color_map_params));
@@ -1116,6 +1098,25 @@ namespace tl
                 color_map_params.visualize_rect.x1 = 1;
                 color_map_params.visualize_rect.y1 = 1;
                 color_map_params.contrast_smoothness = 3.5f;
+                
+                pl_color_space src_colorspace;
+                memset(&src_colorspace, 0, sizeof(pl_color_space));
+                src_colorspace.primaries = PL_COLOR_PRIM_BT_2020;
+                src_colorspace.transfer  = PL_COLOR_TRC_PQ;
+    
+                pl_color_space dst_colorspace;
+                memset(&dst_colorspace, 0, sizeof(pl_color_space));
+                dst_colorspace.primaries = PL_COLOR_PRIM_BT_709;
+                // dst_colorspace.transfer  = PL_COLOR_TRC_LINEAR;
+                dst_colorspace.transfer  = PL_COLOR_TRC_SRGB;
+    
+                pl_color_map_args color_map_args;
+                memset(&color_map_args, 0, sizeof(pl_color_map_args));
+    
+                color_map_args.src = src_colorspace;
+                color_map_args.dst = dst_colorspace;
+                color_map_args.prelinearized = false;
+                color_map_args.state = NULL;
     
                 pl_shader_color_map_ex(shader,
                                        &color_map_params,
