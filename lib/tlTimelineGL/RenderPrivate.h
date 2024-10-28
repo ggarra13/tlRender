@@ -107,7 +107,6 @@ namespace tl
             math::Size2i renderSize;
             timeline::OCIOOptions ocioOptions;
             timeline::LUTOptions lutOptions;
-            timeline::ToneMapOptions tonemapOptions;
             timeline::RenderOptions renderOptions;
 
 #if defined(TLRENDER_OCIO)

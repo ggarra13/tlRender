@@ -7,6 +7,7 @@
 #include <tlTimeline/ImageOptions.h>
 
 #include <tlCore/Color.h>
+#include <tlCore/HDR.h>
 #include <tlCore/Image.h>
 #include <tlCore/Matrix.h>
 
@@ -110,6 +111,16 @@ namespace tl
             bool operator != (const Normalize&) const;
         };
         
+        //! Tonemap options.
+        struct ToneMap
+        {
+            bool               enabled = false;
+            image::HDRData     hdrData;
+            
+            bool operator == (const ToneMap&) const;
+            bool operator != (const ToneMap&) const;
+        };
+        
         //! Display options.
         struct DisplayOptions
         {
@@ -121,6 +132,7 @@ namespace tl
             SoftClip           softClip;
             ImageFilters       imageFilters;
             image::VideoLevels videoLevels  = image::VideoLevels::FullRange;
+            ToneMap            tonemap;
             Normalize          normalize;
             bool               invalidValues = false;
             
