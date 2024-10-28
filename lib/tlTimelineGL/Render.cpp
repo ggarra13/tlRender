@@ -1098,34 +1098,37 @@ namespace tl
                 color_map_params.visualize_rect.x1 = 1;
                 color_map_params.visualize_rect.y1 = 1;
                 color_map_params.contrast_smoothness = 3.5f;
+
+                const image::HDRData& data = p.toneMapData.hdrData;
                 
                 pl_color_space src_colorspace;
                 memset(&src_colorspace, 0, sizeof(pl_color_space));
                 src_colorspace.primaries = PL_COLOR_PRIM_BT_2020;
                 src_colorspace.transfer  = PL_COLOR_TRC_PQ;
-                // pl_hdr_metadata& hdr = src_colorspace.hdr;
-                // hdr.min_luma = ;
-                // hdr.max_luma = ;
-                // hdr.prim.red.x = ;
-                // hdr.prim.red.y = ;
-                // hdr.prim.green.x = ;
-                // hdr.prim.green.y = ;
-                // hdr.prim.blue.x = ;
-                // hdr.prim.blue.y = ;
-                // hdr.prim.white.x = ;
-                // hdr.prim.white.y = ;
-                // hdr.max_cll = ;
-                // hdr.max_fall = ;
-                // hdr.scene_max[0] = ;
-                // hdr.scene_max[1] = ;
-                // hdr.scene_max[2] = ;
-                // hdr.scene_avg = ;
-                // hdr.ootf.target_luma = ;
-                // hdr.ootf.knee_x = ;
-                // hdr.ootf.knee_y = ;
-                // hdr.ootf.num_anchors = ;
-                // for (int i = 0; i < hdr.ootf.num_anchors; i++)
-                //     hdr.ootf.anchors[i] = ;
+                
+                pl_hdr_metadata& hdr = src_colorspace.hdr;
+                hdr.min_luma = data.displayMasteringLuminance.getMin();
+                hdr.max_luma = data.displayMasteringLuminance.getMax();
+                hdr.prim.red.x = data.primaries[image::HDRPrimaries::Red][0];
+                hdr.prim.red.y = data.primaries[image::HDRPrimaries::Red][1];
+                hdr.prim.green.x = data.primaries[image::HDRPrimaries::Green][0];
+                hdr.prim.green.y = data.primaries[image::HDRPrimaries::Green][1];
+                hdr.prim.blue.x = data.primaries[image::HDRPrimaries::Blue][0];
+                hdr.prim.blue.y = data.primaries[image::HDRPrimaries::Blue][1];
+                hdr.prim.white.x = data.primaries[image::HDRPrimaries::White][0];
+                hdr.prim.white.y = data.primaries[image::HDRPrimaries::White][1];
+                hdr.max_cll = data.maxCLL;
+                hdr.max_fall = data.maxFALL;
+                hdr.scene_max[0] = data.sceneMax[0];
+                hdr.scene_max[1] = data.sceneMax[1];
+                hdr.scene_max[2] = data.sceneMax[2];
+                hdr.scene_avg = data.sceneAvg;
+                hdr.ootf.target_luma = data.ootf.targetLuma;
+                hdr.ootf.knee_x = data.ootf.kneeX;
+                hdr.ootf.knee_y = data.ootf.kneeY;
+                hdr.ootf.num_anchors = data.ootf.numAnchors;
+                for (int i = 0; i < hdr.ootf.num_anchors; i++)
+                    hdr.ootf.anchors[i] = data.ootf.anchors[i];
                 
                     
     
@@ -1153,11 +1156,11 @@ namespace tl
                     pl_shader_free(&shader);
                     throw std::runtime_error("pl_shader_finalize failed!");
                 }
-                    
-                // printf("num_vertex_attribs=%d\n", res->num_vertex_attribs);
-                // printf("num_variables=%d\n", res->num_variables);
-                // printf("num_descriptors=%d\n", res->num_descriptors);
-                // printf("num_constants=%d\n", res->num_constants);
+
+                std::cout << "num_vertex_attribs=" << res->num_vertex_attribs << std::endl
+                          << "num_variables=" << res->num_variables << std::endl
+                          << "num_descriptors=" << res->num_descriptors << std::endl
+                          << "num_constants=" << res->num_constants << std::endl;
                 {
                     std::stringstream s;
     
