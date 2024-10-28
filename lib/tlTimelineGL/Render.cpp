@@ -1103,6 +1103,31 @@ namespace tl
                 memset(&src_colorspace, 0, sizeof(pl_color_space));
                 src_colorspace.primaries = PL_COLOR_PRIM_BT_2020;
                 src_colorspace.transfer  = PL_COLOR_TRC_PQ;
+                // pl_hdr_metadata& hdr = src_colorspace.hdr;
+                // hdr.min_luma = ;
+                // hdr.max_luma = ;
+                // hdr.prim.red.x = ;
+                // hdr.prim.red.y = ;
+                // hdr.prim.green.x = ;
+                // hdr.prim.green.y = ;
+                // hdr.prim.blue.x = ;
+                // hdr.prim.blue.y = ;
+                // hdr.prim.white.x = ;
+                // hdr.prim.white.y = ;
+                // hdr.max_cll = ;
+                // hdr.max_fall = ;
+                // hdr.scene_max[0] = ;
+                // hdr.scene_max[1] = ;
+                // hdr.scene_max[2] = ;
+                // hdr.scene_avg = ;
+                // hdr.ootf.target_luma = ;
+                // hdr.ootf.knee_x = ;
+                // hdr.ootf.knee_y = ;
+                // hdr.ootf.num_anchors = ;
+                // for (int i = 0; i < hdr.ootf.num_anchors; i++)
+                //     hdr.ootf.anchors[i] = ;
+                
+                    
     
                 pl_color_space dst_colorspace;
                 memset(&dst_colorspace, 0, sizeof(pl_color_space));
