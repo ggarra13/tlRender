@@ -39,7 +39,9 @@ namespace tl
             const std::string& ocio,
             const std::string& lutDef,
             const std::string& lut,
-            timeline::LUTOrder);
+            timeline::LUTOrder,
+            const std::string& toneMapDef,
+            const std::string& toneMap);
         std::string differenceFragmentSource();
 
         std::vector<std::shared_ptr<gl::Texture> > getTextures(

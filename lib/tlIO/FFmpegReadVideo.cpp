@@ -136,11 +136,6 @@ namespace tl
                         _tags[key] = tag->value;
                     }
                 
-                image::HDRData hdrData;
-                bool hasHDR = toHDRData(avVideoCodecParameters->coded_side_data,
-                                        avVideoCodecParameters->nb_coded_side_data, hdrData);
-                if (hasHDR)
-                    _tags["hdr"] = nlohmann::json(hdrData).dump();
                 // If we are reading VPX, use libvpx-vp9 external lib if available so
                 // we can read an alpha channel.
                 if (avVideoCodecParameters->codec_id == AV_CODEC_ID_VP9)
