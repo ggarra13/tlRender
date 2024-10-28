@@ -156,6 +156,8 @@ namespace tl
             const std::vector<timeline::DisplayOptions>& displayOptions,
             const timeline::CompareOptions& compareOptions)
         {
+            TLRENDER_P();
+            
             if (!videoData.empty() && !boxes.empty())
             {
                 _drawVideo(
@@ -163,6 +165,17 @@ namespace tl
                     boxes[0],
                     !imageOptions.empty() ? std::make_shared<timeline::ImageOptions>(imageOptions[0]) : nullptr,
                     !displayOptions.empty() ? displayOptions[0] : timeline::DisplayOptions());
+                
+#if defined(TLRENDER_LIBPLACEBO)
+                if (!displayOptions.empty())
+                {
+                    p.toneMapData = displayOptions[0].tonemap;
+                }
+                else
+                {
+                    p.toneMapData.enabled = false;
+                }
+#endif
             }
         }
 

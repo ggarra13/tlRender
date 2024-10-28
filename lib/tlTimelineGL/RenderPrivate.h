@@ -115,6 +115,10 @@ namespace tl
             std::unique_ptr<OCIOLUTData> lutData;
 #endif // TLRENDER_OCIO
 
+#if defined(TLRENDER_LIBPLACEBO)
+            timeline::ToneMap toneMapData;
+#endif
+
             math::Box2i viewport;
             math::Matrix4x4f transform;
             bool clipRectEnabled = false;
