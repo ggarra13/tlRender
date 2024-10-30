@@ -1010,274 +1010,277 @@ namespace tl
                 }
 #endif // TLRENDER_OCIO
 #if defined(TLRENDER_LIBPLACEBO)
-                pl_log log = pl_log_create(PL_API_VER, NULL);
-                if (!log)
+                if (p.toneMapData.enabled)
                 {
-                    throw std::runtime_error("log creation failed");
-                }
+                    pl_log log = pl_log_create(PL_API_VER, NULL);
+                    if (!log)
+                    {
+                        throw std::runtime_error("log creation failed");
+                    }
 
-                struct pl_gpu_dummy_params gpu_dummy;
-                memset(&gpu_dummy, 0, sizeof(pl_gpu_dummy_params));
+                    struct pl_gpu_dummy_params gpu_dummy;
+                    memset(&gpu_dummy, 0, sizeof(pl_gpu_dummy_params));
     
-                gpu_dummy.glsl.version = 410;
-                gpu_dummy.glsl.gles = false;
-                gpu_dummy.glsl.vulkan = false;
-                gpu_dummy.glsl.compute = false;
+                    gpu_dummy.glsl.version = 410;
+                    gpu_dummy.glsl.gles = false;
+                    gpu_dummy.glsl.vulkan = false;
+                    gpu_dummy.glsl.compute = false;
 
-                gpu_dummy.limits.callbacks = false;
-                gpu_dummy.limits.thread_safe = true;
-                /* pl_buf */  
-                gpu_dummy.limits.max_buf_size  = SIZE_MAX;  
-                gpu_dummy.limits.max_ubo_size  = SIZE_MAX;   
-                gpu_dummy.limits.max_ssbo_size = SIZE_MAX;  
-                gpu_dummy.limits.max_vbo_size  = SIZE_MAX;
-                gpu_dummy.limits.max_mapped_size    = SIZE_MAX;   
-                gpu_dummy.limits.max_buffer_texels  = UINT64_MAX;  
-                /* pl_tex */  
-                gpu_dummy.limits.max_tex_1d_dim= UINT32_MAX;
-                gpu_dummy.limits.max_tex_2d_dim= UINT32_MAX;
-                gpu_dummy.limits.max_tex_3d_dim= UINT32_MAX;    
-                gpu_dummy.limits.buf_transfer  = true;  
-                gpu_dummy.limits.align_tex_xfer_pitch = 1; 
-                gpu_dummy.limits.align_tex_xfer_offset = 1;
+                    gpu_dummy.limits.callbacks = false;
+                    gpu_dummy.limits.thread_safe = true;
+                    /* pl_buf */  
+                    gpu_dummy.limits.max_buf_size  = SIZE_MAX;  
+                    gpu_dummy.limits.max_ubo_size  = SIZE_MAX;   
+                    gpu_dummy.limits.max_ssbo_size = SIZE_MAX;  
+                    gpu_dummy.limits.max_vbo_size  = SIZE_MAX;
+                    gpu_dummy.limits.max_mapped_size    = SIZE_MAX;   
+                    gpu_dummy.limits.max_buffer_texels  = UINT64_MAX;  
+                    /* pl_tex */  
+                    gpu_dummy.limits.max_tex_1d_dim= UINT32_MAX;
+                    gpu_dummy.limits.max_tex_2d_dim= UINT32_MAX;
+                    gpu_dummy.limits.max_tex_3d_dim= UINT32_MAX;    
+                    gpu_dummy.limits.buf_transfer  = true;  
+                    gpu_dummy.limits.align_tex_xfer_pitch = 1; 
+                    gpu_dummy.limits.align_tex_xfer_offset = 1;
     
-                /* pl_pass */ 
-                gpu_dummy.limits.max_variable_comps = SIZE_MAX; 
-                gpu_dummy.limits.max_constants = SIZE_MAX;
-                gpu_dummy.limits.max_pushc_size= SIZE_MAX;   
-                gpu_dummy.limits.max_dispatch[0]    = UINT32_MAX;   
-                gpu_dummy.limits.max_dispatch[1]    = UINT32_MAX;   
-                gpu_dummy.limits.max_dispatch[2]    = UINT32_MAX;
-                gpu_dummy.limits.fragment_queues    = 0;   
-                gpu_dummy.limits.compute_queues= 0;
+                    /* pl_pass */ 
+                    gpu_dummy.limits.max_variable_comps = SIZE_MAX; 
+                    gpu_dummy.limits.max_constants = SIZE_MAX;
+                    gpu_dummy.limits.max_pushc_size= SIZE_MAX;   
+                    gpu_dummy.limits.max_dispatch[0]    = UINT32_MAX;   
+                    gpu_dummy.limits.max_dispatch[1]    = UINT32_MAX;   
+                    gpu_dummy.limits.max_dispatch[2]    = UINT32_MAX;
+                    gpu_dummy.limits.fragment_queues    = 0;   
+                    gpu_dummy.limits.compute_queues= 0;
     
-                pl_gpu gpu = pl_gpu_dummy_create(log, &gpu_dummy);
-                if (!gpu)
-                {
-                    throw std::runtime_error("pl_gpu_dummy_create failed!");
-                }
+                    pl_gpu gpu = pl_gpu_dummy_create(log, &gpu_dummy);
+                    if (!gpu)
+                    {
+                        throw std::runtime_error("pl_gpu_dummy_create failed!");
+                    }
 
-                pl_shader_params shader_params;
-                memset(&shader_params, 0, sizeof(pl_shader_params));
+                    pl_shader_params shader_params;
+                    memset(&shader_params, 0, sizeof(pl_shader_params));
     
-                shader_params.id = 1;
-                shader_params.gpu = gpu;
-                shader_params.dynamic_constants = false;
+                    shader_params.id = 1;
+                    shader_params.gpu = gpu;
+                    shader_params.dynamic_constants = false;
     
-                pl_shader shader = pl_shader_alloc(log, &shader_params);
-                if (!shader)
-                {
-                    throw std::runtime_error("pl_shader_alloc failed!");
-                }
+                    pl_shader shader = pl_shader_alloc(log, &shader_params);
+                    if (!shader)
+                    {
+                        throw std::runtime_error("pl_shader_alloc failed!");
+                    }
 
 
-                pl_color_map_params color_map_params;
-                memset(&color_map_params, 0, sizeof(pl_color_map_params));
+                    pl_color_map_params color_map_params;
+                    memset(&color_map_params, 0, sizeof(pl_color_map_params));
                 
-                color_map_params.gamut_mapping = &pl_gamut_map_perceptual;
-                color_map_params.tone_mapping_function = &pl_tone_map_spline; // default
-                //color_map_params.tone_mapping_function = &pl_tone_map_reinhard;
+                    color_map_params.gamut_mapping = &pl_gamut_map_perceptual;
+                    color_map_params.tone_mapping_function = &pl_tone_map_spline; // default
+                    //color_map_params.tone_mapping_function = &pl_tone_map_reinhard;
 
-                // PL_GAMUT_MAP_CONSTANTS is defined in wrong order for C++
-#define MRV2_GAMUT_MAP_CONSTANTS                \
-                .perceptual_deadzone = 0.30f,   \
-                .perceptual_strength = 0.80f,   \
-                .colorimetric_gamma  = 1.80f,   \
-                     .softclip_knee  = 0.70f,   \
-                     .softclip_desat = 0.35f, 
+                    // PL_GAMUT_MAP_CONSTANTS is defined in wrong order for C++
+#define MRV2_GAMUT_MAP_CONSTANTS                    \
+                    .perceptual_deadzone = 0.30f,   \
+                    .perceptual_strength = 0.80f,   \
+                    .colorimetric_gamma  = 1.80f,   \
+                         .softclip_knee  = 0.70f,   \
+                         .softclip_desat = 0.35f, 
     
-                color_map_params.gamut_constants = { MRV2_GAMUT_MAP_CONSTANTS };
-                color_map_params.tone_constants  = { PL_TONE_MAP_CONSTANTS };
-                color_map_params.metadata   = PL_HDR_METADATA_ANY;
-                color_map_params.lut3d_size[0] = 48;
-                color_map_params.lut3d_size[1] = 32;
-                color_map_params.lut3d_size[2] = 256;
-                color_map_params.lut_size = 256;
-                color_map_params.visualize_rect.x0 = 0;
-                color_map_params.visualize_rect.y0 = 0;
-                color_map_params.visualize_rect.x1 = 1;
-                color_map_params.visualize_rect.y1 = 1;
-                color_map_params.contrast_smoothness = 3.5f;
+                    color_map_params.gamut_constants = { MRV2_GAMUT_MAP_CONSTANTS };
+                    color_map_params.tone_constants  = { PL_TONE_MAP_CONSTANTS };
+                    color_map_params.metadata   = PL_HDR_METADATA_ANY;
+                    color_map_params.lut3d_size[0] = 48;
+                    color_map_params.lut3d_size[1] = 32;
+                    color_map_params.lut3d_size[2] = 256;
+                    color_map_params.lut_size = 256;
+                    color_map_params.visualize_rect.x0 = 0;
+                    color_map_params.visualize_rect.y0 = 0;
+                    color_map_params.visualize_rect.x1 = 1;
+                    color_map_params.visualize_rect.y1 = 1;
+                    color_map_params.contrast_smoothness = 3.5f;
 
-                const image::HDRData& data = p.toneMapData.hdrData;
+                    const image::HDRData& data = p.toneMapData.hdrData;
                 
-                pl_color_space src_colorspace;
-                memset(&src_colorspace, 0, sizeof(pl_color_space));
-                src_colorspace.primaries = PL_COLOR_PRIM_BT_2020;
-                src_colorspace.transfer  = PL_COLOR_TRC_PQ;  // is this right?
+                    pl_color_space src_colorspace;
+                    memset(&src_colorspace, 0, sizeof(pl_color_space));
+                    src_colorspace.primaries = PL_COLOR_PRIM_BT_2020;
+                    src_colorspace.transfer  = PL_COLOR_TRC_PQ;  // is this right?
                 
-                pl_hdr_metadata& hdr = src_colorspace.hdr;
-                hdr.min_luma = data.displayMasteringLuminance.getMin();
-                hdr.max_luma = data.displayMasteringLuminance.getMax();
-                hdr.prim.red.x = data.primaries[image::HDRPrimaries::Red][0];
-                hdr.prim.red.y = data.primaries[image::HDRPrimaries::Red][1];
-                hdr.prim.green.x = data.primaries[image::HDRPrimaries::Green][0];
-                hdr.prim.green.y = data.primaries[image::HDRPrimaries::Green][1];
-                hdr.prim.blue.x = data.primaries[image::HDRPrimaries::Blue][0];
-                hdr.prim.blue.y = data.primaries[image::HDRPrimaries::Blue][1];
-                hdr.prim.white.x = data.primaries[image::HDRPrimaries::White][0];
-                hdr.prim.white.y = data.primaries[image::HDRPrimaries::White][1];
-                hdr.max_cll = data.maxCLL;
-                hdr.max_fall = data.maxFALL;
-                hdr.scene_max[0] = data.sceneMax[0];
-                hdr.scene_max[1] = data.sceneMax[1];
-                hdr.scene_max[2] = data.sceneMax[2];
-                hdr.scene_avg = data.sceneAvg;
-                hdr.ootf.target_luma = data.ootf.targetLuma;
-                hdr.ootf.knee_x = data.ootf.kneeX;
-                hdr.ootf.knee_y = data.ootf.kneeY;
-                hdr.ootf.num_anchors = data.ootf.numAnchors;
-                for (int i = 0; i < hdr.ootf.num_anchors; i++)
-                    hdr.ootf.anchors[i] = data.ootf.anchors[i];
+                    pl_hdr_metadata& hdr = src_colorspace.hdr;
+                    hdr.min_luma = data.displayMasteringLuminance.getMin();
+                    hdr.max_luma = data.displayMasteringLuminance.getMax();
+                    hdr.prim.red.x = data.primaries[image::HDRPrimaries::Red][0];
+                    hdr.prim.red.y = data.primaries[image::HDRPrimaries::Red][1];
+                    hdr.prim.green.x = data.primaries[image::HDRPrimaries::Green][0];
+                    hdr.prim.green.y = data.primaries[image::HDRPrimaries::Green][1];
+                    hdr.prim.blue.x = data.primaries[image::HDRPrimaries::Blue][0];
+                    hdr.prim.blue.y = data.primaries[image::HDRPrimaries::Blue][1];
+                    hdr.prim.white.x = data.primaries[image::HDRPrimaries::White][0];
+                    hdr.prim.white.y = data.primaries[image::HDRPrimaries::White][1];
+                    hdr.max_cll = data.maxCLL;
+                    hdr.max_fall = data.maxFALL;
+                    hdr.scene_max[0] = data.sceneMax[0];
+                    hdr.scene_max[1] = data.sceneMax[1];
+                    hdr.scene_max[2] = data.sceneMax[2];
+                    hdr.scene_avg = data.sceneAvg;
+                    hdr.ootf.target_luma = data.ootf.targetLuma;
+                    hdr.ootf.knee_x = data.ootf.kneeX;
+                    hdr.ootf.knee_y = data.ootf.kneeY;
+                    hdr.ootf.num_anchors = data.ootf.numAnchors;
+                    for (int i = 0; i < hdr.ootf.num_anchors; i++)
+                        hdr.ootf.anchors[i] = data.ootf.anchors[i];
                 
                     
     
-                pl_color_space dst_colorspace;
-                memset(&dst_colorspace, 0, sizeof(pl_color_space));
-                dst_colorspace.primaries = PL_COLOR_PRIM_BT_709;
-                // dst_colorspace.transfer  = PL_COLOR_TRC_LINEAR;
-                dst_colorspace.transfer  = PL_COLOR_TRC_SRGB;
+                    pl_color_space dst_colorspace;
+                    memset(&dst_colorspace, 0, sizeof(pl_color_space));
+                    dst_colorspace.primaries = PL_COLOR_PRIM_BT_709;
+                    // dst_colorspace.transfer  = PL_COLOR_TRC_LINEAR;
+                    dst_colorspace.transfer  = PL_COLOR_TRC_SRGB;
     
-                pl_color_map_args color_map_args;
-                memset(&color_map_args, 0, sizeof(pl_color_map_args));
+                    pl_color_map_args color_map_args;
+                    memset(&color_map_args, 0, sizeof(pl_color_map_args));
     
-                color_map_args.src = src_colorspace;
-                color_map_args.dst = dst_colorspace;
-                color_map_args.prelinearized = false;
-                color_map_args.state = NULL;
+                    color_map_args.src = src_colorspace;
+                    color_map_args.dst = dst_colorspace;
+                    color_map_args.prelinearized = false;
+                    color_map_args.state = NULL;
     
-                pl_shader_color_map_ex(shader,
-                                       &color_map_params,
-                                       &color_map_args);
+                    pl_shader_color_map_ex(shader,
+                                           &color_map_params,
+                                           &color_map_args);
     
-                const pl_shader_res* res = pl_shader_finalize(shader);
-                if (!res)
-                {
-                    pl_shader_free(&shader);
-                    throw std::runtime_error("pl_shader_finalize failed!");
-                }
-
-                std::cout << "num_vertex_attribs=" << res->num_vertex_attribs << std::endl
-                          << "num_variables=" << res->num_variables << std::endl
-                          << "num_descriptors=" << res->num_descriptors << std::endl
-                          << "num_constants=" << res->num_constants << std::endl;
-                {
-                    std::stringstream s;
-    
-                    s << "// Variables" << std::endl << std::endl;
-                    for (int i = 0; i < res->num_variables; ++i)
+                    const pl_shader_res* res = pl_shader_finalize(shader);
+                    if (!res)
                     {
-                        const struct pl_shader_var shader_var = res->variables[i];
-                        const struct pl_var var = shader_var.var;
-                        std::string glsl_type = pl_var_glsl_type_name(var);
-                        s << "uniform " << glsl_type << " " << var.name;
-                        if (!shader_var.data)
+                        pl_shader_free(&shader);
+                        throw std::runtime_error("pl_shader_finalize failed!");
+                    }
+
+                    std::cout << "num_vertex_attribs=" << res->num_vertex_attribs << std::endl
+                              << "num_variables=" << res->num_variables << std::endl
+                              << "num_descriptors=" << res->num_descriptors << std::endl
+                              << "num_constants=" << res->num_constants << std::endl;
+                    {
+                        std::stringstream s;
+    
+                        s << "// Variables" << std::endl << std::endl;
+                        for (int i = 0; i < res->num_variables; ++i)
                         {
-                            s << ";" << std::endl;
-                        }
-                        else
-                        {
-                            int dim_v = var.dim_v;
-                            int dim_m = var.dim_m;
-                            switch(var.type)
+                            const struct pl_shader_var shader_var = res->variables[i];
+                            const struct pl_var var = shader_var.var;
+                            std::string glsl_type = pl_var_glsl_type_name(var);
+                            s << "uniform " << glsl_type << " " << var.name;
+                            if (!shader_var.data)
                             {
-                            case PL_VAR_SINT:
-                            {
-                                int* m = (int*) shader_var.data;
-                                s << " = " << m[0] << ";" << std::endl;
-                                break;
+                                s << ";" << std::endl;
                             }
-                            case PL_VAR_UINT:
+                            else
                             {
-                                unsigned* m = (unsigned*) shader_var.data;
-                                s << " = " << m[0] << ";" << std::endl;
-                                break;
-                            }
-                            case PL_VAR_FLOAT:
-                            {
-                                float* m = (float*) shader_var.data;
-                                if (dim_m > 1 && dim_v > 1)
+                                int dim_v = var.dim_v;
+                                int dim_m = var.dim_m;
+                                switch(var.type)
                                 {
-                                    s << " = " << glsl_type << "(";
-                                    for (int r = 0; r < dim_m; ++r)
+                                case PL_VAR_SINT:
+                                {
+                                    int* m = (int*) shader_var.data;
+                                    s << " = " << m[0] << ";" << std::endl;
+                                    break;
+                                }
+                                case PL_VAR_UINT:
+                                {
+                                    unsigned* m = (unsigned*) shader_var.data;
+                                    s << " = " << m[0] << ";" << std::endl;
+                                    break;
+                                }
+                                case PL_VAR_FLOAT:
+                                {
+                                    float* m = (float*) shader_var.data;
+                                    if (dim_m > 1 && dim_v > 1)
                                     {
+                                        s << " = " << glsl_type << "(";
+                                        for (int r = 0; r < dim_m; ++r)
+                                        {
+                                            for (int c = 0; c < dim_v; ++c)
+                                            {
+                                                int index = r * dim_v + c;
+                                                s << m[index];
+
+                                                // Check if it's the last element
+                                                if (!(r == dim_m - 1 &&
+                                                      c == dim_v - 1))
+                                                {
+                                                    s << ", ";
+                                                }
+                                            }
+                                        }
+                                        s << ");" << std::endl;
+                                    }
+                                    else if (dim_v > 1)
+                                    {
+                                        s << " = " << glsl_type << "(";
                                         for (int c = 0; c < dim_v; ++c)
                                         {
-                                            int index = r * dim_v + c;
-                                            s << m[index];
+                                            s << m[c];
 
                                             // Check if it's the last element
-                                            if (!(r == dim_m - 1 &&
-                                                  c == dim_v - 1))
+                                            if (!(c == dim_v - 1))
                                             {
                                                 s << ", ";
                                             }
                                         }
+                                        s << ");" << std::endl;
                                     }
-                                    s << ");" << std::endl;
-                                }
-                                else if (dim_v > 1)
-                                {
-                                    s << " = " << glsl_type << "(";
-                                    for (int c = 0; c < dim_v; ++c)
+                                    else
                                     {
-                                        s << m[c];
-
-                                        // Check if it's the last element
-                                        if (!(c == dim_v - 1))
-                                        {
-                                            s << ", ";
-                                        }
+                                        s << " = " << m[0] << ";" << std::endl;
                                     }
-                                    s << ");" << std::endl;
+                                    break;
                                 }
-                                else
-                                {
-                                    s << " = " << m[0] << ";" << std::endl;
                                 }
+                            }
+                        }
+
+                        s << std::endl
+                          << "//" << std::endl
+                          << "// Constants" << std::endl 
+                          << "//" << std::endl << std::endl;
+                        for (int i = 0; i < res->num_constants; ++i)
+                        {
+                            const struct pl_shader_const constant = res->constants[i];
+                            switch(constant.type)
+                            {
+                            case PL_VAR_SINT:
+                                s << "const int " << constant.name << " = "
+                                  << *(reinterpret_cast<const int*>(constant.data));
+                                break;
+                            case PL_VAR_UINT:
+                                s << "const uint " << constant.name << " = "
+                                  << *(reinterpret_cast<const unsigned*>(constant.data));
+                                break;
+                            case PL_VAR_FLOAT:
+                                s << "const float " << constant.name << " = "
+                                  << *(reinterpret_cast<const float*>(constant.data));
                                 break;
                             }
-                            }
+                            s << ";" << std::endl;
                         }
-                    }
-
-                    s << std::endl
-                      << "//" << std::endl
-                      << "// Constants" << std::endl 
-                      << "//" << std::endl << std::endl;
-                    for (int i = 0; i < res->num_constants; ++i)
-                    {
-                        const struct pl_shader_const constant = res->constants[i];
-                        switch(constant.type)
-                        {
-                        case PL_VAR_SINT:
-                            s << "const int " << constant.name << " = "
-                              << *(reinterpret_cast<const int*>(constant.data));
-                            break;
-                        case PL_VAR_UINT:
-                            s << "const uint " << constant.name << " = "
-                              << *(reinterpret_cast<const unsigned*>(constant.data));
-                            break;
-                        case PL_VAR_FLOAT:
-                            s << "const float " << constant.name << " = "
-                              << *(reinterpret_cast<const float*>(constant.data));
-                            break;
-                        }
-                        s << ";" << std::endl;
-                    }
  
-                    s << res->glsl << std::endl;
+                        s << res->glsl << std::endl;
                     
-                    std::cout << s.str() << std::endl;
-                    toneMapDef = s.str();
-                }
+                        std::cout << s.str() << std::endl;
+                        toneMapDef = s.str();
+                    }
 
-                std::stringstream s;
-                s << "outColor = " << res->name << "(outColor);"
-                  << std::endl;
-                toneMap = s.str();
+                    std::stringstream s;
+                    s << "outColor = " << res->name << "(outColor);"
+                      << std::endl;
+                    toneMap = s.str();
     
-                pl_shader_free(&shader);
+                    pl_shader_free(&shader);
+                }
 #endif
                 const std::string source = displayFragmentSource(
                     ocioICSDef,
