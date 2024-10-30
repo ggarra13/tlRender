@@ -1184,10 +1184,10 @@ namespace tl
                         throw std::runtime_error("pl_shader_finalize failed!");
                     }
 
-                    std::cout << "num_vertex_attribs=" << res->num_vertex_attribs << std::endl
-                              << "num_variables=" << res->num_variables << std::endl
-                              << "num_descriptors=" << res->num_descriptors << std::endl
-                              << "num_constants=" << res->num_constants << std::endl;
+                    // std::cout << "num_vertex_attribs=" << res->num_vertex_attribs << std::endl
+                    //           << "num_variables=" << res->num_variables << std::endl
+                    //           << "num_descriptors=" << res->num_descriptors << std::endl
+                    //           << "num_constants=" << res->num_constants << std::endl;
                     {
                         std::stringstream s;
     
