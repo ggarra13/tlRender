@@ -46,6 +46,9 @@ endif()
 if(TLRENDER_FFMPEG)
     find_package(FFmpeg)
 endif()
+if(TLRENDER_LIBPLACEBO)
+    find_package(libplacebo)
+endif()
 if(TLRENDER_JPEG)
     find_package(libjpeg-turbo)
 endif()
@@ -76,6 +79,9 @@ if(libjpeg-turbo_FOUND)
 endif()
 if(LibRaw_FOUND)
     list(APPEND tlRender_INCLUDE_DIRS ${LibRaw_INCLUDE_DIRS})
+endif()
+if(libplacebo_FOUND)
+    list(APPEND tlRender_INCLUDE_DIRS ${libplacebo_INCLUDE_DIRS})
 endif()
 if(NDI_FOUND)
     list(APPEND tlRender_INCLUDE_DIRS ${NDI_INCLUDE_DIRS})
@@ -131,6 +137,7 @@ set(tlRender_LIBRARIES
     ${Imath_LIBRARIES}
     ${nlohmann_json_LIBRARIES}
     ${FREETYPE_LIBRARIES}
+    ${LIBPLACEBO_LIBRARIES}
     ${OTIO_LIBRARIES}
     ${RtAudio_LIBRARIES}
     ${TIFF_LIBRARIES}
@@ -179,6 +186,9 @@ if (RtAudio_FOUND)
 endif()
 if (libjpeg-turbo_FOUND)
     set(tlRender_tlIO_LIBRARIES libjpeg-turbo::turbojpeg-static )
+endif()
+if (libplacebo_FOUND)
+    list(APPEND tlRender_tlTimelineGL_LIBRARIES "libplacebo::libplacebo")
 endif()
 if (PNG_FOUND)
     list(APPEND tlRender_tlIO_LIBRARIES PNG)
