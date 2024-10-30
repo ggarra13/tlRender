@@ -4,6 +4,13 @@
 
 #pragma once
 
+#if defined(TLRENDER_LIBPLACEBO)
+extern "C"
+{
+#include <libplacebo/dummy.h>
+}
+#endif
+
 #include <tlTimelineGL/Render.h>
 
 #include <tlGL/Mesh.h>
@@ -107,6 +114,7 @@ namespace tl
             math::Size2i renderSize;
             timeline::OCIOOptions ocioOptions;
             timeline::LUTOptions lutOptions;
+            timeline::HDROptions hdrOptions;
             timeline::RenderOptions renderOptions;
 
 #if defined(TLRENDER_OCIO)
@@ -116,7 +124,8 @@ namespace tl
 #endif // TLRENDER_OCIO
 
 #if defined(TLRENDER_LIBPLACEBO)
-            timeline::ToneMap toneMapData;
+            pl_log log;
+            pl_gpu gpu;
 #endif
 
             math::Box2i viewport;

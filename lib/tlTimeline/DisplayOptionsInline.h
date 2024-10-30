@@ -66,18 +66,6 @@ namespace tl
             return !(*this == other);
         }
         
-        inline bool ToneMap::operator == (const ToneMap& other) const
-        {
-            return
-                enabled == other.enabled &&
-                hdrData == other.hdrData;
-        }
-
-        inline bool ToneMap::operator != (const ToneMap& other) const
-        {
-            return !(*this == other);
-        }
-
         inline bool Normalize::operator == (const Normalize& other) const
         {
             return
@@ -102,7 +90,6 @@ namespace tl
                 softClip == other.softClip &&
                 imageFilters == other.imageFilters &&
                 videoLevels == other.videoLevels &&
-                tonemap   == other.tonemap &&
                 normalize == other.normalize &&
                 invalidValues == other.invalidValues;
         }

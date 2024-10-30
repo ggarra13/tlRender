@@ -106,6 +106,7 @@ namespace tl
             std::map<int, AVCodecContext*> _avCodecContext;
             AVFrame* _avFrame = nullptr;
             AVFrame* _avFrame2 = nullptr;
+            AVColorTransferCharacteristic  _avColorTRC;
             AVPixelFormat _avInputPixelFormat = AV_PIX_FMT_NONE;
             AVPixelFormat _avOutputPixelFormat = AV_PIX_FMT_NONE;
             bool          _fastYUV420PConversion = true;

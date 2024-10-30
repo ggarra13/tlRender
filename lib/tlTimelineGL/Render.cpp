@@ -18,7 +18,6 @@
 extern "C"
 {
 #include <libplacebo/shaders/colorspace.h>
-#include <libplacebo/dummy.h>
 #include <libplacebo/shaders.h>
 }
 #endif
@@ -343,6 +342,55 @@ namespace tl
                 image::PixelType::L_U8,
                 timeline::ImageFilter::Linear);
 
+#if defined(TLRENDER_LIBPLACEBO)
+            p.log = pl_log_create(PL_API_VER, NULL);
+            if (!p.log)
+            {
+                throw std::runtime_error("log creation failed");
+            }
+
+            struct pl_gpu_dummy_params gpu_dummy;
+            memset(&gpu_dummy, 0, sizeof(pl_gpu_dummy_params));
+    
+            gpu_dummy.glsl.version = 410;
+            gpu_dummy.glsl.gles = false;
+            gpu_dummy.glsl.vulkan = false;
+            gpu_dummy.glsl.compute = false;
+
+            gpu_dummy.limits.callbacks = false;
+            gpu_dummy.limits.thread_safe = true;
+            /* pl_buf */  
+            gpu_dummy.limits.max_buf_size  = SIZE_MAX;  
+            gpu_dummy.limits.max_ubo_size  = SIZE_MAX;   
+            gpu_dummy.limits.max_ssbo_size = SIZE_MAX;  
+            gpu_dummy.limits.max_vbo_size  = SIZE_MAX;
+            gpu_dummy.limits.max_mapped_size    = SIZE_MAX;   
+            gpu_dummy.limits.max_buffer_texels  = UINT64_MAX;  
+            /* pl_tex */  
+            gpu_dummy.limits.max_tex_1d_dim= UINT32_MAX;
+            gpu_dummy.limits.max_tex_2d_dim= UINT32_MAX;
+            gpu_dummy.limits.max_tex_3d_dim= UINT32_MAX;    
+            gpu_dummy.limits.buf_transfer  = true;  
+            gpu_dummy.limits.align_tex_xfer_pitch = 1; 
+            gpu_dummy.limits.align_tex_xfer_offset = 1;
+    
+            /* pl_pass */ 
+            gpu_dummy.limits.max_variable_comps = SIZE_MAX; 
+            gpu_dummy.limits.max_constants = SIZE_MAX;
+            gpu_dummy.limits.max_pushc_size= SIZE_MAX;   
+            gpu_dummy.limits.max_dispatch[0]    = UINT32_MAX;   
+            gpu_dummy.limits.max_dispatch[1]    = UINT32_MAX;   
+            gpu_dummy.limits.max_dispatch[2]    = UINT32_MAX;
+            gpu_dummy.limits.fragment_queues    = 0;   
+            gpu_dummy.limits.compute_queues= 0;
+    
+            p.gpu = pl_gpu_dummy_create(p.log, &gpu_dummy);
+            if (!p.gpu)
+            {
+                throw std::runtime_error("pl_gpu_dummy_create failed!");
+            }
+#endif
+                    
             p.logTimer = std::chrono::steady_clock::now();
         }
 
@@ -977,6 +1025,18 @@ namespace tl
             p.shaders["display"].reset();
             _displayShader();
         }
+        
+        void Render::setHDROptions(const timeline::HDROptions& value)
+        {
+            TLRENDER_P();
+            if (value == p.hdrOptions)
+                return;
+
+            p.hdrOptions = value;
+            
+            p.shaders["display"].reset();
+            _displayShader();
+        }
 
         void Render::_displayShader()
         {
@@ -1010,63 +1070,16 @@ namespace tl
                 }
 #endif // TLRENDER_OCIO
 #if defined(TLRENDER_LIBPLACEBO)
-                if (p.toneMapData.enabled)
-                {
-                    pl_log log = pl_log_create(PL_API_VER, NULL);
-                    if (!log)
-                    {
-                        throw std::runtime_error("log creation failed");
-                    }
-
-                    struct pl_gpu_dummy_params gpu_dummy;
-                    memset(&gpu_dummy, 0, sizeof(pl_gpu_dummy_params));
-    
-                    gpu_dummy.glsl.version = 410;
-                    gpu_dummy.glsl.gles = false;
-                    gpu_dummy.glsl.vulkan = false;
-                    gpu_dummy.glsl.compute = false;
-
-                    gpu_dummy.limits.callbacks = false;
-                    gpu_dummy.limits.thread_safe = true;
-                    /* pl_buf */  
-                    gpu_dummy.limits.max_buf_size  = SIZE_MAX;  
-                    gpu_dummy.limits.max_ubo_size  = SIZE_MAX;   
-                    gpu_dummy.limits.max_ssbo_size = SIZE_MAX;  
-                    gpu_dummy.limits.max_vbo_size  = SIZE_MAX;
-                    gpu_dummy.limits.max_mapped_size    = SIZE_MAX;   
-                    gpu_dummy.limits.max_buffer_texels  = UINT64_MAX;  
-                    /* pl_tex */  
-                    gpu_dummy.limits.max_tex_1d_dim= UINT32_MAX;
-                    gpu_dummy.limits.max_tex_2d_dim= UINT32_MAX;
-                    gpu_dummy.limits.max_tex_3d_dim= UINT32_MAX;    
-                    gpu_dummy.limits.buf_transfer  = true;  
-                    gpu_dummy.limits.align_tex_xfer_pitch = 1; 
-                    gpu_dummy.limits.align_tex_xfer_offset = 1;
-    
-                    /* pl_pass */ 
-                    gpu_dummy.limits.max_variable_comps = SIZE_MAX; 
-                    gpu_dummy.limits.max_constants = SIZE_MAX;
-                    gpu_dummy.limits.max_pushc_size= SIZE_MAX;   
-                    gpu_dummy.limits.max_dispatch[0]    = UINT32_MAX;   
-                    gpu_dummy.limits.max_dispatch[1]    = UINT32_MAX;   
-                    gpu_dummy.limits.max_dispatch[2]    = UINT32_MAX;
-                    gpu_dummy.limits.fragment_queues    = 0;   
-                    gpu_dummy.limits.compute_queues= 0;
-    
-                    pl_gpu gpu = pl_gpu_dummy_create(log, &gpu_dummy);
-                    if (!gpu)
-                    {
-                        throw std::runtime_error("pl_gpu_dummy_create failed!");
-                    }
-
+                if (p.hdrOptions.tonemap)
+                {   
                     pl_shader_params shader_params;
                     memset(&shader_params, 0, sizeof(pl_shader_params));
     
                     shader_params.id = 1;
-                    shader_params.gpu = gpu;
+                    shader_params.gpu = p.gpu;
                     shader_params.dynamic_constants = false;
     
-                    pl_shader shader = pl_shader_alloc(log, &shader_params);
+                    pl_shader shader = pl_shader_alloc(p.log, &shader_params);
                     if (!shader)
                     {
                         throw std::runtime_error("pl_shader_alloc failed!");
@@ -1101,12 +1114,24 @@ namespace tl
                     color_map_params.visualize_rect.y1 = 1;
                     color_map_params.contrast_smoothness = 3.5f;
 
-                    const image::HDRData& data = p.toneMapData.hdrData;
+                    const image::HDRData& data = p.hdrOptions.hdrData;
                 
                     pl_color_space src_colorspace;
                     memset(&src_colorspace, 0, sizeof(pl_color_space));
                     src_colorspace.primaries = PL_COLOR_PRIM_BT_2020;
-                    src_colorspace.transfer  = PL_COLOR_TRC_PQ;  // is this right?
+
+                    switch(data.eotf)
+                    {
+                    case 1: // PQ (HDR10)
+                        src_colorspace.transfer  = PL_COLOR_TRC_PQ;
+                        break;
+                    case 2: // HLG
+                        src_colorspace.transfer = PL_COLOR_TRC_HLG;
+                        break;
+                    default:
+                        src_colorspace.primaries = PL_COLOR_PRIM_BT_709;
+                        src_colorspace.transfer = PL_COLOR_TRC_GAMMA22;
+                    }
                 
                     pl_hdr_metadata& hdr = src_colorspace.hdr;
                     hdr.min_luma = data.displayMasteringLuminance.getMin();
@@ -1201,11 +1226,11 @@ namespace tl
                                     if (dim_m > 1 && dim_v > 1)
                                     {
                                         s << " = " << glsl_type << "(";
-                                        for (int r = 0; r < dim_m; ++r)
+                                        for (int c = 0; c < dim_v; ++c)
                                         {
-                                            for (int c = 0; c < dim_v; ++c)
+                                            for (int r = 0; r < dim_m; ++r)
                                             {
-                                                int index = r * dim_v + c;
+                                                int index = c * dim_m + r;
                                                 s << m[index];
 
                                                 // Check if it's the last element
@@ -1267,9 +1292,9 @@ namespace tl
                             }
                             s << ";" << std::endl;
                         }
- 
+
                         s << res->glsl << std::endl;
-                    
+                        
                         std::cout << s.str() << std::endl;
                         toneMapDef = s.str();
                     }
@@ -1292,8 +1317,6 @@ namespace tl
                     p.lutOptions.order,
                     toneMapDef,
                     toneMap);
-                std::cerr << "source=" << std::endl
-                          << source << std::endl;
                 if (auto context = _context.lock())
                 {
                     //context->log("tl::gl::GLRender", source);

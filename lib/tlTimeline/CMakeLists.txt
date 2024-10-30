@@ -8,6 +8,8 @@ set(HEADERS
     DisplayOptions.h
     DisplayOptionsInline.h
     Edit.h
+    HDROptions.h
+    HDROptionsInline.h
     IRender.h
     ImageOptions.h
     ImageOptionsInline.h

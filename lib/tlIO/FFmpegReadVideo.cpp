@@ -590,6 +590,7 @@ namespace tl
                         av_color_primaries_name(params->color_primaries);
                 }
                 {
+                    _avColorTRC = params->color_trc;
                     _tags["Video Color TRC"] =
                         av_color_transfer_name(params->color_trc);
                 }
@@ -998,6 +999,19 @@ namespace tl
                         tags[tag->key] = tag->value;
                     }
                     image::HDRData hdrData;
+                    switch(_avColorTRC)
+                    {
+                    case AVCOL_TRC_ARIB_STD_B67:
+                        hdrData.eotf = 2;
+                        break;
+                    case AVCOL_TRC_SMPTE2084:
+                        hdrData.eotf = 1;
+                        break;
+                    case AVCOL_TRC_BT709:
+                    default:
+                        hdrData.eotf = 0;
+                        break;
+                    }
                     bool hasHDR = toHDRData(_avFrame->side_data,
                                             _avFrame->nb_side_data, hdrData);
                     if (hasHDR)

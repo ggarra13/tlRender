@@ -73,8 +73,13 @@ namespace tl
                     auto data = reinterpret_cast<AVMasteringDisplayMetadata*>(sideData[i]->data);
                     if (data->has_luminance)
                     {
+                        float max_luma = av_q2d(data->max_luminance);
+                        float min_luma = av_q2d(data->min_luminance);
+                        if (max_luma < 5.0F || min_luma >= max_luma)
+                            max_luma = min_luma = 0.F;
+                        
                         hdr.displayMasteringLuminance = math::FloatRange(
-                            av_q2d(data->min_luminance), av_q2d(data->max_luminance));
+                            min_luma, max_luma);
                     }
                     if (data->has_primaries)
                     {

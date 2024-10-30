@@ -2,6 +2,9 @@
 // Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
+#include <vector>
+#include <array> // For working with arrays in the JSON serialization
+
 #include <tlCore/HDR.h>
 
 #include <tlCore/Error.h>
@@ -27,21 +30,9 @@ namespace tl
                 { "kneeX", value.kneeX },
                 { "kneeY", value.kneeY },
                 { "numAnchors", value.numAnchors },
-                { "anchors0", value.anchors[0] },
-                { "anchors1", value.anchors[1] },
-                { "anchors2", value.anchors[2] },
-                { "anchors3", value.anchors[3] },
-                { "anchors4", value.anchors[4] },
-                { "anchors5", value.anchors[5] },
-                { "anchors6", value.anchors[6] },
-                { "anchors7", value.anchors[7] },
-                { "anchors8", value.anchors[8] },
-                { "anchors9", value.anchors[9] },
-                { "anchors10", value.anchors[10] },
-                { "anchors11", value.anchors[11] },
-                { "anchors12", value.anchors[12] },
-                { "anchors13", value.anchors[13] },
-                { "anchors14", value.anchors[14] },
+                { "anchors", std::vector<float>(value.anchors,
+                                                value.anchors +
+                                                value.numAnchors)}
             };
         }
 
@@ -51,21 +42,14 @@ namespace tl
             json.at("kneeX").get_to(value.kneeX);
             json.at("kneeY").get_to(value.kneeY);
             json.at("numAnchors").get_to(value.numAnchors);
-            json.at("anchors0").get_to(value.anchors[0]);
-            json.at("anchors1").get_to(value.anchors[1]);
-            json.at("anchors2").get_to(value.anchors[2]);
-            json.at("anchors3").get_to(value.anchors[3]);
-            json.at("anchors4").get_to(value.anchors[4]);
-            json.at("anchors5").get_to(value.anchors[5]);
-            json.at("anchors6").get_to(value.anchors[6]);
-            json.at("anchors7").get_to(value.anchors[7]);
-            json.at("anchors8").get_to(value.anchors[8]);
-            json.at("anchors9").get_to(value.anchors[9]);
-            json.at("anchors10").get_to(value.anchors[10]);
-            json.at("anchors11").get_to(value.anchors[11]);
-            json.at("anchors12").get_to(value.anchors[12]);
-            json.at("anchors13").get_to(value.anchors[13]);
-            json.at("anchors14").get_to(value.anchors[14]);
+            
+            // Deserialize the anchors array
+            std::vector<float> anchorsVec = json.at("anchors").get<std::vector<float>>();
+            value.numAnchors = static_cast<uint8_t>(anchorsVec.size());
+
+            // Copy the vector contents back into the array
+            std::copy(anchorsVec.begin(),
+                      anchorsVec.begin() + value.numAnchors, value.anchors);
         }
         
         void to_json(nlohmann::json& json, const HDRData& value)

@@ -31,7 +31,7 @@ namespace tl
         //! Bezier curve for HDR metadata
         struct HDRBezier
         {
-            float targetLuma = 1.F;
+            float targetLuma = 100.F;
             float kneeX = 0.5F;
             float kneeY = 0.5F;
             uint8_t numAnchors = 0;
@@ -67,8 +67,8 @@ namespace tl
             float maxFALL = 400.F;
 
             // HDR10+ Metadata
-            float sceneMax[3];
-            float sceneAvg;
+            float sceneMax[3] = { 0.F, 0.F, 0.F };
+            float sceneAvg = 0.F;
             HDRBezier ootf;
 
             // HDR CieY Metadata (DolbyVision)

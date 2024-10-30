@@ -7,6 +7,7 @@
 #include <tlTimeline/BackgroundOptions.h>
 #include <tlTimeline/CompareOptions.h>
 #include <tlTimeline/DisplayOptions.h>
+#include <tlTimeline/HDROptions.h>
 #include <tlTimeline/LUTOptions.h>
 #include <tlTimeline/OCIOOptions.h>
 #include <tlTimeline/RenderOptions.h>
@@ -78,6 +79,9 @@ namespace tl
 
             //! Set the LUT options.
             virtual void setLUTOptions(const LUTOptions&) = 0;
+            
+            //! Set the HDR options.
+            virtual void setHDROptions(const HDROptions&) = 0;
 
             //! Draw a rectangle.
             virtual void drawRect(
