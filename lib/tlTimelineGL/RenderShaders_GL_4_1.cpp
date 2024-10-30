@@ -311,16 +311,16 @@ namespace tl
             switch (lutOrder)
             {
             case timeline::LUTOrder::PreColorConfig:
-                args.push_back(lut);
-                args.push_back(ocioICS);
-                args.push_back(toneMap);
-                args.push_back(ocio);
+                args.push_back(lut);      // 5
+                args.push_back(ocioICS);  // 6
+                args.push_back(toneMap);  // 7
+                args.push_back(ocio);     // 8
                 break;
             case timeline::LUTOrder::PostColorConfig:
-                args.push_back(ocioICS);
-                args.push_back(toneMap);
-                args.push_back(lut);
-                args.push_back(ocio);
+                args.push_back(ocioICS);  // 5 
+                args.push_back(lut);      // 6
+                args.push_back(toneMap);  // 7
+                args.push_back(ocio);     // 8
                 break;
             default: break;
             }
@@ -516,7 +516,9 @@ namespace tl
                 "        outColor = softClipFunc(outColor, softClip);\n"
                 "    }\n"
                 "\n"
+                "    // Call libplacebo tonemapping\n"
                 "    {7}\n"
+                "\n"
                 "    // Apply OCIO Display/View.\n"
                 "    {8}\n"
                 "\n"

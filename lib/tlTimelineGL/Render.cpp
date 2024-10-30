@@ -1075,8 +1075,8 @@ namespace tl
                 memset(&color_map_params, 0, sizeof(pl_color_map_params));
                 
                 color_map_params.gamut_mapping = &pl_gamut_map_perceptual;
-                //color_map_params.tone_mapping_function = &pl_tone_map_spline; // default
-                color_map_params.tone_mapping_function = &pl_tone_map_reinhard;
+                color_map_params.tone_mapping_function = &pl_tone_map_spline; // default
+                //color_map_params.tone_mapping_function = &pl_tone_map_reinhard;
 
                 // PL_GAMUT_MAP_CONSTANTS is defined in wrong order for C++
 #define MRV2_GAMUT_MAP_CONSTANTS                \
@@ -1104,7 +1104,7 @@ namespace tl
                 pl_color_space src_colorspace;
                 memset(&src_colorspace, 0, sizeof(pl_color_space));
                 src_colorspace.primaries = PL_COLOR_PRIM_BT_2020;
-                src_colorspace.transfer  = PL_COLOR_TRC_PQ;
+                src_colorspace.transfer  = PL_COLOR_TRC_PQ;  // is this right?
                 
                 pl_hdr_metadata& hdr = src_colorspace.hdr;
                 hdr.min_luma = data.displayMasteringLuminance.getMin();
@@ -1267,7 +1267,8 @@ namespace tl
                     }
  
                     s << res->glsl << std::endl;
- 
+                    
+                    std::cout << s.str() << std::endl;
                     toneMapDef = s.str();
                 }
 
@@ -1288,6 +1289,8 @@ namespace tl
                     p.lutOptions.order,
                     toneMapDef,
                     toneMap);
+                std::cerr << "source=" << std::endl
+                          << source << std::endl;
                 if (auto context = _context.lock())
                 {
                     //context->log("tl::gl::GLRender", source);
