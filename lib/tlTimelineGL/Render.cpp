@@ -1093,33 +1093,43 @@ namespace tl
                     }
 
 
-                    pl_color_map_params color_map_params;
-                    memset(&color_map_params, 0, sizeof(pl_color_map_params));
+                    pl_color_map_params cmap_params;
+                    memset(&cmap_params, 0, sizeof(pl_color_map_params));
                 
-                    color_map_params.gamut_mapping = &pl_gamut_map_perceptual;
-                    color_map_params.tone_mapping_function = &pl_tone_map_spline; // default
-                    //color_map_params.tone_mapping_function = &pl_tone_map_reinhard;
-
+                    cmap_params.gamut_mapping = &pl_gamut_map_perceptual;
+                    cmap_params.tone_mapping_function = &pl_tone_map_spline; // default
                     // PL_GAMUT_MAP_CONSTANTS is defined in wrong order for C++
-#define MRV2_GAMUT_MAP_CONSTANTS                    \
-                    .perceptual_deadzone = 0.30f,   \
-                    .perceptual_strength = 0.80f,   \
-                    .colorimetric_gamma  = 1.80f,   \
-                         .softclip_knee  = 0.70f,   \
-                         .softclip_desat = 0.35f, 
     
-                    color_map_params.gamut_constants = { MRV2_GAMUT_MAP_CONSTANTS };
-                    color_map_params.tone_constants  = { PL_TONE_MAP_CONSTANTS };
-                    color_map_params.metadata   = PL_HDR_METADATA_ANY;
-                    color_map_params.lut3d_size[0] = 48;
-                    color_map_params.lut3d_size[1] = 32;
-                    color_map_params.lut3d_size[2] = 256;
-                    color_map_params.lut_size = 256;
-                    color_map_params.visualize_rect.x0 = 0;
-                    color_map_params.visualize_rect.y0 = 0;
-                    color_map_params.visualize_rect.x1 = 1;
-                    color_map_params.visualize_rect.y1 = 1;
-                    color_map_params.contrast_smoothness = 3.5f;
+                    cmap_params.gamut_constants = { 0 };
+                    cmap_params.gamut_constants.perceptual_deadzone = 0.3F;
+                    cmap_params.gamut_constants.perceptual_strength = 0.8F;
+                    cmap_params.gamut_constants.colorimetric_gamma  = 1.80f; 
+                    cmap_params.gamut_constants.softclip_knee  = 0.70f;
+                    cmap_params.gamut_constants.softclip_desat = 0.35f; 
+                    
+                    cmap_params.tone_constants  = { 0 };
+                    cmap_params.tone_constants.knee_adaptation   = 0.4f;
+                    cmap_params.tone_constants.knee_minimum      = 0.1f;
+                    cmap_params.tone_constants.knee_maximum      = 0.8f;
+                    cmap_params.tone_constants.knee_default      = 0.4f;
+                    cmap_params.tone_constants.knee_offset       = 1.0f;
+                    cmap_params.tone_constants.slope_tuning      = 1.5f;
+                    cmap_params.tone_constants.slope_offset      = 0.2f;
+                    cmap_params.tone_constants.spline_contrast   = 0.5f;
+                    cmap_params.tone_constants.reinhard_contrast = 0.5f;
+                    cmap_params.tone_constants.linear_knee       = 0.3f;
+                    cmap_params.tone_constants.exposure          = 1.0f;
+                    
+                    cmap_params.metadata   = PL_HDR_METADATA_ANY;
+                    cmap_params.lut3d_size[0] = 48;
+                    cmap_params.lut3d_size[1] = 32;
+                    cmap_params.lut3d_size[2] = 256;
+                    cmap_params.lut_size = 256;
+                    cmap_params.visualize_rect.x0 = 0;
+                    cmap_params.visualize_rect.y0 = 0;
+                    cmap_params.visualize_rect.x1 = 1;
+                    cmap_params.visualize_rect.y1 = 1;
+                    cmap_params.contrast_smoothness = 3.5f;
 
                     const image::HDRData& data = p.hdrOptions.hdrData;
                 
@@ -1206,7 +1216,7 @@ namespace tl
                     color_map_args.state = NULL;
     
                     pl_shader_color_map_ex(shader,
-                                           &color_map_params,
+                                           &cmap_params,
                                            &color_map_args);
     
                     const pl_shader_res* res = pl_shader_finalize(shader);
