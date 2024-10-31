@@ -4,6 +4,8 @@ include(ExternalProject)
 set(libplacebo_GIT_REPO "https://code.videolan.org/videolan/libplacebo.git")
 set(libplacebo_GIT_TAG v7.349.0)
 
+set(libplacebo_DEPS ${PYTHON_DEP})
+
 if(APPLE AND CMAKE_OSX_DEPLOYMENT_TARGET)
     set(libplacebo_CFLAGS -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET})
     set(libplacebo_CXXFLAGS -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET})
@@ -35,6 +37,7 @@ ExternalProject_Add(
     GIT_REPOSITORY ${libplacebo_GIT_REPO}
     GIT_TAG ${libplacebo_GIT_TAG}
     GIT_SHALLOW 1
+    DEPENDS ${libplacebo_DEPS}
     CONFIGURE_COMMAND ${libplacebo_CONFIGURE}
     PATCH_COMMAND ${libplacebo_PATCH}
     BUILD_COMMAND ${libplacebo_BUILD}
