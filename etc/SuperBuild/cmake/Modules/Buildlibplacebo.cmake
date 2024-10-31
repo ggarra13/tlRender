@@ -14,7 +14,7 @@ endif()
 
 set(libplacebo_CONFIGURE
     COMMAND git submodule update --init
-    COMMAND ${CMAKE_INSTALL_PREFIX}/bin/python -m pip install meson
+    COMMAND ${Python_COMMAND} -m pip install meson
     COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH="" "CXXFLAGS=${libplacebo_CXXFLAGS}" "CFLAGS=${libplacebo_CFLAGS}" "LDFLAGS=${libplacebo_LDFLAGS}" -- meson setup --default-library=static -Ddemos=false -Dlibdir=${CMAKE_INSTALL_PREFIX}/lib --prefix=${CMAKE_INSTALL_PREFIX} build)
 set(libplacebo_BUILD cd build && ninja)
 set(libplacebo_INSTALL cd build && ninja install)
