@@ -398,6 +398,7 @@ link_args = []
 cc = meson.get_compiler('c')
 cxx = meson.get_compiler('cpp')
 
+if host_machine.system() != 'windows'
 c_opts = [
   '-D_ISOC99_SOURCE', '-D_ISOC11_SOURCE', '-D_GNU_SOURCE', '-U__STRICT_ANSI__',
   '-Wmissing-prototypes',
@@ -410,6 +411,7 @@ c_opts = [
   '-Werror=implicit-function-declaration',
 ]
 
+
 if cc.has_argument('-Wincompatible-pointer-types')
   c_opts += ['-Werror=incompatible-pointer-types']
 endif
@@ -417,6 +419,7 @@ endif
 # clang's version of -Wmissing-braces rejects the common {0} initializers
 if cc.get_id() == 'clang'
   c_opts += ['-Wno-missing-braces']
+endif
 endif
 
 # For sanitizers to work/link properly some public symbols have to be available.
