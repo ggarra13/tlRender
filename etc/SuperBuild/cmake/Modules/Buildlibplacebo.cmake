@@ -17,7 +17,6 @@ set(libplacebo_INSTALL export PYTHONPATH="" && cd build && ninja install)
 ExternalProject_Add(
     libplacebo
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/libplacebo
-    DEPENDS NASM
     GIT_REPOSITORY ${libplacebo_GIT_REPO}
     GIT_TAG ${libplacebo_GIT_TAG}
     GIT_SHALLOW 1
