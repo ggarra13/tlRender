@@ -14,6 +14,13 @@
 #include <tlCore/String.h>
 #include <tlCore/StringFormat.h>
 
+#if defined(TLRENDER_FFMPEG)
+extern "C"
+{
+#include <libavutil/pixfmt.h>
+}
+#endif
+
 #if defined(TLRENDER_LIBPLACEBO)
 extern "C"
 {
@@ -1119,19 +1126,44 @@ namespace tl
                     pl_color_space src_colorspace;
                     memset(&src_colorspace, 0, sizeof(pl_color_space));
                     src_colorspace.primaries = PL_COLOR_PRIM_BT_2020;
+                    src_colorspace.transfer  = PL_COLOR_TRC_PQ;
 
+#if defined(TLRENDER_FFMPEG)
                     switch(data.eotf)
                     {
-                    case 1: // PQ (HDR10)
+                    case AVCOL_TRC_SMPTE2084: // PQ (HDR10)
                         src_colorspace.transfer  = PL_COLOR_TRC_PQ;
                         break;
-                    case 2: // HLG
+                    case AVCOL_TRC_ARIB_STD_B67: // HLG
                         src_colorspace.transfer = PL_COLOR_TRC_HLG;
                         break;
-                    default:
-                        src_colorspace.primaries = PL_COLOR_PRIM_BT_709;
+                    case AVCOL_TRC_BT709:
+                    case AVCOL_TRC_SMPTE170M:
+                    case AVCOL_TRC_SMPTE240M:
+                    case AVCOL_TRC_IEC61966_2_4:
+                    case AVCOL_TRC_BT1361_ECG:
+                    case AVCOL_TRC_BT2020_10:
+                    case AVCOL_TRC_BT2020_12:
+                        // EOTF != OETF
+                        src_colorspace.transfer = PL_COLOR_TRC_BT_1886; 
+                        break;
+                    case AVCOL_TRC_GAMMA22:
                         src_colorspace.transfer = PL_COLOR_TRC_GAMMA22;
+                        break;
+                    case AVCOL_TRC_GAMMA28:
+                        src_colorspace.transfer = PL_COLOR_TRC_GAMMA28;
+                        break;
+                    case AVCOL_TRC_LINEAR:
+                        src_colorspace.transfer = PL_COLOR_TRC_LINEAR;
+                        break;
+                    case AVCOL_TRC_UNSPECIFIED:
+                    case AVCOL_TRC_RESERVED:
+                    case AVCOL_TRC_LOG: // missing
+                    case AVCOL_TRC_LOG_SQRT: // missing
+                    default:
+                        src_colorspace.transfer = PL_COLOR_TRC_UNKNOWN;
                     }
+#endif
                 
                     pl_hdr_metadata& hdr = src_colorspace.hdr;
                     hdr.min_luma = data.displayMasteringLuminance.getMin();
@@ -1295,7 +1327,7 @@ namespace tl
 
                         s << res->glsl << std::endl;
                         
-                        std::cout << s.str() << std::endl;
+                        // std::cout << s.str() << std::endl;
                         toneMapDef = s.str();
                     }
 

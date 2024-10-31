@@ -71,6 +71,10 @@ namespace tl
 
         //! Swap the numerator and denominator.
         AVRational swap(AVRational);
+
+        //! Convert to HDR data.
+        bool toHDRData(AVPacketSideData* sideData, int size,
+                       image::HDRData& hdr);
         
         //! Convert to HDR data.
         bool toHDRData(AVFrameSideData**, int size, image::HDRData&);

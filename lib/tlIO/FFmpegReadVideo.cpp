@@ -135,7 +135,7 @@ namespace tl
                                         .arg(tag->key));
                         _tags[key] = tag->value;
                     }
-                
+
                 // If we are reading VPX, use libvpx-vp9 external lib if available so
                 // we can read an alpha channel.
                 if (avVideoCodecParameters->codec_id == AV_CODEC_ID_VP9)
@@ -620,6 +620,13 @@ namespace tl
                     ss << _timeRange.start_time().rate() << " FPS";
                     _tags["Video Speed"] = ss.str();
                 }
+
+                image::HDRData hdrData;
+                hdrData.eotf = static_cast<int>(_avColorTRC);
+                bool hasHDR = toHDRData(avVideoCodecParameters->coded_side_data,
+                                        avVideoCodecParameters->nb_coded_side_data, hdrData);
+                if (hasHDR)
+                    _tags["hdr"] = nlohmann::json(hdrData).dump();
             }
         }
 
@@ -998,24 +1005,21 @@ namespace tl
                     {
                         tags[tag->key] = tag->value;
                     }
-                    image::HDRData hdrData;
-                    switch(_avColorTRC)
+
+                    // \@bug: there's a bug in FFmpeg where the frame data is
+                    //        not updated properly, and the stream metadata
+                    //        should be used instead.
+                    auto i = tags.find("hdr");
+                    if (i == tags.end())
                     {
-                    case AVCOL_TRC_ARIB_STD_B67:
-                        hdrData.eotf = 2;
-                        break;
-                    case AVCOL_TRC_SMPTE2084:
-                        hdrData.eotf = 1;
-                        break;
-                    case AVCOL_TRC_BT709:
-                    default:
-                        hdrData.eotf = 0;
-                        break;
+                        image::HDRData hdrData;
+                        hdrData.eotf = static_cast<int>(_avColorTRC);
+                        bool hasHDR = toHDRData(_avFrame->side_data,
+                                                _avFrame->nb_side_data,
+                                                hdrData);
+                        if (hasHDR)
+                            tags["hdr"] = nlohmann::json(hdrData).dump();
                     }
-                    bool hasHDR = toHDRData(_avFrame->side_data,
-                                            _avFrame->nb_side_data, hdrData);
-                    if (hasHDR)
-                        tags["hdr"] = nlohmann::json(hdrData).dump();
                     image->setTags(tags);
 
                     _copy(image);
