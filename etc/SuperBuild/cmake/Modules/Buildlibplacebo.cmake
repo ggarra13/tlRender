@@ -20,6 +20,10 @@ set(libplacebo_PATCH)
 if (WIN32)
     list(APPEND libplacebo_PATCH
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        ${CMAKE_CURRENT_SOURCE_DIR}/libplacebo-patch/meson.build
+        ${CMAKE_CURRENT_BINARY_DIR}/libplacebo/src/libplacebo/)
+    list(APPEND libplacebo_PATCH
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_CURRENT_SOURCE_DIR}/libplacebo-patch/src/meson.build
         ${CMAKE_CURRENT_BINARY_DIR}/libplacebo/src/libplacebo/src/)
 endif()
