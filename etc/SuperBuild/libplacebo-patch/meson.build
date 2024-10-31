@@ -449,7 +449,14 @@ add_project_link_arguments(link_args, language: ['c', 'cpp'])
 fs = import('fs')
 libm = cc.find_library('m', required: false)
 thirdparty = meson.project_source_root()/'3rdparty'
-python = import('python').find_installation()
+
+
+# This returns meson path which does not contain python
+#python = import('python').find_installation()
+
+prefix = get_option('prefix')
+python = join_paths(prefix, 'bin', 'python')
+
 python_env = environment()
 python_env.append('PYTHONPATH', thirdparty/'jinja/src')
 python_env.append('PYTHONPATH', thirdparty/'markupsafe/src')
