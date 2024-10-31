@@ -19,6 +19,11 @@ if(TLRENDER_LIBPLACEBO)
 endif()
 
 add_library(tlTimelineGL ${HEADERS} ${PRIVATE_HEADERS} ${SOURCE})
+set_source_files_properties(Render.cpp PROPERTIES
+    CXX_STANDARD 20
+    CXX_STANDARD_REQUIRED YES
+)
+
 target_link_libraries(tlTimelineGL PUBLIC tlTimeline PRIVATE ${LIBRARIES_PRIVATE})
 set_target_properties(tlTimelineGL PROPERTIES FOLDER lib)
 set_target_properties(tlTimelineGL PROPERTIES PUBLIC_HEADER "${HEADERS}")
