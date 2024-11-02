@@ -19,10 +19,10 @@ set(libplacebo_INCLUDE_DIRS ${libplacebo_INCLUDE_DIR})
 
 if(CMAKE_BUILD_TYPE MATCHES "^Debug$")
     find_library(libplacebo_LIBRARY
-        NAMES placebod placebo)
+        NAMES placebod placebo libplacebod libplacebo)
 else()
     find_library(libplacebo_LIBRARY
-        NAMES placebo)
+        NAMES placebo libplacebo)
 endif()
 set(libplacebo_LIBRARIES
     ${libplacebo_LIBRARY})
