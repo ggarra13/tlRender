@@ -1213,7 +1213,9 @@ namespace tl
                     color_map_args.src = src_colorspace;
                     color_map_args.dst = dst_colorspace;
                     color_map_args.prelinearized = false;
-                    color_map_args.state = NULL;
+
+                    pl_shader_obj state = NULL;
+                    color_map_args.state = &state;
     
                     pl_shader_color_map_ex(shader,
                                            &cmap_params,
@@ -1226,13 +1228,56 @@ namespace tl
                         throw std::runtime_error("pl_shader_finalize failed!");
                     }
 
-                    // std::cout << "num_vertex_attribs=" << res->num_vertex_attribs << std::endl
-                    //           << "num_variables=" << res->num_variables << std::endl
-                    //           << "num_descriptors=" << res->num_descriptors << std::endl
-                    //           << "num_constants=" << res->num_constants << std::endl;
+                    std::cout << "num_vertex_attribs=" << res->num_vertex_attribs << std::endl
+                              << "num_variables=" << res->num_variables << std::endl
+                              << "num_descriptors=" << res->num_descriptors << std::endl
+                              << "num_constants=" << res->num_constants << std::endl;
                     {
                         std::stringstream s;
-    
+                        s << "#define textureLod(t, p, b) texture(t, p)" << std::endl;
+                        for (int i = 0; i < res->num_descriptors; i++)
+                        {
+                            const pl_shader_desc& shader_desc = res->descriptors[i];
+                            const pl_desc desc = shader_desc.desc;
+                            switch (desc.type)
+                            {
+                            case PL_DESC_SAMPLED_TEX:
+                            case PL_DESC_STORAGE_IMG:
+                            {
+                                s << "uniform sampler1D ";
+                                s << desc.name;
+                                s << ";" << std::endl;
+                                // For compatibility with older OpenGL, we need to explicitly
+                                // update the texture/image unit bindings after creating the shader
+                                // program, since specifying it directly requires GLSL 4.20+
+                                // GLint loc = gl->GetUniformLocation(pass_gl->program, desc->name);
+                                // gl->Uniform1i(loc, desc->binding);
+                                break;
+                            }
+                            case PL_DESC_BUF_UNIFORM:
+                            {
+                                std::cerr << i << " buf uniform" << std::endl;
+                                // GLuint idx = gl->GetUniformBlockIndex(pass_gl->program, desc->name);
+                                // gl->UniformBlockBinding(pass_gl->program, idx, desc->binding);
+                                break;
+                            }
+                            case PL_DESC_BUF_STORAGE: {
+                                std::cerr << i << " buf storage" << std::endl;
+                                // GLuint idx = gl->GetProgramResourceIndex(pass_gl->program,
+                                //                                          GL_SHADER_STORAGE_BLOCK,
+                                //                                          desc->name);
+                                // gl->ShaderStorageBlockBinding(pass_gl->program, idx, desc->binding);
+                                break;
+                            }
+                            case PL_DESC_BUF_TEXEL_UNIFORM:
+                            case PL_DESC_BUF_TEXEL_STORAGE:
+                                assert(!"unimplemented"); // TODO
+                            case PL_DESC_INVALID:
+                            case PL_DESC_TYPE_COUNT:
+                                break;
+                            }
+                        }
+        
                         s << "// Variables" << std::endl << std::endl;
                         for (int i = 0; i < res->num_variables; ++i)
                         {
@@ -1368,8 +1413,8 @@ namespace tl
             }
             p.shaders["display"]->bind();
             p.shaders["display"]->setUniform("transform.mvp", p.transform);
-#if defined(TLRENDER_OCIO)
             size_t texturesOffset = 1;
+#if defined(TLRENDER_OCIO)
             if (p.ocioData)
             {
                 for (size_t i = 0; i < p.ocioData->textures.size(); ++i)
@@ -1391,6 +1436,15 @@ namespace tl
                 texturesOffset += p.lutData->textures.size();
             }
 #endif // TLRENDER_OCIO
+#if defined(TLRENDER_LIBPLACEBO)
+            for (size_t i = 0; i < p.placebo_textures.size(); ++i)
+            {
+                p.shaders["display"]->setUniform(
+                        p.placebo_textures[i].sampler,
+                        static_cast<int>(texturesOffset + i));
+            }
+            texturesOffset += p.lutData->textures.size();
+#endif
         }
     }
 }

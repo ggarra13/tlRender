@@ -126,6 +126,7 @@ namespace tl
 #if defined(TLRENDER_LIBPLACEBO)
             pl_log log;
             pl_gpu gpu;
+            std::vector<OCIOTexture> placebo_textures;
 #endif
 
             math::Box2i viewport;
