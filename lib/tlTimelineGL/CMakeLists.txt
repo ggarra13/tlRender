@@ -13,9 +13,9 @@ elseif("${TLRENDER_API}" STREQUAL "GLES_2")
     list(APPEND SOURCE RenderShaders_GLES_2.cpp)
 endif()
 
-set(LIBRARIES )
+set(LIBRARIES_PRIVATE )
 if(TLRENDER_LIBPLACEBO)
-    list(APPEND LIBRARIES libplacebo)
+    list(APPEND LIBRARIES_PRIVATE libplacebo)
 endif()
 
 add_library(tlTimelineGL ${HEADERS} ${PRIVATE_HEADERS} ${SOURCE})
@@ -24,7 +24,7 @@ set_source_files_properties(Render.cpp PROPERTIES
     CXX_STANDARD_REQUIRED YES
 )
 
-target_link_libraries(tlTimelineGL PUBLIC tlTimeline ${LIBRARIES})
+target_link_libraries(tlTimelineGL PUBLIC tlTimeline PRIVATE ${LIBRARIES_PRIVATE})
 set_target_properties(tlTimelineGL PROPERTIES FOLDER lib)
 set_target_properties(tlTimelineGL PROPERTIES PUBLIC_HEADER "${HEADERS}")
 
