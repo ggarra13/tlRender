@@ -1234,19 +1234,42 @@ namespace tl
                               << "num_constants=" << res->num_constants << std::endl;
                     {
                         std::stringstream s;
-                        s << "#define textureLod(t, p, b) texture(t, p)" << std::endl;
+                        s << "#extension GL_ARB_texture_gather : enable\n"
+                          << std::endl
+                          << "#define textureLod(t, p, b) texture(t, p)"
+                          << std::endl
+                          << "#define textureLodOffset(t, p, b, o)    \\"
+                          << std::endl
+                          << "        textureOffset(t, p, o)            "
+                          << std::endl;
+                        
                         for (int i = 0; i < res->num_descriptors; i++)
                         {
-                            const pl_shader_desc& shader_desc = res->descriptors[i];
-                            const pl_desc desc = shader_desc.desc;
-                            switch (desc.type)
+                            const pl_shader_desc* sd = &res->descriptors[i];
+                            const pl_desc* desc = &sd->desc;
+                            switch (desc->type)
                             {
                             case PL_DESC_SAMPLED_TEX:
                             case PL_DESC_STORAGE_IMG:
                             {
-                                s << "uniform sampler1D ";
-                                s << desc.name;
-                                s << ";" << std::endl;
+                                static const char *types[] = {
+                                    "sampler1D",
+                                    "sampler2D",
+                                    "sampler3D",
+                                };
+                                
+                                pl_tex tex = (pl_tex)sd->binding.object;
+                                int dims = pl_tex_params_dimension(tex->params);
+                                const char *type = types[dims-1];
+                                std::cerr << i << " dims=" << dims << std::endl;
+                                // char prefix = sampler_prefixes[tex->params.format->type];
+                                // ident_t id = sh_ident_unpack(desc->name);
+                                s << "uniform "
+                                  << type
+                                  << " "
+                                  << desc->name
+                                  << ";"
+                                  << std::endl;
                                 // For compatibility with older OpenGL, we need to explicitly
                                 // update the texture/image unit bindings after creating the shader
                                 // program, since specifying it directly requires GLSL 4.20+
