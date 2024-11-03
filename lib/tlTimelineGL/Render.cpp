@@ -851,16 +851,6 @@ namespace tl
                     {
                         pl_tex tex = reinterpret_cast<pl_tex>(sd->binding.object);
                         pl_fmt fmt = tex->params.format;
-
-                        std::cerr << "w=" << tex->params.w << std::endl
-                                  << "h=" << tex->params.h << std::endl
-                                  << "d=" << tex->params.d << std::endl
-                                  << "format name=" << tex->params.format->name << std::endl
-                                  << "fmt is float? " << pl_fmt_is_float(fmt) << std::endl
-                                  << "fmt is ordered? " << pl_fmt_is_ordered(fmt) << std::endl
-                                  << "format components=" << fmt->num_components << std::endl
-                                  << "format depth [0]=" << fmt->component_depth[0] << std::endl
-                                  << std::endl;
                         
                         int dims = pl_tex_params_dimension(tex->params);
                         assert(dims >= 1 && dims <= 3);
@@ -896,6 +886,7 @@ namespace tl
                         else if (dims == 2)
                         {
                             GLint height = tex->params.h;
+                            assert(height > 0);
                             throw "Unimplemented dims 2";
                         }
                         else if (dims == 1)
@@ -912,7 +903,8 @@ namespace tl
                             glGenTextures(1, &textureId);
                             glBindTexture(GL_TEXTURE_1D, textureId);
                             setTextureParameters(GL_TEXTURE_1D, GL_LINEAR);
-                            glTexImage1D(GL_TEXTURE_1D, 0, GL_R32F, width, 0, GL_RED, GL_FLOAT, values);
+                            glTexImage1D(GL_TEXTURE_1D, 0, GL_R32F, width, 0,
+                                         GL_RED, GL_FLOAT, values);
                             textures.push_back(OCIOTexture(
                                                    textureId,
                                                    textureName,
@@ -1213,17 +1205,14 @@ namespace tl
                     pl_color_map_params cmap_params;
                     memset(&cmap_params, 0, sizeof(pl_color_map_params));
 
-#if 0
-                    // defaults, generate LUTs if state is set.
+#if 1
+                    // defaults, generates LUTs if state is set.
                     cmap_params.gamut_mapping = &pl_gamut_map_perceptual;
                     cmap_params.tone_mapping_function = &pl_tone_map_spline;
 #else
                     // These work without LUTs
                     cmap_params.gamut_mapping = &pl_gamut_map_clip;
-                    cmap_params.tone_mapping_function = &pl_tone_map_clip;
-                    
-                    //cmap_params.gamut_mapping = &pl_gamut_map_perceptual;  // bad (blue)
-                    cmap_params.tone_mapping_function = &pl_tone_map_spline; // bad (black)    
+                    cmap_params.tone_mapping_function = &pl_tone_map_clip;   
 #endif
 
                     // PL_GAMUT_MAP_CONSTANTS is defined in wrong order for C++
@@ -1356,10 +1345,10 @@ namespace tl
                         throw std::runtime_error("pl_shader_finalize failed!");
                     }
 
-                    std::cout << "num_vertex_attribs=" << res->num_vertex_attribs << std::endl
-                              << "num_variables=" << res->num_variables << std::endl
-                              << "num_descriptors=" << res->num_descriptors << std::endl
-                              << "num_constants=" << res->num_constants << std::endl;
+                    // std::cout << "num_vertex_attribs=" << res->num_vertex_attribs << std::endl
+                    //           << "num_variables=" << res->num_variables << std::endl
+                    //           << "num_descriptors=" << res->num_descriptors << std::endl
+                    //           << "num_constants=" << res->num_constants << std::endl;
                     {
                         std::stringstream s;
 

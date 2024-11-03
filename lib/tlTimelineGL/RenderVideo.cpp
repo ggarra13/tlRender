@@ -878,6 +878,19 @@ namespace tl
                     texturesOffset += p.lutData->textures.size();
                 }
 #endif // TLRENDER_OCIO
+#if defined(TLRENDER_LIBPLACEBO)
+                if (p.placeboData)
+                {
+                    for (size_t i = 0; i < p.placeboData->textures.size(); ++i)
+                    {
+                        glActiveTexture(GL_TEXTURE0 + texturesOffset + i);
+                        glBindTexture(
+                            p.placeboData->textures[i].type,
+                            p.placeboData->textures[i].id);
+                    }
+                    texturesOffset += p.ocioData->textures.size();
+                }
+#endif // TLRENDER_LIBPLACEBO
 
                 if (p.vbos["video"])
                 {
