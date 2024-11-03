@@ -1146,7 +1146,10 @@ namespace tl
             p.hdrOptions = value;
             
 #if defined(TLRENDER_OCIO)
-            p.placeboData.reset(new LibPlaceboData);
+            if (p.hdrOptions.tonemap)
+            {
+                p.placeboData.reset(new LibPlaceboData);
+            }
 #endif // TLRENDER_OCIO
             
             p.shaders["display"].reset();
@@ -1202,50 +1205,69 @@ namespace tl
                     }
 
 
-                    pl_color_map_params cmap_params;
-                    memset(&cmap_params, 0, sizeof(pl_color_map_params));
+                    pl_color_map_params cmap;
+                    memset(&cmap, 0, sizeof(pl_color_map_params));
 
 #if 1
                     // defaults, generates LUTs if state is set.
-                    cmap_params.gamut_mapping = &pl_gamut_map_perceptual;
-                    cmap_params.tone_mapping_function = &pl_tone_map_spline;
+                    cmap.gamut_mapping = &pl_gamut_map_perceptual;
+
+                    
+
+                    // best so far
+                    cmap.tone_mapping_function = &pl_tone_map_st2094_40;
+                    
+                    // cmap.tone_mapping_function = &pl_tone_map_linear;
+                    // cmap.tone_mapping_function = &pl_tone_map_spline;
+                    // cmap.tone_mapping_function = &pl_tone_map_reinhard;
+                    // cmap.tone_mapping_function = &pl_tone_map_hable;
+                    // cmap.tone_mapping_function = &pl_tone_map_gamma;
+                    // cmap.tone_mapping_function = &pl_tone_map_st2094_10;
+                    // cmap.tone_mapping_function = &pl_tone_map_bt2390;
+                    // cmap.tone_mapping_function = &pl_tone_map_bt2446a;
+                    
 #else
                     // These work without LUTs
-                    cmap_params.gamut_mapping = &pl_gamut_map_clip;
-                    cmap_params.tone_mapping_function = &pl_tone_map_clip;   
+                    cmap.gamut_mapping = &pl_gamut_map_clip;
+                    cmap.tone_mapping_function = &pl_tone_map_clip;   
 #endif
 
                     // PL_GAMUT_MAP_CONSTANTS is defined in wrong order for C++
-                    cmap_params.gamut_constants = { 0 };
-                    cmap_params.gamut_constants.perceptual_deadzone = 0.3F;
-                    cmap_params.gamut_constants.perceptual_strength = 0.8F;
-                    cmap_params.gamut_constants.colorimetric_gamma  = 1.80f; 
-                    cmap_params.gamut_constants.softclip_knee  = 0.70f;
-                    cmap_params.gamut_constants.softclip_desat = 0.35f; 
+                    cmap.gamut_constants = { 0 };
+                    cmap.gamut_constants.perceptual_deadzone = 0.3F;
+                    cmap.gamut_constants.perceptual_strength = 0.8F;
+                    cmap.gamut_constants.colorimetric_gamma  = 1.80f; 
+                    cmap.gamut_constants.softclip_knee  = 0.70f;
+                    cmap.gamut_constants.softclip_desat = 0.35f; 
                     
-                    cmap_params.tone_constants  = { 0 };
-                    cmap_params.tone_constants.knee_adaptation   = 0.4f;
-                    cmap_params.tone_constants.knee_minimum      = 0.1f;
-                    cmap_params.tone_constants.knee_maximum      = 0.8f;
-                    cmap_params.tone_constants.knee_default      = 0.4f;
-                    cmap_params.tone_constants.knee_offset       = 1.0f;
-                    cmap_params.tone_constants.slope_tuning      = 1.5f;
-                    cmap_params.tone_constants.slope_offset      = 0.2f;
-                    cmap_params.tone_constants.spline_contrast   = 0.5f;
-                    cmap_params.tone_constants.reinhard_contrast = 0.5f;
-                    cmap_params.tone_constants.linear_knee       = 0.3f;
-                    cmap_params.tone_constants.exposure          = 1.0f;
+                    cmap.tone_constants  = { 0 };
+                    cmap.tone_constants.knee_adaptation   = 0.4f;
+                    cmap.tone_constants.knee_minimum      = 0.1f;
+                    cmap.tone_constants.knee_maximum      = 0.8f;
+                    cmap.tone_constants.knee_default      = 0.4f;
+                    cmap.tone_constants.knee_offset       = 1.0f;
                     
-                    cmap_params.metadata   = PL_HDR_METADATA_ANY;
-                    cmap_params.lut3d_size[0] = 48;
-                    cmap_params.lut3d_size[1] = 32;
-                    cmap_params.lut3d_size[2] = 256;
-                    cmap_params.lut_size = 256;
-                    cmap_params.visualize_rect.x0 = 0;
-                    cmap_params.visualize_rect.y0 = 0;
-                    cmap_params.visualize_rect.x1 = 1;
-                    cmap_params.visualize_rect.y1 = 1;
-                    cmap_params.contrast_smoothness = 3.5f;
+                    cmap.tone_constants.slope_tuning      = 1.5f;
+                    cmap.tone_constants.slope_offset      = 0.2f;
+                    
+                    cmap.tone_constants.spline_contrast   = 0.5f;
+                    
+                    cmap.tone_constants.reinhard_contrast = 0.5f;
+                    cmap.tone_constants.linear_knee       = 0.3f;
+
+                    cmap.tone_constants.exposure          = 1.0f;
+                    
+                    
+                    cmap.metadata   = PL_HDR_METADATA_ANY;
+                    cmap.lut3d_size[0] = 48;
+                    cmap.lut3d_size[1] = 32;
+                    cmap.lut3d_size[2] = 256;
+                    cmap.lut_size = 256;
+                    cmap.visualize_rect.x0 = 0;
+                    cmap.visualize_rect.y0 = 0;
+                    cmap.visualize_rect.x1 = 1;
+                    cmap.visualize_rect.y1 = 1;
+                    cmap.contrast_smoothness = 3.5f;
 
                     const image::HDRData& data = p.hdrOptions.hdrData;
                 
@@ -1334,8 +1356,7 @@ namespace tl
                     pl_shader_obj state = NULL;
                     color_map_args.state = &state;  // with NULL and tonemap_clip works
     
-                    pl_shader_color_map_ex(shader,
-                                           &cmap_params,
+                    pl_shader_color_map_ex(shader, &cmap,
                                            &color_map_args);
     
                     const pl_shader_res* res = pl_shader_finalize(shader);
