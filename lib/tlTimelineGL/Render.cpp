@@ -301,7 +301,7 @@ namespace tl
             }
         }
 
-#if defined(TLRENDER_OCIO)
+#if defined(TLRENDER_OCIO) || defined(TLRENDER_LIBPLACEBO)
         OCIOTexture::OCIOTexture(
             unsigned id,
             std::string name,
@@ -311,8 +311,11 @@ namespace tl
             name(name),
             sampler(sampler),
             type(type)
-        {}
+        {
+        }
+#endif
 
+#if defined(TLRENDER_OCIO)
         OCIOData::~OCIOData()
         {
             for (size_t i = 0; i < textures.size(); ++i)
@@ -330,28 +333,11 @@ namespace tl
         }
 #endif // TLRENDER_OCIO
 
-        void Render::_init(
-            const std::shared_ptr<system::Context>& context,
-            const std::shared_ptr<TextureCache>& textureCache)
-        {
-            IRender::_init(context);
-            TLRENDER_P();
-
-            p.textureCache = textureCache;
-            if (!p.textureCache)
-            {
-                p.textureCache = std::make_shared<TextureCache>();
-            }
-
-            p.glyphTextureAtlas = gl::TextureAtlas::create(
-                1,
-                4096,
-                image::PixelType::L_U8,
-                timeline::ImageFilter::Linear);
-
 #if defined(TLRENDER_LIBPLACEBO)
-            p.log = pl_log_create(PL_API_VER, NULL);
-            if (!p.log)
+        LibPlaceboData::LibPlaceboData()
+        {
+            log = pl_log_create(PL_API_VER, NULL);
+            if (!log)
             {
                 throw std::runtime_error("log creation failed");
             }
@@ -391,12 +377,43 @@ namespace tl
             gpu_dummy.limits.fragment_queues    = 0;   
             gpu_dummy.limits.compute_queues= 0;
     
-            p.gpu = pl_gpu_dummy_create(p.log, &gpu_dummy);
-            if (!p.gpu)
+            gpu = pl_gpu_dummy_create(log, &gpu_dummy);
+            if (!gpu)
             {
                 throw std::runtime_error("pl_gpu_dummy_create failed!");
             }
-#endif
+        }
+    
+        LibPlaceboData::~LibPlaceboData()
+        {
+            for (size_t i = 0; i < textures.size(); ++i)
+            {
+                glDeleteTextures(1, &textures[i].id);
+            }
+            
+            pl_gpu_dummy_destroy(&gpu);
+            pl_log_destroy(&log);
+        }
+#endif // TLRENDER_LIBPLACEBO
+
+        void Render::_init(
+            const std::shared_ptr<system::Context>& context,
+            const std::shared_ptr<TextureCache>& textureCache)
+        {
+            IRender::_init(context);
+            TLRENDER_P();
+
+            p.textureCache = textureCache;
+            if (!p.textureCache)
+            {
+                p.textureCache = std::make_shared<TextureCache>();
+            }
+
+            p.glyphTextureAtlas = gl::TextureAtlas::create(
+                1,
+                4096,
+                image::PixelType::L_U8,
+                timeline::ImageFilter::Linear);
                     
             p.logTimer = std::chrono::steady_clock::now();
         }
@@ -692,130 +709,217 @@ namespace tl
 
         namespace
         {
-#if defined(TLRENDER_OCIO)
-            void setTextureParameters(GLenum textureType, OCIO::Interpolation interpolation)
+            void setTextureParameters(GLenum textureType, GLenum interpolation)
             {
-                if (OCIO::INTERP_NEAREST == interpolation)
-                {
-                    glTexParameteri(textureType, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-                    glTexParameteri(textureType, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-                }
-                else
-                {
-                    glTexParameteri(textureType, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                    glTexParameteri(textureType, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                }
-
+                glTexParameteri(textureType, GL_TEXTURE_MIN_FILTER, interpolation);
+                glTexParameteri(textureType, GL_TEXTURE_MAG_FILTER, interpolation);
                 glTexParameteri(textureType, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
                 glTexParameteri(textureType, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
                 glTexParameteri(textureType, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
             }
+            
+#if defined(TLRENDER_OCIO)
 
-        void addGPUTextures(
-            std::vector<tl::timeline_gl::OCIOTexture>& textures,
-            const OCIO::GpuShaderDescRcPtr& shaderDesc)
-        {
-            // Create 3D textures.
-            glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-            glPixelStorei(GL_UNPACK_SWAP_BYTES, 0);
-            const unsigned num3DTextures = shaderDesc->getNum3DTextures();
-            for (unsigned i = 0; i < num3DTextures; ++i)
+            void setTextureParameters(GLenum textureType, OCIO::Interpolation interpolation)
             {
-                const char* textureName = nullptr;
-                const char* samplerName = nullptr;
-                unsigned edgelen = 0;
-                OCIO::Interpolation interpolation = OCIO::INTERP_LINEAR;
-                shaderDesc->get3DTexture(i, textureName, samplerName, edgelen, interpolation);
-                if (!textureName ||
-                    !*textureName ||
-                    !samplerName ||
-                    !*samplerName ||
-                    0 == edgelen)
-                {
-                    throw std::runtime_error("The OCIO texture data is corrupted");
-                }
-
-                const float* values = nullptr;
-                shaderDesc->get3DTextureValues(i, values);
-                if (!values)
-                {
-                    throw std::runtime_error("The OCIO texture values are missing");
-                }
-
-                unsigned textureId = 0;
-                glGenTextures(1, &textureId);
-                glBindTexture(GL_TEXTURE_3D, textureId);
-                setTextureParameters(GL_TEXTURE_3D, interpolation);
-                glTexImage3D(GL_TEXTURE_3D, 0, GL_RGB32F, edgelen, edgelen, edgelen, 0, GL_RGB, GL_FLOAT, values);
-                textures.push_back(OCIOTexture(textureId, textureName, samplerName, GL_TEXTURE_3D));
+                setTextureParameters(textureType, OCIO::INTERP_NEAREST == interpolation ?
+                                     GL_NEAREST : GL_LINEAR);
             }
-
-            // Create 1D textures.
-            const unsigned numTextures = shaderDesc->getNumTextures();
-            for (unsigned i = 0; i < numTextures; ++i)
+            
+            void addGPUTextures(
+                std::vector<tl::timeline_gl::OCIOTexture>& textures,
+                const OCIO::GpuShaderDescRcPtr& shaderDesc)
             {
-                const char* textureName = nullptr;
-                const char* samplerName = nullptr;
-                unsigned width = 0;
-                unsigned height = 0;
-                OCIO::GpuShaderDesc::TextureType channel = OCIO::GpuShaderDesc::TEXTURE_RGB_CHANNEL;
-                OCIO::GpuShaderCreator::TextureDimensions dimensions = OCIO::GpuShaderDesc::TEXTURE_1D;
-                OCIO::Interpolation interpolation = OCIO::INTERP_LINEAR;
-                shaderDesc->getTexture(
-                    i,
-                    textureName,
-                    samplerName,
-                    width,
-                    height,
-                    channel,
-                    dimensions,
-                    interpolation);
-                if (!textureName ||
-                    !*textureName ||
-                    !samplerName ||
-                    !*samplerName ||
-                    width == 0)
+                // Create 3D textures.
+                glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+                glPixelStorei(GL_UNPACK_SWAP_BYTES, 0);
+                const unsigned num3DTextures = shaderDesc->getNum3DTextures();
+                for (unsigned i = 0; i < num3DTextures; ++i)
                 {
-                    throw std::runtime_error("The OCIO texture data is corrupted");
+                    const char* textureName = nullptr;
+                    const char* samplerName = nullptr;
+                    unsigned edgelen = 0;
+                    OCIO::Interpolation interpolation = OCIO::INTERP_LINEAR;
+                    shaderDesc->get3DTexture(i, textureName, samplerName, edgelen, interpolation);
+                    if (!textureName ||
+                        !*textureName ||
+                        !samplerName ||
+                        !*samplerName ||
+                        0 == edgelen)
+                    {
+                        throw std::runtime_error("The OCIO texture data is corrupted");
+                    }
+                    
+                    const float* values = nullptr;
+                    shaderDesc->get3DTextureValues(i, values);
+                    if (!values)
+                    {
+                        throw std::runtime_error("The OCIO texture values are missing");
+                    }
+                    
+                    unsigned textureId = 0;
+                    glGenTextures(1, &textureId);
+                    glBindTexture(GL_TEXTURE_3D, textureId);
+                    setTextureParameters(GL_TEXTURE_3D, interpolation);
+                    glTexImage3D(GL_TEXTURE_3D, 0, GL_RGB32F, edgelen, edgelen, edgelen, 0, GL_RGB, GL_FLOAT, values);
+                    textures.push_back(OCIOTexture(textureId, textureName, samplerName, GL_TEXTURE_3D));
                 }
 
-                const float* values = nullptr;
-                shaderDesc->getTextureValues(i, values);
-                if (!values)
+                // Create 1D textures.
+                const unsigned numTextures = shaderDesc->getNumTextures();
+                for (unsigned i = 0; i < numTextures; ++i)
                 {
-                    throw std::runtime_error("The OCIO texture values are missing");
-                }
+                    const char* textureName = nullptr;
+                    const char* samplerName = nullptr;
+                    unsigned width = 0;
+                    unsigned height = 0;
+                    OCIO::GpuShaderDesc::TextureType channel = OCIO::GpuShaderDesc::TEXTURE_RGB_CHANNEL;
+                    OCIO::GpuShaderCreator::TextureDimensions dimensions = OCIO::GpuShaderDesc::TEXTURE_1D;
+                    OCIO::Interpolation interpolation = OCIO::INTERP_LINEAR;
+                    shaderDesc->getTexture(
+                        i,
+                        textureName,
+                        samplerName,
+                        width,
+                        height,
+                        channel,
+                        dimensions,
+                        interpolation);
+                    if (!textureName ||
+                        !*textureName ||
+                        !samplerName ||
+                        !*samplerName ||
+                        width == 0)
+                    {
+                        throw std::runtime_error("The OCIO texture data is corrupted");
+                    }
 
-                unsigned textureId = 0;
-                GLint internalformat = GL_RGB32F;
-                GLenum format = GL_RGB;
-                if (OCIO::GpuShaderCreator::TEXTURE_RED_CHANNEL == channel)
-                {
-                    internalformat = GL_R32F;
-                    format = GL_RED;
+                    const float* values = nullptr;
+                    shaderDesc->getTextureValues(i, values);
+                    if (!values)
+                    {
+                        throw std::runtime_error("The OCIO texture values are missing");
+                    }
+
+                    unsigned textureId = 0;
+                    GLint internalformat = GL_RGB32F;
+                    GLenum format = GL_RGB;
+                    if (OCIO::GpuShaderCreator::TEXTURE_RED_CHANNEL == channel)
+                    {
+                        internalformat = GL_R32F;
+                        format = GL_RED;
+                    }
+                    glGenTextures(1, &textureId);
+                    switch (dimensions)
+                    {
+                    case OCIO::GpuShaderDesc::TEXTURE_1D:
+                        glBindTexture(GL_TEXTURE_1D, textureId);
+                        setTextureParameters(GL_TEXTURE_1D, interpolation);
+                        glTexImage1D(GL_TEXTURE_1D, 0, internalformat, width, 0, format, GL_FLOAT, values);
+                        break;
+                    case OCIO::GpuShaderDesc::TEXTURE_2D:
+                        glBindTexture(GL_TEXTURE_2D, textureId);
+                        setTextureParameters(GL_TEXTURE_2D, interpolation);
+                        glTexImage2D(GL_TEXTURE_2D, 0, internalformat, width, height, 0, format, GL_FLOAT, values);
+                        break;
+                    }
+                    textures.push_back(OCIOTexture(
+                                           textureId,
+                                           textureName,
+                                           samplerName,
+                                           (height > 1) ? GL_TEXTURE_2D : GL_TEXTURE_1D));
                 }
-                glGenTextures(1, &textureId);
-                switch (dimensions)
-                {
-                case OCIO::GpuShaderDesc::TEXTURE_1D:
-                    glBindTexture(GL_TEXTURE_1D, textureId);
-                    setTextureParameters(GL_TEXTURE_1D, interpolation);
-                    glTexImage1D(GL_TEXTURE_1D, 0, internalformat, width, 0, format, GL_FLOAT, values);
-                    break;
-                case OCIO::GpuShaderDesc::TEXTURE_2D:
-                    glBindTexture(GL_TEXTURE_2D, textureId);
-                    setTextureParameters(GL_TEXTURE_2D, interpolation);
-                    glTexImage2D(GL_TEXTURE_2D, 0, internalformat, width, height, 0, format, GL_FLOAT, values);
-                    break;
-                }
-                textures.push_back(OCIOTexture(
-                                       textureId,
-                                       textureName,
-                                       samplerName,
-                                       (height > 1) ? GL_TEXTURE_2D : GL_TEXTURE_1D));
             }
-        }
 #endif // TLRENDER_OCIO
+
+#if defined(TLRENDER_LIBPLACEBO)
+            void addGPUTextures(
+                std::vector<tl::timeline_gl::OCIOTexture>& textures,
+                const pl_shader_res* res)
+            {
+                // Create 3D textures.
+                glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+                glPixelStorei(GL_UNPACK_SWAP_BYTES, 0);
+                for (unsigned i = 0; i < res->num_descriptors; ++i)
+                {
+                    const pl_shader_desc* sd = &res->descriptors[i];
+                    switch (sd->desc.type)
+                    {
+                    case PL_DESC_STORAGE_IMG:
+                        throw "Unimplemented img";
+                    case PL_DESC_SAMPLED_TEX:
+                    {
+                        pl_tex tex = reinterpret_cast<pl_tex>(sd->binding.object);
+                        pl_fmt fmt = tex->params.format;
+                        
+                        int dims = pl_tex_params_dimension(tex->params);
+                        assert(dims >= 1 && dims <= 3);
+                        
+                        const char* textureName = sd->desc.name;
+                        const char* samplerName = sd->desc.name;
+                    
+                        unsigned textureId = 0;
+                        GLint width = tex->params.w;
+                        
+                        if (dims == 3)
+                        {
+                            GLint height = tex->params.h;
+                            GLint depth  = tex->params.d;
+                            assert(width > 0);
+                            assert(height > 0);
+                            assert(depth > 0);
+                        
+                            const uint16_t* values = reinterpret_cast<uint16_t*>(pl_tex_dummy_data(tex));
+                            if (!values)
+                            {
+                                throw "Could not read pl_tex_dummy_data";
+                            }
+                        
+                            glGenTextures(1, &textureId);
+                            glBindTexture(GL_TEXTURE_3D, textureId);
+                            setTextureParameters(GL_TEXTURE_3D, GL_LINEAR);
+                            glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA16,
+                                         width, height, depth, 0, GL_RGBA,
+                                         GL_UNSIGNED_SHORT, values);
+                            textures.push_back(OCIOTexture(textureId, textureName, samplerName, GL_TEXTURE_3D));
+                        }
+                        else if (dims == 2)
+                        {
+                            GLint height = tex->params.h;
+                            assert(height > 0);
+                            throw "Unimplemented dims 2";
+                        }
+                        else if (dims == 1)
+                        {
+                            // This one seems correct
+                            assert(width != 0);
+                        
+                            const float* values = reinterpret_cast<float*>(pl_tex_dummy_data(tex));
+                            if (!values)
+                            {
+                                throw "Could not read pl_tex_dummy_data";
+                            }
+                            
+                            glGenTextures(1, &textureId);
+                            glBindTexture(GL_TEXTURE_1D, textureId);
+                            setTextureParameters(GL_TEXTURE_1D, GL_LINEAR);
+                            glTexImage1D(GL_TEXTURE_1D, 0, GL_R32F, width, 0,
+                                         GL_RED, GL_FLOAT, values);
+                            textures.push_back(OCIOTexture(
+                                                   textureId,
+                                                   textureName,
+                                                   samplerName,
+                                                   GL_TEXTURE_1D));
+                        }
+                        break;
+                    }
+                    default:
+                        throw "Unknown texture type";
+                        break;
+                    }
+                }
+            }
+#endif
         }
 
         void Render::setOCIOOptions(const timeline::OCIOOptions& value)
@@ -1041,6 +1145,13 @@ namespace tl
 
             p.hdrOptions = value;
             
+#if defined(TLRENDER_OCIO)
+            if (p.hdrOptions.tonemap)
+            {
+                p.placeboData.reset(new LibPlaceboData);
+            }
+#endif // TLRENDER_OCIO
+            
             p.shaders["display"].reset();
             _displayShader();
         }
@@ -1048,6 +1159,7 @@ namespace tl
         void Render::_displayShader()
         {
             TLRENDER_P();
+                
             if (!p.shaders["display"])
             {
                 std::string ocioICSDef;
@@ -1083,53 +1195,79 @@ namespace tl
                     memset(&shader_params, 0, sizeof(pl_shader_params));
     
                     shader_params.id = 1;
-                    shader_params.gpu = p.gpu;
+                    shader_params.gpu = p.placeboData->gpu;
                     shader_params.dynamic_constants = false;
     
-                    pl_shader shader = pl_shader_alloc(p.log, &shader_params);
+                    pl_shader shader = pl_shader_alloc(p.placeboData->log, &shader_params);
                     if (!shader)
                     {
                         throw std::runtime_error("pl_shader_alloc failed!");
                     }
 
 
-                    pl_color_map_params cmap_params;
-                    memset(&cmap_params, 0, sizeof(pl_color_map_params));
-                
-                    cmap_params.gamut_mapping = &pl_gamut_map_perceptual;
-                    cmap_params.tone_mapping_function = &pl_tone_map_spline; // default
+                    pl_color_map_params cmap;
+                    memset(&cmap, 0, sizeof(pl_color_map_params));
+
+#if 1
+                    // defaults, generates LUTs if state is set.
+                    cmap.gamut_mapping = &pl_gamut_map_perceptual;
+
+                    
+
+                    // best so far
+                    cmap.tone_mapping_function = &pl_tone_map_st2094_40;
+                    
+                    // cmap.tone_mapping_function = &pl_tone_map_linear;
+                    // cmap.tone_mapping_function = &pl_tone_map_spline;
+                    // cmap.tone_mapping_function = &pl_tone_map_reinhard;
+                    // cmap.tone_mapping_function = &pl_tone_map_hable;
+                    // cmap.tone_mapping_function = &pl_tone_map_gamma;
+                    // cmap.tone_mapping_function = &pl_tone_map_st2094_10;
+                    // cmap.tone_mapping_function = &pl_tone_map_bt2390;
+                    // cmap.tone_mapping_function = &pl_tone_map_bt2446a;
+                    
+#else
+                    // These work without LUTs
+                    cmap.gamut_mapping = &pl_gamut_map_clip;
+                    cmap.tone_mapping_function = &pl_tone_map_clip;   
+#endif
+
                     // PL_GAMUT_MAP_CONSTANTS is defined in wrong order for C++
-    
-                    cmap_params.gamut_constants = { 0 };
-                    cmap_params.gamut_constants.perceptual_deadzone = 0.3F;
-                    cmap_params.gamut_constants.perceptual_strength = 0.8F;
-                    cmap_params.gamut_constants.colorimetric_gamma  = 1.80f; 
-                    cmap_params.gamut_constants.softclip_knee  = 0.70f;
-                    cmap_params.gamut_constants.softclip_desat = 0.35f; 
+                    cmap.gamut_constants = { 0 };
+                    cmap.gamut_constants.perceptual_deadzone = 0.3F;
+                    cmap.gamut_constants.perceptual_strength = 0.8F;
+                    cmap.gamut_constants.colorimetric_gamma  = 1.80f; 
+                    cmap.gamut_constants.softclip_knee  = 0.70f;
+                    cmap.gamut_constants.softclip_desat = 0.35f; 
                     
-                    cmap_params.tone_constants  = { 0 };
-                    cmap_params.tone_constants.knee_adaptation   = 0.4f;
-                    cmap_params.tone_constants.knee_minimum      = 0.1f;
-                    cmap_params.tone_constants.knee_maximum      = 0.8f;
-                    cmap_params.tone_constants.knee_default      = 0.4f;
-                    cmap_params.tone_constants.knee_offset       = 1.0f;
-                    cmap_params.tone_constants.slope_tuning      = 1.5f;
-                    cmap_params.tone_constants.slope_offset      = 0.2f;
-                    cmap_params.tone_constants.spline_contrast   = 0.5f;
-                    cmap_params.tone_constants.reinhard_contrast = 0.5f;
-                    cmap_params.tone_constants.linear_knee       = 0.3f;
-                    cmap_params.tone_constants.exposure          = 1.0f;
+                    cmap.tone_constants  = { 0 };
+                    cmap.tone_constants.knee_adaptation   = 0.4f;
+                    cmap.tone_constants.knee_minimum      = 0.1f;
+                    cmap.tone_constants.knee_maximum      = 0.8f;
+                    cmap.tone_constants.knee_default      = 0.4f;
+                    cmap.tone_constants.knee_offset       = 1.0f;
                     
-                    cmap_params.metadata   = PL_HDR_METADATA_ANY;
-                    cmap_params.lut3d_size[0] = 48;
-                    cmap_params.lut3d_size[1] = 32;
-                    cmap_params.lut3d_size[2] = 256;
-                    cmap_params.lut_size = 256;
-                    cmap_params.visualize_rect.x0 = 0;
-                    cmap_params.visualize_rect.y0 = 0;
-                    cmap_params.visualize_rect.x1 = 1;
-                    cmap_params.visualize_rect.y1 = 1;
-                    cmap_params.contrast_smoothness = 3.5f;
+                    cmap.tone_constants.slope_tuning      = 1.5f;
+                    cmap.tone_constants.slope_offset      = 0.2f;
+                    
+                    cmap.tone_constants.spline_contrast   = 0.5f;
+                    
+                    cmap.tone_constants.reinhard_contrast = 0.5f;
+                    cmap.tone_constants.linear_knee       = 0.3f;
+
+                    cmap.tone_constants.exposure          = 1.0f;
+                    
+                    
+                    cmap.metadata   = PL_HDR_METADATA_ANY;
+                    cmap.lut3d_size[0] = 48;
+                    cmap.lut3d_size[1] = 32;
+                    cmap.lut3d_size[2] = 256;
+                    cmap.lut_size = 256;
+                    cmap.visualize_rect.x0 = 0;
+                    cmap.visualize_rect.y0 = 0;
+                    cmap.visualize_rect.x1 = 1;
+                    cmap.visualize_rect.y1 = 1;
+                    cmap.contrast_smoothness = 3.5f;
 
                     const image::HDRData& data = p.hdrOptions.hdrData;
                 
@@ -1198,14 +1336,15 @@ namespace tl
                     hdr.ootf.num_anchors = data.ootf.numAnchors;
                     for (int i = 0; i < hdr.ootf.num_anchors; i++)
                         hdr.ootf.anchors[i] = data.ootf.anchors[i];
+                    pl_color_space_infer(&src_colorspace);
                 
                     
     
                     pl_color_space dst_colorspace;
                     memset(&dst_colorspace, 0, sizeof(pl_color_space));
                     dst_colorspace.primaries = PL_COLOR_PRIM_BT_709;
-                    // dst_colorspace.transfer  = PL_COLOR_TRC_LINEAR;
-                    dst_colorspace.transfer  = PL_COLOR_TRC_SRGB;
+                    dst_colorspace.transfer  = PL_COLOR_TRC_BT_1886;
+                    pl_color_space_infer(&dst_colorspace);
     
                     pl_color_map_args color_map_args;
                     memset(&color_map_args, 0, sizeof(pl_color_map_args));
@@ -1213,10 +1352,11 @@ namespace tl
                     color_map_args.src = src_colorspace;
                     color_map_args.dst = dst_colorspace;
                     color_map_args.prelinearized = false;
-                    color_map_args.state = NULL;
+
+                    pl_shader_obj state = NULL;
+                    color_map_args.state = &state;  // with NULL and tonemap_clip works
     
-                    pl_shader_color_map_ex(shader,
-                                           &cmap_params,
+                    pl_shader_color_map_ex(shader, &cmap,
                                            &color_map_args);
     
                     const pl_shader_res* res = pl_shader_finalize(shader);
@@ -1232,7 +1372,72 @@ namespace tl
                     //           << "num_constants=" << res->num_constants << std::endl;
                     {
                         std::stringstream s;
-    
+
+                        s << "#define textureLod(t, p, b) texture(t, p)"
+                          << std::endl
+                          << std::endl;
+                        
+                        for (int i = 0; i < res->num_descriptors; i++)
+                        {
+                            const pl_shader_desc* sd = &res->descriptors[i];
+                            const pl_desc* desc = &sd->desc;
+                            switch (desc->type)
+                            {
+                            case PL_DESC_SAMPLED_TEX:
+                            case PL_DESC_STORAGE_IMG:
+                            {
+                                static const char *types[] = {
+                                    "sampler1D",
+                                    "sampler2D",
+                                    "sampler3D",
+                                };
+
+                                pl_desc_binding binding = sd->binding;
+                                pl_tex tex = (pl_tex)binding.object;
+                                int dims = pl_tex_params_dimension(tex->params);
+                                const char* type = types[dims-1];
+
+                                char prefix = ' ';
+                                switch(tex->params.format->type)
+                                {
+                                case PL_FMT_UINT:
+                                    prefix = 'u';
+                                    break;
+                                case PL_FMT_SINT:
+                                    prefix = 'i';
+                                    break;
+                                case PL_FMT_FLOAT:
+                                case PL_FMT_UNORM:
+                                case PL_FMT_SNORM:
+                                default:
+                                    break;
+                                }
+                                
+                                s << "uniform "
+                                  << prefix
+                                  << type
+                                  << " "
+                                  << desc->name
+                                  << ";"
+                                  << std::endl;
+                                break;
+                            }
+                            case PL_DESC_BUF_UNIFORM:
+                                throw "buf uniform";
+                                break;
+                            case PL_DESC_BUF_STORAGE:
+                                throw "buf storage";
+                            case PL_DESC_BUF_TEXEL_UNIFORM:
+                                throw "buf texel uniform";
+                            case PL_DESC_BUF_TEXEL_STORAGE:
+                                throw "buf texel storage";
+                            case PL_DESC_INVALID:
+                            case PL_DESC_TYPE_COUNT:
+                                throw "invalid or count";
+                                break;
+                            }
+                        }
+        
                         s << "// Variables" << std::endl << std::endl;
                         for (int i = 0; i < res->num_variables; ++i)
                         {
@@ -1337,8 +1542,16 @@ namespace tl
 
                         s << res->glsl << std::endl;
                         
-                        // std::cout << s.str() << std::endl;
                         toneMapDef = s.str();
+
+                        try
+                        {
+                            addGPUTextures(p.placeboData->textures, res);
+                        }
+                        catch(const std::exception& e)
+                        {
+                            throw e;
+                        }
                     }
 
                     std::stringstream s;
@@ -1361,15 +1574,14 @@ namespace tl
                     toneMap);
                 if (auto context = _context.lock())
                 {
-                    //context->log("tl::gl::GLRender", source);
                     context->log("tl::gl::GLRender", "Creating display shader");
                 }
                 p.shaders["display"] = gl::Shader::create(vertexSource(), source);
             }
             p.shaders["display"]->bind();
             p.shaders["display"]->setUniform("transform.mvp", p.transform);
-#if defined(TLRENDER_OCIO)
             size_t texturesOffset = 1;
+#if defined(TLRENDER_OCIO)
             if (p.ocioData)
             {
                 for (size_t i = 0; i < p.ocioData->textures.size(); ++i)
@@ -1391,6 +1603,18 @@ namespace tl
                 texturesOffset += p.lutData->textures.size();
             }
 #endif // TLRENDER_OCIO
+#if defined(TLRENDER_LIBPLACEBO)
+            if (p.hdrOptions.tonemap)
+            {
+                for (size_t i = 0; i < p.placeboData->textures.size(); ++i)
+                {
+                    p.shaders["display"]->setUniform(
+                        p.placeboData->textures[i].sampler,
+                        static_cast<int>(texturesOffset + i));
+                }
+                texturesOffset += p.placeboData->textures.size();
+            }
+#endif
         }
     }
 }

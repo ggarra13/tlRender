@@ -66,7 +66,7 @@ namespace tl
             const std::vector<std::shared_ptr<gl::Texture> >&,
             size_t offset = 0);
 
-#if defined(TLRENDER_OCIO)
+#if defined(TLRENDER_OCIO) || defined(TLRENDER_LIBPLACEBO)
         struct OCIOTexture
         {
             OCIOTexture(
@@ -80,7 +80,9 @@ namespace tl
             std::string sampler;
             unsigned    type = -1;
         };
+#endif
         
+#if defined(TLRENDER_OCIO)        
         struct OCIOData
         {
             ~OCIOData();
@@ -109,6 +111,18 @@ namespace tl
         
 #endif // TLRENDER_OCIO
 
+#if defined(TLRENDER_LIBPLACEBO)
+        struct LibPlaceboData
+        {
+            LibPlaceboData();
+            ~LibPlaceboData();
+            
+            pl_log log;
+            pl_gpu gpu;
+            std::vector<OCIOTexture> textures;
+        };
+#endif
+        
         struct Render::Private
         {
             math::Size2i renderSize;
@@ -124,8 +138,7 @@ namespace tl
 #endif // TLRENDER_OCIO
 
 #if defined(TLRENDER_LIBPLACEBO)
-            pl_log log;
-            pl_gpu gpu;
+            std::unique_ptr<LibPlaceboData> placeboData;
 #endif
 
             math::Box2i viewport;
