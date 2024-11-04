@@ -47,7 +47,8 @@ namespace tl
                 fontSize == other.fontSize &&
                 clipRectScale == other.clipRectScale &&
                 ocio == other.ocio &&
-                lut == other.lut;
+                lut == other.lut &&
+                hdr == other.hdr;
         }
 
         bool DisplayOptions::operator != (const DisplayOptions& other) const

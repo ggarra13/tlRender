@@ -82,6 +82,7 @@ namespace tl
             float clipRectScale = 2.F;
             timeline::OCIOOptions ocio;
             timeline::LUTOptions lut;
+            timeline::HDROptions hdr;
 
             bool operator == (const DisplayOptions&) const;
             bool operator != (const DisplayOptions&) const;

@@ -253,6 +253,7 @@ namespace tl
             event.render->setClipRect(box.intersect(clipRectState.getClipRect()));
             event.render->setOCIOOptions(_displayOptions.ocio);
             event.render->setLUTOptions(_displayOptions.lut);
+            event.render->setHDROptions(_displayOptions.hdr);
 
             const math::Box2i clipRect = _getClipRect(
                 drawRect,
