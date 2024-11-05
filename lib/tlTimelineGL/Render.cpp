@@ -859,7 +859,11 @@ namespace tl
                         const char* samplerName = sd->desc.name;
                     
                         unsigned textureId = 0;
+                        GLint internalFormat = GL_RGB32F;
+                        GLenum format = GL_RGB;
+                    
                         GLint width = tex->params.w;
+                        glGenTextures(1, &textureId);
                         
                         if (dims == 3)
                         {
@@ -875,7 +879,6 @@ namespace tl
                                 throw "Could not read pl_tex_dummy_data";
                             }
                         
-                            glGenTextures(1, &textureId);
                             glBindTexture(GL_TEXTURE_3D, textureId);
                             setTextureParameters(GL_TEXTURE_3D, GL_LINEAR);
                             glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA16,
@@ -887,7 +890,23 @@ namespace tl
                         {
                             GLint height = tex->params.h;
                             assert(height > 0);
-                            throw "Unimplemented dims 2";
+                            
+                            const float* values = reinterpret_cast<float*>(pl_tex_dummy_data(tex));
+                            if (!values)
+                            {
+                                throw "Could not read pl_tex_dummy_data";
+                            }
+                            
+                            glBindTexture(GL_TEXTURE_2D, textureId);
+                            setTextureParameters(GL_TEXTURE_2D, GL_LINEAR);
+                            glTexImage2D(GL_TEXTURE_2D, 0, internalFormat,
+                                         width, height, 0,
+                                         format, GL_FLOAT, values);
+                            textures.push_back(OCIOTexture(
+                                                   textureId,
+                                                   textureName,
+                                                   samplerName,
+                                                   GL_TEXTURE_2D));
                         }
                         else if (dims == 1)
                         {
@@ -900,7 +919,6 @@ namespace tl
                                 throw "Could not read pl_tex_dummy_data";
                             }
                             
-                            glGenTextures(1, &textureId);
                             glBindTexture(GL_TEXTURE_1D, textureId);
                             setTextureParameters(GL_TEXTURE_1D, GL_LINEAR);
                             glTexImage1D(GL_TEXTURE_1D, 0, GL_R32F, width, 0,
@@ -1511,6 +1529,8 @@ namespace tl
                                     }
                                     break;
                                 }
+                                default:
+                                    break;
                                 }
                             }
                         }
@@ -1535,6 +1555,8 @@ namespace tl
                             case PL_VAR_FLOAT:
                                 s << "const float " << constant.name << " = "
                                   << *(reinterpret_cast<const float*>(constant.data));
+                                break;
+                            default:
                                 break;
                             }
                             s << ";" << std::endl;
