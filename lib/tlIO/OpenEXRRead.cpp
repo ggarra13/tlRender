@@ -12,6 +12,7 @@
 
 #include <ImfInputPart.h>
 #include <ImfChannelList.h>
+#include <ImfCompression.h>
 #include <ImfRgbaFile.h>
 
 #include <array>
@@ -132,24 +133,6 @@ namespace tl
                 return data[value];
             }
 
-            std::string getLabel(Imf::Compression value)
-            {
-                const std::array<std::string, static_cast<size_t>(Imf::Compression::NUM_COMPRESSION_METHODS) > data =
-                {
-                    "None",
-                    "RLE",
-                    "ZIPS",
-                    "ZIP",
-                    "PIZ",
-                    "PXR24",
-                    "B44",
-                    "B44A",
-                    "DWAA",
-                    "DWAB"
-                };
-                return data[value];
-            }
-
             class File
             {
             public:
@@ -187,6 +170,21 @@ namespace tl
                         _intersectedWindow = _displayWindow.intersect(_dataWindow);
                         _fast = _displayWindow == _dataWindow;
 
+                        std::string compressionName;
+                        const Imf::Compression compression =
+                            header.compression(); 
+                        Imf::getCompressionNameFromId(compression,
+                                                      compressionName);
+
+                        int compressionNumScanlines =
+                            Imf::getCompressionNumScanlines(compression);
+
+                        bool isLossyCompression =
+                            Imf::isLossyCompression(compression);
+                        
+                        bool isValidDeepCompression =
+                            Imf::isValidDeepCompression(compression);
+
                         if (auto logSystem = logSystemWeak.lock())
                         {
                             const std::string id = string::Format("tl::io::exr::Read {0}").arg(this);
@@ -200,7 +198,7 @@ namespace tl
                                         arg(fileName).
                                         arg(_displayWindow).
                                         arg(_dataWindow).
-                                        arg(getLabel(header.compression())));
+                                        arg(compressionName));
                             const auto& channels = header.channels();
                             for (auto i = channels.begin(); i != channels.end(); ++i)
                             {
@@ -220,7 +218,13 @@ namespace tl
                         std::vector<Layer> layers = getLayers(header.channels(), channelGrouping);
                         size_t offset = _info.video.size();
                         _info.video.resize(offset + layers.size());
-                        _info.video[partNumber].compression = getLabel(header.compression());
+                        _info.video[partNumber].compression = compressionName;
+                        _info.video[partNumber].compressionNumScanlines =
+                            compressionNumScanlines;
+                        _info.video[partNumber].isLossyCompression =
+                            isLossyCompression;
+                        _info.video[partNumber].isValidDeepCompression =
+                            isValidDeepCompression;
                         for (size_t i = 0; i < layers.size(); ++i)
                         {
                             layers[i].partNumber = partNumber;

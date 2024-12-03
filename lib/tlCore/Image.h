@@ -242,6 +242,9 @@ namespace tl
 
             std::string     name             = "Default";
             std::string     compression      = "Unknown";
+            bool            isLossyCompression = false;
+            bool            isValidDeepCompression = false;
+            int             compressionNumScanlines = 0;
             Size            size;
             PixelType       pixelType        = PixelType::None;
             VideoLevels     videoLevels      = VideoLevels::FullRange;
