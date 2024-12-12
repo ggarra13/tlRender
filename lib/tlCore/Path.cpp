@@ -18,6 +18,19 @@ namespace tl
 {
     namespace file
     {
+        namespace
+        {
+            std::string remove_localhost(const std::string& url)
+            {
+                size_t pos = url.find("localhost");
+                if (pos == 0) {
+                    return url.substr(9); // Remove "localhost/" 
+                }
+                return url; 
+            }
+
+        }
+        
         Path::Path()
         {}
 
@@ -105,6 +118,20 @@ namespace tl
                         'i' == value[1] &&
                         'l' == value[2] &&
                         'e' == value[3] &&
+                        l < size - 4 &&
+                        '/' == value[l + 1] &&
+                        '/' == value[l + 2] &&
+                        '/' == value[l + 3])
+                    {
+                        _protocol = value.substr(0, l + 3);
+                        l += 3;
+                    }
+                    else if (':' == value[l] &&
+                        4 == l &&
+                        'f' == value[0] &&
+                        'i' == value[1] &&
+                        'l' == value[2] &&
+                        'e' == value[3] &&
                         l < size - 3 &&
                         '/' == value[l + 1] &&
                         '/' == value[l + 2])
@@ -148,7 +175,7 @@ namespace tl
                         l = 0;
                     }
 
-                    _directory = value.substr(l, (i - l) + 1);
+                    _directory = remove_localhost(value.substr(l, (i - l) + 1));
                     k = i + 1;
                 }
 

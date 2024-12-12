@@ -15,6 +15,7 @@
 
 #include <opentimelineio/externalReference.h>
 #include <opentimelineio/imageSequenceReference.h>
+#include <opentimelineio/serializableCollection.h>
 
 #include <mz.h>
 #include <mz_strm.h>
@@ -182,8 +183,25 @@ namespace tl
             const std::string extension = string::toLower(path.getExtension());
             if (".otio" == extension)
             {
-                out = dynamic_cast<otio::Timeline*>(
-                    otio::Timeline::from_json_file(fileName, errorStatus));
+                auto timeline = otio::Timeline::from_json_file(fileName, errorStatus);
+                out = dynamic_cast<otio::Timeline*>(timeline);
+                if (!out)
+                {
+                    auto collection = dynamic_cast<otio::SerializableCollection*>(timeline);
+                    if (collection)
+                    {
+                        auto children = collection->find_children<otio::Timeline>();
+                        if (children.size() > 1)
+                        {
+                            throw std::runtime_error(string::Format(
+                                                         "{0}: Only one timeline is supported.").arg(fileName));
+                        }
+                        else if (children.size() == 1)
+                        {
+                            out = otio::dynamic_retainer_cast<otio::Timeline>(children[0]);
+                        }
+                    }
+                }
             }
             else if (".otioz" == extension)
             {
