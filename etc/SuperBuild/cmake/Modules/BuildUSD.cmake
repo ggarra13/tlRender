@@ -23,6 +23,10 @@ endif()
 # 	${CMAKE_CURRENT_BINARY_DIR}/USD/src/USD/build_scripts/build_usd.py)
 # endif()
 
+if( "${cmake_build_type}" STREQUAL "RelWithDebInfo" )
+    set(cmake_build_type relwithdebuginfo)
+endif()
+
 set(USD_ARGS --build-variant ${cmake_build_type})
 if(CMAKE_OSX_ARCHITECTURES)
     list(APPEND USD_ARGS --build-target ${CMAKE_OSX_ARCHITECTURES})
