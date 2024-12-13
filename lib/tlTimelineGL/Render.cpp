@@ -1163,12 +1163,12 @@ namespace tl
 
             p.hdrOptions = value;
             
-#if defined(TLRENDER_OCIO)
+#if defined(TLRENDER_LIBPLACEBO)
             if (p.hdrOptions.tonemap)
             {
                 p.placeboData.reset(new LibPlaceboData);
             }
-#endif // TLRENDER_OCIO
+#endif // TLRENDER_LIBPLACEBO
             
             p.shaders["display"].reset();
             _displayShader();
