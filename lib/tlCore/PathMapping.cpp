@@ -1,4 +1,6 @@
 
+#include <cstring>
+
 #include <FL/fl_utf8.h>
 
 #include <tlCore/File.h>
