@@ -9,6 +9,7 @@
 #include <tlIO/Init.h>
 
 #include <tlCore/Context.h>
+#include <tlCore/PathMapping.h>
 #include <tlCore/StringFormat.h>
 
 #include <opentimelineio/typeRegistry.h>
@@ -24,6 +25,7 @@ namespace tl
             {
                 context->addSystem(System::create(context));
             }
+            path_mapping::init();
         }
 
         void System::_init(const std::shared_ptr<system::Context>& context)

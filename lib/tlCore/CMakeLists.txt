@@ -48,6 +48,7 @@ set(HEADERS
     Observer.h
     Path.h
     PathInline.h
+    PathMapping.h
     Random.h
     RandomInline.h
     Range.h
@@ -75,6 +76,7 @@ set(SOURCE
     Color.cpp
     Context.cpp
     Error.cpp
+    File.cpp
     FileIO.cpp
     FileInfo.cpp
     FileLogSystem.cpp
@@ -91,6 +93,7 @@ set(SOURCE
     NDIOptions.cpp
     OS.cpp
     Path.cpp
+    PathMapping.cpp
     Random.cpp
     Range.cpp
     Size.cpp

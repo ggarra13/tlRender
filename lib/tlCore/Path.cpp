@@ -17,20 +17,7 @@
 namespace tl
 {
     namespace file
-    {
-        namespace
-        {
-            std::string remove_localhost(const std::string& url)
-            {
-                size_t pos = url.find("localhost");
-                if (pos == 0) {
-                    return url.substr(9); // Remove "localhost/" 
-                }
-                return url; 
-            }
-
-        }
-        
+    {   
         Path::Path()
         {}
 
@@ -175,7 +162,7 @@ namespace tl
                         l = 0;
                     }
 
-                    _directory = remove_localhost(value.substr(l, (i - l) + 1));
+                    _directory = value.substr(l, (i - l) + 1);
                     k = i + 1;
                 }
 

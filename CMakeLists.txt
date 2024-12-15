@@ -106,6 +106,7 @@ elseif ("${TLRENDER_API}" STREQUAL "GL_4_1_Debug")
 elseif ("${TLRENDER_API}" STREQUAL "GLES_2")
     include_directories(${PROJECT_SOURCE_DIR}/deps/glad_GLES_2/include)
 endif()
+include_directories(${CMAKE_INSTALL_PREFIX}/include)  # for FLTK
 
 if(TLRENDER_GPROF)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg")

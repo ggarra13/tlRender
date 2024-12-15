@@ -11,6 +11,7 @@
 #include <tlCore/Assert.h>
 #include <tlCore/Error.h>
 #include <tlCore/FileInfo.h>
+#include <tlCore/PathMapping.h>
 #include <tlCore/String.h>
 #include <tlCore/StringFormat.h>
 
@@ -358,7 +359,11 @@ namespace tl
             {
                 url = sharedMemorySequenceRef->target_url();
             }
-            file::Path out = timeline::getPath(url, directory, pathOptions);
+            
+            std::string local_url = url;
+            path_mapping::replace_path(local_url);
+
+            file::Path out = timeline::getPath(local_url, directory, pathOptions);
             if (sequence.getMin() != sequence.getMax())
             {
                 out.setSequence(sequence);

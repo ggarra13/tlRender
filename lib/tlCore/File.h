@@ -31,5 +31,11 @@ namespace tl
 
         //! Create a temporary directory.
         std::string createTempDir();
+
+        //! Is a network path.
+        bool isNetwork(const std::string&);
+
+        //! Is file readable.
+        bool isReadable(const std::string&);
     }
 }
