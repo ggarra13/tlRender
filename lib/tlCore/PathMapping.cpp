@@ -164,7 +164,6 @@ namespace tl
             char key[256];
             char tmpS[2048];
             int num = path_mapping.entries();
-            std::cerr << "num of entries=" << num << std::endl;
             for (int i = 0; i < num; ++i)
             {
                 snprintf(key, 256, "Path #%d", i + 1);
@@ -175,8 +174,6 @@ namespace tl
                 auto splitArray = string::split(tmpS, '\t');
                 std::string remote = add_slash(splitArray[0]);
                 std::string local  = add_slash(splitArray[1]);
-                std::cerr << "remote=" << remote << " local=" << local
-                          << std::endl;
                 
                 mapping.insert(std::make_pair(remote, local));
             }
