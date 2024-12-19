@@ -168,6 +168,7 @@ namespace tl
 #endif
                         }
                         
+                        _info.tags["otioClipName"] = fileName;
                         out.image->setTags(_info.tags);
                     }
                     

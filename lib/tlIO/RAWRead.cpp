@@ -103,6 +103,8 @@ namespace tl
                         auto& tags = _info.tags;
 
                         // Use some aliases
+                        _storeTag("otioClipName", fileName);
+                        
                         const auto& idata(_processor->imgdata.idata);
                         const auto& color(_processor->imgdata.color);
                         const auto& other(_processor->imgdata.other);

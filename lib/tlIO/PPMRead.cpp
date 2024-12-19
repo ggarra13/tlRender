@@ -127,6 +127,10 @@ namespace tl
                     default: break;
                     }
 
+                    image::Tags tags;
+                    tags["otioClipName"] = fileName;
+                    out.image->setTags(tags);
+                    
                     return out;
                 }
 

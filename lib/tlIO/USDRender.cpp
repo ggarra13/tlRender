@@ -572,6 +572,10 @@ namespace tl
                         {});
                     if (p.cache->getVideo(cacheKey, videoData))
                     {
+                        image::Tags tags;
+                        tags["otioClipName"] = request->path.get();
+                        videoData.image->setTags(tags);
+                        
                         request->promise.set_value(videoData);
                         request.reset();
                     }
@@ -616,6 +620,11 @@ namespace tl
                         }
 
                         videoData.time = request->time;
+
+                        image::Tags tags;
+                        tags["otioClipName"] = request->path.get();
+                        image->setTags(tags);
+                            
                         videoData.image = image;
                         request->promise.set_value(videoData);
 

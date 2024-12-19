@@ -993,6 +993,9 @@ namespace tl
                     auto image = image::Image::create(_info);
                     
                     auto tags = _tags;
+
+                    tags["otioClipName"] = _fileName;
+            
                     AVDictionaryEntry* tag = nullptr;
                     while ((tag = av_dict_get(avVideoStream->metadata, "", tag, AV_DICT_IGNORE_SUFFIX)))
                     {

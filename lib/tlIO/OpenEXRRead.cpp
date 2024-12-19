@@ -303,6 +303,7 @@ namespace tl
                     _dataWindow = fromImath(dataWindow);
                     _intersectedWindow = _displayWindow.intersect(_dataWindow);
                     
+                    _info.tags["otioClipName"] = fileName;
                     _info.tags["Display Window"] = serialize(displayWindow);
                     _info.tags["Data Window"] = serialize(dataWindow);
                     
