@@ -65,6 +65,8 @@ namespace tl
             {
                 if (auto otioTrack = otio::dynamic_retainer_cast<otio::Track>(child))
                 {
+                    if (!otioTrack->enabled())
+                        continue;
                     Private::Track track;
                     int otioIndex = 0;
                     track.index = p.tracks.size();
