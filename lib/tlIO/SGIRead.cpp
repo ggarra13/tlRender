@@ -265,6 +265,11 @@ namespace tl
 
                     image::Tags tags;
                     tags["otioClipName"] = fileName;
+                    {
+                        std::stringstream ss;
+                        ss << time;
+                        tags["otioClipTime"] = ss.str();
+                    }
                     out.image->setTags(tags);
                     
                     return out;

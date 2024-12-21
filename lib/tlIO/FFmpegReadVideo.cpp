@@ -993,8 +993,13 @@ namespace tl
                     auto image = image::Image::create(_info);
                     
                     auto tags = _tags;
-
+                    
                     tags["otioClipName"] = _fileName;
+                    {
+                        std::stringstream ss;
+                        ss << time;
+                        tags["otioClipTime"] = ss.str();
+                    }
             
                     AVDictionaryEntry* tag = nullptr;
                     while ((tag = av_dict_get(avVideoStream->metadata, "", tag, AV_DICT_IGNORE_SUFFIX)))

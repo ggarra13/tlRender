@@ -126,7 +126,7 @@ namespace tl
                 info.tags["Autonormalize Maximum"] = io::serialize(maximum);
             }
             
-            info.tags["otioClipName"] = fileName;
+            _addOtioTags(info.tags, fileName, time);
             
             out.image->setTags(info.tags);
             return out;

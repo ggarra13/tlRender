@@ -101,10 +101,8 @@ namespace tl
 
                         // Save Tags
                         auto& tags = _info.tags;
-
-                        // Use some aliases
-                        _storeTag("otioClipName", fileName);
                         
+                        // Use some aliases
                         const auto& idata(_processor->imgdata.idata);
                         const auto& color(_processor->imgdata.color);
                         const auto& other(_processor->imgdata.other);
@@ -184,6 +182,15 @@ namespace tl
                         out.time = time;
                         const auto& info = _info.video[0];
                         out.image = image::Image::create(info);
+
+                        auto tags = _info.tags;
+                        tags["otioClipName"] = fileName;
+                        {
+                            std::stringstream ss;
+                            ss << time;
+                            tags["otioClipTime"] = ss.str();
+                        }
+                        out.image->setTags(tags);
 
                         auto& params(_processor->imgdata.params);
     

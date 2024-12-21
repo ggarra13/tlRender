@@ -574,6 +574,11 @@ namespace tl
                     {
                         image::Tags tags;
                         tags["otioClipName"] = request->path.get();
+                        {
+                            std::stringstream ss;
+                            ss << request->time;
+                            tags["otioClipTime"] = ss.str();
+                        }
                         videoData.image->setTags(tags);
                         
                         request->promise.set_value(videoData);
@@ -623,6 +628,11 @@ namespace tl
 
                         image::Tags tags;
                         tags["otioClipName"] = request->path.get();
+                        {
+                            std::stringstream ss;
+                            ss << request->time;
+                            tags["otioClipTime"] = ss.str();
+                        }
                         image->setTags(tags);
                             
                         videoData.image = image;

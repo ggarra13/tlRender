@@ -329,6 +329,9 @@ namespace tl
             io::VideoData out;
             out.time = time;
             out.image = File(fileName, memory).read();
+            image::Tags tags;
+            _addOtioTags(tags, fileName, time);
+            out.image->setTags(tags);
             return out;
         }
     }

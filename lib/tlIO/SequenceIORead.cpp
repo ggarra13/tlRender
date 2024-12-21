@@ -153,6 +153,19 @@ namespace tl
             return future;
         }
 
+        void ISequenceRead::_addOtioTags(image::Tags& tags,
+                                         const std::string& clipName,
+                                         const otime::RationalTime& time)
+        {
+            tags["otioClipName"] = clipName;
+
+            {
+                std::stringstream ss;
+                ss << time;
+                tags["otioClipTime"] = ss.str();
+            }
+        }
+        
         void ISequenceRead::cancelRequests()
         {
             _cancelRequests();

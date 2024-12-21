@@ -304,6 +304,11 @@ namespace tl
                     _intersectedWindow = _displayWindow.intersect(_dataWindow);
                     
                     _info.tags["otioClipName"] = fileName;
+                    {
+                        std::stringstream ss;
+                        ss << time;
+                        _info.tags["otioClipTime"] = ss.str();
+                    }
                     _info.tags["Display Window"] = serialize(displayWindow);
                     _info.tags["Data Window"] = serialize(dataWindow);
                     
