@@ -24,6 +24,7 @@ set(TLRENDER_FFMPEG TRUE CACHE BOOL "Enable support for FFmpeg (see the README f
 set(TLRENDER_FFMPEG_MINIMAL FALSE CACHE BOOL "Enable a minimal set of FFmpeg codecs")
 set(TLRENDER_HAP FALSE CACHE BOOL "Enable support for HAP codec through FFmpeg")
 set(TLRENDER_AV1 FALSE CACHE BOOL "Enable support for AV1 codec through FFmpeg")
+set(TLRENDER_LIBPLACEBO FALSE CACHE BOOL "Enable support for libplacebo through FFmpeg")
 set(TLRENDER_VPX FALSE CACHE BOOL "Enable support for VPX codec through FFmpeg")
 set(TLRENDER_X264 FALSE CACHE BOOL "Enable support for x264 saving codec through FFmpeg")
 set(TLRENDER_YASM FALSE CACHE BOOL "Enable compiling YASM")
