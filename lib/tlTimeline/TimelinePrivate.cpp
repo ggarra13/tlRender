@@ -41,6 +41,9 @@ namespace tl
             }
             if (auto composition = dynamic_cast<const otio::Composition*>(composable))
             {
+                if (!composition->enabled())
+                    return false;
+            
                 for (const auto& child : composition->children())
                 {
                     if (getVideoInfo(child))
@@ -71,6 +74,9 @@ namespace tl
             }
             if (auto composition = dynamic_cast<const otio::Composition*>(composable))
             {
+                if (!composition->enabled())
+                    return false;
+                
                 for (const auto& child : composition->children())
                 {
                     if (getAudioInfo(child))
