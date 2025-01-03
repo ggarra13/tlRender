@@ -17,12 +17,14 @@ if(WIN32)
     set(CLANG_ENV CC=clang CXX=clang)
 endif()
 
+set (libplacebo_ENV ${CMAKE_COMMAND} -E env "DYLD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib" -- )
+
 set(libplacebo_CONFIGURE
-    COMMAND git submodule update --init
-    COMMAND ${CMAKE_COMMAND} -E env "DYLD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib" -- ${Python_EXECUTABLE} -m pip install meson
+    COMMAND ${libplacebo_ENV} git submodule update --init
+    COMMAND ${libplacebo_ENV} ${Python_EXECUTABLE} -m pip install meson
     COMMAND ${CMAKE_COMMAND} -E env ${CLANG_ENV} "DYLD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib" PYTHONPATH="" "CXXFLAGS=${libplacebo_CXXFLAGS}" "CFLAGS=${libplacebo_CFLAGS}" "LDFLAGS=${libplacebo_LDFLAGS}" -- meson setup -Dvulkan=disabled -Ddemos=false -Dlibdir=${CMAKE_INSTALL_PREFIX}/lib --prefix=${CMAKE_INSTALL_PREFIX} build)
-set(libplacebo_BUILD cd build && ninja)
-set(libplacebo_INSTALL cd build && ninja install)
+set(libplacebo_BUILD cd build && ${libplacebo_ENV} ninja)
+set(libplacebo_INSTALL cd build && ${libplacebo_ENV} ninja install)
 
 set(libplacebo_PATCH)
 
