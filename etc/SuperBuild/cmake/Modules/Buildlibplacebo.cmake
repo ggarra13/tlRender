@@ -18,16 +18,16 @@ if(WIN32)
 endif()
 
 set (libplacebo_ENV ${CMAKE_COMMAND} -E env "DYLD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib" -- )
-set (libaplcebo_COPY echo A)
+set (libaplcebo_COPY )
 if (APPLE)
-    set(libplacebo_COPY cp ${CMAKE_INSTALL_PREFIX}/lib/libz.1.dylib . )
+    set(libplacebo_COPY cp ${CMAKE_INSTALL_PREFIX}/lib/libz.1.dylib . && )
 endif()
 
 set(libplacebo_CONFIGURE
     COMMAND ${libplacebo_ENV} git submodule update --init
     COMMAND ${libplacebo_ENV} ${Python_EXECUTABLE} -m pip install meson
     COMMAND ${CMAKE_COMMAND} -E env ${CLANG_ENV} "DYLD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib" PYTHONPATH="" "CXXFLAGS=${libplacebo_CXXFLAGS}" "CFLAGS=${libplacebo_CFLAGS}" "LDFLAGS=${libplacebo_LDFLAGS}" -- meson setup -Dvulkan=disabled -Ddemos=false -Dlibdir=${CMAKE_INSTALL_PREFIX}/lib --prefix=${CMAKE_INSTALL_PREFIX} build)
-set(libplacebo_BUILD cd build && ${libplacebo_COPY} && ${libplacebo_ENV} ninja)
+set(libplacebo_BUILD cd build && ${libplacebo_COPY} ${libplacebo_ENV} ninja)
 set(libplacebo_INSTALL cd build && ${libplacebo_ENV} ninja install)
 
 set(libplacebo_PATCH)
