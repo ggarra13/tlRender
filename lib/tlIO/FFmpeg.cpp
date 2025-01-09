@@ -407,6 +407,7 @@ namespace tl
                     // Audio Formats
                     { ".aiff", io::FileType::Audio },
                     { ".mka", io::FileType::Audio },
+                    { ".m4a", io::FileType::Audio },
                     { ".mp3", io::FileType::Audio },
                     { ".ogg", io::FileType::Audio },
                     { ".opus", io::FileType::Audio },
