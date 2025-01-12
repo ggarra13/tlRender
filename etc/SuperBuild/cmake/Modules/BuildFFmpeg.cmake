@@ -533,11 +533,13 @@ else()
 endif()
 
 if (WIN32)
-    set(FFmpeg_CONFIGURE_BUILD "#!/usr/bin/env bash\n./configure ${FFmpeg_CONFIGURE_ARGS_TMP}\n")
+    set(FFmpeg_CONFIGURE_CONTENTS "#!/usr/bin/env bash\n./configure ${FFmpeg_CONFIGURE_ARGS_TMP}\n")
     # Ensure the directory exists
+    message(STATUS "Creating directory ${CMAKE_CURRENT_BINARY_DIR}/")
     file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/")
+    message(STATUS "Creating ffmpeg_configure.sh.in ${CMAKE_CURRENT_BINARY_DIR}/")
     file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/ffmpeg_configure.sh.in
-	${FFmpeg_CONFIGURE_BUILD}
+	${FFmpeg_CONFIGURE_CONTENTS}
     )
 endif()
 
