@@ -7,6 +7,6 @@ ExternalProject_Add(
     YASM
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/YASM
     URL "http://www.tortall.net/projects/yasm/releases/yasm-1.3.0.tar.gz"
-    CONFIGURE_COMMAND XMLTO=":" ./configure --prefix=${CMAKE_INSTALL_PREFIX}
+    CONFIGURE_COMMAND XMLTO=":" ./configure --prefix=${CMAKE_INSTALL_PREFIX} --disable-nls
     BUILD_IN_SOURCE 1
 )

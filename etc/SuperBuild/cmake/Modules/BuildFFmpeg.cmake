@@ -532,6 +532,15 @@ else()
     set(FFmpeg_INSTALL make install)
 endif()
 
+if (WIN32)
+    set(FFmpeg_CONFIGURE_BUILD "#!/usr/bin/env bash\n./configure ${FFmpeg_CONFIGURE_ARGS_TMP}\n")
+    # Ensure the directory exists
+    file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/")
+    file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/ffmpeg_configure.sh.in
+	${FFmpeg_CONFIGURE_BUILD}
+    )
+endif()
+
 ExternalProject_Add(
     FFmpeg
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/FFmpeg
@@ -542,11 +551,8 @@ ExternalProject_Add(
     INSTALL_COMMAND ${FFmpeg_INSTALL}
     BUILD_IN_SOURCE 1)
 
+
 if(WIN32)
-    file(GENERATE
-        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/ffmpeg_configure.sh.in
-        CONTENT "#!/usr/bin/env bash\n./configure ${FFmpeg_CONFIGURE_ARGS_TMP}\n"
-    )
     ExternalProject_Add_Step(FFmpeg create_configure_script
         COMMAND ${CMAKE_COMMAND} -E copy
             ${CMAKE_CURRENT_BINARY_DIR}/ffmpeg_configure.sh.in
