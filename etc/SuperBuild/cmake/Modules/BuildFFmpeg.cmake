@@ -510,8 +510,7 @@ if(WIN32)
     if(WIN32)
 	convert_path_for_msys2("${CMAKE_CURRENT_BINARY_DIR}" BINARY_DIR)
         set(FFmpeg_OPENSSL_COPY
-            "cp ${BINARY_DIR}/ffmpeg_configure.sh.in
-            ${BINARY_DIR}/FFmpeg/src/FFmpeg/ffmpeg_configure.sh &&")
+            "cp ${BINARY_DIR}/ffmpeg_configure.sh.in ${BINARY_DIR}/FFmpeg/src/FFmpeg/ffmpeg_configure.sh &&")
     endif()
 
     set(PKG_CONFIG_PATH_MSys2 "${INSTALL_PREFIX}/lib/pkgconfig")
