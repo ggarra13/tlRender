@@ -560,6 +560,12 @@ if(WIN32)
             ${CMAKE_CURRENT_BINARY_DIR}/ffmpeg_configure.sh.in
             ${CMAKE_CURRENT_BINARY_DIR}/FFmpeg/src/FFmpeg/ffmpeg_configure.sh
         DEPENDEES download
-        ALWAYS 1
+    )
+
+    # Ensure the custom step depends on the DOWNLOAD step
+    ExternalProject_Add_StepDependencies(
+	FFmpeg
+	create_configure_script
+	download
     )
 endif()
