@@ -542,11 +542,13 @@ ExternalProject_Add(
     INSTALL_COMMAND ${FFmpeg_INSTALL}
     BUILD_IN_SOURCE 1)
 
+file(GENERATE
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/ffmpeg_configure.sh.in
+    CONTENT "#!/usr/bin/env bash\n./configure ${FFmpeg_CONFIGURE_ARGS_TMP}\n"
+    FILE_PERMISSIONS 0755
+)
+
 if(WIN32)
-    file(GENERATE
-        OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/ffmpeg_configure.sh.in
-        CONTENT "#!/usr/bin/env bash\n./configure ${FFmpeg_CONFIGURE_ARGS_TMP}\n"
-    )
     ExternalProject_Add_Step(FFmpeg create_configure_script
         COMMAND ${CMAKE_COMMAND} -E copy
             ${CMAKE_CURRENT_BINARY_DIR}/ffmpeg_configure.sh.in
