@@ -507,6 +507,12 @@ if(WIN32)
     #         cp ${INSTALL_PREFIX}/lib/libcrypto.lib ${INSTALL_PREFIX}/lib/crypto.lib &&")
     # endif()
 
+    if (WIN32)
+        set(FFmpeg_OPENSSL_COPY
+            "cp ${CMAKE_CURRENT_BINARY_DIR}/ffmpeg_configure.sh.in
+            ${CMAKE_CURRENT_BINARY_DIR}/FFmpeg/src/FFmpeg/ffmpeg_configure.sh &&")
+    endif()
+
     set(PKG_CONFIG_PATH_MSys2 "${INSTALL_PREFIX}/lib/pkgconfig")
     
     # Ensure PKG_CONFIG_PATH is set within the MSYS2 shell command
@@ -554,11 +560,3 @@ ExternalProject_Add(
     BUILD_IN_SOURCE 1)
 
 
-if(WIN32)
-    ExternalProject_Add_Step(FFmpeg create_configure_script
-        COMMAND ${CMAKE_COMMAND} -E copy
-            ${CMAKE_CURRENT_BINARY_DIR}/ffmpeg_configure.sh.in
-            ${CMAKE_CURRENT_BINARY_DIR}/FFmpeg/src/FFmpeg/ffmpeg_configure.sh
-        DEPENDEES download
-    )
-endif()
