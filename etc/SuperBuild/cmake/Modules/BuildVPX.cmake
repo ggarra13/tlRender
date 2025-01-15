@@ -37,14 +37,8 @@ else()
         --enable-vp9-highbitdepth
         --extra-cflags=${VPX_C_FLAGS}
         --extra-cxxflags=${VPX_CXX_FLAGS}
+	--as=${CMAKE_INSTALL_PREFIX}/bin/nasm
     )
-
-
-    if(TLRENDER_YASM)
-	list(APPEND VPX_CONFIGURE_ARGS --as=yasm)
-    else()
-	list(APPEND VPX_CONFIGURE_ARGS --as=nasm)
-    endif()
     
     ExternalProject_Add(
         VPX
@@ -53,8 +47,8 @@ else()
         GIT_REPOSITORY "https://github.com/webmproject/libvpx.git"
         GIT_TAG ${VPX_TAG}
 	GIT_SHALLOW 1
-	CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env AS=nasm -- ./configure ${VPX_CONFIGURE_ARGS}
-	BUILD_COMMAND ${CMAKE_COMMAND} -E env AS=nasm -- make -j ${NPROCS}
+	CONFIGURE_COMMAND ./configure ${VPX_CONFIGURE_ARGS}
+	BUILD_COMMAND make -j ${NPROCS}
         BUILD_IN_SOURCE 1
     )
 
