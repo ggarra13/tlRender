@@ -37,8 +37,10 @@ else()
         --enable-vp9-highbitdepth
         --extra-cflags=${VPX_C_FLAGS}
         --extra-cxxflags=${VPX_CXX_FLAGS}
-	--as=${CMAKE_INSTALL_PREFIX}/bin/nasm
+	--as=nasm
     )
+
+    set(VPX_PATH "${CMAKE_INSTALL_PREFIX}/bin:$ENV{PATH}")
     
     ExternalProject_Add(
         VPX
@@ -47,8 +49,8 @@ else()
         GIT_REPOSITORY "https://github.com/webmproject/libvpx.git"
         GIT_TAG ${VPX_TAG}
 	GIT_SHALLOW 1
-	CONFIGURE_COMMAND ./configure ${VPX_CONFIGURE_ARGS}
-	BUILD_COMMAND make -j ${NPROCS}
+	CONFIGURE_COMMAND ${CMAKE_COMMAND} -E env PATH=${VPX_PATH} -- ./configure ${VPX_CONFIGURE_ARGS}
+	BUILD_COMMAND ${CMAKE_COMMAND} -E env PATH=${VPX_PATH} -- make -j ${NPROCS}
         BUILD_IN_SOURCE 1
     )
 
