@@ -58,6 +58,7 @@ namespace tl
         otio::SerializableObject::Retainer<otio::Timeline> create(
             const file::Path&,
             const std::shared_ptr<system::Context>&,
+            const otime::RationalTime& = time::invalidTime,
             const Options& = Options());
 
         //! Create a new timeline from a path and audio path. The file name
@@ -67,6 +68,7 @@ namespace tl
             const file::Path& path,
             const file::Path& audioPath,
             const std::shared_ptr<system::Context>&,
+            const otime::RationalTime& = time::invalidTime,
             const Options& = Options());
 
         //! Video request.
@@ -110,6 +112,7 @@ namespace tl
             static std::shared_ptr<Timeline> create(
                 const std::string&,
                 const std::shared_ptr<system::Context>&,
+                const otime::RationalTime& = time::invalidTime,
                 const Options& = Options());
 
             //! Create a new timeline from a path. The path can point to an
@@ -117,6 +120,7 @@ namespace tl
             static std::shared_ptr<Timeline> create(
                 const file::Path&,
                 const std::shared_ptr<system::Context>&,
+                const otime::RationalTime& = time::invalidTime,
                 const Options& = Options());
 
             //! Create a new timeline from a file name and audio file name.
@@ -126,6 +130,7 @@ namespace tl
                 const std::string& fileName,
                 const std::string& audioFilename,
                 const std::shared_ptr<system::Context>&,
+                const otime::RationalTime& = time::invalidTime,
                 const Options& = Options());
 
             //! Create a new timeline from a path and audio path. The path can
@@ -134,6 +139,7 @@ namespace tl
                 const file::Path& path,
                 const file::Path& audioPath,
                 const std::shared_ptr<system::Context>&,
+                const otime::RationalTime& = time::invalidTime,
                 const Options& = Options());
 
             //! Get the context.
