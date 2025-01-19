@@ -503,7 +503,7 @@ namespace tl
                 int out = 0;
                 if (!codec->supported_samplerates)
                 {
-                    out = 44100;
+                    out = sampleRate;
                 }
                 else
                 {
@@ -516,7 +516,7 @@ namespace tl
                             break;
                         }
 
-                        if (!out || abs(44100 - *p) < abs(44100 - out))
+                        if (!out || abs(sampleRate - *p) < abs(sampleRate - out))
                             out = *p;
                         p++;
                     }
