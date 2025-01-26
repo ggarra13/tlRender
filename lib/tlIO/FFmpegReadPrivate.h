@@ -48,7 +48,6 @@ namespace tl
             size_t threadCount = ffmpeg::threadCount;
             size_t requestTimeout = 5;
             size_t videoBufferSize = 4;
-            float  pixelAspectRatio = 0.0;
             otime::RationalTime audioBufferSize = otime::RationalTime(2.0, 1.0);
         };
 
