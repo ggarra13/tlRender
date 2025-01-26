@@ -133,6 +133,12 @@ namespace tl
                 std::stringstream ss(i->second);
                 ss >> p.options.audioBufferSize;
             }
+            i = options.find("FFmpeg/PixelAspectRatio");
+            if (i != options.end())
+            {
+                std::stringstream ss(i->second);
+                ss >> p.options.pixelAspectRatio;
+            }
                 
             p.videoThread.running = true;
             p.audioThread.running = true;

@@ -503,7 +503,7 @@ namespace tl
                 int out = 0;
                 if (!codec->supported_samplerates)
                 {
-                    out = 44100;
+                    out = sampleRate;
                 }
                 else
                 {
@@ -516,7 +516,7 @@ namespace tl
                             break;
                         }
 
-                        if (!out || abs(44100 - *p) < abs(44100 - out))
+                        if (!out || abs(sampleRate - *p) < abs(sampleRate - out))
                             out = *p;
                         p++;
                     }
@@ -1800,8 +1800,11 @@ namespace tl
             {
                 int r = av_frame_make_writable(p.avAudioFrame);
                 if (r < 0)
+                {
+                    LOG_ERROR("Could not make p.avAudioFrame writable");
                     return;
-
+                }
+                
                 p.avAudioFrame->nb_samples = fifoSize;
 
                 r = av_audio_fifo_read(
@@ -1809,7 +1812,10 @@ namespace tl
                     reinterpret_cast<void**>(p.avAudioFrame->extended_data),
                     fifoSize);
                 if (r < 0)
+                {
+                    LOG_ERROR("Could not read from fifo at end");
                     return;
+                }
 
                 p.avAudioFrame->pts = av_rescale_q(
                     p.totalSamples, ratio,
