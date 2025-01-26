@@ -303,6 +303,9 @@ namespace tl
 
             //! Get the aspect ratio.
             float getAspect() const;
+            
+            //! Set the pixel aspect ratio.
+            void setPixelAspectRatio(float x);
 
             //! Get the image pixel type.
             PixelType getPixelType() const;

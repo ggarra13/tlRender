@@ -177,6 +177,11 @@ namespace tl
             return _info.size.getAspect();
         }
 
+        inline void Image::setPixelAspectRatio(const float x)
+        {
+            _info.size.pixelAspectRatio = x;
+        }
+
         inline PixelType Image::getPixelType() const
         {
             return _info.pixelType;
