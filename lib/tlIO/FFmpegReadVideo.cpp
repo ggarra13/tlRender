@@ -202,11 +202,20 @@ namespace tl
 
                 _info.size.w = _avCodecParameters[_avStream]->width;
                 _info.size.h = _avCodecParameters[_avStream]->height;
-                if (_avCodecParameters[_avStream]->sample_aspect_ratio.den > 0 &&
-                    _avCodecParameters[_avStream]->sample_aspect_ratio.num > 0)
+
+                if (options.pixelAspectRatio > 0.F)
                 {
-                    _info.size.pixelAspectRatio = av_q2d(_avCodecParameters[_avStream]->sample_aspect_ratio);
+                    _info.size.pixelAspectRatio = options.pixelAspectRatio;
                 }
+                else
+                {
+                    if (avVideoStream->sample_aspect_ratio.den > 0 &&
+                        avVideoStream->sample_aspect_ratio.num > 0)
+                    {
+                        _info.size.pixelAspectRatio = av_q2d(avVideoStream->sample_aspect_ratio);
+                    }
+                }
+                
                 _info.layout.mirror.y = true;
 
                 _avInputPixelFormat = static_cast<AVPixelFormat>(_avCodecParameters[_avStream]->format);
