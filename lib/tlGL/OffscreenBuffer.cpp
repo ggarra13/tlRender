@@ -155,6 +155,15 @@ namespace tl
             p.size = size;
             p.options = options;
 
+            // Get maximum texture resolution for gfx card
+            GLint glMaxTexDim;
+            glGetIntegerv(GL_MAX_TEXTURE_SIZE, &glMaxTexDim);
+        
+            if (p.size.w > glMaxTexDim)
+                p.size.w = glMaxTexDim;
+            if (p.size.h > glMaxTexDim)
+                p.size.h = glMaxTexDim;
+
             GLenum target = GL_TEXTURE_2D;
 
 #if defined(TLRENDER_API_GL_4_1)
