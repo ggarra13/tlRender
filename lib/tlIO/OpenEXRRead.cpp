@@ -13,7 +13,12 @@
 #include <ImfInputPart.h>
 #include <ImfChannelList.h>
 #include <ImfCompression.h>
+#include <ImfStandardAttributes.h>
 #include <ImfRgbaFile.h>
+
+#include <ImathMatrix.h>
+#include <ImathVec.h>
+using namespace Imath;
 
 #include <array>
 #include <cstring>
@@ -163,6 +168,8 @@ namespace tl
                     for (partNumber = 0; partNumber < numberOfParts; ++partNumber)
                     {
                         const Imf::Header& header = _f->header(partNumber);
+                        if (hasChromaticities(header))
+                            _chromaticities = chromaticities(header);
 
                         // Get the display and data windows.
                         _displayWindow = fromImath(header.displayWindow());
@@ -277,6 +284,85 @@ namespace tl
                     return _info;
                 }
 
+                void applyChromaticities(
+                    std::shared_ptr<image::Image> inout,
+                    const image::Info& info, const int minX,
+                    const int maxX, const int minY, const int maxY)
+                    {
+                        switch(info.pixelType)
+                        {
+                        case image::PixelType::L_F16:
+                        case image::PixelType::L_F32:
+                            return;
+                        default:
+                            break;
+                        }
+                                    
+                        const size_t channels = image::getChannelCount(info.pixelType);
+                        const size_t channelByteCount = image::getBitDepth(info.pixelType) / 8;
+                        const size_t cb = channels * channelByteCount;
+            
+                        uint8_t* p = inout->getData();
+
+                        Imf::Chromaticities rec709;
+                        Imath::M44f M = RGBtoXYZ(_chromaticities, 1) *
+                                        XYZtoRGB(rec709, 1);
+                        Imath::V3f in;
+                        Imath::V3f out;
+                        for (int y = minY; y <= maxY; ++y)
+                        {
+                            for (int x = minX; x <= maxX; ++x)
+                            {
+                                switch(info.pixelType)
+                                {
+                                case image::PixelType::RGB_F16:
+                                case image::PixelType::RGBA_F16:
+                                {
+                                    half* values = reinterpret_cast<half*>(p);
+                                    in = Imath::V3f(values[0], values[1],
+                                                    values[2]);
+                                    out = in * M;
+                                    values[0] = out[0];
+                                    values[1] = out[1];
+                                    values[2] = out[2];
+                                    break;
+                                }
+                                case image::PixelType::RGB_F32:
+                                case image::PixelType::RGBA_F32:
+                                {
+                                    Imath::V3f* values =
+                                        reinterpret_cast<Imath::V3f*>(p);
+                                    in = *values;
+                                    out = in * M;
+                                    in[0] = out[0];
+                                    in[1] = out[1];
+                                    in[2] = out[2];
+                                    break;
+                                }
+                                default:
+                                    break;
+                                }
+                                p += cb;
+                            }
+                        }
+                    }
+                
+                //--------------------------------------------
+                // Chromaticities
+                // according to Rec. ITU-R BT.709-3
+                //--------------------------------------------
+                bool useChromaticities()
+                    {
+                        return (_chromaticities.red.x != 0.6400f ||
+                                _chromaticities.red.y != 0.3300f ||
+                                _chromaticities.green.x != 0.3000f ||
+                                _chromaticities.green.y != 0.6000f ||
+                                _chromaticities.blue.x != 0.1500f ||
+                                _chromaticities.blue.y != 0.0600f ||
+                                _chromaticities.white.x != 0.3127f ||
+                                _chromaticities.white.y != 0.3290f);
+                    }
+
                 io::VideoData read(
                     const std::string& fileName,
                     const otime::RationalTime& time,
@@ -322,7 +408,6 @@ namespace tl
                     int minX = std::min(_dataWindow.min.x, _displayWindow.min.x);
                     int maxY = std::max(_dataWindow.max.y, _displayWindow.max.y);
                     int maxX = std::max(_dataWindow.max.x, _displayWindow.max.x);
-
                     if (_fast)
                     {
                         Imf::FrameBuffer frameBuffer;
@@ -433,10 +518,17 @@ namespace tl
                         }
                     }
 
+                    if (useChromaticities())
+                    {
+                        applyChromaticities(out.image, imageInfo,
+                                            minX, maxX, minY, maxY);
+                    }
+
                     if (_autoNormalize)
                     {
                         math::Vector4f minimum, maximum;
-                        io::normalizeImage(minimum, maximum, out.image, imageInfo, minX, maxX, minY, maxY);
+                        io::normalizeImage(minimum, maximum, out.image,
+                                           imageInfo, minX, maxX, minY, maxY);
                         
                         _info.tags["Autonormalize Minimum"] = io::serialize(minimum);
                         _info.tags["Autonormalize Maximum"] = io::serialize(maximum);
@@ -450,6 +542,7 @@ namespace tl
                 ChannelGrouping                 _channelGrouping = ChannelGrouping::Known;
                 bool                            _autoNormalize = false;
                 bool                            _ignoreDisplayWindow = false;
+                Imf::Chromaticities             _chromaticities;
                 std::unique_ptr<Imf::IStream>   _s;
                 std::unique_ptr<Imf::MultiPartInputFile> _f;
                 math::Box2i                     _displayWindow;
