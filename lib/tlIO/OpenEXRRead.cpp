@@ -38,6 +38,14 @@ namespace tl
                     value.max.x << " " << value.max.y;
                 return ss.str();
             }
+
+            float bilinearInterpolate(float q11, float q12, float q21, float q22,
+                                      float x1, float x2, float y1, float y2, float x, float y)
+            {
+                float r1 = ((x2 - x) / (x2 - x1)) * q11 + ((x - x1) / (x2 - x1)) * q21;
+                float r2 = ((x2 - x) / (x2 - x1)) * q12 + ((x - x1) / (x2 - x1)) * q22;
+                return ((y2 - y) / (y2 - y1)) * r1 + ((y - y1) / (y2 - y1)) * r2;
+            }
         }
         
         struct IStream::Private
@@ -280,10 +288,70 @@ namespace tl
                 }
                 
                 const io::Info& getInfo() const
-                {
-                    return _info;
-                }
+                    {
+                        return _info;
+                    }
 
+                // Function to upscale RY and BY channels in an interleaved Y, RY, BY image
+                template< typename T >
+                void upscaleRYBY(T* image, int channel, int numChannels, int width, int height)
+                    {
+                        int srcWidth = width / 2;
+                        int srcHeight = height / 2;
+
+                        // Allocate memory for temporary upscaled RY and BY channels
+                        T* upscaled = new T[width * height];
+
+                        for (int y = 0; y < height; ++y) {
+                            for (int x = 0; x < width; ++x) {
+                                // Compute source coordinates
+                                float srcX = (x + 0.5f) * srcWidth / static_cast<float>(width) - 0.5f;
+                                float srcY = (y + 0.5f) * srcHeight / static_cast<float>(height) - 0.5f;
+                                
+                                // Integer pixel indices
+                                int x0 = static_cast<int>(srcX);
+                                int y0 = static_cast<int>(srcY);
+                                int x1 = std::min(x0 + 1, srcWidth - 1);
+                                int y1 = std::min(y0 + 1, srcHeight - 1);
+
+                                // Compute bilinear interpolation weights
+                                float wx1 = srcX - x0;
+                                float wx0 = 1.0f - wx1;
+                                float wy1 = srcY - y0;
+                                float wy0 = 1.0f - wy1;
+
+                                int srcIdx00 = (y0 * width + x0) * numChannels + channel;
+                                int srcIdx10 = (y0 * width + x1) * numChannels + channel;
+                                int srcIdx01 = (y1 * width + x0) * numChannels + channel;
+                                int srcIdx11 = (y1 * width + x1) * numChannels + channel;
+
+                                // Read original values
+                                float val00 = image[srcIdx00];
+                                float val10 = image[srcIdx10];
+                                float val01 = image[srcIdx01];
+                                float val11 = image[srcIdx11];
+
+                                // Perform bilinear interpolation
+                                float interpolated = wx0 * wy0 * val00 + wx1 * wy0 * val10 +
+                                                     wx0 * wy1 * val01 + wx1 * wy1 * val11;
+
+                                // Store in the temporary buffer
+                                upscaled[(y * width + x)] = interpolated;
+                            }
+                        }
+
+                        // Copy back the upscaled RY and BY values into the interleaved image
+                        for (int y = 0; y < height; ++y)
+                        {
+                            for (int x = 0; x < width; ++x) {
+                                image[(y * width + x) * numChannels + channel] = upscaled[(y * width + x)];
+                            }
+                        }
+
+                        delete[] upscaled;
+                    }
+
+                
                 void applyChromaticities(
                     std::shared_ptr<image::Image> inout,
                     const image::Info& info, const int minX,
@@ -347,6 +415,32 @@ namespace tl
                         }
                     }
                 
+
+                // Function to convert an interleaved Y, RY, BY (YC) image to RGB
+                template<typename T>
+                void ycToRgb(T* image, int numChannels, int width, int height)
+                    {
+                        // Convert Y, RY, BY to RGB
+                        const float yw[3] = { 0.2126f, 0.7152f, 0.0722f };
+                            
+                        for (int i = 0; i < width * height; ++i)
+                        {
+                            T Y  = image[i * numChannels + 0];
+                            T RY = image[i * numChannels + 1];
+                            T BY = image[i * numChannels + 2];
+
+                            T R = (RY + 1.0) * Y;
+                            T B = (BY + 1.0) * Y;
+                            T G = (Y - R * yw[0] - B * yw[2]) / yw[1];
+                            
+                            // Store in the RGB image buffer
+                            image[i * numChannels + 0] = R;
+                            image[i * numChannels + 1] = G;
+                            image[i * numChannels + 2] = B;
+                        }
+                    }
+
+                
                 //--------------------------------------------
                 // Chromaticities
                 // according to Rec. ITU-R BT.709-3
@@ -397,7 +491,8 @@ namespace tl
                     }
                     _info.tags["Display Window"] = serialize(displayWindow);
                     _info.tags["Data Window"] = serialize(dataWindow);
-                    
+
+                    bool YBYRY = false;
                     image::Info imageInfo = _info.video[layer];
                     out.image = image::Image::create(imageInfo);
                     const size_t channels = image::getChannelCount(imageInfo.pixelType);
@@ -415,6 +510,9 @@ namespace tl
                         {
                             const std::string& name = _layers[layer].channels[c].name;
                             const math::Vector2i& sampling = _layers[layer].channels[c].sampling;
+                            if (name == "RY" || name == "BY")
+                                YBYRY = true;
+                            
                             frameBuffer.insert(
                                 name.c_str(),
                                 Imf::Slice(
@@ -438,6 +536,9 @@ namespace tl
                         {
                             const std::string& name = _layers[layer].channels[c].name;
                             const math::Vector2i& sampling = _layers[layer].channels[c].sampling;
+                            if (name == "RY" || name == "BY")
+                                YBYRY = true;
+                            
                             frameBuffer.insert(
                                 name.c_str(),
                                 Imf::Slice(
@@ -515,6 +616,62 @@ namespace tl
                             
                             _info.tags["Display Window"] = serialize(display);
                             _info.tags["Data Window"] = serialize(data);
+                        }
+                    }
+
+                    if (YBYRY)
+                    {
+                        uint8_t* origPtr = out.image->getData();
+                        int dstWidth = maxX - minX + 1;
+                        int dstHeight = maxY - minY + 1;
+                    
+                        for (int c = 0; c < channels; ++c)
+                        {
+                            const std::string& name = _layers[layer].channels[c].name;
+                            const math::Vector2i& sampling = _layers[layer].channels[c].sampling;
+
+                            if ((name == "RY" || name == "BY") &&
+                                sampling.x == 2 && sampling.y == 2)
+                            {
+                            
+                                switch(imageInfo.pixelType)
+                                {
+                                case image::PixelType::RGB_F16:
+                                case image::PixelType::RGBA_F16:
+                                {
+                                    half* src = reinterpret_cast<half*>(origPtr);
+                                    upscaleRYBY(src, c, channels, dstWidth, dstHeight);
+                                    break;
+                                }
+                                case image::PixelType::RGB_F32:
+                                case image::PixelType::RGBA_F32:
+                                {
+                                    float* src = reinterpret_cast<float*>(origPtr);
+                                    upscaleRYBY(src, c, channels, dstWidth, dstHeight);
+                                    break;
+                                }
+                                default:
+                                    break;
+                                }
+                            }
+                        }
+
+                        switch(imageInfo.pixelType)
+                        {
+                        case image::PixelType::RGB_F16:
+                        case image::PixelType::RGBA_F16:
+                        {
+                            half* src = reinterpret_cast<half*>(origPtr);
+                            ycToRgb(src, channels, dstWidth, dstHeight);
+                            break;
+                        }
+                        case image::PixelType::RGB_F32:
+                        case image::PixelType::RGBA_F32:
+                        {
+                            float* src = reinterpret_cast<float*>(origPtr);
+                            ycToRgb(src, channels, dstWidth, dstHeight);
+                            break;
+                        }
                         }
                     }
 
