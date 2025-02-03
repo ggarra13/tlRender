@@ -20,7 +20,25 @@ namespace tl
 {
     namespace timeline
     {
-        
+        const std::vector<bool>& Player::getChannelMute() const
+        {
+            return _p->channelMute->get();
+        }
+
+        std::shared_ptr<observer::IList<bool> > Player::observeChannelMute() const
+        {
+            return _p->channelMute;
+        }
+
+        void Player::setChannelMute(const std::vector<bool>& value)
+        {
+            TLRENDER_P();
+            if (p.channelMute->setIfChanged(value))
+            {
+                std::unique_lock<std::mutex> lock(p.audioMutex.mutex);
+                p.audioMutex.channelMute = value;
+            }
+        }
 
         void Player::Private::resetAudioTime()
         {
@@ -70,6 +88,7 @@ namespace tl
             double speedMultiplier = 1.0F;
             float volume = 1.F;
             bool mute = false;
+            std::vector<bool> channelMute;
             std::chrono::steady_clock::time_point muteTimeout;
             bool reset = false;
             {
@@ -79,6 +98,7 @@ namespace tl
                 speedMultiplier = defaultSpeed / speed;
                 volume = p->audioMutex.volume;
                 mute = p->audioMutex.mute;
+                channelMute = p->audioMutex.channelMute;
                 muteTimeout = p->audioMutex.muteTimeout;
                 reset = p->audioMutex.reset;
                 p->audioMutex.reset = false;
@@ -195,6 +215,7 @@ namespace tl
                         const auto rate = timeOffset.rate();
                         const auto sample = seconds * rate + offset;
                         const auto currentTime = otime::RationalTime(sample, rate).rescaled_to(1.0);
+                        int audioIndex = 0;
                         for (const auto& layer : audioData.layers)
                         {
                             float volumeMultiplier = 1.F;
@@ -251,7 +272,12 @@ namespace tl
                                         }
                                     }
                                 }
-                                
+
+                                if (audioIndex < channelMute.size() &&
+                                    channelMute[audioIndex])
+                                {
+                                    volumeMultiplier = 0.F;
+                                }
                                 
                                 if (backwards)
                                 {
@@ -264,6 +290,7 @@ namespace tl
                                 }
                                 audioDataP.push_back(audio->getData() + dataOffset);
                                 volumeScale.push_back(volumeMultiplier);
+                                ++audioIndex;
                             }
                         }
                         if (audioDataP.empty())
