@@ -15,6 +15,7 @@
 #include <ImfCompression.h>
 #include <ImfStandardAttributes.h>
 #include <ImfRgbaFile.h>
+#include <ImfTiledInputFile.h>
 
 #include <ImathMatrix.h>
 #include <ImathVec.h>
@@ -148,34 +149,53 @@ namespace tl
 
             class File
             {
-            public:
-                File(
-                    const std::string& fileName,
-                    const file::MemoryRead* memory,
-                    ChannelGrouping channelGrouping,
-                    const bool ignoreDisplayWindow,
-                    const bool autoNormalize,
-                    const std::weak_ptr<log::System>& logSystemWeak)
-                {
-                    // Open the file.
-                    if (memory)
-                    {
-                        _s.reset(new IStream(fileName.c_str(), memory->p, memory->size));
-                    }
-                    else
-                    {
-                        _s.reset(new IStream(fileName.c_str()));
-                    }
-                    _f.reset(new Imf::MultiPartInputFile(*_s));
-                    int numberOfParts = _f->parts();
-                    int partNumber;
+            protected:
+                
 
-                    _ignoreDisplayWindow = ignoreDisplayWindow;
-                    _autoNormalize = autoNormalize;
-
-                    for (partNumber = 0; partNumber < numberOfParts; ++partNumber)
+                // Function to convert an interleaved Y, RY, BY (YC) image to RGB.
+                // This function hardcodes D65 white point.
+                template<typename T>
+                void ycToRgb(T* image, int numChannels, int width, int height)
                     {
-                        const Imf::Header& header = _f->header(partNumber);
+                        // Convert Y, RY, BY to RGB
+                        const float yw[3] = { 0.2126f, 0.7152f, 0.0722f };
+                            
+                        for (int i = 0; i < width * height; ++i)
+                        {
+                            T Y  = image[i * numChannels + 0];
+                            T RY = image[i * numChannels + 1];
+                            T BY = image[i * numChannels + 2];
+
+                            T R = (RY + 1.0) * Y;
+                            T B = (BY + 1.0) * Y;
+                            T G = (Y - R * yw[0] - B * yw[2]) / yw[1];
+                            
+                            // Store in the RGB image buffer
+                            image[i * numChannels + 0] = R;
+                            image[i * numChannels + 1] = G;
+                            image[i * numChannels + 2] = B;
+                        }
+                    }
+
+                
+                //--------------------------------------------
+                // Chromaticities
+                // according to Rec. ITU-R BT.709-3
+                //--------------------------------------------
+                bool useChromaticities()
+                    {
+                        return (_chromaticities.red.x != 0.6400f ||
+                                _chromaticities.red.y != 0.3300f ||
+                                _chromaticities.green.x != 0.3000f ||
+                                _chromaticities.green.y != 0.6000f ||
+                                _chromaticities.blue.x != 0.1500f ||
+                                _chromaticities.blue.y != 0.0600f ||
+                                _chromaticities.white.x != 0.3127f ||
+                                _chromaticities.white.y != 0.3290f);
+                    }
+                
+                void parseHeader(const Imf::Header& header, int partNumber = 0)
+                    {
                         if (hasChromaticities(header))
                             _chromaticities = chromaticities(header);
 
@@ -210,7 +230,7 @@ namespace tl
                                             "    display window {1}\n"
                                             "    data window: {2}\n"
                                             "    compression: {3}").
-                                        arg(fileName).
+                                        arg(_fileName).
                                         arg(_displayWindow).
                                         arg(_dataWindow).
                                         arg(compressionName));
@@ -230,7 +250,7 @@ namespace tl
                         // Get the layers.
                         std::string view;
                         if (header.hasView()) view = header.view() + " ";
-                        std::vector<Layer> layers = getLayers(header.channels(), channelGrouping);
+                        std::vector<Layer> layers = getLayers(header.channels(), _channelGrouping);
                         size_t offset = _info.video.size();
                         _info.video.resize(offset + layers.size());
                         _info.video[partNumber].compression = compressionName;
@@ -280,9 +300,89 @@ namespace tl
                             }
                             if (image::PixelType::None == info.pixelType)
                             {
-                                throw std::runtime_error(string::Format("{0}: Unsupported image type").arg(fileName));
+                                throw std::runtime_error(string::Format("{0}: Unsupported image type").arg(_fileName));
                             }
                             info.layout.mirror.y = true;
+                        }
+                    }
+                
+                void readMipmap()
+                    {
+                        _t.reset(new Imf::TiledInputFile(*_s));
+                        
+                        int numXLevels = _t->numXLevels();
+                        int numYLevels = _t->numYLevels();
+                        
+                        if (_xLevel > numXLevels-1 ) _xLevel = numXLevels-1;
+                        if (_yLevel > numYLevels-1 ) _yLevel = numYLevels-1;
+
+                        Imf::Header header = _t->header();
+                        header.dataWindow() = _t->dataWindowForLevel(_xLevel, _yLevel);
+                        header.displayWindow() = header.dataWindow();
+        
+                        parseHeader(header);
+                    }
+                
+            public:
+                File(
+                    const std::string& fileName,
+                    const file::MemoryRead* memory,
+                    ChannelGrouping channelGrouping,
+                    const bool ignoreDisplayWindow,
+                    const bool autoNormalize,
+                    const int xLevel,
+                    const int yLevel,
+                    const std::weak_ptr<log::System>& logSystem) :
+                    _fileName(fileName),
+                    _channelGrouping(channelGrouping),
+                    _ignoreDisplayWindow( ignoreDisplayWindow ),
+                    _autoNormalize( autoNormalize ),
+                    _xLevel( xLevel ),
+                    _yLevel( yLevel),
+                    logSystemWeak(logSystem)
+                {
+                    // Open the file.
+                    if (memory)
+                    {
+                        _s.reset(new IStream(fileName.c_str(), memory->p, memory->size));
+                    }
+                    else
+                    {
+                        _s.reset(new IStream(fileName.c_str()));
+                    }
+                    
+                    _t.reset(new Imf::TiledInputFile(*_s));
+                        
+                    int numXLevels = _t->numXLevels();
+                    int numYLevels = _t->numYLevels();
+
+                    {
+                        std::stringstream ss;
+                        ss << numXLevels;
+                        _info.tags["numXLevels"] = ss.str();
+                    }
+                    {
+                        std::stringstream ss;
+                        ss << numYLevels;
+                        _info.tags["numYLevels"] = ss.str();
+                    }
+                    
+                    _t.reset();
+                    
+                    if (_xLevel > 0 || _yLevel > 0)
+                    {
+                        readMipmap();
+                    }
+                    else
+                    {
+                        _f.reset(new Imf::MultiPartInputFile(*_s));
+                        int numberOfParts = _f->parts();
+                        int partNumber;
+
+                        for (partNumber = 0; partNumber < numberOfParts; ++partNumber)
+                        {
+                            const Imf::Header& header = _f->header(partNumber);
+                            parseHeader(header, partNumber);
                         }
                     }
                 }
@@ -414,50 +514,59 @@ namespace tl
                             }
                         }
                     }
-                
 
-                // Function to convert an interleaved Y, RY, BY (YC) image to RGB.
-                // This function hardcodes D65 white point.
-                template<typename T>
-                void ycToRgb(T* image, int numChannels, int width, int height)
+                void readTiled(io::VideoData& out, const int layer,
+                               const int minX, const int maxX, const int minY, const int maxY)
                     {
-                        // Convert Y, RY, BY to RGB
-                        const float yw[3] = { 0.2126f, 0.7152f, 0.0722f };
-                            
-                        for (int i = 0; i < width * height; ++i)
+                        Imf::Header header = _t->header();
+                        header.dataWindow() = _t->dataWindowForLevel(_xLevel, _yLevel);
+                        header.displayWindow() = header.dataWindow();
+                        Imf::LineOrder lineOrder = header.lineOrder();
+                        
+                        image::Info imageInfo = _info.video[layer];
+                        out.image = image::Image::create(imageInfo);
+                        const size_t channels = image::getChannelCount(imageInfo.pixelType);
+                        const size_t channelByteCount = image::getBitDepth(imageInfo.pixelType) / 8;
+                        const size_t cb = channels * channelByteCount;
+                        const size_t scb = imageInfo.size.w * channels * channelByteCount;
+                    
+                        Imf::FrameBuffer frameBuffer;
+                        for (size_t c = 0; c < channels; ++c)
                         {
-                            T Y  = image[i * numChannels + 0];
-                            T RY = image[i * numChannels + 1];
-                            T BY = image[i * numChannels + 2];
-
-                            T R = (RY + 1.0) * Y;
-                            T B = (BY + 1.0) * Y;
-                            T G = (Y - R * yw[0] - B * yw[2]) / yw[1];
+                            const std::string& name = _layers[layer].channels[c].name;
+                            const math::Vector2i& sampling = _layers[layer].channels[c].sampling;
                             
-                            // Store in the RGB image buffer
-                            image[i * numChannels + 0] = R;
-                            image[i * numChannels + 1] = G;
-                            image[i * numChannels + 2] = B;
+                            frameBuffer.insert(
+                                name.c_str(),
+                                Imf::Slice(
+                                    _layers[layer].channels[c].pixelType,
+                                    reinterpret_cast<char*>(out.image->getData()) + (c * channelByteCount),
+                                    cb,
+                                    scb,
+                                    sampling.x,
+                                    sampling.y,
+                                    0.F));
+                        }
+                        _t->setFrameBuffer(frameBuffer);
+
+                        int tx = _t->numXTiles( _xLevel );
+                        int ty = _t->numYTiles( _yLevel );
+
+                        // Read tiles in order for most efficiency.
+                        if ( lineOrder == Imf::INCREASING_Y )
+                        {
+                            for (int y = 0; y < ty; ++y)
+                                for (int x = 0; x < tx; ++x)
+                                    _t->readTile(x, y, _xLevel, _yLevel);
+                        }
+                        else
+                        {
+                            for (int y = ty - 1; y >= 0; --y)
+                                for (int x = 0; x < tx; ++x)
+                                    _t->readTile(x, y, _xLevel, _yLevel);
                         }
                     }
-
                 
-                //--------------------------------------------
-                // Chromaticities
-                // according to Rec. ITU-R BT.709-3
-                //--------------------------------------------
-                bool useChromaticities()
-                    {
-                        return (_chromaticities.red.x != 0.6400f ||
-                                _chromaticities.red.y != 0.3300f ||
-                                _chromaticities.green.x != 0.3000f ||
-                                _chromaticities.green.y != 0.6000f ||
-                                _chromaticities.blue.x != 0.1500f ||
-                                _chromaticities.blue.y != 0.0600f ||
-                                _chromaticities.white.x != 0.3127f ||
-                                _chromaticities.white.y != 0.3290f);
-                    }
-
                 io::VideoData read(
                     const std::string& fileName,
                     const otime::RationalTime& time,
@@ -472,17 +581,24 @@ namespace tl
                             std::atoi(i->second.c_str()),
                             static_cast<int>(_info.video.size()) - 1);
                     }
-                    
-                    const Imf::Header& header = _f->header(_layers[layer].partNumber);
 
-                    // Get the display and data windows which can change
-                    // from frame to frame.
-                    const auto& displayWindow = header.displayWindow();
-                    const auto& dataWindow = header.dataWindow();
+                    if (!_t)
+                    {
+                        const Imf::Header& header = _f->header(_layers[layer].partNumber);
+                        
+                        // Get the display and data windows which can change
+                        // from frame to frame.
+                        const auto& displayWindow = header.displayWindow();
+                        const auto& dataWindow = header.dataWindow();
                     
-                    _displayWindow = fromImath(displayWindow);
-                    _dataWindow = fromImath(dataWindow);
-                    _intersectedWindow = _displayWindow.intersect(_dataWindow);
+                        _displayWindow = fromImath(displayWindow);
+                        _dataWindow = fromImath(dataWindow);
+                        _intersectedWindow = _displayWindow.intersect(_dataWindow);
+                        
+                        _info.tags["Display Window"] = serialize(displayWindow);
+                        _info.tags["Data Window"] = serialize(dataWindow);
+                    }
+
                     
                     _info.tags["otioClipName"] = fileName;
                     {
@@ -490,196 +606,208 @@ namespace tl
                         ss << time;
                         _info.tags["otioClipTime"] = ss.str();
                     }
-                    _info.tags["Display Window"] = serialize(displayWindow);
-                    _info.tags["Data Window"] = serialize(dataWindow);
 
-                    bool YBYRY = false;
-                    image::Info imageInfo = _info.video[layer];
-                    out.image = image::Image::create(imageInfo);
-                    const size_t channels = image::getChannelCount(imageInfo.pixelType);
-                    const size_t channelByteCount = image::getBitDepth(imageInfo.pixelType) / 8;
-                    const size_t cb = channels * channelByteCount;
-                    const size_t scb = imageInfo.size.w * channels * channelByteCount;
                     int minY = std::min(_dataWindow.min.y, _displayWindow.min.y);
                     int minX = std::min(_dataWindow.min.x, _displayWindow.min.x);
                     int maxY = std::max(_dataWindow.max.y, _displayWindow.max.y);
                     int maxX = std::max(_dataWindow.max.x, _displayWindow.max.x);
-                    if (_fast)
+                    image::Info imageInfo = _info.video[layer];
+                        
+                    if (_t)
                     {
-                        Imf::FrameBuffer frameBuffer;
-                        for (size_t c = 0; c < channels; ++c)
-                        {
-                            const std::string& name = _layers[layer].channels[c].name;
-                            const math::Vector2i& sampling = _layers[layer].channels[c].sampling;
-                            if (name == "RY" || name == "BY")
-                                YBYRY = true;
-                            
-                            frameBuffer.insert(
-                                name.c_str(),
-                                Imf::Slice(
-                                    _layers[layer].channels[c].pixelType,
-                                    reinterpret_cast<char*>(out.image->getData()) + (c * channelByteCount),
-                                    cb,
-                                    scb,
-                                    sampling.x,
-                                    sampling.y,
-                                    0.F));
-                        }
-                        Imf::InputPart in(*_f.get(), _layers[layer].partNumber);
-                        in.setFrameBuffer(frameBuffer);
-                        in.readPixels(_displayWindow.min.y, _displayWindow.max.y);
+                        readTiled(out, layer, minX, maxX, minY, maxY);
                     }
                     else
-                    {   
-                        Imf::FrameBuffer frameBuffer;
-                        std::vector<char> buf(_dataWindow.w() * cb);
-                        for (int c = 0; c < channels; ++c)
+                    {
+                        bool YBYRY = false;
+                        out.image = image::Image::create(imageInfo);
+                        const size_t channels = image::getChannelCount(imageInfo.pixelType);
+                        const size_t channelByteCount = image::getBitDepth(imageInfo.pixelType) / 8;
+                        const size_t cb = channels * channelByteCount;
+                        const size_t scb = imageInfo.size.w * channels * channelByteCount;
+                    
+                        if (_fast)
                         {
-                            const std::string& name = _layers[layer].channels[c].name;
-                            const math::Vector2i& sampling = _layers[layer].channels[c].sampling;
-                            if (name == "RY" || name == "BY")
-                                YBYRY = true;
-                            
-                            frameBuffer.insert(
-                                name.c_str(),
-                                Imf::Slice(
-                                    _layers[layer].channels[c].pixelType,
-                                    buf.data() - (_dataWindow.min.x * cb) + (c * channelByteCount),
-                                    cb,
-                                    0,
-                                    sampling.x,
-                                    sampling.y,
-                                    0.F));
-                        }
-                        Imf::InputPart in(*_f.get(), _layers[layer].partNumber);
-                        in.setFrameBuffer(frameBuffer);
-
-                        if (!_ignoreDisplayWindow ||
-                            _dataWindow.min.x >= _displayWindow.min.x ||
-                            _dataWindow.max.x <= _displayWindow.max.x ||
-                            _dataWindow.min.y >= _displayWindow.min.y ||
-                            _dataWindow.max.y <= _displayWindow.max.y )
-                        {
-                            for (int y = _displayWindow.min.y; y <= _displayWindow.max.y; ++y)
+                            Imf::FrameBuffer frameBuffer;
+                            for (size_t c = 0; c < channels; ++c)
                             {
-                                uint8_t* p = out.image->getData() + ((y - _displayWindow.min.y) * scb);
-                                uint8_t* end = p + scb;
-                                if (y >= _intersectedWindow.min.y && y <= _intersectedWindow.max.y)
+                                const std::string& name = _layers[layer].channels[c].name;
+                                const math::Vector2i& sampling = _layers[layer].channels[c].sampling;
+                                if (name == "RY" || name == "BY")
+                                    YBYRY = true;
+                            
+                                frameBuffer.insert(
+                                    name.c_str(),
+                                    Imf::Slice(
+                                        _layers[layer].channels[c].pixelType,
+                                        reinterpret_cast<char*>(out.image->getData()) + (c * channelByteCount),
+                                        cb,
+                                        scb,
+                                        sampling.x,
+                                        sampling.y,
+                                        0.F));
+                            }
+                            Imf::InputPart in(*_f.get(), _layers[layer].partNumber);
+                            in.setFrameBuffer(frameBuffer);
+                            in.readPixels(_displayWindow.min.y, _displayWindow.max.y);
+                        }
+                        else
+                        {   
+                            Imf::FrameBuffer frameBuffer;
+                            std::vector<char> buf(_dataWindow.w() * cb);
+                            for (int c = 0; c < channels; ++c)
+                            {
+                                const std::string& name = _layers[layer].channels[c].name;
+                                const math::Vector2i& sampling = _layers[layer].channels[c].sampling;
+                                if (name == "RY" || name == "BY")
+                                    YBYRY = true;
+                            
+                                frameBuffer.insert(
+                                    name.c_str(),
+                                    Imf::Slice(
+                                        _layers[layer].channels[c].pixelType,
+                                        buf.data() - (_dataWindow.min.x * cb) + (c * channelByteCount),
+                                        cb,
+                                        0,
+                                        sampling.x,
+                                        sampling.y,
+                                        0.F));
+                            }
+                            Imf::InputPart in(*_f.get(), _layers[layer].partNumber);
+                            in.setFrameBuffer(frameBuffer);
+
+                            if (!_ignoreDisplayWindow ||
+                                _dataWindow.min.x >= _displayWindow.min.x ||
+                                _dataWindow.max.x <= _displayWindow.max.x ||
+                                _dataWindow.min.y >= _displayWindow.min.y ||
+                                _dataWindow.max.y <= _displayWindow.max.y )
+                            {
+                                for (int y = _displayWindow.min.y; y <= _displayWindow.max.y; ++y)
                                 {
-                                    size_t size = (_intersectedWindow.min.x - _displayWindow.min.x) * cb;
-                                    std::memset(p, 0, size);
-                                    p += size;
-                                    size = _intersectedWindow.w() * cb;
+                                    uint8_t* p = out.image->getData() + ((y - _displayWindow.min.y) * scb);
+                                    uint8_t* end = p + scb;
+                                    if (y >= _intersectedWindow.min.y && y <= _intersectedWindow.max.y)
+                                    {
+                                        size_t size = (_intersectedWindow.min.x - _displayWindow.min.x) * cb;
+                                        std::memset(p, 0, size);
+                                        p += size;
+                                        size = _intersectedWindow.w() * cb;
+                                        in.readPixels(y, y);
+                                        std::memcpy(
+                                            p,
+                                            buf.data() + std::max(_displayWindow.min.x - _dataWindow.min.x, 0) * cb,
+                                            size);
+                                        p += size;
+                                    }
+                                    std::memset(p, 0, end - p);
+                                }
+
+                                minY = _displayWindow.min.y;
+                                maxY = _displayWindow.max.y;
+                                minX = _intersectedWindow.min.x;
+                                maxX = _intersectedWindow.max.x;
+                            }
+                            else
+                            {
+                                // Display the full data window
+                                for (int y = minY; y <= maxY; ++y)
+                                {
+                                    uint8_t* p = out.image->getData() +
+                                                 (y - minY) * scb;
+                                    uint8_t* end = p + scb;
+                                    size_t size = _dataWindow.w() * cb;
                                     in.readPixels(y, y);
                                     std::memcpy(
                                         p,
-                                        buf.data() + std::max(_displayWindow.min.x - _dataWindow.min.x, 0) * cb,
+                                        buf.data() +
+                                        std::max(_dataWindow.min.x, 0) * cb,
                                         size);
                                     p += size;
+                                    std::memset(p, 0, end - p);
                                 }
-                                std::memset(p, 0, end - p);
-                            }
+                                
+                                const Imf::Header& header = _f->header(_layers[layer].partNumber);
+                        
+                                // Get the display and data windows which can change
+                                // from frame to frame.
+                                auto display = header.displayWindow();
+                                auto data = header.dataWindow();
 
-                            minY = _displayWindow.min.y;
-                            maxY = _displayWindow.max.y;
-                            minX = _intersectedWindow.min.x;
-                            maxX = _intersectedWindow.max.x;
-                        }
-                        else
-                        {
-                            // Display the full data window
-                            for (int y = minY; y <= maxY; ++y)
-                            {
-                                uint8_t* p = out.image->getData() +
-                                             (y - minY) * scb;
-                                uint8_t* end = p + scb;
-                                size_t size = _dataWindow.w() * cb;
-                                in.readPixels(y, y);
-                                std::memcpy(
-                                    p,
-                                    buf.data() +
-                                    std::max(_dataWindow.min.x, 0) * cb,
-                                    size);
-                                p += size;
-                                std::memset(p, 0, end - p);
-                            }
-
-                            auto data = dataWindow;
-                            auto display = displayWindow;
-                            display.min.y += -data.min.y;
-                            display.max.y += -data.min.y;
-                            display.min.x += -data.min.x;
-                            display.max.x += -data.min.x;
-                            data.max.y += -data.min.y;
-                            data.min.y = 0;
-                            data.max.x += -data.min.x;
-                            data.min.x = 0;
+                                display.min.y += -data.min.y;
+                                display.max.y += -data.min.y;
+                                display.min.x += -data.min.x;
+                                display.max.x += -data.min.x;
+                                data.max.y += -data.min.y;
+                                data.min.y = 0;
+                                data.max.x += -data.min.x;
+                                data.min.x = 0;
                             
-                            _info.tags["Display Window"] = serialize(display);
-                            _info.tags["Data Window"] = serialize(data);
+                                _info.tags["Display Window"] = serialize(display);
+                                _info.tags["Data Window"] = serialize(data);
+                            }
                         }
-                    }
 
-                    if (YBYRY)
-                    {
-                        uint8_t* origPtr = out.image->getData();
-                        int dstWidth = maxX - minX + 1;
-                        int dstHeight = maxY - minY + 1;
+                        if (YBYRY)
+                        {
+                            uint8_t* origPtr = out.image->getData();
+                            int dstWidth = maxX - minX + 1;
+                            int dstHeight = maxY - minY + 1;
                     
-                        for (int c = 0; c < channels; ++c)
-                        {
-                            const std::string& name = _layers[layer].channels[c].name;
-                            const math::Vector2i& sampling = _layers[layer].channels[c].sampling;
-
-                            if ((name == "RY" || name == "BY") &&
-                                sampling.x == 2 && sampling.y == 2)
+                            for (int c = 0; c < channels; ++c)
                             {
+                                const std::string& name = _layers[layer].channels[c].name;
+                                const math::Vector2i& sampling = _layers[layer].channels[c].sampling;
+
+                                if ((name == "RY" || name == "BY") &&
+                                    sampling.x == 2 && sampling.y == 2)
+                                {
                             
-                                switch(imageInfo.pixelType)
-                                {
-                                case image::PixelType::RGB_F16:
-                                case image::PixelType::RGBA_F16:
-                                {
-                                    half* src = reinterpret_cast<half*>(origPtr);
-                                    upscaleRYBY(src, c, channels, dstWidth, dstHeight);
-                                    break;
+                                    switch(imageInfo.pixelType)
+                                    {
+                                    case image::PixelType::RGB_F16:
+                                    case image::PixelType::RGBA_F16:
+                                    {
+                                        half* src = reinterpret_cast<half*>(origPtr);
+                                        upscaleRYBY(src, c, channels, dstWidth, dstHeight);
+                                        break;
+                                    }
+                                    case image::PixelType::RGB_F32:
+                                    case image::PixelType::RGBA_F32:
+                                    {
+                                        float* src = reinterpret_cast<float*>(origPtr);
+                                        upscaleRYBY(src, c, channels, dstWidth, dstHeight);
+                                        break;
+                                    }
+                                    default:
+                                        break;
+                                    }
                                 }
-                                case image::PixelType::RGB_F32:
-                                case image::PixelType::RGBA_F32:
-                                {
-                                    float* src = reinterpret_cast<float*>(origPtr);
-                                    upscaleRYBY(src, c, channels, dstWidth, dstHeight);
-                                    break;
-                                }
-                                default:
-                                    break;
-                                }
+                            }
+
+                            switch(imageInfo.pixelType)
+                            {
+                            case image::PixelType::RGB_F16:
+                            case image::PixelType::RGBA_F16:
+                            {
+                                half* src = reinterpret_cast<half*>(origPtr);
+                                ycToRgb(src, channels, dstWidth, dstHeight);
+                                break;
+                            }
+                            case image::PixelType::RGB_F32:
+                            case image::PixelType::RGBA_F32:
+                            {
+                                float* src = reinterpret_cast<float*>(origPtr);
+                                ycToRgb(src, channels, dstWidth, dstHeight);
+                                break;
+                            }
                             }
                         }
 
-                        switch(imageInfo.pixelType)
+                        if (useChromaticities())
                         {
-                        case image::PixelType::RGB_F16:
-                        case image::PixelType::RGBA_F16:
-                        {
-                            half* src = reinterpret_cast<half*>(origPtr);
-                            ycToRgb(src, channels, dstWidth, dstHeight);
-                            break;
+                            applyChromaticities(out.image, imageInfo,
+                                                minX, maxX, minY, maxY);
                         }
-                        case image::PixelType::RGB_F32:
-                        case image::PixelType::RGBA_F32:
-                        {
-                            float* src = reinterpret_cast<float*>(origPtr);
-                            ycToRgb(src, channels, dstWidth, dstHeight);
-                            break;
-                        }
-                        }
-                    }
-
-                    if (useChromaticities())
-                    {
-                        applyChromaticities(out.image, imageInfo,
-                                            minX, maxX, minY, maxY);
                     }
 
                     if (_autoNormalize)
@@ -691,17 +819,22 @@ namespace tl
                         _info.tags["Autonormalize Minimum"] = io::serialize(minimum);
                         _info.tags["Autonormalize Maximum"] = io::serialize(maximum);
                     }
-
+                    
                     out.image->setTags(_info.tags);
                     return out;
                 }
 
             private:
+                std::string                     _fileName;
                 ChannelGrouping                 _channelGrouping = ChannelGrouping::Known;
                 bool                            _autoNormalize = false;
                 bool                            _ignoreDisplayWindow = false;
+                int                             _xLevel;
+                int                             _yLevel;
+                std::weak_ptr<log::System>      logSystemWeak;
                 Imf::Chromaticities             _chromaticities;
                 std::unique_ptr<Imf::IStream>   _s;
+                std::unique_ptr<Imf::TiledInputFile> _t;
                 std::unique_ptr<Imf::MultiPartInputFile> _f;
                 math::Box2i                     _displayWindow;
                 math::Box2i                     _dataWindow;
@@ -741,6 +874,22 @@ namespace tl
                 _autoNormalize =
                     static_cast<bool>(std::atoi(option->second.c_str()));
             }
+
+            _xLevel = 0;
+            option = options.find("X Level");
+            if (option != options.end())
+            {
+                std::stringstream ss(option->second);
+                ss >> _xLevel;
+            }
+            
+            _yLevel = 0;
+            option = options.find("Y Level");
+            if (option != options.end())
+            {
+                std::stringstream ss(option->second);
+                ss >> _yLevel;
+            }
         }
 
         Read::Read()
@@ -778,7 +927,7 @@ namespace tl
             const std::string& fileName,
             const file::MemoryRead* memory)
         {
-            io::Info out = File(fileName, memory, _channelGrouping, _ignoreDisplayWindow, false, _logSystem.lock()).getInfo();
+            io::Info out = File(fileName, memory, _channelGrouping, _ignoreDisplayWindow, false, 0, 0, _logSystem.lock()).getInfo();
             float speed = _defaultSpeed;
             auto i = out.tags.find("Frame Per Second");
             if (i != out.tags.end())
@@ -807,7 +956,7 @@ namespace tl
             const otime::RationalTime& time,
             const io::Options& options)
         {
-            return File(fileName, memory, _channelGrouping, _ignoreDisplayWindow, _autoNormalize, _logSystem).read(fileName, time, options);
+            return File(fileName, memory, _channelGrouping, _ignoreDisplayWindow, _autoNormalize, _xLevel, _yLevel, _logSystem).read(fileName, time, options);
         }
     }
 }
