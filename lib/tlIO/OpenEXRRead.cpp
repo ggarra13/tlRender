@@ -350,21 +350,28 @@ namespace tl
                     {
                         _s.reset(new IStream(fileName.c_str()));
                     }
-                    
-                    _t.reset(new Imf::TiledInputFile(*_s));
-                        
-                    int numXLevels = _t->numXLevels();
-                    int numYLevels = _t->numYLevels();
 
+                    try
                     {
-                        std::stringstream ss;
-                        ss << numXLevels;
-                        _info.tags["numXLevels"] = ss.str();
+                        _t.reset(new Imf::TiledInputFile(*_s));
+                        
+                        int numXLevels = _t->numXLevels();
+                        int numYLevels = _t->numYLevels();
+
+                        {
+                            std::stringstream ss;
+                            ss << numXLevels;
+                            _info.tags["numXLevels"] = ss.str();
+                        }
+                        {
+                            std::stringstream ss;
+                            ss << numYLevels;
+                            _info.tags["numYLevels"] = ss.str();
+                        }
+                    
                     }
+                    catch (const std::exception& e)
                     {
-                        std::stringstream ss;
-                        ss << numYLevels;
-                        _info.tags["numYLevels"] = ss.str();
                     }
                     
                     _t.reset();
