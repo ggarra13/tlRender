@@ -800,6 +800,8 @@ namespace tl
                                 ycToRgb(src, channels, dstWidth, dstHeight);
                                 break;
                             }
+                            default:
+                                break;
                             }
                         }
 
