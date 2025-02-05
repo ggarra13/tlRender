@@ -163,8 +163,8 @@ namespace tl
                         return Yw; 
                     }
 
-                // Function to convert an interleaved Y, RY, BY (YC) image to RGB.
-                // This function hardcodes D65 white point.
+                // Function to convert an interleaved Y, RY, BY (YC) image to
+                // RGB.
                 template<typename T>
                 void ycToRgb(T* image, int numChannels, int width, int height)
                     {
