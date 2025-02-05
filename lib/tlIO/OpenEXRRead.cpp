@@ -151,10 +151,17 @@ namespace tl
                         const Imath::M44f& M = RGBtoXYZ(_chromaticities, 1);
 
                         // Extract the Y coefficients (second row of the matrix)
-                        Imath::V3f Yw(M[1][0], M[1][1], M[1][2]); 
-
+                        Imath::V3f Yw(M[1][0], M[1][1], M[1][2]);
+                        
+                        // Normalize the Y coefficients so they sum to 1
+                        float sum = Yw[0] + Yw[1] + Yw[2];
+                        if (sum > 0.0f)
+                        {
+                            Yw /= sum;
+                        }
+                        
                         // Normalize to sum to 1
-                        return Yw / (Yw[0] + Yw[1] + Yw[2]); 
+                        return Yw; 
                     }
 
                 // Function to convert an interleaved Y, RY, BY (YC) image to RGB.
