@@ -160,7 +160,6 @@ namespace tl
                             Yw /= sum;
                         }
                         
-                        // Normalize to sum to 1
                         return Yw; 
                     }
 
