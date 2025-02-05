@@ -671,7 +671,6 @@ namespace tl
             // Predefined attributes.
             tags["Display Window"] = serialize(header.displayWindow());
             tags["Data Window"] = serialize(header.dataWindow());
-            tags["Pixel Aspect Ratio"] = serialize(header.pixelAspectRatio());
             tags["Screen Window Center"] = serialize(header.screenWindowCenter());
             tags["Screen Window Width"] = serialize(header.screenWindowWidth());
             {
