@@ -39,14 +39,6 @@ namespace tl
                     value.max.x << " " << value.max.y;
                 return ss.str();
             }
-
-            float bilinearInterpolate(float q11, float q12, float q21, float q22,
-                                      float x1, float x2, float y1, float y2, float x, float y)
-            {
-                float r1 = ((x2 - x) / (x2 - x1)) * q11 + ((x - x1) / (x2 - x1)) * q21;
-                float r2 = ((x2 - x) / (x2 - x1)) * q12 + ((x - x1) / (x2 - x1)) * q22;
-                return ((y2 - y) / (y2 - y1)) * r1 + ((y - y1) / (y2 - y1)) * r2;
-            }
         }
         
         struct IStream::Private
@@ -151,6 +143,19 @@ namespace tl
             {
             protected:
                 
+                // Compute the luminance coefficients dynamically from
+                // the chromaticities
+                Imath::V3f computeLuminanceCoefficients()
+                    {
+                        // RGB -> XYZ matrix
+                        Imath::M44f M = RGBtoXYZ(_chromaticities, 1);
+
+                        // Extract the Y coefficients (second row of the matrix)
+                        Imath::V3f Yw(M[1][0], M[1][1], M[1][2]); 
+
+                        // Normalize to sum to 1
+                        return Yw / (Yw[0] + Yw[1] + Yw[2]); 
+                    }
 
                 // Function to convert an interleaved Y, RY, BY (YC) image to RGB.
                 // This function hardcodes D65 white point.
@@ -158,8 +163,11 @@ namespace tl
                 void ycToRgb(T* image, int numChannels, int width, int height)
                     {
                         // Convert Y, RY, BY to RGB
-                        const float yw[3] = { 0.2126f, 0.7152f, 0.0722f };
-                            
+                        //const float yw[3] = { 0.2126f, 0.7152f, 0.0722f };
+
+                        // Compute luminance coefficients
+                        Imath::V3f yw = computeLuminanceCoefficients();
+       
                         for (int i = 0; i < width * height; ++i)
                         {
                             T Y  = image[i * numChannels + 0];
