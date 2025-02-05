@@ -148,7 +148,7 @@ namespace tl
                 Imath::V3f computeLuminanceCoefficients()
                     {
                         // RGB -> XYZ matrix
-                        Imath::M44f M = RGBtoXYZ(_chromaticities, 1);
+                        const Imath::M44f& M = RGBtoXYZ(_chromaticities, 1);
 
                         // Extract the Y coefficients (second row of the matrix)
                         Imath::V3f Yw(M[1][0], M[1][1], M[1][2]); 
@@ -162,9 +162,6 @@ namespace tl
                 template<typename T>
                 void ycToRgb(T* image, int numChannels, int width, int height)
                     {
-                        // Convert Y, RY, BY to RGB
-                        //const float yw[3] = { 0.2126f, 0.7152f, 0.0722f };
-
                         // Compute luminance coefficients
                         Imath::V3f yw = computeLuminanceCoefficients();
        
