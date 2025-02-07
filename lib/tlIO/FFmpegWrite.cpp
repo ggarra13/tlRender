@@ -860,7 +860,7 @@ namespace tl
                     }
                 }
 
-                p.avAudioCodecContext->bit_rate = 69000;
+                p.avAudioCodecContext->bit_rate = 448000;  // for AC3
                 p.avAudioCodecContext->sample_rate = p.sampleRate;
                 p.avAudioCodecContext->time_base.num = 1;
                 p.avAudioCodecContext->time_base.den = p.sampleRate;
