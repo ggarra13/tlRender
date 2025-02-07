@@ -487,7 +487,23 @@ namespace tl
                     value.roundingMode;
                 return ss.str();
             }
-
+            
+            template<>
+            std::string serialize(const Imf::LineOrder& value)
+            {
+                switch(value)
+                {
+                case Imf::LineOrder::INCREASING_Y:
+                    return "Increasing Y";
+                case Imf::LineOrder::DECREASING_Y:
+                    return "Decreasing Y";
+                case Imf::LineOrder::RANDOM_Y:
+                    return "Random Y";
+                default:
+                    return "Unknown";
+                }
+            }
+            
             template<>
             std::string serialize(const Imf::Chromaticities& value)
             {
