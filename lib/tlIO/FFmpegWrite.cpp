@@ -860,7 +860,37 @@ namespace tl
                     }
                 }
 
-                p.avAudioCodecContext->bit_rate = 448000;  // for AC3
+                if (avAudioCodecID == AV_CODEC_ID_AC3)
+                {
+                    p.avAudioCodecContext->block_align = 0;
+                    // valid bit rate for ac3 (very strict)
+                    p.avAudioCodecContext->bit_rate = 448000;
+                }
+                else if (avAudioCodecID == AV_CODEC_ID_AAC)
+                {
+                    p.avAudioCodecContext->block_align = 0;
+                    // bit rate typical for stereo
+                    p.avAudioCodecContext->bit_rate = 128000; 
+                }
+                else if (avAudioCodecID == AV_CODEC_ID_VORBIS)
+                {
+                    p.avAudioCodecContext->block_align = 0;
+                    // bit rate typical for vorbis
+                    p.avAudioCodecContext->bit_rate = 192000; 
+                }
+                else if (avAudioCodecID == AV_CODEC_ID_MP3)
+                {
+                    // bit rate typical for MP3 (block align done later)
+                    p.avAudioCodecContext->bit_rate = 192000; 
+                }
+                else if (avAudioCodecID == AV_CODEC_ID_OPUS)
+                {
+                    p.avAudioCodecContext->block_align = 0;
+                    // bit rate recommended for speech
+                    p.avAudioCodecContext->bit_rate = 64000; 
+                }
+
+                
                 p.avAudioCodecContext->sample_rate = p.sampleRate;
                 p.avAudioCodecContext->time_base.num = 1;
                 p.avAudioCodecContext->time_base.den = p.sampleRate;
@@ -871,8 +901,6 @@ namespace tl
                     p.avAudioCodecContext->codec_id == AV_CODEC_ID_MP3)
                     p.avAudioCodecContext->block_align = 0;
 
-                if (avAudioCodecID == AV_CODEC_ID_AC3)
-                    p.avAudioCodecContext->block_align = 0;
 
                 r = avcodec_open2(p.avAudioCodecContext, avCodec, NULL);
                 if (r < 0)
