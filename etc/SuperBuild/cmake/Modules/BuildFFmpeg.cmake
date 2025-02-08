@@ -122,6 +122,10 @@ if(NOT APPLE)
 else()
     list(APPEND FFmpeg_CONFIGURE_ARGS
 	--enable-videotoolbox
+	--enable-hwaccel=h264_videotoolbox
+	--enable-hwaccel=hevc_videotoolbox
+	--enable-hwaccel=prores_videotoolbox
+	--enable-hwaccel=vp9_videotoolbox
 	--enable-audiotoolbox)
 endif()
 
