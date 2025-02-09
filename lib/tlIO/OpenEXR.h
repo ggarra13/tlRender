@@ -37,6 +37,7 @@ namespace tl
             B44A,
             DWAA,
             DWAB,
+            HT256,
 
             Count,
             First = None

@@ -41,7 +41,8 @@ namespace tl
             "B44",
             "B44A",
             "DWAA",
-            "DWAB");
+            "DWAB",
+            "HT256");
         TLRENDER_ENUM_SERIALIZE_IMPL(Compression);
 
         Channel::Channel()
