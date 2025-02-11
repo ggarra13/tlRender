@@ -56,7 +56,9 @@ namespace tl
             if (i != options.end())
             {
                 std::stringstream ss(i->second);
-                ss >> _compression;
+                int i;
+                ss >> i;
+                _compression = static_cast<Imf::Compression>(i);
             }
             i = options.find("OpenEXR/PixelType");
             if (i != options.end())
@@ -156,7 +158,7 @@ namespace tl
                 Imath::V2f(0.F, 0.F),
                 1.F,
                 Imf::INCREASING_Y,
-                toImf(_compression));
+                _compression);
             header.zipCompressionLevel() = _zipCompressionLevel;
             header.dwaCompressionLevel() = _dwaCompressionLevel;
             const auto tags = image->getTags();

@@ -45,9 +45,6 @@ namespace tl
             int                  partNumber = 0;
         };
 
-        //! Convert to Imf.
-        Imf::Compression toImf(Compression);
-
         //! Convert to an Imf pixel type.
         Imf::PixelType toImf(const image::PixelType&);
         

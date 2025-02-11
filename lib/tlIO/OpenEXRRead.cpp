@@ -12,7 +12,6 @@
 
 #include <ImfInputPart.h>
 #include <ImfChannelList.h>
-#include <ImfCompression.h>
 #include <ImfStandardAttributes.h>
 #include <ImfRgbaFile.h>
 #include <ImfTiledInputFile.h>

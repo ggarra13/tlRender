@@ -30,21 +30,6 @@ namespace tl
             "All");
         TLRENDER_ENUM_SERIALIZE_IMPL(ChannelGrouping);
 
-        TLRENDER_ENUM_IMPL(
-            Compression,
-            "None",
-            "RLE",
-            "ZIPS",
-            "ZIP",
-            "PIZ",
-            "PXR24",
-            "B44",
-            "B44A",
-            "DWAA",
-            "DWAB",
-            "HT256");
-        TLRENDER_ENUM_SERIALIZE_IMPL(Compression);
-
         Channel::Channel()
         {}
 
@@ -69,30 +54,6 @@ namespace tl
                 names.push_back(i.name);
             }
             name = getLayerName(names);
-        }
-
-        Imf::Compression toImf(Compression value)
-        {
-            const std::array<Imf::Compression, 10> data =
-            {
-                Imf::NO_COMPRESSION,
-                Imf::RLE_COMPRESSION,
-                Imf::ZIPS_COMPRESSION,
-                Imf::ZIP_COMPRESSION,
-                Imf::PIZ_COMPRESSION,
-                Imf::PXR24_COMPRESSION,
-                Imf::B44_COMPRESSION,
-                Imf::B44A_COMPRESSION,
-                Imf::DWAA_COMPRESSION,
-                Imf::DWAB_COMPRESSION
-            };
-            return data[static_cast<size_t>(value)];
-        }
-        
-        Compression fromImf(const Imf::Compression& value)
-        {
-            Compression out = static_cast<Compression>(value);
-            return out;
         }
 
         std::string getLayerName(const std::vector<std::string>& value)

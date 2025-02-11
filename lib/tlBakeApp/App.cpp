@@ -97,12 +97,6 @@ namespace tl
                         "Number of threads for image sequence I/O.",
                         string::Format("{0}").arg(_options.sequenceThreadCount)),
 #if defined(TLRENDER_EXR)
-                    app::CmdLineValueOption<exr::Compression>::create(
-                        _options.exrCompression,
-                        { "-exrCompression" },
-                        "OpenEXR output compression.",
-                        string::Format("{0}").arg(_options.exrCompression),
-                        string::join(exr::getCompressionLabels(), ", ")),
                     app::CmdLineValueOption<float>::create(
                         _options.exrDWACompressionLevel,
                         { "-exrDWACompressionLevel" },

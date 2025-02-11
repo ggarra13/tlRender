@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <ImfCompression.h>
+
 #include <tlIO/SequenceIO.h>
 
 namespace tl
@@ -23,27 +25,6 @@ namespace tl
         };
         TLRENDER_ENUM(ChannelGrouping);
         TLRENDER_ENUM_SERIALIZE(ChannelGrouping);
-
-        //! Compression types.
-        enum class Compression
-        {
-            None,
-            RLE,
-            ZIPS,
-            ZIP,
-            PIZ,
-            PXR24,
-            B44,
-            B44A,
-            DWAA,
-            DWAB,
-            HT256,
-
-            Count,
-            First = None
-        };
-        TLRENDER_ENUM(Compression);
-        TLRENDER_ENUM_SERIALIZE(Compression);
 
         //! OpenEXR reader.
         class Read : public io::ISequenceRead
@@ -130,7 +111,7 @@ namespace tl
         private:
             TLRENDER_PRIVATE();
             
-            Compression _compression = Compression::ZIP;
+            Imf::Compression _compression = Imf::ZIP_COMPRESSION;
             float _dwaCompressionLevel = 45.F;
             int   _zipCompressionLevel = 4;
             double _speed = io::sequenceDefaultSpeed;
