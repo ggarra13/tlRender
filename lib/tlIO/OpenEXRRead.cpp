@@ -478,6 +478,8 @@ namespace tl
                         {
                         case image::PixelType::L_F16:
                         case image::PixelType::L_F32:
+                        case image::PixelType::LA_F16:
+                        case image::PixelType::LA_F32:
                             return;
                         default:
                             break;
@@ -642,7 +644,6 @@ namespace tl
                         const size_t channelByteCount = image::getBitDepth(imageInfo.pixelType) / 8;
                         const size_t cb = channels * channelByteCount;
                         const size_t scb = imageInfo.size.w * channels * channelByteCount;
-                    
                         if (_fast)
                         {
                             Imf::FrameBuffer frameBuffer;
