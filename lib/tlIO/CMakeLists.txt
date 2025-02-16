@@ -26,6 +26,7 @@ set(SOURCE
     DPX.cpp
     IO.cpp
     Init.cpp
+    Normalize.cpp
     PPM.cpp
     PPMRead.cpp
     PPMWrite.cpp
@@ -63,7 +64,7 @@ if(TLRENDER_PNG)
 endif()
 if(TLRENDER_EXR)
     list(APPEND HEADERS_PRIVATE OpenEXR.h Normalize.h)
-    list(APPEND SOURCE Normalize.cpp OpenEXR.cpp OpenEXRRead.cpp
+    list(APPEND SOURCE OpenEXR.cpp OpenEXRRead.cpp
 	               OpenEXRWrite.cpp)
     list(APPEND LIBRARIES_PRIVATE OpenEXR::OpenEXR)
 endif()
