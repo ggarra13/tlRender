@@ -18,7 +18,6 @@ if (APPLE)
 endif()
 
 set(dav1d_CONFIGURE
-    COMMAND ${dav1d_ENV} ${Python_EXECUTABLE} -m pip install meson
     COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH="" "CXXFLAGS=${dav1d_CXXFLAGS}" "CFLAGS=${dav1d_CFLAGS}" "DYLD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib" "LDFLAGS=${dav1d_LDFLAGS}" -- meson setup -Denable_tools=false -Denable_tests=false --default-library=static -Dlibdir=${CMAKE_INSTALL_PREFIX}/lib --prefix=${CMAKE_INSTALL_PREFIX} build)
 set(dav1d_BUILD export PYTHONPATH="" && cd build && ${dav1d_COPY} ninja)
 set(dav1d_INSTALL export PYTHONPATH="" && cd build && ninja install)
