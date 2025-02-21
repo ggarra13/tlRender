@@ -20,6 +20,13 @@ if(TLRENDER_BMD OR TLRENDER_NDI)
 	OutputData.cpp)
 endif()
 
+if(TLRENDER_NDI)
+    list(APPEND HEADERS
+	NDIOutputDevice.h)
+    list(APPEND SOURCE
+	NDIOutputDevice.cpp)
+endif()
+
 if(TLRENDER_BMD)
     list(APPEND HEADERS
         BMDDevicesModel.h
@@ -87,14 +94,6 @@ if(TLRENDER_BMD)
     endif()
 endif()
 
-if(TLRENDER_NDI)
-    # list(APPEND HEADERS
-    #     )
-    # list(APPEND HEADERS_PRIVATE
-    #     )
-    # list(APPEND SOURCE
-    #     )
-endif()
 
 add_library(tlDevice ${HEADERS} ${HEADERS_PRIVATE} ${SOURCE})
 target_include_directories(tlDevice PUBLIC ${INCLUDE_DIRS})
@@ -105,6 +104,8 @@ if(TLRENDER_BMD)
     if(WIN32)
         add_dependencies(tlDevice MIDL_Target)
     endif()
+endif()
+if(TLRENDER_NDI)
 endif()
 
 install(TARGETS tlDevice
