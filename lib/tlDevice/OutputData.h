@@ -12,7 +12,7 @@
 
 namespace tl
 {
-    namespace bmd
+    namespace device
     {
         //! Display mode.
         struct DisplayMode

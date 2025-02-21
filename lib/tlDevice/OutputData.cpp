@@ -2,7 +2,7 @@
 // Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
-#include <tlDevice/BMDData.h>
+#include <tlDevice/OutputData.h>
 
 #include <tlCore/Error.h>
 #include <tlCore/String.h>
@@ -12,7 +12,7 @@
 
 namespace tl
 {
-    namespace bmd
+    namespace device
     {
         bool DisplayMode::operator == (const DisplayMode& other) const
         {

@@ -9,10 +9,17 @@ set(INCLUDE_DIRS)
 set(LIBRARIES tlTimelineGL)
 set(LIBRARIES_PRIVATE)
 
-if(TLRENDER_BMD)
+if(TLRENDER_BMD OR TLRENDER_NDI)
+    set(HEADERS
+	IOutput.h
+	OutputData.h)
+    set(SOURCE
+	IOutput.cpp
+	OutputData.cpp)
+endif()
 
+if(TLRENDER_BMD)
     list(APPEND HEADERS
-        BMDData.h
         BMDDevicesModel.h
         BMDOutputDevice.h
         BMDSystem.h
@@ -20,7 +27,6 @@ if(TLRENDER_BMD)
     list(APPEND HEADERS_PRIVATE
         BMDOutputPrivate.h)
     list(APPEND SOURCE
-        BMDData.cpp
         BMDDevicesModel.cpp
         BMDOutputCallback.cpp
         BMDHDRVideoFrame.cpp
@@ -77,6 +83,15 @@ if(TLRENDER_BMD)
             ${CMAKE_CURRENT_SOURCE_DIR}/BMD/Linux
             ${TLRENDER_BMD_SDK}/Linux/include)
     endif()
+endif()
+
+if(TLRENDER_NDI)
+    # list(APPEND HEADERS
+    #     )
+    # list(APPEND HEADERS_PRIVATE
+    #     )
+    # list(APPEND SOURCE
+    #     )
 endif()
 
 add_library(tlDevice ${HEADERS} ${HEADERS_PRIVATE} ${SOURCE})

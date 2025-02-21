@@ -4,19 +4,16 @@
 
 #pragma once
 
-#include <tlDevice/BMDData.h>
-
-#include <tlTimeline/IRender.h>
-#include <tlTimeline/Player.h>
+#include <tlDevice/IOutput.h>
 
 namespace tl
 {
     namespace bmd
     {
         //! BMD output device.
-        class OutputDevice : public std::enable_shared_from_this<OutputDevice>
+        class OutputDevice : public std::enable_shared_from_this<IOutput>
         {
-            TLRENDER_NON_COPYABLE(OutputDevice);
+            TLRENDER_NON_COPYABLE(IOutput);
 
         protected:
             void _init(const std::shared_ptr<system::Context>&);
