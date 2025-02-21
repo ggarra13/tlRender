@@ -32,7 +32,14 @@ namespace tl
             "10BitRGBXLE",
             //"10BitYUV",
             "12BitRGB",
-            "12BitRGBLE");
+            "12BitRGBLE",
+            "8BitUYVA",
+            "16BitP216",
+            "16BitPA16",
+            "8BitI420",
+            "8BitBGRX",
+            "8BitRGBA",
+            "8BitRGBX");
         TLRENDER_ENUM_SERIALIZE_IMPL(PixelType);
 
         size_t getRowByteCount(int size, PixelType pixelType)
@@ -40,6 +47,11 @@ namespace tl
             size_t out = 0;
             switch (pixelType)
             {
+            case PixelType::_8BitRGBX:
+            case PixelType::_8BitBGRX:
+                out = size * 24 / 8;
+                break;
+            case PixelType::_8BitRGBA:
             case PixelType::_8BitBGRA:
                 out = size * 32 / 8;
                 break;
@@ -57,6 +69,15 @@ namespace tl
             case PixelType::_12BitRGB:
             case PixelType::_12BitRGBLE:
                 out = (size * 36) / 8;
+                break;
+            case PixelType::_8BitUYVA:
+                out = size * 24 / 8;
+                break;
+            case PixelType::_16BitP216:
+                out = size * 48 / 8;
+                break;
+            case PixelType::_16BitPA16:
+                out = size * 64 / 8;
                 break;
             default: break;
             }

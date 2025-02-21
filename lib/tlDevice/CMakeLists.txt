@@ -20,7 +20,7 @@ if(TLRENDER_BMD OR TLRENDER_NDI)
 	OutputData.cpp)
 endif()
 
-if(TLRENDER_NDI)
+if(TLRENDER_NDI AND TLRENDER_FFMPEG)
     list(APPEND HEADERS
 	NDIOutputDevice.h
 	NDIUtil.h)
@@ -95,7 +95,7 @@ if(TLRENDER_BMD)
             ${TLRENDER_BMD_SDK}/Linux/include)
     endif()
 endif()
-if(TLRENDER_NDI)
+if(TLRENDER_NDI AND TLRENDER_FFMPEG)
     list(APPEND LIBRARIES_PRIVATE NDI)
 endif()
 
