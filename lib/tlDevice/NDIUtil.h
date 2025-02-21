@@ -17,10 +17,10 @@ namespace tl
     namespace ndi
     {
         //! Convert to BMD.
-        //BMDPixelFormat toBMD(PixelType);
+        //BMDPixelFormat toNDI(PixelType);
 
         //! Convert from BMD.
-        //PixelType fromBMD(BMDPixelFormat);
+        //PixelType fromNDI(BMDPixelFormat);
 
         // //! Get a label.
         // std::string getVideoConnectionLabel(BMDVideoConnection);

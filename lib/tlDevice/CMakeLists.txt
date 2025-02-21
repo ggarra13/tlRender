@@ -22,9 +22,11 @@ endif()
 
 if(TLRENDER_NDI)
     list(APPEND HEADERS
-	NDIOutputDevice.h)
+	NDIOutputDevice.h
+	NDIUtil.h)
     list(APPEND SOURCE
-	NDIOutputDevice.cpp)
+	NDIOutputDevice.cpp
+	NDIUtil.cpp)
 endif()
 
 if(TLRENDER_BMD)

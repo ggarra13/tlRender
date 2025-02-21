@@ -715,7 +715,7 @@ namespace tl
                     if (auto context = p.context.lock())
                     {
                         context->log(
-                            "tl::bmd::OutputDevice",
+                            "tl::ndi::OutputDevice",
                             string::Format(
                                 "\n"
                                 "    #{0} {1}\n"
@@ -850,7 +850,7 @@ namespace tl
             //     p.thread.size.w,
             //     p.thread.size.h,
             //     getRowByteCount(p.thread.size.w, p.thread.outputPixelType),
-            //     toBMD(p.thread.outputPixelType),
+            //     toNDI(p.thread.outputPixelType),
             //     bmdFrameFlagDefault,
             //     &dlVideoFrame->p) != S_OK)
             // {
@@ -862,7 +862,7 @@ namespace tl
             glBindBuffer(GL_PIXEL_PACK_BUFFER, p.thread.pbo);
             if (void* pboP = glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY))
             {
-                copyPackPixels(pboP, dlVideoFrameP, p.thread.size, p.thread.outputPixelType);
+                // copyPackPixels(pboP, ndiVideoFrameP, p.thread.size, p.thread.outputPixelType);
                 glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
             }
 
