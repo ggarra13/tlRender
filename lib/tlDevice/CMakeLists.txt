@@ -95,6 +95,9 @@ if(TLRENDER_BMD)
             ${TLRENDER_BMD_SDK}/Linux/include)
     endif()
 endif()
+if(TLRENDER_NDI)
+    list(APPEND LIBRARIES_PRIVATE NDI)
+endif()
 
 
 add_library(tlDevice ${HEADERS} ${HEADERS_PRIVATE} ${SOURCE})
@@ -106,8 +109,6 @@ if(TLRENDER_BMD)
     if(WIN32)
         add_dependencies(tlDevice MIDL_Target)
     endif()
-endif()
-if(TLRENDER_NDI)
 endif()
 
 install(TARGETS tlDevice

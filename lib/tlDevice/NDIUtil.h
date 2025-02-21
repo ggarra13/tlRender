@@ -4,6 +4,9 @@
 
 #pragma once
 
+#include <cstddef>
+#include <Processing.NDI.Lib.h>
+
 #include <tlDevice/OutputData.h>
 
 #include <tlGL/GL.h>
@@ -17,10 +20,10 @@ namespace tl
     namespace ndi
     {
         //! Convert to BMD.
-        //BMDPixelFormat toNDI(PixelType);
+        NDIlib_FourCC_video_type_e toNDI(device::PixelType);
 
         //! Convert from BMD.
-        //PixelType fromNDI(BMDPixelFormat);
+        device::PixelType fromNDI(NDIlib_FourCC_audio_type_e);
 
         // //! Get a label.
         // std::string getVideoConnectionLabel(BMDVideoConnection);

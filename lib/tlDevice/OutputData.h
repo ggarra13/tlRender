@@ -31,6 +31,7 @@ namespace tl
         enum class PixelType
         {
             None,
+            // These are BMD formats
             _8BitBGRA,
             _8BitYUV,
             _10BitRGB,
@@ -39,7 +40,14 @@ namespace tl
             //_10BitYUV,
             _12BitRGB,
             _12BitRGBLE,
-
+            // These are NDI formats
+            _8BitUYVA,
+            _16BitP216,
+            _16BitPA16,
+            _8BitI420,
+            _8BitBGRX,
+            _8BitRGBA,
+            _8BitRGBX,
             Count,
             First = None
         };
