@@ -91,6 +91,7 @@ namespace tl
                 imageFilters == other.imageFilters &&
                 videoLevels == other.videoLevels &&
                 normalize == other.normalize &&
+                ignoreChromaticities == other.ignoreChromaticities &&
                 invalidValues == other.invalidValues;
         }
 

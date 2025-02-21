@@ -122,6 +122,7 @@ namespace tl
             ImageFilters       imageFilters;
             image::VideoLevels videoLevels  = image::VideoLevels::FullRange;
             Normalize          normalize;
+            bool               ignoreChromaticities = false;
             bool               invalidValues = false;
             
             bool operator == (const DisplayOptions&) const;

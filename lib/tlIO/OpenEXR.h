@@ -70,6 +70,7 @@ namespace tl
         private:
             ChannelGrouping _channelGrouping = ChannelGrouping::Known;
             bool            _ignoreDisplayWindow = false;
+            bool            _ignoreChromaticities = false;
             bool            _autoNormalize = false;
             int             _xLevel = -1;
             int             _yLevel = -1;

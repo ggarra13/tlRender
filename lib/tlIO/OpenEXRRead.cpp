@@ -339,16 +339,18 @@ namespace tl
                     const file::MemoryRead* memory,
                     ChannelGrouping channelGrouping,
                     const bool ignoreDisplayWindow,
+                    const bool ignoreChromaticities,
                     const bool autoNormalize,
                     const int xLevel,
                     const int yLevel,
                     const std::weak_ptr<log::System>& logSystem) :
                     _fileName(fileName),
                     _channelGrouping(channelGrouping),
-                    _ignoreDisplayWindow( ignoreDisplayWindow ),
-                    _autoNormalize( autoNormalize ),
-                    _xLevel( xLevel ),
-                    _yLevel( yLevel),
+                    _ignoreDisplayWindow(ignoreDisplayWindow),
+                    _ignoreChromaticities(ignoreChromaticities),
+                    _autoNormalize(autoNormalize),
+                    _xLevel(xLevel),
+                    _yLevel(yLevel),
                     logSystemWeak(logSystem)
                 {
                     // Open the file.
@@ -823,7 +825,7 @@ namespace tl
                             }
                         }
 
-                        if (useChromaticities())
+                        if (!_ignoreChromaticities && useChromaticities())
                         {
                             applyChromaticities(out.image, imageInfo,
                                                 minX, maxX, minY, maxY);
@@ -849,6 +851,7 @@ namespace tl
                 ChannelGrouping                 _channelGrouping = ChannelGrouping::Known;
                 bool                            _autoNormalize = false;
                 bool                            _ignoreDisplayWindow = false;
+                bool                            _ignoreChromaticities = false;
                 int                             _xLevel;
                 int                             _yLevel;
                 std::weak_ptr<log::System>      logSystemWeak;
@@ -892,6 +895,13 @@ namespace tl
             if (option != options.end())
             {
                 _autoNormalize =
+                    static_cast<bool>(std::atoi(option->second.c_str()));
+            }
+
+            option = options.find("IgnoreChromaticities");
+            if (option != options.end())
+            {
+                _ignoreChromaticities =
                     static_cast<bool>(std::atoi(option->second.c_str()));
             }
 
@@ -947,7 +957,9 @@ namespace tl
             const std::string& fileName,
             const file::MemoryRead* memory)
         {
-            io::Info out = File(fileName, memory, _channelGrouping, _ignoreDisplayWindow, false, 0, 0, _logSystem.lock()).getInfo();
+            io::Info out = File(fileName, memory, _channelGrouping,
+                                _ignoreDisplayWindow, false, false,
+                                0, 0, _logSystem.lock()).getInfo();
             float speed = _defaultSpeed;
             auto i = out.tags.find("Frame Per Second");
             if (i != out.tags.end())
@@ -976,7 +988,7 @@ namespace tl
             const otime::RationalTime& time,
             const io::Options& options)
         {
-            return File(fileName, memory, _channelGrouping, _ignoreDisplayWindow, _autoNormalize, _xLevel, _yLevel, _logSystem).read(fileName, time, options);
+            return File(fileName, memory, _channelGrouping, _ignoreDisplayWindow, _ignoreChromaticities, _autoNormalize, _xLevel, _yLevel, _logSystem).read(fileName, time, options);
         }
     }
 }
