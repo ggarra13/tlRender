@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include <tlDevice/BMDData.h>
+#include <tlDevice/OutputData.h>
 
 #include <tlCore/ISystem.h>
 #include <tlCore/ListObserver.h>
@@ -30,7 +30,7 @@ namespace tl
             static std::shared_ptr<System> create(const std::shared_ptr<system::Context>&);
 
             //! Observe the device information.
-            std::shared_ptr<observer::IList<DeviceInfo> > observeDeviceInfo() const;
+            std::shared_ptr<observer::IList<device::DeviceInfo> > observeDeviceInfo() const;
 
             void tick() override;
             std::chrono::milliseconds getTickTime() const override;

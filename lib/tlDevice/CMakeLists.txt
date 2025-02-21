@@ -11,9 +11,11 @@ set(LIBRARIES_PRIVATE)
 
 if(TLRENDER_BMD OR TLRENDER_NDI)
     set(HEADERS
+	DevicesModel.h
 	IOutput.h
 	OutputData.h)
     set(SOURCE
+	DevicesModel.cpp
 	IOutput.cpp
 	OutputData.cpp)
 endif()

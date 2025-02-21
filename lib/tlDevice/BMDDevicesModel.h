@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include <tlDevice/BMDData.h>
+#include <tlDevice/OutputData.h>
 
 #include <tlCore/Image.h>
 #include <tlCore/ValueObserver.h>
@@ -21,24 +21,6 @@ namespace tl
 
     namespace bmd
     {
-        //! BMD devices model data.
-        struct DevicesModelData
-        {
-            std::vector<std::string> devices;
-            int                      deviceIndex = 0;
-            std::vector<std::string> displayModes;
-            int                      displayModeIndex = 0;
-            std::vector<PixelType>   pixelTypes;
-            int                      pixelTypeIndex = 0;
-            bool                     deviceEnabled = true;
-            BoolOptions              boolOptions;
-            image::VideoLevels       videoLevels = image::VideoLevels::LegalRange;
-            HDRMode                  hdrMode = HDRMode::FromFile;
-            image::HDRData           hdrData;
-
-            bool operator == (const DevicesModelData&) const;
-        };
-
         //! BMD devices model.
         class DevicesModel : public std::enable_shared_from_this<DevicesModel>
         {
