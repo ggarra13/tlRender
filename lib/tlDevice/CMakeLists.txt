@@ -12,38 +12,36 @@ set(LIBRARIES_PRIVATE)
 if(TLRENDER_BMD OR TLRENDER_NDI)
     set(HEADERS
 	DevicesModel.h
+	DeviceSystem.h
 	IOutput.h
 	OutputData.h)
     set(SOURCE
 	DevicesModel.cpp
+	DeviceSystem.cpp
 	IOutput.cpp
 	OutputData.cpp)
 endif()
 
 if(TLRENDER_NDI AND TLRENDER_FFMPEG)
     list(APPEND HEADERS
-	NDIOutputDevice.h
-	NDIUtil.h)
+	NDI/NDIOutputDevice.h
+	NDI/NDIUtil.h)
     list(APPEND SOURCE
-	NDIOutputDevice.cpp
-	NDIUtil.cpp)
+	NDI/NDIOutputDevice.cpp
+	NDI/NDIUtil.cpp)
 endif()
 
 if(TLRENDER_BMD)
     list(APPEND HEADERS
-        BMDDevicesModel.h
-        BMDOutputDevice.h
-        BMDSystem.h
-        BMDUtil.h)
+        BMD/BMDOutputDevice.h
+        BMD/BMDUtil.h)
     list(APPEND HEADERS_PRIVATE
-        BMDOutputPrivate.h)
+        BMD/BMDOutputPrivate.h)
     list(APPEND SOURCE
-        BMDDevicesModel.cpp
-        BMDOutputCallback.cpp
-        BMDHDRVideoFrame.cpp
-        BMDOutputDevice.cpp
-        BMDSystem.cpp
-        BMDUtil.cpp)
+        BMD/BMDOutputCallback.cpp
+        BMD/BMDHDRVideoFrame.cpp
+        BMD/BMDOutputDevice.cpp
+        BMD/BMDUtil.cpp)
 
     if(WIN32)
         list(APPEND HEADERS_PRIVATE

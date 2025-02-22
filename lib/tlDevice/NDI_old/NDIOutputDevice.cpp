@@ -10,8 +10,8 @@
 #endif // _WIN64
 #endif // _WIN32
 
-#include <tlDevice/NDIOutputDevice.h>
-#include <tlDevice/NDIUtil.h>
+#include <tlDevice/NDI/NDIOutputDevice.h>
+#include <tlDevice/NDI/NDIUtil.h>
 
 #include <tlTimelineGL/Render.h>
 
@@ -555,30 +555,30 @@ namespace tl
                         playback, currentTime,
                         volume, mute, audioOffset, audioData]
                         {
-                            std::cerr << "wait for" << std::endl
-                                      << "config=" << (config != _p->mutex.config ) << std::endl
-                                      << "enabled=" << (enabled != _p->mutex.enabled ) << std::endl
-                                      << "ocioOptions=" << (ocioOptions != _p->mutex.ocioOptions ) << std::endl
-                                      << "lutOptions=" << (lutOptions != _p->mutex.lutOptions ) << std::endl
-                                      << "limageOptions=" << ( imageOptions != _p->mutex.imageOptions ) << std::endl
-                                      << "displayoptions=" << ( displayOptions != _p->mutex.displayOptions ) << std::endl
-                                      << "hdrMode=" << (_p->thread.hdrMode != _p->mutex.hdrMode ) << std::endl
-                                      <<  "hdrData=" << (_p->thread.hdrData != _p->mutex.hdrData ) << std::endl
+                            std::cerr << "WAIT FOR" << std::endl
+                                      << "\tconfig=" << (config != _p->mutex.config ) << std::endl
+                                      << "\tenabled=" << (enabled != _p->mutex.enabled ) << std::endl
+                                      << "\tocioOptions=" << (ocioOptions != _p->mutex.ocioOptions ) << std::endl
+                                      << "\tlutOptions=" << (lutOptions != _p->mutex.lutOptions ) << std::endl
+                                      << "\timageOptions=" << ( imageOptions != _p->mutex.imageOptions ) << std::endl
+                                      << "\tdisplayoptions=" << ( displayOptions != _p->mutex.displayOptions ) << std::endl
+                                      << "\thdrMode=" << (_p->thread.hdrMode != _p->mutex.hdrMode ) << std::endl
+                                      <<  "\thdrData=" << (_p->thread.hdrData != _p->mutex.hdrData ) << std::endl
                                 
-                                      <<  "compareoptions=" << (compareOptions != _p->mutex.compareOptions ) << std::endl
-                                      <<  "bgptions=" << ( backgroundOptions != _p->mutex.backgroundOptions ) << std::endl
-                                      << "viewpos=" << ( _p->thread.viewPos != _p->mutex.viewPos ) << std::endl
-                                      << "viewZoom=" << ( _p->thread.viewZoom != _p->mutex.viewZoom ) << std::endl
-                                      << "frameView=" << (_p->thread.frameView != _p->mutex.frameView ) << std::endl
-                                      << "timeRange=" << (_p->thread.timeRange != _p->mutex.timeRange ) << std::endl
-                                      << "playback=" << (playback != _p->mutex.playback ) << std::endl
-                                      << "cuttrnyTime=" << (currentTime != _p->mutex.currentTime ) << std::endl
-                                      << "videoData=" << (_p->thread.videoData != _p->mutex.videoData ) << std::endl
-                                      << "overlay=" << (_p->thread.overlay != _p->mutex.overlay ) << std::endl
-                                      << "volume=" << (volume != _p->mutex.volume ) << std::endl
-                                      << "mute=" << (mute != _p->mutex.mute ) << std::endl
-                                      << "audioOffset=" << (audioOffset != _p->mutex.audioOffset ) << std::endl
-                                      << "audiodata=" << (audioData != _p->mutex.audioData ) << std::endl;
+                                      <<  "\tcompareoptions=" << (compareOptions != _p->mutex.compareOptions ) << std::endl
+                                      <<  "\tbgptions=" << ( backgroundOptions != _p->mutex.backgroundOptions ) << std::endl
+                                      << "\tviewpos=" << ( _p->thread.viewPos != _p->mutex.viewPos ) << std::endl
+                                      << "\tviewZoom=" << ( _p->thread.viewZoom != _p->mutex.viewZoom ) << std::endl
+                                      << "\tframeView=" << (_p->thread.frameView != _p->mutex.frameView ) << std::endl
+                                      << "\ttimeRange=" << (_p->thread.timeRange != _p->mutex.timeRange ) << std::endl
+                                      << "\tplayback=" << (playback != _p->mutex.playback ) << std::endl
+                                      << "\tcuttrnyTime=" << (currentTime != _p->mutex.currentTime ) << std::endl
+                                      << "\tvideoData=" << (_p->thread.videoData != _p->mutex.videoData ) << std::endl
+                                      << "\toverlay=" << (_p->thread.overlay != _p->mutex.overlay ) << std::endl
+                                      << "\tvolume=" << (volume != _p->mutex.volume ) << std::endl
+                                      << "\tmute=" << (mute != _p->mutex.mute ) << std::endl
+                                      << "\taudioOffset=" << (audioOffset != _p->mutex.audioOffset ) << std::endl
+                                      << "\taudiodata=" << (audioData != _p->mutex.audioData ) << std::endl;
                             return
                                 config != _p->mutex.config ||
                                 enabled != _p->mutex.enabled ||
