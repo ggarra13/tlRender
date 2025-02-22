@@ -9,8 +9,6 @@
 
 #include <tlDevice/OutputData.h>
 
-#include <tlGL/GL.h>
-
 #include <tlCore/Image.h>
 
 #include <string>
@@ -25,6 +23,20 @@ namespace tl
         //! Convert from BMD.
         device::PixelType fromNDI(NDIlib_FourCC_audio_type_e);
 
+        inline std::ostream& operator<<(std::ostream& o,
+                                        const NDIlib_FourCC_video_type_e& fourcc)
+        {
+            // Extract each byte using bitwise AND and right shift operators
+            char ch0 = (fourcc & 0xFF);         // Extract the first byte (least significant)
+            char ch1 = ((fourcc >> 8) & 0xFF);   // Shift right by 8 bits, then extract the second byte
+            char ch2 = ((fourcc >> 16) & 0xFF);  // Shift right by 16 bits, then extract the third byte
+            char ch3 = ((fourcc >> 24) & 0xFF);   // Shift right by 24 bits, then extract the fourth byte
+            o << ch0 << ch1 << ch2 << ch3;
+            return o;
+        }
+
+        bool validSize(const math::Size2i& size);
+        
         // //! Get a label.
         // std::string getVideoConnectionLabel(BMDVideoConnection);
 
@@ -43,29 +55,5 @@ namespace tl
         //! Get the output pixel type.
         device::PixelType getOutputType(device::PixelType);
 
-        //! Get the color buffer type.
-        image::PixelType getColorBuffer(device::PixelType);
-
-        //! Get the pack pixels buffer size.
-        size_t getPackPixelsSize(const math::Size2i&, device::PixelType);
-
-        //! Get the pack pixels format.
-        GLenum getPackPixelsFormat(device::PixelType);
-
-        //! Get the pack pixels type.
-        GLenum getPackPixelsType(device::PixelType);
-
-        //! Get the pack pixels alignment.
-        GLint getPackPixelsAlign(device::PixelType);
-
-        //! Get the pack pixels endian byte swap.
-        GLint getPackPixelsSwap(device::PixelType);
-
-        //! Copy the pack pixels.
-        void copyPackPixels(
-            const void*,
-            void*,
-            const math::Size2i&,
-            device::PixelType);
     }
 }

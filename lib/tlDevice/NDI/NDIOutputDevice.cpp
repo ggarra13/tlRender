@@ -2,6 +2,8 @@
 // Copyright (c) 2021-2025 Gonzalo Garramuño
 // All rights reserved.
 
+#define USE_PBO
+
 #ifdef _WIN32
 #ifdef _WIN64
 #pragma comment(lib, "Processing.NDI.Lib.x64.lib")
@@ -12,6 +14,7 @@
 
 #include <tlDevice/NDI/NDIOutputDevice.h>
 #include <tlDevice/NDI/NDIUtil.h>
+#include <tlDevice/GLUtil.h>
 
 #include <tlTimelineGL/Render.h>
 
@@ -28,6 +31,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <iostream>
 #include <list>
 #include <mutex>
@@ -521,26 +525,9 @@ namespace tl
 
             auto t = std::chrono::steady_clock::now();
 
+            auto& video_frame = p.thread.NDI_video_frame;
             while (p.thread.running)
             {
-
-#if 0
-
-                // Send 2000 frames
-                for (int idx = 200; idx; idx--)
-                {
-                    // Fill in the buffer. It is likely that you would do something much smarter than this.
-                    memset((void*)p.thread.NDI_video_frame.p_data,
-                           (idx & 1) ? 255 : 0,
-                           p.thread.NDI_video_frame.xres *
-                           p.thread.NDI_video_frame.yres * 4);
-
-                    // We now submit the frame. Note that this call will be clocked so that we end up submitting at exactly 29.97fps.
-                    NDIlib_send_send_video_v2(p.thread.NDI_send,
-                                              &p.thread.NDI_video_frame);
-                }
-        
-#else
                 bool createDevice = false;
                 bool doRender = false;
                 bool audioDataChanged = false;
@@ -555,30 +542,6 @@ namespace tl
                         playback, currentTime,
                         volume, mute, audioOffset, audioData]
                         {
-                            std::cerr << "WAIT FOR" << std::endl
-                                      << "\tconfig=" << (config != _p->mutex.config ) << std::endl
-                                      << "\tenabled=" << (enabled != _p->mutex.enabled ) << std::endl
-                                      << "\tocioOptions=" << (ocioOptions != _p->mutex.ocioOptions ) << std::endl
-                                      << "\tlutOptions=" << (lutOptions != _p->mutex.lutOptions ) << std::endl
-                                      << "\timageOptions=" << ( imageOptions != _p->mutex.imageOptions ) << std::endl
-                                      << "\tdisplayoptions=" << ( displayOptions != _p->mutex.displayOptions ) << std::endl
-                                      << "\thdrMode=" << (_p->thread.hdrMode != _p->mutex.hdrMode ) << std::endl
-                                      <<  "\thdrData=" << (_p->thread.hdrData != _p->mutex.hdrData ) << std::endl
-                                
-                                      <<  "\tcompareoptions=" << (compareOptions != _p->mutex.compareOptions ) << std::endl
-                                      <<  "\tbgptions=" << ( backgroundOptions != _p->mutex.backgroundOptions ) << std::endl
-                                      << "\tviewpos=" << ( _p->thread.viewPos != _p->mutex.viewPos ) << std::endl
-                                      << "\tviewZoom=" << ( _p->thread.viewZoom != _p->mutex.viewZoom ) << std::endl
-                                      << "\tframeView=" << (_p->thread.frameView != _p->mutex.frameView ) << std::endl
-                                      << "\ttimeRange=" << (_p->thread.timeRange != _p->mutex.timeRange ) << std::endl
-                                      << "\tplayback=" << (playback != _p->mutex.playback ) << std::endl
-                                      << "\tcuttrnyTime=" << (currentTime != _p->mutex.currentTime ) << std::endl
-                                      << "\tvideoData=" << (_p->thread.videoData != _p->mutex.videoData ) << std::endl
-                                      << "\toverlay=" << (_p->thread.overlay != _p->mutex.overlay ) << std::endl
-                                      << "\tvolume=" << (volume != _p->mutex.volume ) << std::endl
-                                      << "\tmute=" << (mute != _p->mutex.mute ) << std::endl
-                                      << "\taudioOffset=" << (audioOffset != _p->mutex.audioOffset ) << std::endl
-                                      << "\taudiodata=" << (audioData != _p->mutex.audioData ) << std::endl;
                             return
                                 config != _p->mutex.config ||
                                 enabled != _p->mutex.enabled ||
@@ -604,7 +567,6 @@ namespace tl
                                 audioData != _p->mutex.audioData;
                         }))
                     {
-                        std::cerr << "set create device" << std::endl;
                         createDevice =
                             p.mutex.config != config ||
                             p.mutex.enabled != enabled;
@@ -656,7 +618,6 @@ namespace tl
 
                 if (createDevice)
                 {
-                    std::cerr << "create device" << std::endl;
                     if (p.thread.pbo != 0)
                     {
                         glDeleteBuffers(1, &p.thread.pbo);
@@ -665,10 +626,26 @@ namespace tl
                     p.thread.offscreenBuffer.reset();
 
                     bool active = false;
-                    math::Size2i size;
+
+                    math::Size2i size = timeline::getRenderSize(
+                        compareOptions.mode, p.thread.videoData);
+                    p.thread.size = size;
+                    
                     otime::RationalTime frameRate = time::invalidTime;
                     if (enabled)
                     {
+                        if (!p.thread.videoData.empty())
+                        {
+                            double rate = 0;
+                            for (const auto& videoData : p.thread.videoData )
+                            {
+                                const double videoRate = videoData.time.rate();
+                                if (videoRate > rate)
+                                    rate = videoRate;
+                            }
+                            frameRate = otime::RationalTime(1.0, rate);
+                        }
+                        
                         try
                         {
                             _createDevice(config, active, size, frameRate);
@@ -724,33 +701,9 @@ namespace tl
                         }
                     }
                 }
+
+                _read();
                 
-                NDIlib_send_send_video_v2(p.thread.NDI_send,
-                                          &p.thread.NDI_video_frame);
-
-                // if (p.thread.dl && p.thread.dl->outputCallback)
-                // {
-                //     p.thread.dl->outputCallback->setPlayback(
-                //         playback,
-                //         currentTime - p.thread.timeRange.start_time());
-                // }
-                // if (p.thread.dl && p.thread.dl->outputCallback)
-                // {
-                //     p.thread.dl->outputCallback->setVolume(volume);
-                //     p.thread.dl->outputCallback->setMute(mute);
-                //     p.thread.dl->outputCallback->setAudioOffset(audioOffset);
-                // }
-                // if (p.thread.dl && p.thread.dl->outputCallback && audioDataChanged)
-                // {
-                //     p.thread.dl->outputCallback->setAudioData(audioData);
-                // }
-
-                // if (p.thread.dl && p.thread.dl->output && p.thread.dl->outputCallback &&
-                //     doRender && p.thread.render)
-                // {
-                //     _read();
-                // }
-#endif
                 const auto t1 = std::chrono::steady_clock::now();
                 const std::chrono::duration<double> diff = t1 - t;
                 //std::cout << "diff: " << diff.count() * 1000 << std::endl;
@@ -779,7 +732,6 @@ namespace tl
             otime::RationalTime& frameRate)
         {
             TLRENDER_P();
-            std::cerr << "_createDevice" << std::endl;
             if (config.deviceIndex != -1 &&
                 config.displayModeIndex != -1 &&
                 config.pixelType != device::PixelType::None)
@@ -793,18 +745,23 @@ namespace tl
                 {
                     p.thread.outputPixelType = getOutputType(config.pixelType);
                     
+                    if (size.w == 0 && size.h == 0)
+                        throw std::runtime_error("Invalid output size");
+                    
                     video_frame.xres = size.w;
                     video_frame.yres = size.h;
                     video_frame.FourCC = toNDI(p.thread.outputPixelType);
                     if (video_frame.FourCC == NDIlib_FourCC_video_type_max)
                         throw std::runtime_error("Invalid pixel type for NDI!");
-                    video_frame.frame_rate_N = int(frameRate.value() * 1000);
-                    video_frame.frame_rate_D = int(frameRate.rate() * 1000);
 
-                    size_t dataSize = getPackPixelsSize(size, p.thread.outputPixelType);
+                    size_t dataSize = getPackPixelsSize(size,
+                                                        p.thread.outputPixelType);
+                    if (dataSize == 0)
+                        throw std::runtime_error("Invalid data size for output pixel type");
                     video_frame.p_data = (uint8_t*)malloc(dataSize);
-                    memset(video_frame.p_data, 255, dataSize);
-                    std::cerr << "allocated frame" << std::endl;
+                    if (!video_frame.p_data)
+                        throw std::runtime_error("Out of memory allocating p_data");
+                    video_frame.frame_format_type = NDIlib_frame_format_type_progressive;
                     if (auto context = p.context.lock())
                     {
                         context->log(
@@ -839,8 +796,6 @@ namespace tl
             const timeline::BackgroundOptions& backgroundOptions)
         {
             TLRENDER_P();
-
-            std::cerr << "_render" << std::endl;
 
             // Create the offscreen buffer.
             const math::Size2i renderSize = timeline::getRenderSize(
@@ -885,7 +840,7 @@ namespace tl
                     viewZoomTmp = zoom;
                 }
                 math::Matrix4x4f vm;
-                vm = vm * math::translate(math::Vector3f(viewPosTmp.x, viewPosTmp.y, 0.F));
+                vm = vm * math::translate(math::Vector3f(viewPosTmp.x, -viewPosTmp.y, 0.F));
                 vm = vm * math::scale(math::Vector3f(viewZoomTmp, viewZoomTmp, 1.F));
                 const auto pm = math::ortho(
                     0.F,
@@ -940,32 +895,17 @@ namespace tl
         {
             TLRENDER_P();
 
-            // auto dlVideoFrame = std::make_shared<DLVideoFrameWrapper>();
-            // if (p.thread.dl->output->CreateVideoFrame(
-            //     p.thread.size.w,
-            //     p.thread.size.h,
-            //     getRowByteCount(p.thread.size.w, p.thread.outputPixelType),
-            //     toNDI(p.thread.outputPixelType),
-            //     bmdFrameFlagDefault,
-            //     &dlVideoFrame->p) != S_OK)
-            // {
-            //     throw std::runtime_error("Cannot create video frame");
-            // }
+            auto& video_frame = p.thread.NDI_video_frame;
 
-            // void* dlVideoFrameP = nullptr;
-            // dlVideoFrame->p->GetBytes((void**)&dlVideoFrameP);
             glBindBuffer(GL_PIXEL_PACK_BUFFER, p.thread.pbo);
             if (void* pboP = glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY))
             {
-                // copyPackPixels(pboP, ndiVideoFrameP, p.thread.size, p.thread.outputPixelType);
+                copyPackPixels(video_frame.p_data, pboP, p.thread.size, p.thread.outputPixelType);
                 glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
             }
-
-            // p.thread.dl->outputCallback->setVideo(
-            //     dlVideoFrame,
-            //     !p.thread.videoData.empty() ?
-            //     (p.thread.videoData.front().time - p.thread.timeRange.start_time()) :
-            //     time::invalidTime);
+            
+			NDIlib_send_send_video_v2(p.thread.NDI_send, &video_frame);
+            
         }
     }
 }

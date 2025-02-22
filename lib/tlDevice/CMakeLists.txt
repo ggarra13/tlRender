@@ -13,13 +13,16 @@ if(TLRENDER_BMD OR TLRENDER_NDI)
     set(HEADERS
 	DevicesModel.h
 	DeviceSystem.h
+	GLUtil.h
 	IOutput.h
 	OutputData.h)
     set(SOURCE
 	DevicesModel.cpp
 	DeviceSystem.cpp
+	GLUtil.cpp
 	IOutput.cpp
-	OutputData.cpp)
+	OutputData.cpp
+	)
 endif()
 
 if(TLRENDER_NDI AND TLRENDER_FFMPEG)

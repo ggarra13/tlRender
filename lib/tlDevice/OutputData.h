@@ -54,11 +54,24 @@ namespace tl
         TLRENDER_ENUM(PixelType);
         TLRENDER_ENUM_SERIALIZE(PixelType);
 
+        //! Get the color buffer type.
+        image::PixelType getColorBuffer(PixelType value);
+        
+        //! Get the pack pixels buffer size.
+        size_t getPackPixelsSize(const math::Size2i&, PixelType);
+        
         //! Get the number of bytes used to store a row of pixel data.
         size_t getRowByteCount(int, PixelType);
 
         //! Get the number of bytes used to storepixel data.
         size_t getDataByteCount(const math::Size2i&, PixelType);
+
+        //! Copy the pack pixels.
+        void copyPackPixels(
+            void*,
+            const void*,
+            const math::Size2i&,
+            PixelType);
 
         //! Device information.
         struct DeviceInfo

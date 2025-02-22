@@ -450,6 +450,7 @@ namespace tl
                     _avOutputPixelFormat, w, h, 1);
 
                 // Do some NDI conversion that FFmpeg does not support.
+                // I420 is YUV with U an V planar planes swapped.
                 if (_ndiFourCC == NDIlib_FourCC_type_I420)
                 {
                     size_t tmp = _avFrame->linesize[1];

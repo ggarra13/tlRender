@@ -17,7 +17,7 @@ namespace tl
         protected:
             void _init(const std::shared_ptr<system::Context>&);
 
-            OutputDevice();
+           OutputDevice();
 
         public:
             ~OutputDevice();
