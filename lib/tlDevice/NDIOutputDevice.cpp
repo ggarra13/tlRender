@@ -555,6 +555,30 @@ namespace tl
                         playback, currentTime,
                         volume, mute, audioOffset, audioData]
                         {
+                            std::cerr << "wait for" << std::endl
+                                      << "config=" << (config != _p->mutex.config ) << std::endl
+                                      << "enabled=" << (enabled != _p->mutex.enabled ) << std::endl
+                                      << "ocioOptions=" << (ocioOptions != _p->mutex.ocioOptions ) << std::endl
+                                      << "lutOptions=" << (lutOptions != _p->mutex.lutOptions ) << std::endl
+                                      << "limageOptions=" << ( imageOptions != _p->mutex.imageOptions ) << std::endl
+                                      << "displayoptions=" << ( displayOptions != _p->mutex.displayOptions ) << std::endl
+                                      << "hdrMode=" << (_p->thread.hdrMode != _p->mutex.hdrMode ) << std::endl
+                                      <<  "hdrData=" << (_p->thread.hdrData != _p->mutex.hdrData ) << std::endl
+                                
+                                      <<  "compareoptions=" << (compareOptions != _p->mutex.compareOptions ) << std::endl
+                                      <<  "bgptions=" << ( backgroundOptions != _p->mutex.backgroundOptions ) << std::endl
+                                      << "viewpos=" << ( _p->thread.viewPos != _p->mutex.viewPos ) << std::endl
+                                      << "viewZoom=" << ( _p->thread.viewZoom != _p->mutex.viewZoom ) << std::endl
+                                      << "frameView=" << (_p->thread.frameView != _p->mutex.frameView ) << std::endl
+                                      << "timeRange=" << (_p->thread.timeRange != _p->mutex.timeRange ) << std::endl
+                                      << "playback=" << (playback != _p->mutex.playback ) << std::endl
+                                      << "cuttrnyTime=" << (currentTime != _p->mutex.currentTime ) << std::endl
+                                      << "videoData=" << (_p->thread.videoData != _p->mutex.videoData ) << std::endl
+                                      << "overlay=" << (_p->thread.overlay != _p->mutex.overlay ) << std::endl
+                                      << "volume=" << (volume != _p->mutex.volume ) << std::endl
+                                      << "mute=" << (mute != _p->mutex.mute ) << std::endl
+                                      << "audioOffset=" << (audioOffset != _p->mutex.audioOffset ) << std::endl
+                                      << "audiodata=" << (audioData != _p->mutex.audioData ) << std::endl;
                             return
                                 config != _p->mutex.config ||
                                 enabled != _p->mutex.enabled ||
@@ -580,6 +604,7 @@ namespace tl
                                 audioData != _p->mutex.audioData;
                         }))
                     {
+                        std::cerr << "set create device" << std::endl;
                         createDevice =
                             p.mutex.config != config ||
                             p.mutex.enabled != enabled;
