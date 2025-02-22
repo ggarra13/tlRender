@@ -35,7 +35,7 @@ namespace tl
             void setConfig(const device::DeviceConfig&) override;
 
             //! Get whether the output device is enabled.
-            bool isEnabled() const;
+            bool isEnabled() const override;
 
             //! Observe whether the output device is enabled.
             std::shared_ptr<observer::IValue<bool> > observeEnabled() const override;

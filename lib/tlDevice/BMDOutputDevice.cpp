@@ -56,7 +56,7 @@ namespace tl
 
             struct Mutex
             {
-                DeviceConfig config;
+                device::DeviceConfig config;
                 bool enabled = false;
                 bool active = false;
                 math::Size2i size;
@@ -116,7 +116,7 @@ namespace tl
             TLRENDER_P();
 
             p.context = context;
-            p.config = observer::Value<DeviceConfig>::create();
+            p.config = observer::Value<device::DeviceConfig>::create();
             p.enabled = observer::Value<bool>::create(false);
             p.active = observer::Value<bool>::create(false);
             p.size = observer::Value<math::Size2i>::create();
@@ -160,17 +160,17 @@ namespace tl
             return out;
         }
 
-        DeviceConfig OutputDevice::getConfig() const
+        device::DeviceConfig OutputDevice::getConfig() const
         {
             return _p->config->get();
         }
 
-        std::shared_ptr<observer::IValue<DeviceConfig> > OutputDevice::observeConfig() const
+        std::shared_ptr<observer::IValue<device::DeviceConfig> > OutputDevice::observeConfig() const
         {
             return _p->config;
         }
 
-        void OutputDevice::setConfig(const DeviceConfig& value)
+        void OutputDevice::setConfig(const device::DeviceConfig& value)
         {
             TLRENDER_P();
             if (p.config->setIfChanged(value))
@@ -481,7 +481,7 @@ namespace tl
         {
             TLRENDER_P();
 
-            DeviceConfig config;
+            device::DeviceConfig config;
             bool enabled = false;
             timeline::OCIOOptions ocioOptions;
             timeline::LUTOptions lutOptions;
@@ -705,7 +705,7 @@ namespace tl
         }
 
         void OutputDevice::_createDevice(
-            const DeviceConfig& config,
+            const device::DeviceConfig& config,
             bool& active,
             math::Size2i& size,
             otime::RationalTime& frameRate)

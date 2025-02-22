@@ -2,6 +2,14 @@
 // Copyright (c) 2021-2025 Gonzalo Garramuño
 // All rights reserved.
 
+#ifdef _WIN32
+#ifdef _WIN64
+#pragma comment(lib, "Processing.NDI.Lib.x64.lib")
+#else // _WIN64
+#pragma comment(lib, "Processing.NDI.Lib.x86.lib")
+#endif // _WIN64
+#endif // _WIN32
+
 #include <tlDevice/NDIOutputDevice.h>
 #include <tlDevice/NDIUtil.h>
 
@@ -15,6 +23,8 @@
 #include <tlCore/AudioResample.h>
 #include <tlCore/Context.h>
 #include <tlCore/StringFormat.h>
+
+#include <libswscale/swscale.h>
 
 #include <algorithm>
 #include <atomic>
@@ -97,6 +107,15 @@ namespace tl
                 std::shared_ptr<gl::OffscreenBuffer> offscreenBuffer;
                 GLuint pbo = 0;
 
+                // NDI variables
+                NDIlib_send_instance_t NDI_send = nullptr;
+                NDIlib_video_frame_v2_t NDI_video_frame;
+
+                // FFmpeg's swscale variables
+                AVPixelFormat inputPixelFormat = AV_PIX_FMT_NONE;
+                AVPixelFormat outputPixelFormat = AV_PIX_FMT_NONE;
+                SwsContext* swsContext = nullptr;
+
                 std::condition_variable cv;
                 std::thread thread;
                 std::atomic<bool> running;
@@ -120,6 +139,11 @@ namespace tl
                 math::Size2i(1, 1),
                 context,
                 static_cast<int>(gl::GLFWWindowOptions::None));
+            p.thread.NDI_send = NDIlib_send_create();
+            if (!p.thread.NDI_send)
+            {
+                throw std::runtime_error("NDI send create failed");
+            }
             p.thread.running = true;
             p.thread.thread = std::thread(
                 [this]
@@ -496,8 +520,27 @@ namespace tl
             }
 
             auto t = std::chrono::steady_clock::now();
+
             while (p.thread.running)
             {
+
+#if 0
+
+                // Send 2000 frames
+                for (int idx = 200; idx; idx--)
+                {
+                    // Fill in the buffer. It is likely that you would do something much smarter than this.
+                    memset((void*)p.thread.NDI_video_frame.p_data,
+                           (idx & 1) ? 255 : 0,
+                           p.thread.NDI_video_frame.xres *
+                           p.thread.NDI_video_frame.yres * 4);
+
+                    // We now submit the frame. Note that this call will be clocked so that we end up submitting at exactly 29.97fps.
+                    NDIlib_send_send_video_v2(p.thread.NDI_send,
+                                              &p.thread.NDI_video_frame);
+                }
+        
+#else
                 bool createDevice = false;
                 bool doRender = false;
                 bool audioDataChanged = false;
@@ -588,6 +631,7 @@ namespace tl
 
                 if (createDevice)
                 {
+                    std::cerr << "create device" << std::endl;
                     if (p.thread.pbo != 0)
                     {
                         glDeleteBuffers(1, &p.thread.pbo);
@@ -655,6 +699,9 @@ namespace tl
                         }
                     }
                 }
+                
+                NDIlib_send_send_video_v2(p.thread.NDI_send,
+                                          &p.thread.NDI_video_frame);
 
                 // if (p.thread.dl && p.thread.dl->outputCallback)
                 // {
@@ -678,7 +725,7 @@ namespace tl
                 // {
                 //     _read();
                 // }
-
+#endif
                 const auto t1 = std::chrono::steady_clock::now();
                 const std::chrono::duration<double> diff = t1 - t;
                 //std::cout << "diff: " << diff.count() * 1000 << std::endl;
@@ -692,6 +739,12 @@ namespace tl
             }
             p.thread.offscreenBuffer.reset();
             p.thread.render.reset();
+            
+            // Free the video frame
+            free(p.thread.NDI_video_frame.p_data);
+            
+            // Destroy the NDI sender
+            NDIlib_send_destroy(p.thread.NDI_send);
         }
 
         void OutputDevice::_createDevice(
@@ -701,17 +754,32 @@ namespace tl
             otime::RationalTime& frameRate)
         {
             TLRENDER_P();
+            std::cerr << "_createDevice" << std::endl;
             if (config.deviceIndex != -1 &&
                 config.displayModeIndex != -1 &&
                 config.pixelType != device::PixelType::None)
             {
                 std::string modelName;
 
+                auto& video_frame = p.thread.NDI_video_frame;
+
+                // \@todo: handle audio
                 const audio::Info audioInfo(2, audio::DataType::S16, 48000);
                 {
                     p.thread.outputPixelType = getOutputType(config.pixelType);
-                    // frameRate = otime::RationalTime(frameDuration, frameTimescale);
+                    
+                    video_frame.xres = size.w;
+                    video_frame.yres = size.h;
+                    video_frame.FourCC = toNDI(p.thread.outputPixelType);
+                    if (video_frame.FourCC == NDIlib_FourCC_video_type_max)
+                        throw std::runtime_error("Invalid pixel type for NDI!");
+                    video_frame.frame_rate_N = int(frameRate.value() * 1000);
+                    video_frame.frame_rate_D = int(frameRate.rate() * 1000);
 
+                    size_t dataSize = getPackPixelsSize(size, p.thread.outputPixelType);
+                    video_frame.p_data = (uint8_t*)malloc(dataSize);
+                    memset(video_frame.p_data, 255, dataSize);
+                    std::cerr << "allocated frame" << std::endl;
                     if (auto context = p.context.lock())
                     {
                         context->log(
@@ -746,6 +814,8 @@ namespace tl
             const timeline::BackgroundOptions& backgroundOptions)
         {
             TLRENDER_P();
+
+            std::cerr << "_render" << std::endl;
 
             // Create the offscreen buffer.
             const math::Size2i renderSize = timeline::getRenderSize(
