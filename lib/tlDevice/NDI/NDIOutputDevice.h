@@ -6,6 +6,8 @@
 
 #include <tlDevice/IOutput.h>
 
+#include <tlTimeline/Audio.h>
+
 #include <tlCore/Matrix.h>
 
 namespace tl
@@ -117,6 +119,8 @@ namespace tl
                 math::Size2i& size,
                 otime::RationalTime& frameRate);
             math::Matrix4x4f _projectionMatrix() const noexcept;
+            void _audio(const otime::RationalTime&,
+                        const std::vector<timeline::AudioData>& audioData);
             void _render(
                 const device::DeviceConfig&,
                 const timeline::OCIOOptions&,

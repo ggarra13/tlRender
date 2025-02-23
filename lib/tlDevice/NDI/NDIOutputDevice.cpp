@@ -27,8 +27,6 @@
 #include <tlCore/Context.h>
 #include <tlCore/StringFormat.h>
 
-#include <libswscale/swscale.h>
-
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -676,6 +674,24 @@ namespace tl
                         GL_STREAM_READ);
                 }
 
+                if (audioDataChanged)
+                {
+                    try
+                    {
+                        _audio(currentTime, audioData);
+                    }
+                    catch (const std::exception& e)
+                    {
+                        if (auto context = p.context.lock())
+                        {
+                            context->log(
+                                "tl::ndi::OutputDevice",
+                                e.what(),
+                                log::Type::Error);
+                        }
+                    }
+                }
+                
                 if (doRender && p.thread.render)
                 {
                     try
@@ -719,6 +735,7 @@ namespace tl
             
             // Free the video frame
             free(p.thread.NDI_video_frame.p_data);
+            free(p.thread.NDI_audio_frame.p_data);
             
             // Destroy the NDI sender
             NDIlib_send_destroy(p.thread.NDI_send);
@@ -739,7 +756,11 @@ namespace tl
             {
                 if (!p.thread.NDI_send)
                 {
-                    p.thread.NDI_send = NDIlib_send_create();
+                    NDIlib_send_create_t NDI_send_create_desc;
+                    NDI_send_create_desc.p_ndi_name = config.deviceName.c_str();
+    
+                    p.thread.NDI_send =
+                        NDIlib_send_create(&NDI_send_create_desc);
                     if (!p.thread.NDI_send)
                     {
                         throw std::runtime_error("NDIlib_send_create failed");
@@ -797,6 +818,12 @@ namespace tl
             }
         }
 
+        void OutputDevice::_audio(const otime::RationalTime& time,
+                                  const std::vector<timeline::AudioData>& audioData)
+        {
+            std::cerr << "play audio " << time << std::endl;
+        }
+        
         void OutputDevice::_render(
             const device::DeviceConfig& config,
             const timeline::OCIOOptions& ocioOptions,
