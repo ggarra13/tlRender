@@ -81,6 +81,7 @@ namespace tl
                 math::Vector2i viewPos;
                 double viewZoom = 1.0;
                 bool frameView = true;
+                float rotateZ = 0.F;
                 otime::TimeRange timeRange = time::invalidTimeRange;
                 timeline::Playback playback = timeline::Playback::Stop;
                 otime::RationalTime currentTime = time::invalidTime;
@@ -102,6 +103,7 @@ namespace tl
                 image::HDRData hdrData;
                 math::Vector2i viewPos;
                 double viewZoom = 1.0;
+                float rotateZ = 0.F;
                 bool frameView = true;
                 otime::TimeRange timeRange = time::invalidTimeRange;
                 std::vector<timeline::VideoData> videoData;
@@ -114,11 +116,7 @@ namespace tl
                 // NDI variables
                 NDIlib_send_instance_t NDI_send = nullptr;
                 NDIlib_video_frame_v2_t NDI_video_frame;
-
-                // FFmpeg's swscale variables
-                AVPixelFormat inputPixelFormat = AV_PIX_FMT_NONE;
-                AVPixelFormat outputPixelFormat = AV_PIX_FMT_NONE;
-                SwsContext* swsContext = nullptr;
+                NDIlib_audio_frame_v2_t NDI_audio_frame;
 
                 std::condition_variable cv;
                 std::thread thread;
@@ -255,6 +253,7 @@ namespace tl
         void OutputDevice::setView(
             const tl::math::Vector2i& position,
             double                    zoom,
+            float                     rotateZ,
             bool                      frame)
         {
             TLRENDER_P();
@@ -262,6 +261,7 @@ namespace tl
                 std::unique_lock<std::mutex> lock(p.mutex.mutex);
                 p.mutex.viewPos = position;
                 p.mutex.viewZoom = zoom;
+                p.mutex.rotateZ  = rotateZ;
                 p.mutex.frameView = frame;
             }
             p.thread.cv.notify_one();
@@ -521,6 +521,7 @@ namespace tl
             auto t = std::chrono::steady_clock::now();
 
             auto& video_frame = p.thread.NDI_video_frame;
+            auto& audio_frame = p.thread.NDI_audio_frame;
             while (p.thread.running)
             {
                 bool createDevice = false;
@@ -550,6 +551,7 @@ namespace tl
                                 backgroundOptions != _p->mutex.backgroundOptions ||
                                 _p->thread.viewPos != _p->mutex.viewPos ||
                                 _p->thread.viewZoom != _p->mutex.viewZoom ||
+                                _p->thread.rotateZ != _p->mutex.rotateZ ||
                                 _p->thread.frameView != _p->mutex.frameView ||
                                 _p->thread.timeRange != _p->mutex.timeRange ||
                                 playback != _p->mutex.playback ||
@@ -584,6 +586,7 @@ namespace tl
                             backgroundOptions != p.mutex.backgroundOptions ||
                             p.thread.viewPos != p.mutex.viewPos ||
                             p.thread.viewZoom != p.mutex.viewZoom ||
+                            p.thread.rotateZ != p.mutex.rotateZ ||
                             p.thread.frameView != p.mutex.frameView ||
                             p.thread.videoData != p.mutex.videoData ||
                             p.thread.overlay != p.mutex.overlay;
@@ -597,6 +600,7 @@ namespace tl
                         backgroundOptions = p.mutex.backgroundOptions;
                         p.thread.viewPos = p.mutex.viewPos;
                         p.thread.viewZoom = p.mutex.viewZoom;
+                        p.thread.rotateZ = p.mutex.rotateZ;
                         p.thread.frameView = p.mutex.frameView;
                         p.thread.videoData = p.mutex.videoData;
                         p.thread.overlay = p.mutex.overlay;
@@ -832,8 +836,22 @@ namespace tl
                 p.thread.render->setOCIOOptions(ocioOptions);
                 p.thread.render->setLUTOptions(lutOptions);
 
+                math::Vector2f transformOffset;
                 math::Vector2i viewPosTmp = p.thread.viewPos;
                 double viewZoomTmp = p.thread.viewZoom;
+                
+                const auto renderAspect = renderSize.getAspect();
+                const auto viewportAspect = p.thread.size.getAspect();
+                if (viewportAspect > 1.F)
+                {
+                    transformOffset.x = renderSize.w / 2.F;
+                    transformOffset.y = renderSize.w / renderAspect / 2.F;
+                }
+                else
+                {
+                    transformOffset.x = renderSize.h * renderAspect / 2.F;
+                    transformOffset.y = renderSize.h / 2.F;
+                }
                 if (p.thread.frameView)
                 {
                     double zoom = p.thread.size.w / static_cast<double>(renderSize.w);
@@ -849,6 +867,11 @@ namespace tl
                 math::Matrix4x4f vm;
                 vm = vm * math::translate(math::Vector3f(viewPosTmp.x, -viewPosTmp.y, 0.F));
                 vm = vm * math::scale(math::Vector3f(viewZoomTmp, viewZoomTmp, 1.F));
+                const auto& rm = math::rotateZ(-p.thread.rotateZ);
+                const math::Matrix4x4f& tm = math::translate(
+                    math::Vector3f(-renderSize.w / 2, -renderSize.h / 2, 0.F));
+                const math::Matrix4x4f& to = math::translate(
+                    math::Vector3f(transformOffset.x, transformOffset.y, 0.F));
                 const auto pm = math::ortho(
                     0.F,
                     static_cast<float>(p.thread.size.w),
@@ -856,7 +879,7 @@ namespace tl
                     static_cast<float>(p.thread.size.h),
                     -1.F,
                     1.F);
-                p.thread.render->setTransform(pm * vm);
+                p.thread.render->setTransform(pm * vm * to * rm * tm);
                 if (!p.thread.videoData.empty())
                 {
                     p.thread.render->drawVideo(

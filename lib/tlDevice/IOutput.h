@@ -14,7 +14,7 @@ namespace tl
     namespace device
     {
         //! Abstract output device.
-        class IOutputDevice : public virtual std::enable_shared_from_this<IOutput>
+        class IOutput : public virtual std::enable_shared_from_this<IOutput>
         {
             TLRENDER_NON_COPYABLE(IOutput);
 
@@ -66,6 +66,7 @@ namespace tl
             virtual void setView(
                 const tl::math::Vector2i& position,
                 double                    zoom,
+                float                     rotateZ,
                 bool                      frame) = 0;
 
             //! Set the OpenColorIO options.
