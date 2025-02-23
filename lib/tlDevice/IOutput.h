@@ -14,7 +14,7 @@ namespace tl
     namespace device
     {
         //! Abstract output device.
-        class IOutput : public virtual std::enable_shared_from_this<IOutput>
+        class IOutputDevice : public virtual std::enable_shared_from_this<IOutput>
         {
             TLRENDER_NON_COPYABLE(IOutput);
 

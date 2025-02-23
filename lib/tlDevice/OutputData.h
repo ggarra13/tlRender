@@ -31,9 +31,9 @@ namespace tl
         enum class PixelType
         {
             None,
+            _8BitBGRA,  // BMD and NDI
+            _8BitYUV,   // BMD and NDI
             // These are BMD formats
-            _8BitBGRA,
-            _8BitYUV,
             _10BitRGB,
             _10BitRGBX,
             _10BitRGBXLE,
@@ -105,6 +105,7 @@ namespace tl
         //! Device configuration.
         struct DeviceConfig
         {
+            std::string deviceName       = "mrv2";
             int         deviceIndex      = -1;
             int         displayModeIndex = -1;
             PixelType   pixelType        = PixelType::None;

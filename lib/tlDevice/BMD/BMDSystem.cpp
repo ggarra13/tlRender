@@ -2,13 +2,15 @@
 // Copyright (c) 2021-2024 Darby Johnston
 // All rights reserved.
 
-#include <tlDevice/DeviceSystem.h>
+#include <tlDevice/BMDSystem.h>
 
-#include <tlDevice/IOutput.h>
+#include <tlDevice/BMDOutputDevice.h>
 
 #include <tlCore/Context.h>
 #include <tlCore/String.h>
 #include <tlCore/StringFormat.h>
+
+#include "platform.h"
 
 #include <atomic>
 #include <mutex>
@@ -19,15 +21,13 @@ typedef int64_t LONGLONG;
 #elif defined(__linux__)
 typedef bool BOOL;
 typedef int64_t LONGLONG;
-#elif defined(_WIN32)
-#include <objbase.h>
 #endif // __APPLE__
 
 namespace tl
 {
-    namespace device
+    namespace bmd
     {
-        struct DeviceSystem::Private
+        struct System::Private
         {
             std::weak_ptr<system::Context> context;
             std::shared_ptr<observer::List<DeviceInfo> > deviceInfo;
@@ -41,9 +41,9 @@ namespace tl
             std::atomic<bool> running;
         };
 
-        void DeviceSystem::_init(const std::shared_ptr<system::Context>& context)
+        void System::_init(const std::shared_ptr<system::Context>& context)
         {
-            ISystem::_init("tl::device::System", context);
+            ISystem::_init("tl::bmd::System", context);
             TLRENDER_P();
 
             p.context = context;
@@ -67,7 +67,6 @@ namespace tl
 
                         std::vector<DeviceInfo> deviceInfoList;
 
-#if 0
                         IDeckLinkIterator* dlIterator = nullptr;
                         if (GetDeckLinkIterator(&dlIterator) == S_OK)
                         {
@@ -150,7 +149,6 @@ namespace tl
                                 dlProfileAttributes->Release();
 
                                 dl->Release();
-                                
 
                                 deviceInfo.pixelTypes.push_back(PixelType::_8BitBGRA);
                                 deviceInfo.pixelTypes.push_back(PixelType::_8BitYUV);
@@ -169,7 +167,6 @@ namespace tl
                             dlIterator->Release();
                         }
 
-#endif
                         {
                             std::unique_lock<std::mutex> lock(p.mutex.mutex);
                             log = deviceInfoList != p.mutex.deviceInfo;
@@ -189,7 +186,7 @@ namespace tl
                                         displayModes.push_back(j.name);
                                     }
                                     context->log(
-                                        "tl::device::System",
+                                        "tl::bmd::System",
                                         string::Format(
                                             "\n"
                                             "    {0}\n"
@@ -216,11 +213,11 @@ namespace tl
                 });
         }
 
-        DeviceSystem::DeviceSystem() :
+        System::System() :
             _p(new Private)
         {}
 
-        DeviceSystem::~DeviceSystem()
+        System::~System()
         {
             TLRENDER_P();
             p.running = false;
@@ -230,19 +227,19 @@ namespace tl
             }
         }
 
-        std::shared_ptr<DeviceSystem> DeviceSystem::create(const std::shared_ptr<system::Context>& context)
+        std::shared_ptr<System> System::create(const std::shared_ptr<system::Context>& context)
         {
-            auto out = std::shared_ptr<DeviceSystem>(new DeviceSystem);
+            auto out = std::shared_ptr<System>(new System);
             out->_init(context);
             return out;
         }
 
-        std::shared_ptr<observer::IList<DeviceInfo> > DeviceSystem::observeDeviceInfo() const
+        std::shared_ptr<observer::IList<DeviceInfo> > System::observeDeviceInfo() const
         {
             return _p->deviceInfo;
         }
 
-        void DeviceSystem::tick()
+        void System::tick()
         {
             TLRENDER_P();
             std::vector<DeviceInfo> deviceInfo;
@@ -253,7 +250,7 @@ namespace tl
             p.deviceInfo->setIfChanged(deviceInfo);
         }
 
-        std::chrono::milliseconds DeviceSystem::getTickTime() const
+        std::chrono::milliseconds System::getTickTime() const
         {
             return std::chrono::milliseconds(1000);
         }

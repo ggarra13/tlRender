@@ -515,6 +515,7 @@ namespace tl
         bool DeviceConfig::operator == (const DeviceConfig& other) const
         {
             return
+                deviceName  == other.deviceName &&
                 deviceIndex == other.deviceIndex &&
                 displayModeIndex == other.displayModeIndex &&
                 pixelType == other.pixelType &&
