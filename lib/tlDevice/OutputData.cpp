@@ -13,6 +13,34 @@
 
 namespace tl
 {
+    namespace
+    {
+        std::vector<float> getYUVCoefficients(int width, int height)
+        {
+            std::vector<float> coefficients;
+
+            // Determine if to use BT.709 or BT.601 based on image dimensions
+            if (width > 720 || height > 576) { // Typically, HD resolutions use BT.709
+                // BT.709 coefficients
+                coefficients = {
+                    0.2126, 0.7152, 0.0722,   // Y coefficients
+                    -0.09991, -0.33609, 0.436, // U coefficients
+                    0.615, -0.55861, -0.05639  // V coefficients
+                };
+            } else {
+                // BT.601 coefficients
+                coefficients = {
+                    0.299, 0.587, 0.114,      // Y coefficients
+                    -0.14713, -0.28886, 0.436, // U coefficients
+                    0.615, -0.51499, -0.10001  // V coefficients
+                };
+            }
+
+            return coefficients;
+        }
+    }
+
+    
     namespace device
     {
         bool DisplayMode::operator == (const DisplayMode& other) const
@@ -43,6 +71,7 @@ namespace tl
             "8BitRGBX");
         TLRENDER_ENUM_SERIALIZE_IMPL(PixelType);
 
+        
         size_t getRowByteCount(int size, PixelType pixelType)
         {
             size_t out = 0;
@@ -71,7 +100,7 @@ namespace tl
                 out = (size * 36) / 8;
                 break;
             case PixelType::_8BitUYVA:
-                out = size * 24 / 8;
+                out = size * 32 / 8;
                 break;
             case PixelType::_16BitP216:
                 out = size * 48 / 8;
@@ -91,21 +120,21 @@ namespace tl
             const std::array<image::PixelType, static_cast<size_t>(PixelType::Count)> data =
             {
                 image::PixelType::None,
-                image::PixelType::RGBA_U8,
-                image::PixelType::RGBA_U8,
-                image::PixelType::RGB_U16,
-                image::PixelType::RGB_U16,
-                image::PixelType::RGB_U16,
-                //image::PixelType::RGB_U10,
-                image::PixelType::RGB_U16,
-                image::PixelType::RGB_U16,
-                image::PixelType::RGBA_U8,
-                image::PixelType::RGB_U16,
-                image::PixelType::RGBA_U16,
-                image::PixelType::RGB_U16,
-                image::PixelType::RGB_U8,
-                image::PixelType::RGBA_U8,
-                image::PixelType::RGB_U8,
+                image::PixelType::RGBA_U8,   // 8BitBGRA
+                image::PixelType::RGBA_U8,   // 8BitYUV
+                image::PixelType::RGB_U16,   // 10BitRGB 
+                image::PixelType::RGB_U16,   // 10BitRGBX
+                image::PixelType::RGB_U16,   // 10BitRGBXLE 
+                //image::PixelType::RGB_U10,  // 10BitYUV
+                image::PixelType::RGB_U16,   // 12BitRGB
+                image::PixelType::RGB_U16,   // 12BitRGBLE
+                image::PixelType::RGBA_U8,   // 8BitUYVA
+                image::PixelType::RGB_U16,   // 16BitP216 (YUV sans alpha)
+                image::PixelType::RGBA_U16,  // 16BitPA16 (YUV with alpha(
+                image::PixelType::RGB_U8,    // 8BitI420  (YUV with UV reversed)
+                image::PixelType::RGB_U8,    // 8BitBGRX
+                image::PixelType::RGBA_U8,   // 8BitRGBA
+                image::PixelType::RGB_U8,    // 8BitRGBX
             };
             return data[static_cast<size_t>(value)];
         }
@@ -143,21 +172,97 @@ namespace tl
             return out;
         }
 
+        size_t getDataByteCount(const math::Size2i& size, PixelType pixelType)
+        {
+            return getRowByteCount(size.w, pixelType) * size.h;
+        }
+
+        bool DeviceInfo::operator == (const DeviceInfo& other) const
+        {
+            return
+                name == other.name &&
+                displayModes == other.displayModes &&
+                pixelTypes == other.pixelTypes &&
+                hdrMetaData == other.hdrMetaData;
+        }
+
+        bool DeviceInfo::operator != (const DeviceInfo& other) const
+        {
+            return !(*this == other);
+        }
+        
+        TLRENDER_ENUM_IMPL(
+            Option,
+            "None",
+            "444SDIVideoOutput");
+        TLRENDER_ENUM_SERIALIZE_IMPL(Option);
+
+        bool DeviceConfig::operator == (const DeviceConfig& other) const
+        {
+            return
+                deviceName  == other.deviceName &&
+                deviceIndex == other.deviceIndex &&
+                displayModeIndex == other.displayModeIndex &&
+                pixelType == other.pixelType &&
+                boolOptions == other.boolOptions;
+        }
+
+        bool DeviceConfig::operator != (const DeviceConfig& other) const
+        {
+            return !(*this == other);
+        }
+
+        TLRENDER_ENUM_IMPL(
+            HDRMode,
+            "None",
+            "FromFile",
+            "Custom");
+        TLRENDER_ENUM_SERIALIZE_IMPL(HDRMode);
+
+        std::shared_ptr<image::HDRData> getHDRData(const timeline::VideoData& videoData)
+        {
+            std::shared_ptr<image::HDRData> out;
+            for (const auto& layer : videoData.layers)
+            {
+                if (layer.image)
+                {
+                    const auto& tags = layer.image->getTags();
+                    const auto k = tags.find("hdr");
+                    if (k != tags.end())
+                    {
+                        out = std::shared_ptr<image::HDRData>(new image::HDRData);
+                        try
+                        {
+                            auto json = nlohmann::json::parse(k->second);
+                            from_json(json, *out);
+                        }
+                        catch (const std::exception&)
+                        {}
+                        break;
+                    }
+                }
+            }
+            return out;
+        }
+
+        
         void copyPackPixels(
             void* outP,
             const void* inP,
             const math::Size2i& size,
             PixelType pixelType)
         {
-            const size_t rowByteCount = getRowByteCount(size.w, pixelType);
+            const int width = size.w;
+            const int height = size.h;
+            const size_t rowByteCount = getRowByteCount(width, pixelType);
             switch (pixelType)
             {
             case PixelType::_10BitRGB:
-                for (int y = 0; y < size.h; ++y)
+                for (int y = 0; y < height; ++y)
                 {
-                    const uint16_t* in16 = (const uint16_t*)inP + y * size.w * 3;
+                    const uint16_t* in16 = (const uint16_t*)inP + y * width * 3;
                     uint8_t* out8 = (uint8_t*)outP + y * rowByteCount;
-                    for (int x = 0; x < size.w; ++x)
+                    for (int x = 0; x < width; ++x)
                     {
                         const uint16_t r10 = in16[0] >> 6;
                         const uint16_t g10 = in16[1] >> 6;
@@ -173,11 +278,11 @@ namespace tl
                 }
                 break;
             case PixelType::_10BitRGBX:
-                for (int y = 0; y < size.h; ++y)
+                for (int y = 0; y < height; ++y)
                 {
-                    const uint16_t* in16 = (const uint16_t*)inP + y * size.w * 3;
+                    const uint16_t* in16 = (const uint16_t*)inP + y * width * 3;
                     uint8_t* out8 = (uint8_t*)outP + y * rowByteCount;
-                    for (int x = 0; x < size.w; ++x)
+                    for (int x = 0; x < width; ++x)
                     {
                         const uint16_t r10 = in16[0] >> 6;
                         const uint16_t g10 = in16[1] >> 6;
@@ -193,11 +298,11 @@ namespace tl
                 }
                 break;
             case PixelType::_10BitRGBXLE:
-                for (int y = 0; y < size.h; ++y)
+                for (int y = 0; y < height; ++y)
                 {
-                    const uint16_t* in16 = (const uint16_t*)inP + y * size.w * 3;
+                    const uint16_t* in16 = (const uint16_t*)inP + y * width * 3;
                     uint8_t* out8 = (uint8_t*)outP + y * rowByteCount;
-                    for (int x = 0; x < size.w; ++x)
+                    for (int x = 0; x < width; ++x)
                     {
                         const uint16_t r10 = in16[0] >> 6;
                         const uint16_t g10 = in16[1] >> 6;
@@ -213,11 +318,11 @@ namespace tl
                 }
                 break;
             case PixelType::_12BitRGB:
-                for (int y = 0; y < size.h; ++y)
+                for (int y = 0; y < height; ++y)
                 {
-                    const uint16_t* in16 = (const uint16_t*)inP + y * size.w * 3;
+                    const uint16_t* in16 = (const uint16_t*)inP + y * width * 3;
                     uint8_t* out8 = (uint8_t*)outP + y * rowByteCount;
-                    for (int x = 0; x < size.w; x += 8)
+                    for (int x = 0; x < width; x += 8)
                     {
                         uint16_t r12 = in16[0] >> 4;
                         uint16_t g12 = in16[1] >> 4;
@@ -305,11 +410,11 @@ namespace tl
                 }
                 break;
             case PixelType::_12BitRGBLE:
-                for (int y = 0; y < size.h; ++y)
+                for (int y = 0; y < height; ++y)
                 {
-                    const uint16_t* in16 = (const uint16_t*)inP + y * size.w * 3;
+                    const uint16_t* in16 = (const uint16_t*)inP + y * width * 3;
                     uint8_t* out8 = (uint8_t*)outP + y * rowByteCount;
-                    for (int x = 0; x < size.w; x += 8)
+                    for (int x = 0; x < width; x += 8)
                     {
                         uint16_t r12 = in16[0] >> 4;
                         uint16_t g12 = in16[1] >> 4;
@@ -398,46 +503,110 @@ namespace tl
                 break;
             case PixelType::_8BitI420:
             {
-                const size_t stride = size.w * sizeof(uint8_t);
+                const size_t stride = width * sizeof(uint8_t);
                 uint8_t* in_y = (uint8_t*)inP;
-                uint8_t* in_v = in_y + stride * size.h;
-                uint8_t* in_u = in_v + (stride / 2) * (size.h / 2);
+                uint8_t* in_v = in_y + stride * height;
+                uint8_t* in_u = in_v + (stride / 2) * (height / 2);
                 
                 uint8_t* out_y = (uint8_t*)outP;
-                uint8_t* out_v = in_y + stride * size.h;
-                uint8_t* out_u = in_v + (stride / 2) * (size.h / 2);
+                uint8_t* out_v = in_y + stride * height;
+                uint8_t* out_u = in_v + (stride / 2) * (height / 2);
 
                 // Copy Y plane
-                memcpy(out_y, in_y, size.h * stride);
+                memcpy(out_y, in_y, height * stride);
 
-                for (int i = 0; i < (stride / 2) * (size.h / 2); ++i)
+                for (int i = 0; i < (stride / 2) * (height / 2); ++i)
                 {
                     out_u[i] = in_v[i];
                     out_v[i] = in_u[i];
                 }
                 break;
             }
+            case PixelType::_8BitUYVA:
+            {
+                uint8_t* rgba = (uint8_t*)inP;
+                uint8_t* uyva = (uint8_t*)outP;
+
+                const auto& coeffs = getYUVCoefficients(width, height);
+                for (int y = 0; y < height; ++y)
+                {
+                    for (int x = 0; x < width; ++x)
+                    {
+                        int rgbaIndex = (y * width + x) * 4;
+                        int uyvaIndex = (y * width + x) * 4;
+
+                        uint8_t r = rgba[rgbaIndex];
+                        uint8_t g = rgba[rgbaIndex + 1];
+                        uint8_t b = rgba[rgbaIndex + 2];
+                        uint8_t a = rgba[rgbaIndex + 3];
+
+                        // RGB to YUV conversion
+                        float yf = coeffs[0] * r + coeffs[1] * g + coeffs[2] * b;
+                        float uf = coeffs[3] * r - coeffs[4] * g + coeffs[5] * b;
+                        float vf = coeffs[6] * r - coeffs[7] * g - coeffs[8] * b;
+
+                        // Clamp and convert to 8-bit integers
+                        uint8_t y = static_cast<uint8_t>(std::clamp(yf, 0.0f, 255.0f));
+                        uint8_t u = static_cast<uint8_t>(std::clamp(uf + 128.0f, 0.0f, 255.0f)); // Add 128 for U/V range
+                        uint8_t v = static_cast<uint8_t>(std::clamp(vf + 128.0f, 0.0f, 255.0f));
+
+
+                        uyva[uyvaIndex] = u;
+                        if (x % 2 == 0)
+                        {
+                            // Even pixels
+                            uyva[uyvaIndex + 1] = y;
+                            uyva[uyvaIndex + 2] = v;
+                            uyva[uyvaIndex + 3] = a;
+                        }
+                        else
+                        {
+                            // Odd pixels
+                            uyva[uyvaIndex + 1] = y;
+                            uyva[uyvaIndex + 2] = v;
+                            uyva[uyvaIndex + 3] = a;
+                        }
+                    }
+                }
+                break;
+            }
+            case PixelType::_8BitBGRX:
+                for (int y = 0; y < height; ++y)
+                {
+                    const uint8_t* in8 = (const uint8_t*)inP + y * width * 3;
+                    uint8_t* out8 = (uint8_t*)outP + y * rowByteCount;
+                    for (int x = 0; x < width; ++x)
+                    {
+                        out8[0] = in8[2];
+                        out8[1] = in8[1];
+                        out8[2] = in8[0];
+                        out8[3] = 255;
+                        
+                        in8 += 3;
+                        out8 += 4;
+                    }
+                }
+                break;
             case PixelType::_16BitP216:
             {
-                int y_stride = size.w * sizeof(uint16_t);
-                int uv_stride = size.w * sizeof(uint16_t); // UV pairs, so same width.
+                int y_stride = width * sizeof(uint16_t);
+                int uv_stride = width * sizeof(uint16_t); // UV pairs, so same width.
 
                 uint16_t* p_y = reinterpret_cast<uint16_t*>(outP);
-                uint16_t* p_uv = reinterpret_cast<uint16_t*>(p_y + y_stride * size.h);
+                uint16_t* p_uv = reinterpret_cast<uint16_t*>(p_y + y_stride * height);
 
-                for (int y = 0; y < size.h; ++y)
+                for (int y = 0; y < height; ++y)
                 {
                     const uint16_t* rgba_row =
                         reinterpret_cast<const uint16_t*>(
                             reinterpret_cast<const uint8_t*>(inP) + y * rowByteCount);
 
-                    for (int x = 0; x < size.w; ++x)
+                    for (int x = 0; x < width; ++x)
                     {
                         // Extract RGBA components (assuming RGBA order)
                         uint16_t r = rgba_row[3 * x + 0];
                         uint16_t g = rgba_row[3 * x + 1];
                         uint16_t b = rgba_row[3 * x + 2];
-                        //uint16_t a = rgba_row[4 * x + 3]; // Alpha is ignored for YUV conversion
 
                         // Integer based YUV conversion. BT.709 example.
                         int32_t y_val = (77 * r + 150 * g + 29 * b) >> 8; // Right shift by 8 == divide by 256.
@@ -449,12 +618,12 @@ namespace tl
                         u_val = std::clamp(u_val, 0, 65535);
                         v_val = std::clamp(v_val, 0, 65535);
 
-                        p_y[y * size.w + x] = static_cast<uint16_t>(y_val);
+                        p_y[y * width + x] = static_cast<uint16_t>(y_val);
 
                         if (x % 2 == 0)
                         {
-                            p_uv[(y / 2) * size.w + x] = static_cast<uint16_t>(u_val);
-                            p_uv[(y / 2) * size.w + x + 1] = static_cast<uint16_t>(v_val);
+                            p_uv[(y / 2) * width + x] = static_cast<uint16_t>(u_val);
+                            p_uv[(y / 2) * width + x + 1] = static_cast<uint16_t>(v_val);
                         }
                     }
                 }
@@ -462,21 +631,60 @@ namespace tl
             }
             case PixelType::_16BitPA16:
             {
+                int y_stride = width * sizeof(uint16_t);
+                int uv_stride = width * sizeof(uint16_t); // UV pairs, so same width.
+
+                uint16_t* p_y = reinterpret_cast<uint16_t*>(outP);
+                uint16_t* p_uv = reinterpret_cast<uint16_t*>(p_y + y_stride * height);
+
+                for (int y = 0; y < height; ++y)
+                {
+                    const uint16_t* rgba_row =
+                        reinterpret_cast<const uint16_t*>(
+                            reinterpret_cast<const uint8_t*>(inP) + y * rowByteCount);
+
+                    for (int x = 0; x < width; ++x)
+                    {
+                        // Extract RGBA components (assuming RGBA order)
+                        uint16_t r = rgba_row[3 * x + 0];
+                        uint16_t g = rgba_row[3 * x + 1];
+                        uint16_t b = rgba_row[3 * x + 2];
+                        uint16_t a = rgba_row[4 * x + 3];
+
+                        // Integer based YUV conversion. BT.709 example.
+                        int32_t y_val = (77 * r + 150 * g + 29 * b) >> 8; // Right shift by 8 == divide by 256.
+                        int32_t u_val = (((-43 * r - 84 * g + 127 * b) >> 8) + 32768);
+                        int32_t v_val = (((127 * r - 106 * g - 21 * b) >> 8) + 32768);
+
+                        // Clamping
+                        y_val = std::clamp(y_val, 0, 65535);
+                        u_val = std::clamp(u_val, 0, 65535);
+                        v_val = std::clamp(v_val, 0, 65535);
+
+                        p_y[y * width + x] = static_cast<uint16_t>(y_val);
+
+                        if (x % 2 == 0)
+                        {
+                            p_uv[(y / 2) * width + x] = static_cast<uint16_t>(u_val);
+                            p_uv[(y / 2) * width + x + 1] = static_cast<uint16_t>(v_val);
+                        }
+                    }
+                }
                 break;
             }
-            case PixelType::_8BitBGRX:
-                for (int y = 0; y < size.h; ++y)
+            case PixelType::_8BitRGBX:
+                for (int y = 0; y < height; ++y)
                 {
-                    const uint8_t* in8 = (const uint8_t*)inP + y * size.w * 4;
+                    const uint8_t* in8 = (const uint8_t*)inP + y * width * 3;
                     uint8_t* out8 = (uint8_t*)outP + y * rowByteCount;
-                    for (int x = 0; x < size.w; ++x)
+                    for (int x = 0; x < width; ++x)
                     {
-                        out8[0] = in8[2];
+                        out8[0] = in8[0];
                         out8[1] = in8[1];
-                        out8[2] = in8[0];
+                        out8[2] = in8[2];
                         out8[3] = 255;
                         
-                        in8 += 4;
+                        in8 += 3;
                         out8 += 4;
                     }
                 }
@@ -486,78 +694,6 @@ namespace tl
                 break;
             }
         }
-
-        size_t getDataByteCount(const math::Size2i& size, PixelType pixelType)
-        {
-            return getRowByteCount(size.w, pixelType) * size.h;
-        }
-
-        bool DeviceInfo::operator == (const DeviceInfo& other) const
-        {
-            return
-                name == other.name &&
-                displayModes == other.displayModes &&
-                pixelTypes == other.pixelTypes &&
-                hdrMetaData == other.hdrMetaData;
-        }
-
-        bool DeviceInfo::operator != (const DeviceInfo& other) const
-        {
-            return !(*this == other);
-        }
         
-        TLRENDER_ENUM_IMPL(
-            Option,
-            "None",
-            "444SDIVideoOutput");
-        TLRENDER_ENUM_SERIALIZE_IMPL(Option);
-
-        bool DeviceConfig::operator == (const DeviceConfig& other) const
-        {
-            return
-                deviceName  == other.deviceName &&
-                deviceIndex == other.deviceIndex &&
-                displayModeIndex == other.displayModeIndex &&
-                pixelType == other.pixelType &&
-                boolOptions == other.boolOptions;
-        }
-
-        bool DeviceConfig::operator != (const DeviceConfig& other) const
-        {
-            return !(*this == other);
-        }
-
-        TLRENDER_ENUM_IMPL(
-            HDRMode,
-            "None",
-            "FromFile",
-            "Custom");
-        TLRENDER_ENUM_SERIALIZE_IMPL(HDRMode);
-
-        std::shared_ptr<image::HDRData> getHDRData(const timeline::VideoData& videoData)
-        {
-            std::shared_ptr<image::HDRData> out;
-            for (const auto& layer : videoData.layers)
-            {
-                if (layer.image)
-                {
-                    const auto& tags = layer.image->getTags();
-                    const auto k = tags.find("hdr");
-                    if (k != tags.end())
-                    {
-                        out = std::shared_ptr<image::HDRData>(new image::HDRData);
-                        try
-                        {
-                            auto json = nlohmann::json::parse(k->second);
-                            from_json(json, *out);
-                        }
-                        catch (const std::exception&)
-                        {}
-                        break;
-                    }
-                }
-            }
-            return out;
-        }
-    }
+    }    
 }

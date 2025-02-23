@@ -29,7 +29,7 @@ namespace tl
                 NDIlib_FourCC_video_type_UYVA, // 4:2:2:4 (yuv + alpha in 8 bps)
                 NDIlib_FourCC_video_type_P216, // 4:2:2 in 16bpp
                 NDIlib_FourCC_video_type_PA16, // 4:2:2:4 (yuv + alpha in 16 bps)
-                NDIlib_FourCC_video_type_I420, // same as YV12?
+                NDIlib_FourCC_video_type_I420, // 4:2:0 (as YV12 reversed)
                 NDIlib_FourCC_video_type_BGRX, // 8 bit, 4:4:4 (blue, green, red, 255 packed in 32bits
                 NDIlib_FourCC_video_type_RGBA, // 4:4:4:4 red, green, blue, alpha
                 NDIlib_FourCC_video_type_RGBX, // 4:4:4 red, green, blue, 255

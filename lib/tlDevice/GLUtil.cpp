@@ -12,21 +12,21 @@ namespace tl
             const std::array<GLenum, static_cast<size_t>(PixelType::Count)> data =
             {
                 GL_NONE,
-                GL_BGRA,
-                GL_BGRA,
-                GL_RGB,
-                GL_RGB,
-                GL_RGB,
-                //GL_RGBA,   
-                GL_RGB,
-                GL_RGB,
-                GL_RGBA,
-                GL_RGB,
-                GL_RGBA,
-                GL_RGB,
-                GL_RGBA,
-                GL_RGBA,
-                GL_RGBA,
+                GL_BGRA,   // BGRA
+                GL_BGR,    // YUV
+                GL_RGB,    // RGB
+                GL_RGB,    // RGBX
+                GL_RGB,    // RGBXLE
+                //GL_RGBA, // YUV
+                GL_RGB,    // RGB
+                GL_RGB,    // RGBLE
+                GL_RGBA,   // YUVA
+                GL_RGB,    // YUV
+                GL_RGBA,   // YUVA
+                GL_RGB,    // YUV
+                GL_RGB,    // BRGX
+                GL_RGBA,   // RGBA
+                GL_RGB,    // RGBX
             };
             return data[static_cast<size_t>(value)];
         }
@@ -36,21 +36,21 @@ namespace tl
             const std::array<GLenum, static_cast<size_t>(PixelType::Count)> data =
             {
                 GL_NONE,
-                GL_UNSIGNED_BYTE,
-                GL_UNSIGNED_BYTE,
-                GL_UNSIGNED_SHORT,
-                GL_UNSIGNED_SHORT,
-                GL_UNSIGNED_SHORT,
-                //GL_UNSIGNED_INT_10_10_10_2,
-                GL_UNSIGNED_SHORT,
-                GL_UNSIGNED_SHORT,
-                GL_UNSIGNED_BYTE,
-                GL_UNSIGNED_SHORT,
-                GL_UNSIGNED_SHORT,
-                GL_UNSIGNED_BYTE,
-                GL_UNSIGNED_BYTE,
-                GL_UNSIGNED_BYTE,
-                GL_UNSIGNED_BYTE,
+                GL_UNSIGNED_BYTE,  // 8Bit
+                GL_UNSIGNED_BYTE,  // 8Bit
+                GL_UNSIGNED_SHORT, // 10Bit
+                GL_UNSIGNED_SHORT, // 10Bit
+                GL_UNSIGNED_SHORT, // 10Bit
+                //GL_UNSIGNED_INT_10_10_10_2,  // 10Bit
+                GL_UNSIGNED_SHORT, // 12Bit
+                GL_UNSIGNED_SHORT, // 12Bit
+                GL_UNSIGNED_BYTE,  // 8Bit
+                GL_UNSIGNED_SHORT, // 16Bit
+                GL_UNSIGNED_SHORT, // 16Bit
+                GL_UNSIGNED_BYTE,  // 8Bit
+                GL_UNSIGNED_BYTE,  // 8Bit
+                GL_UNSIGNED_BYTE,  // 8Bit
+                GL_UNSIGNED_BYTE,  // 8Bit
             };
             return data[static_cast<size_t>(value)];
         }
@@ -70,8 +70,8 @@ namespace tl
                 1,
                 1,
                 // These are NDI formats
-                1,
-                1,
+                2,
+                8,
                 1,
                 1,
                 4,

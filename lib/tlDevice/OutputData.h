@@ -34,20 +34,20 @@ namespace tl
             _8BitBGRA,  // BMD and NDI
             _8BitYUV,   // BMD and NDI
             // These are BMD formats
-            _10BitRGB,
-            _10BitRGBX,
-            _10BitRGBXLE,
+            _10BitRGB,  // BMD
+            _10BitRGBX, // BMD
+            _10BitRGBXLE, // BMD
             //_10BitYUV,
-            _12BitRGB,
-            _12BitRGBLE,
+            _12BitRGB,    // BMD
+            _12BitRGBLE,  // BMD
             // These are NDI formats
-            _8BitUYVA,
-            _16BitP216,
-            _16BitPA16,
-            _8BitI420,
-            _8BitBGRX,
-            _8BitRGBA,
-            _8BitRGBX,
+            _8BitUYVA,    // NDI
+            _16BitP216,   // NDI
+            _16BitPA16,   // NDI
+            _8BitI420,    // NDI
+            _8BitBGRX,    // NDI
+            _8BitRGBA,    // NDI
+            _8BitRGBX,    // NDI
             Count,
             First = None
         };

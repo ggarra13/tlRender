@@ -6,6 +6,8 @@
 
 #include <tlDevice/IOutput.h>
 
+#include <tlCore/Matrix.h>
+
 namespace tl
 {
     namespace ndi
@@ -114,6 +116,7 @@ namespace tl
                 bool& active,
                 math::Size2i& size,
                 otime::RationalTime& frameRate);
+            math::Matrix4x4f _projectionMatrix() const noexcept;
             void _render(
                 const device::DeviceConfig&,
                 const timeline::OCIOOptions&,
