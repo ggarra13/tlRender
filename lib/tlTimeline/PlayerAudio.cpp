@@ -372,10 +372,10 @@ namespace tl
                     now >= muteTimeout &&
                     nFrames <= getSampleCount(p->audioThread.buffer))
                 {
-                    audio::move(
-                        p->audioThread.buffer,
-                        reinterpret_cast<uint8_t*>(outputBuffer),
-                        nFrames);
+                    // audio::move(
+                    //     p->audioThread.buffer,
+                    //     reinterpret_cast<uint8_t*>(outputBuffer),
+                    //     nFrames);
                 }
 
                 // Update the audio frame.

@@ -118,6 +118,13 @@ namespace tl
                 NDIlib_video_frame_v2_t NDI_video_frame;
                 NDIlib_audio_frame_v2_t NDI_audio_frame;
 
+                // Audio variables
+                std::shared_ptr<audio::AudioResample> resample;
+                std::list<std::shared_ptr<audio::Audio> > buffer;
+                std::shared_ptr<audio::Audio> silence;
+                size_t rtAudioCurrentFrame = 0;
+                size_t backwardsSize = std::numeric_limits<size_t>::max();
+                
                 std::condition_variable cv;
                 std::thread thread;
                 std::atomic<bool> running;
@@ -520,8 +527,13 @@ namespace tl
 
             auto t = std::chrono::steady_clock::now();
 
+            // Clear the NDI structs
             auto& video_frame = p.thread.NDI_video_frame;
+            memset(&video_frame, 0, sizeof(NDIlib_video_frame_v2_t));
+
             auto& audio_frame = p.thread.NDI_audio_frame;
+            memset(&audio_frame, 0, sizeof(NDIlib_audio_frame_v2_t));
+            
             while (p.thread.running)
             {
                 bool createDevice = false;
@@ -567,13 +579,19 @@ namespace tl
                         createDevice =
                             p.mutex.config != config ||
                             p.mutex.enabled != enabled;
+                        
+                        audioDataChanged =
+                            createDevice ||
+                            audioData != p.mutex.audioData ||
+                            currentTime != p.mutex.currentTime;
+                        
                         config = p.mutex.config;
                         enabled = p.mutex.enabled;
 
                         p.thread.timeRange = p.mutex.timeRange;
                         playback = p.mutex.playback;
                         currentTime = p.mutex.currentTime;
-
+                        
                         doRender =
                             createDevice ||
                             ocioOptions != p.mutex.ocioOptions ||
@@ -605,9 +623,6 @@ namespace tl
                         p.thread.videoData = p.mutex.videoData;
                         p.thread.overlay = p.mutex.overlay;
 
-                        audioDataChanged =
-                            createDevice ||
-                            audioData != p.mutex.audioData;
                         volume = p.mutex.volume;
                         mute = p.mutex.mute;
                         audioOffset = p.mutex.audioOffset;
@@ -676,6 +691,24 @@ namespace tl
                         GL_STREAM_READ);
                 }
 
+                if (audioDataChanged && p.thread.render)
+                {
+                    try
+                    {
+                        _audio(currentTime, audioData);
+                    }
+                    catch (const std::exception& e)
+                    {
+                        if (auto context = p.context.lock())
+                        {
+                            context->log(
+                                "tl::ndi::OutputDevice",
+                                e.what(),
+                                log::Type::Error);
+                        }
+                    }
+                }
+                
                 if (doRender && p.thread.render)
                 {
                     try
@@ -719,6 +752,10 @@ namespace tl
             
             // Free the video frame
             free(p.thread.NDI_video_frame.p_data);
+            p.thread.NDI_video_frame.p_data = nullptr;
+            
+            free(p.thread.NDI_audio_frame.p_data);
+            p.thread.NDI_audio_frame.p_data = nullptr;
             
             // Destroy the NDI sender
             NDIlib_send_destroy(p.thread.NDI_send);
@@ -748,55 +785,122 @@ namespace tl
                 
                 auto& video_frame = p.thread.NDI_video_frame;
 
-                // \@todo: handle audio
-                const audio::Info audioOutputInfo(2,
-                                                  audio::DataType::F32,
-                                                  48000);
+                
+                p.thread.outputPixelType = getOutputType(config.pixelType);
+                    
+                if (size.w == 0 && size.h == 0)
+                    throw std::runtime_error("Invalid output size");
+                    
+                video_frame.xres = size.w;
+                video_frame.yres = size.h;
+                video_frame.picture_aspect_ratio = size.getAspect();
+                video_frame.FourCC = toNDI(p.thread.outputPixelType);
+                if (video_frame.FourCC == NDIlib_FourCC_video_type_max)
+                    throw std::runtime_error("Invalid pixel type for NDI!");
+
+                size_t dataSize = getPackPixelsSize(size,
+                                                    p.thread.outputPixelType);
+                if (dataSize == 0)
+                    throw std::runtime_error("Invalid data size for output pixel type");
+                free(p.thread.NDI_video_frame.p_data);
+                video_frame.p_data = (uint8_t*)malloc(dataSize);
+                if (!video_frame.p_data)
+                    throw std::runtime_error("Out of memory allocating p_data");
+                video_frame.frame_format_type = NDIlib_frame_format_type_progressive;
+                if (auto context = p.context.lock())
                 {
-                    p.thread.outputPixelType = getOutputType(config.pixelType);
-                    
-                    if (size.w == 0 && size.h == 0)
-                        throw std::runtime_error("Invalid output size");
-                    
-                    video_frame.xres = size.w;
-                    video_frame.yres = size.h;
-                    video_frame.picture_aspect_ratio = size.getAspect();
-                    video_frame.FourCC = toNDI(p.thread.outputPixelType);
-                    if (video_frame.FourCC == NDIlib_FourCC_video_type_max)
-                        throw std::runtime_error("Invalid pixel type for NDI!");
-
-                    size_t dataSize = getPackPixelsSize(size,
-                                                        p.thread.outputPixelType);
-                    if (dataSize == 0)
-                        throw std::runtime_error("Invalid data size for output pixel type");
-                    video_frame.p_data = (uint8_t*)malloc(dataSize);
-                    if (!video_frame.p_data)
-                        throw std::runtime_error("Out of memory allocating p_data");
-                    video_frame.frame_format_type = NDIlib_frame_format_type_progressive;
-                    if (auto context = p.context.lock())
-                    {
-                        context->log(
-                            "tl::ndi::OutputDevice",
-                            string::Format(
-                                "\n"
-                                "    #{0} {1}\n"
-                                "    video: {2} {3}\n"
-                                "    audio: {4} {5} {6}").
-                            arg(config.deviceIndex).
-                            arg(config.deviceName).
-                            arg(p.thread.size).
-                            arg(frameRate).
-                            arg(audioOutputInfo.channelCount).
-                            arg(audioOutputInfo.dataType).
-                            arg(audioOutputInfo.sampleRate));
-                    }
-
+                    context->log(
+                        "tl::ndi::OutputDevice",
+                        string::Format(
+                            "\n"
+                            "    #{0} {1}\n"
+                            "    video: {2} {3}\n"
+                            "    audio: {4} {5} {6}").
+                        arg(config.deviceIndex).
+                        arg(config.deviceName).
+                        arg(p.thread.size).
+                        arg(frameRate));
                 }
 
                 active = true;
             }
         }
 
+        void OutputDevice::_audio(const otime::RationalTime& currentTime,
+                                  const std::vector<timeline::AudioData>& audioDataCache)
+        {
+            TLRENDER_P();
+            
+            double currentSeconds = currentTime.to_seconds();
+            double seconds = std::floor(currentSeconds);
+            std::cerr << "play audio " << currentTime << " "
+                      << currentSeconds << " " << seconds << std::endl;
+
+            timeline::AudioData audioData;
+            for (const auto& audio : audioDataCache)
+            {
+                if (audio.seconds == seconds)
+                {
+                    audioData = audio;
+                }
+            }
+
+            size_t channelCount = 0;
+            size_t sampleRate = 48000;
+            otime::TimeRange inRange;
+            
+            // \@todo: handle audio
+            const audio::Info outputInfo(channelCount,
+                                         audio::DataType::F32,
+                                         sampleRate);
+
+            if (audioData.layers.empty())
+                return;
+            
+            timeline::AudioLayer layer;
+            layer = audioData.layers[0];
+            const auto& audioInfo = layer.audio->getInfo();
+            std::cerr << "audioInfo " << audioInfo.channelCount
+                      << " " << audioInfo.dataType << " at "
+                      << audioInfo.sampleRate << std::endl;
+            channelCount = audioInfo.channelCount;
+            sampleRate   = audioInfo.sampleRate;
+            auto inStart = otime::RationalTime(0.0, sampleRate);
+            auto inCurrent = currentTime.rescaled_to(sampleRate);
+            auto inDuration = otime::RationalTime(1.0, currentTime.rate()).rescaled_to(sampleRate);
+            inRange = otime::TimeRange(inStart, inDuration);
+            std::cerr << "in Samples " << inRange << std::endl;
+            size_t outSampleStart = size_t(inCurrent.value());
+            size_t outDuration    = size_t(inDuration.value());
+
+            auto& NDI_audio_frame = p.thread.NDI_audio_frame;
+            NDI_audio_frame.sample_rate = outputInfo.sampleRate;
+            NDI_audio_frame.no_channels = channelCount;
+            NDI_audio_frame.no_samples = outDuration;
+            NDI_audio_frame.channel_stride_in_bytes = sizeof(float) *
+                                                      outDuration;
+
+            uint8_t* audio_ptr = (uint8_t*) layer.audio->getData() +
+                                 outSampleStart;
+            uint8_t* audio_last = audio_ptr + layer.audio->getByteCount();
+            if (audio_ptr + outDuration > audio_last)
+                std::cerr << "********** overrun" << std::endl;
+            else
+                std::cerr << "playing data " << (void*)audio_ptr << " to "
+                          << (void*)(audio_ptr + outDuration) << " "
+                          << (void*)audio_last
+                          << std::endl;
+            
+            NDI_audio_frame.p_data = (float*)malloc(outDuration);
+            memcpy(NDI_audio_frame.p_data, audio_ptr, outDuration);
+            
+            // Submit the audio buffer
+            NDIlib_send_send_audio_v2(p.thread.NDI_send, &NDI_audio_frame);
+            
+            free(p.thread.NDI_audio_frame.p_data);
+            p.thread.NDI_audio_frame.p_data = nullptr;
+        }
+        
         void OutputDevice::_render(
             const device::DeviceConfig& config,
             const timeline::OCIOOptions& ocioOptions,
