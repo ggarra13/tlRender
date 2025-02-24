@@ -117,8 +117,10 @@ namespace tl
                 math::Size2i& size,
                 otime::RationalTime& frameRate);
 
-            void _audio(const otime::RationalTime&,
-                        const std::vector<timeline::AudioData>&);
+            void _audio(
+                const otime::TimeRange&,
+                const otime::RationalTime&,
+                const std::vector<timeline::AudioData>&);
             math::Matrix4x4f _projectionMatrix() const noexcept;
             void _render(
                 const device::DeviceConfig&,

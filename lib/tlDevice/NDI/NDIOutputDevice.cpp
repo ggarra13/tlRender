@@ -4,14 +4,6 @@
 
 #define USE_PBO
 
-#ifdef _WIN32
-#ifdef _WIN64
-#pragma comment(lib, "Processing.NDI.Lib.x64.lib")
-#else // _WIN64
-#pragma comment(lib, "Processing.NDI.Lib.x86.lib")
-#endif // _WIN64
-#endif // _WIN32
-
 #include <tlDevice/NDI/NDIOutputDevice.h>
 #include <tlDevice/NDI/NDIUtil.h>
 #include <tlDevice/GLUtil.h>
@@ -23,11 +15,11 @@
 #include <tlGL/Texture.h>
 #include <tlGL/Util.h>
 
+#include <tlIO/NDI.h>
+
 #include <tlCore/AudioResample.h>
 #include <tlCore/Context.h>
 #include <tlCore/StringFormat.h>
-
-#include <libswscale/swscale.h>
 
 #include <algorithm>
 #include <atomic>
@@ -46,6 +38,7 @@ namespace tl
             const std::chrono::milliseconds timeout(5);
         }
 
+        
         struct OutputDevice::Private
         {
             std::weak_ptr<system::Context> context;
@@ -115,8 +108,8 @@ namespace tl
 
                 // NDI variables
                 NDIlib_send_instance_t NDI_send = nullptr;
-                NDIlib_video_frame_v2_t NDI_video_frame;
-                NDIlib_audio_frame_v2_t NDI_audio_frame;
+                NDIlib_video_frame_t NDI_video_frame;
+                NDIlib_audio_frame_t NDI_audio_frame;
 
                 // Audio variables
                 std::shared_ptr<audio::AudioResample> resample;
@@ -695,7 +688,7 @@ namespace tl
                 {
                     try
                     {
-                        _audio(currentTime, audioData);
+                        _audio(p.thread.timeRange, currentTime, audioData);
                     }
                     catch (const std::exception& e)
                     {
@@ -776,6 +769,12 @@ namespace tl
             {
                 if (!p.thread.NDI_send)
                 {
+                    NDIlib_send_create_t send_create;
+                    send_create.p_ndi_name = "mrv2";
+                    send_create.p_groups = NULL;
+                    send_create.clock_video = true;
+                    send_create.clock_audio = true;
+
                     p.thread.NDI_send = NDIlib_send_create();
                     if (!p.thread.NDI_send)
                     {
@@ -826,15 +825,22 @@ namespace tl
             }
         }
 
-        void OutputDevice::_audio(const otime::RationalTime& currentTime,
-                                  const std::vector<timeline::AudioData>& audioDataCache)
+        void OutputDevice::_audio(
+            const otime::TimeRange& timeRange, 
+            const otime::RationalTime& currentTime,
+            const std::vector<timeline::AudioData>& audioDataCache)
         {
             TLRENDER_P();
-            
-            double currentSeconds = currentTime.to_seconds();
+
+            if (audioDataCache.empty())
+            {
+                std::cerr << "***** EMPTY AUDIO CACHE" << std::endl;
+                return;
+            }
+
+            const auto& currentLocalTime = currentTime - timeRange.start_time();
+            double currentSeconds = currentLocalTime.to_seconds();
             double seconds = std::floor(currentSeconds);
-            std::cerr << "play audio " << currentTime << " "
-                      << currentSeconds << " " << seconds << std::endl;
 
             timeline::AudioData audioData;
             for (const auto& audio : audioDataCache)
@@ -842,60 +848,132 @@ namespace tl
                 if (audio.seconds == seconds)
                 {
                     audioData = audio;
+                    break;
                 }
             }
 
-            size_t channelCount = 0;
-            size_t sampleRate = 48000;
-            otime::TimeRange inRange;
-            
-            // \@todo: handle audio
-            const audio::Info outputInfo(channelCount,
-                                         audio::DataType::F32,
-                                         sampleRate);
-
             if (audioData.layers.empty())
+            {
+                std::cerr << "EMPTY LAYERS" << std::endl;
                 return;
+            }
             
             timeline::AudioLayer layer;
             layer = audioData.layers[0];
-            const auto& audioInfo = layer.audio->getInfo();
-            std::cerr << "audioInfo " << audioInfo.channelCount
-                      << " " << audioInfo.dataType << " at "
-                      << audioInfo.sampleRate << std::endl;
-            channelCount = audioInfo.channelCount;
-            sampleRate   = audioInfo.sampleRate;
-            auto inStart = otime::RationalTime(0.0, sampleRate);
-            auto inCurrent = currentTime.rescaled_to(sampleRate);
-            auto inDuration = otime::RationalTime(1.0, currentTime.rate()).rescaled_to(sampleRate);
-            inRange = otime::TimeRange(inStart, inDuration);
-            std::cerr << "in Samples " << inRange << std::endl;
-            size_t outSampleStart = size_t(inCurrent.value());
-            size_t outDuration    = size_t(inDuration.value());
 
+
+            const size_t outSampleRate = 48000;
+            const otime::RationalTime kOneFrame(1.0, currentTime.rate());
+            const auto& inAudio = layer.audio;
+            const auto& inAudioInfo = inAudio->getInfo();
+            // std::cerr << "inAudioInfo "
+            //           << inAudioInfo.channelCount
+            //           << " " << inAudioInfo.dataType << " at "
+            //           << inAudioInfo.sampleRate << std::endl;
+            int channelCount = inAudioInfo.channelCount;
+            const size_t inSampleRate = inAudioInfo.sampleRate; 
+            auto inCurrentSample  = otime::RationalTime(currentSeconds, 1.0).rescaled_to(inSampleRate);
+            const auto inDuration = kOneFrame.rescaled_to(1.0);
+            auto inSampleDuration = kOneFrame.rescaled_to(inSampleRate);
+            std::cerr << std::endl << "PLAY audio " << currentTime << " start="
+                      << seconds << " current=" << currentSeconds << " to "
+                      << currentSeconds + inDuration.value() << std::endl;
+            
+            std::cerr << "SAMPLES " << inCurrentSample.value() << ") to "
+                      << "sampleDuration=" << inSampleDuration.value() << ")"
+                      << " endCurrentSample=" << inCurrentSample.value() + inSampleDuration.value() << std::endl;
+
+            size_t inSampleStart = inCurrentSample.value();
+            size_t inSampleCount = inSampleDuration.value();
+            size_t inAudioSampleCount = inAudio->getSampleCount();
+            if (inSampleCount > inAudioSampleCount)
+            {
+                std::cerr << "*** NO AUDIO IN SAMPLE COUNT > IN AUDIO SAMPLE COUNT -- CLAMPED" << std::endl;
+                inSampleCount = inAudioSampleCount;
+            }
+
+            
+            uint8_t* inStartPtr   = inAudio->getData();
+            uint8_t* inCurrentPtr = inStartPtr + inSampleStart;
+            uint8_t* inEndPtr = inStartPtr + inAudio->getByteCount();
+            size_t inByteCount = inSampleCount * audio::getByteCount(inAudioInfo.dataType) * channelCount;
+            if (inCurrentPtr > inEndPtr)
+            {
+                std::cerr << "*** INPUT START OVERRUN -- SKIPPED" << std::endl;
+                std::cerr << "inCurrentPtr=" << (void*) inCurrentPtr << std::endl;
+                std::cerr << "inEndPtr    =" << (void*) inEndPtr << std::endl;
+                return;
+            }
+
+            
+            std::cerr << "POINTERS inStartPtr=" << (void*) inStartPtr
+                      << " inCurrentPtr=" << (void*) inCurrentPtr << " (" << inCurrentSample.value()
+                      << ") to " << (void*) (inCurrentPtr + inByteCount)
+                      << std::endl;
+            
+            //
+            // Move the in audio section to its own buffer.
+            //
+            auto audioSection = audio::Audio::create(inAudioInfo,
+                                                     inSampleCount);
+            uint8_t* sectionPtr = audioSection->getData();
+
+            //
+            // Get the audio section for this frame.
+            //
+            if (inCurrentPtr + inByteCount > inEndPtr)
+            {
+                std::cerr << "*** INPUT COPY OVERRUN -- CLAMPED" << std::endl;
+                std::cerr << "inCurrentPtr=" << (void*) inCurrentPtr << std::endl;
+                std::cerr << "inByteCount =" << inByteCount << std::endl;
+                std::cerr << "secByteCount=" << audioSection->getByteCount() << std::endl;
+                std::cerr << "        sum =" << (void*) (inCurrentPtr + inByteCount) << std::endl;
+                std::cerr << "   inEndPtr =" << (void*) inEndPtr << std::endl;
+                inByteCount = inEndPtr - inCurrentPtr;
+                std::cerr << "clampedCount=" << inByteCount << std::endl;
+            }
+                
+            memcpy(sectionPtr, inCurrentPtr, inByteCount); 
+            
+            
+            //
+            // Handle any resampling of the section 
+            //
+            const audio::Info resampleInfo(channelCount,
+                                           audio::DataType::F32,
+                                           outSampleRate);
+
+            std::shared_ptr<audio::Audio> audioResampled;
+            if (inAudioInfo == resampleInfo)
+                audioResampled = audioSection;
+            else
+            {
+                p.thread.resample = audio::AudioResample::create(inAudioInfo, resampleInfo);
+                audioResampled = p.thread.resample->process(audioSection);
+            }
+
+            //
+            // De-interleave the resampled audio for NDI.
+            //
+            std::shared_ptr<audio::Audio> outputAudio;
+            outputAudio = planarDeinterleave(audioResampled);
+
+            // Send the output audio buffer to NDI.
+            const audio::Info outputInfo(channelCount,
+                                         audio::DataType::F32,
+                                         outSampleRate);
+            
             auto& NDI_audio_frame = p.thread.NDI_audio_frame;
             NDI_audio_frame.sample_rate = outputInfo.sampleRate;
             NDI_audio_frame.no_channels = channelCount;
-            NDI_audio_frame.no_samples = outDuration;
-            NDI_audio_frame.channel_stride_in_bytes = sizeof(float) *
-                                                      outDuration;
-
-            uint8_t* audio_ptr = (uint8_t*) layer.audio->getData() +
-                                 outSampleStart;
-            uint8_t* audio_last = audio_ptr + layer.audio->getByteCount();
-            if (audio_ptr + outDuration > audio_last)
-                std::cerr << "********** overrun" << std::endl;
-            else
-                std::cerr << "playing data " << (void*)audio_ptr << " to "
-                          << (void*)(audio_ptr + outDuration) << " "
-                          << (void*)audio_last
-                          << std::endl;
+            NDI_audio_frame.no_samples = outputAudio->getSampleCount();
+            NDI_audio_frame.FourCC = NDIlib_FourCC_type_FLTP;
+            NDI_audio_frame.p_data = (uint8_t*)malloc(outputAudio->getByteCount());
             
-            NDI_audio_frame.p_data = (float*)malloc(outDuration);
-            memcpy(NDI_audio_frame.p_data, audio_ptr, outDuration);
+            memcpy(NDI_audio_frame.p_data, outputAudio->getData(), outputAudio->getByteCount());
             
             // Submit the audio buffer
-            NDIlib_send_send_audio_v2(p.thread.NDI_send, &NDI_audio_frame);
+            NDIlib_send_send_audio(p.thread.NDI_send, &NDI_audio_frame);
             
             free(p.thread.NDI_audio_frame.p_data);
             p.thread.NDI_audio_frame.p_data = nullptr;
@@ -1038,7 +1116,7 @@ namespace tl
                 glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
             }
             
-			NDIlib_send_send_video_v2(p.thread.NDI_send, &video_frame);
+			NDIlib_send_send_video(p.thread.NDI_send, &video_frame);
             
         }
     }
