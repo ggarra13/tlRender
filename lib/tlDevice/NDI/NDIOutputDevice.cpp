@@ -720,7 +720,6 @@ namespace tl
                 {
                     try
                     {
-                        _metadata();
                         _render(
                             config,
                             ocioOptions,
@@ -785,7 +784,7 @@ namespace tl
                 if (!p.thread.NDI_send)
                 {
                     NDIlib_send_create_t send_create;
-                    send_create.p_ndi_name = config.deviceName;
+                    send_create.p_ndi_name = config.deviceName.c_str();
                     send_create.p_groups = NULL;
                     send_create.clock_video = true;
                     send_create.clock_audio = true;

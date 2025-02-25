@@ -123,7 +123,6 @@ namespace tl
                 const otime::TimeRange&,
                 const otime::RationalTime&,
                 const std::vector<timeline::AudioData>&);
-            void _metadata();
             math::Matrix4x4f _projectionMatrix() const noexcept;
             void _audio(const otime::RationalTime&,
                         const std::vector<timeline::AudioData>& audioData);
