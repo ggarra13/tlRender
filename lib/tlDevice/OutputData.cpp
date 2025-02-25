@@ -204,7 +204,9 @@ namespace tl
                 deviceIndex == other.deviceIndex &&
                 displayModeIndex == other.displayModeIndex &&
                 pixelType == other.pixelType &&
-                boolOptions == other.boolOptions;
+                boolOptions == other.boolOptions &&
+                noAudio == other.noAudio &&
+                noMetadata == other.noMetadata;
         }
 
         bool DeviceConfig::operator != (const DeviceConfig& other) const
