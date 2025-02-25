@@ -2,8 +2,6 @@
 // Copyright (c) 2021-2025 Gonzalo Garramuño
 // All rights reserved.
 
-#define USE_PBO
-
 #include <tlDevice/NDI/NDIOutputDevice.h>
 #include <tlDevice/NDI/NDIUtil.h>
 #include <tlDevice/GLUtil.h>
@@ -483,7 +481,7 @@ namespace tl
                     p.mutex.timeRange = time::invalidTimeRange;
                     p.mutex.playback = timeline::Playback::Stop;
                     p.mutex.currentTime = time::invalidTime;
-                    p.mutex.speed = p.mutex.defaultSpeed = p.player->getDefaultSpeed();
+                    p.mutex.speed = p.mutex.defaultSpeed = 0.F;
                 }
                 p.mutex.videoData.clear();
                 p.mutex.audioData.clear();
