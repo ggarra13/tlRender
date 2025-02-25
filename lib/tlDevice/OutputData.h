@@ -110,6 +110,7 @@ namespace tl
             int         displayModeIndex = -1;
             PixelType   pixelType        = PixelType::None;
             BoolOptions boolOptions;
+            bool        noAudio = false;
 
             bool operator == (const DeviceConfig&) const;
             bool operator != (const DeviceConfig&) const;

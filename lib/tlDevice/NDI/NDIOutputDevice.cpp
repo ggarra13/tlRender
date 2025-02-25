@@ -36,6 +36,7 @@ namespace tl
         namespace
         {
             const std::chrono::milliseconds timeout(5);
+            const char* kModule = "NDI";
         }
         
         namespace
@@ -699,7 +700,7 @@ namespace tl
                         GL_STREAM_READ);
                 }
 
-                if (audioDataChanged && p.thread.render)
+                if (audioDataChanged && p.thread.render && !config.noAudio)
                 {
                     try
                     {
@@ -721,6 +722,7 @@ namespace tl
                 {
                     try
                     {
+                        _metadata();
                         _render(
                             config,
                             ocioOptions,
@@ -1203,6 +1205,10 @@ namespace tl
                 break;
             }
         }
+
+        void OutputDevice::_metadata()
+        {
+        }
         
         void OutputDevice::_render(
             const device::DeviceConfig& config,
@@ -1339,6 +1345,95 @@ namespace tl
             {
                 copyPackPixels(video_frame.p_data, pboP, p.thread.size, p.thread.outputPixelType);
                 glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
+            }
+            
+            std::shared_ptr<image::HDRData> hdrData;
+            switch(p.thread.hdrMode)
+            {
+            case device::HDRMode::None:
+                break;
+            case device::HDRMode::FromFile:
+            case device::HDRMode::Custom:
+                if (p.thread.videoData.empty())
+                    return;
+                hdrData = device::getHDRData(p.thread.videoData[0]);
+                break;
+                break;
+            }
+            
+            if (hdrData)
+            {
+                std::string primariesName = "bt_2020";
+                std::string transferName = "bt_2020";
+                std::string matrixName = "bt_2020";
+                const auto& primaries = hdrData->primaries;
+                if (primaries[0].x == 0.708F && primaries[0].y == 0.292F &&
+                    primaries[1].x == 0.170F && primaries[1].y == 0.797F &&
+                    primaries[2].x == 0.131F && primaries[2].y == 0.046F &&
+                    primaries[3].x == 0.3127F && primaries[3].y == 0.3290F)
+                {
+                    primariesName = "bt_2020";
+                }
+                else if (primaries[0].x == 0.640F && primaries[0].y == 0.330F &&
+                         primaries[1].x == 0.300F && primaries[1].y == 0.600F &&
+                         primaries[2].x == 0.150F && primaries[2].y == 0.060F &&
+                         primaries[3].x == 0.3127F && primaries[3].y == 0.3290F)
+                {
+                    primariesName = "bt_709";
+                }
+                else if (primaries[0].x == 0.630F && primaries[0].y == 0.340F &&
+                         primaries[1].x == 0.310F && primaries[1].y == 0.595F &&
+                         primaries[2].x == 0.155F && primaries[2].y == 0.070F &&
+                         primaries[3].x == 0.3127F && primaries[3].y == 0.3290F)
+                {
+                    primariesName = "bt_601";
+                }
+                else
+                {
+                    if (auto context = p.context.lock())
+                    {
+                        auto logSystem = context->getLogSystem();
+                        logSystem->print(
+                            "tl::ndi::OutputDevice",
+                            "Unknown primaries.  Using bt_2020",
+                            log::Type::Error,
+                            kModule);
+                    }
+                }
+                
+                switch(hdrData->eotf)
+                {
+                case image::EOTFType::EOTF_BT601:
+                    transferName = "bt_601";
+                    matrixName = "bt_601";
+                    break;
+                case image::EOTFType::EOTF_BT709:
+                    transferName = "bt_709";
+                    matrixName = "bt_709";
+                    break;
+                case image::EOTFType::EOTF_BT2020:
+                    transferName = "bt_2020";
+                    matrixName = "bt_2020";
+                    break;
+                case image::EOTFType::EOTF_BT2100_HLG:
+                    transferName = "bt_2100_hlg";
+                    matrixName = "bt_2100";
+                    break;
+                case image::EOTFType::EOTF_BT2100_PQ:
+                    transferName = "bt_2100_pq";
+                    matrixName = "bt_2100";
+                    break;
+                }
+                
+                const std::string& metadata = string::Format("<ndi_color_info "
+                                                      " transfer=\"{0}\" "
+                                                      " matrix=\"{1}\" "
+                                                      " primaries=\"{2}\" "
+                                                      "/> ").
+                                              arg(transferName).
+                                              arg(matrixName).
+                                              arg(primariesName);
+                video_frame.p_metadata = metadata.c_str();
             }
             
 			NDIlib_send_send_video(p.thread.NDI_send, &video_frame);
