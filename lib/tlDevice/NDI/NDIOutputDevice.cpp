@@ -1340,14 +1340,14 @@ namespace tl
             std::shared_ptr<image::HDRData> hdrData;
             switch(p.thread.hdrMode)
             {
-            case device::HDRMode::None:
-                break;
             case device::HDRMode::FromFile:
             case device::HDRMode::Custom:
                 if (p.thread.videoData.empty())
                     return;
                 hdrData = device::getHDRData(p.thread.videoData[0]);
                 break;
+            case device::HDRMode::Count:
+            case device::HDRMode::None:
                 break;
             }
             
