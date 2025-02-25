@@ -2,16 +2,6 @@
 // Copyright (c) 2021-2025 Gonzalo Garramuño
 // All rights reserved.
 
-#define USE_PBO
-
-#ifdef _WIN32
-#ifdef _WIN64
-#pragma comment(lib, "Processing.NDI.Lib.x64.lib")
-#else // _WIN64
-#pragma comment(lib, "Processing.NDI.Lib.x86.lib")
-#endif // _WIN64
-#endif // _WIN32
-
 #include <tlDevice/NDI/NDIOutputDevice.h>
 #include <tlDevice/NDI/NDIUtil.h>
 #include <tlDevice/GLUtil.h>
@@ -22,6 +12,8 @@
 #include <tlGL/OffscreenBuffer.h>
 #include <tlGL/Texture.h>
 #include <tlGL/Util.h>
+
+#include <tlIO/NDI.h>
 
 #include <tlCore/AudioResample.h>
 #include <tlCore/Context.h>
@@ -42,8 +34,19 @@ namespace tl
         namespace
         {
             const std::chrono::milliseconds timeout(5);
+            const char* kModule = "NDI";
+        }
+        
+        namespace
+        {
+            inline float fadeValue(double sample, double in, double out)
+            {
+                return (sample - in) / (out - in);
+            }
         }
 
+
+        
         struct OutputDevice::Private
         {
             std::weak_ptr<system::Context> context;
@@ -83,12 +86,17 @@ namespace tl
                 otime::TimeRange timeRange = time::invalidTimeRange;
                 timeline::Playback playback = timeline::Playback::Stop;
                 otime::RationalTime currentTime = time::invalidTime;
+                double speed = 24.F;
+                double defaultSpeed = 24.F;
                 std::vector<timeline::VideoData> videoData;
                 std::shared_ptr<image::Image> overlay;
                 float volume = 1.F;
                 bool mute = false;
+                std::vector<int> channelMute;
+                std::chrono::steady_clock::time_point muteTimeout;
                 double audioOffset = 0.0;
                 std::vector<timeline::AudioData> audioData;
+                bool reset = false;
                 std::mutex mutex;
             };
             Mutex mutex;
@@ -113,9 +121,17 @@ namespace tl
 
                 // NDI variables
                 NDIlib_send_instance_t NDI_send = nullptr;
-                NDIlib_video_frame_v2_t NDI_video_frame;
-                NDIlib_audio_frame_v2_t NDI_audio_frame;
+                NDIlib_video_frame_t NDI_video_frame;
+                NDIlib_audio_frame_interleaved_32f_t NDI_audio_frame;
 
+                // Audio variables
+                bool backwards = false;
+                std::shared_ptr<audio::AudioResample> resample;
+                std::list<std::shared_ptr<audio::Audio> > buffer;
+                std::shared_ptr<audio::Audio> silence;
+                size_t rtAudioCurrentFrame = 0;
+                size_t backwardsSize = std::numeric_limits<size_t>::max();
+                
                 std::condition_variable cv;
                 std::thread thread;
                 std::atomic<bool> running;
@@ -457,12 +473,15 @@ namespace tl
                     p.mutex.timeRange = p.player->getTimeRange();
                     p.mutex.playback = p.player->getPlayback();
                     p.mutex.currentTime = p.player->getCurrentTime();
+                    p.mutex.speed = p.player->getSpeed();
+                    p.mutex.defaultSpeed = p.player->getDefaultSpeed();
                 }
                 else
                 {
                     p.mutex.timeRange = time::invalidTimeRange;
                     p.mutex.playback = timeline::Playback::Stop;
                     p.mutex.currentTime = time::invalidTime;
+                    p.mutex.speed = p.mutex.defaultSpeed = 0.F;
                 }
                 p.mutex.videoData.clear();
                 p.mutex.audioData.clear();
@@ -518,8 +537,10 @@ namespace tl
 
             auto t = std::chrono::steady_clock::now();
 
+            // Clear the NDI structs
             auto& video_frame = p.thread.NDI_video_frame;
             auto& audio_frame = p.thread.NDI_audio_frame;
+            
             while (p.thread.running)
             {
                 bool createDevice = false;
@@ -565,13 +586,19 @@ namespace tl
                         createDevice =
                             p.mutex.config != config ||
                             p.mutex.enabled != enabled;
+                        
+                        audioDataChanged =
+                            createDevice ||
+                            audioData != p.mutex.audioData ||
+                            currentTime != p.mutex.currentTime;
+                        
                         config = p.mutex.config;
                         enabled = p.mutex.enabled;
 
                         p.thread.timeRange = p.mutex.timeRange;
                         playback = p.mutex.playback;
                         currentTime = p.mutex.currentTime;
-
+                        
                         doRender =
                             createDevice ||
                             ocioOptions != p.mutex.ocioOptions ||
@@ -603,9 +630,6 @@ namespace tl
                         p.thread.videoData = p.mutex.videoData;
                         p.thread.overlay = p.mutex.overlay;
 
-                        audioDataChanged =
-                            createDevice ||
-                            audioData != p.mutex.audioData;
                         volume = p.mutex.volume;
                         mute = p.mutex.mute;
                         audioOffset = p.mutex.audioOffset;
@@ -674,11 +698,11 @@ namespace tl
                         GL_STREAM_READ);
                 }
 
-                if (audioDataChanged)
+                if (audioDataChanged && p.thread.render && !config.noAudio)
                 {
                     try
                     {
-                        _audio(currentTime, audioData);
+                        _audio(p.thread.timeRange, currentTime, audioData);
                     }
                     catch (const std::exception& e)
                     {
@@ -696,6 +720,7 @@ namespace tl
                 {
                     try
                     {
+                        _metadata();
                         _render(
                             config,
                             ocioOptions,
@@ -735,7 +760,7 @@ namespace tl
             
             // Free the video frame
             free(p.thread.NDI_video_frame.p_data);
-            free(p.thread.NDI_audio_frame.p_data);
+            p.thread.NDI_video_frame.p_data = nullptr;
             
             // Destroy the NDI sender
             NDIlib_send_destroy(p.thread.NDI_send);
@@ -753,14 +778,19 @@ namespace tl
                 // config.deviceIndex != -1 &&
                 // config.displayModeIndex != -1 &&
                 config.pixelType != device::PixelType::None)
-            {
+            {    
+                if (size.w == 0 && size.h == 0)
+                    return;
+                
                 if (!p.thread.NDI_send)
                 {
-                    NDIlib_send_create_t NDI_send_create_desc;
-                    NDI_send_create_desc.p_ndi_name = config.deviceName.c_str();
-    
-                    p.thread.NDI_send =
-                        NDIlib_send_create(&NDI_send_create_desc);
+                    NDIlib_send_create_t send_create;
+                    send_create.p_ndi_name = config.deviceName;
+                    send_create.p_groups = NULL;
+                    send_create.clock_video = true;
+                    send_create.clock_audio = true;
+
+                    p.thread.NDI_send = NDIlib_send_create();
                     if (!p.thread.NDI_send)
                     {
                         throw std::runtime_error("NDIlib_send_create failed");
@@ -769,59 +799,406 @@ namespace tl
                 
                 auto& video_frame = p.thread.NDI_video_frame;
 
-                // \@todo: handle audio
-                const audio::Info audioOutputInfo(2,
-                                                  audio::DataType::F32,
-                                                  48000);
+                
+                p.thread.outputPixelType = getOutputType(config.pixelType);
+                    
+                video_frame.xres = size.w;
+                video_frame.yres = size.h;
+                video_frame.picture_aspect_ratio = size.getAspect();
+                video_frame.FourCC = toNDI(p.thread.outputPixelType);
+                if (video_frame.FourCC == NDIlib_FourCC_video_type_max)
+                    throw std::runtime_error("Invalid pixel type for NDI!");
+
+                size_t dataSize = getPackPixelsSize(size,
+                                                    p.thread.outputPixelType);
+                if (dataSize == 0)
+                    throw std::runtime_error("Invalid data size for output pixel type");
+                free(p.thread.NDI_video_frame.p_data);
+                video_frame.p_data = (uint8_t*)malloc(dataSize);
+                if (!video_frame.p_data)
+                    throw std::runtime_error("Out of memory allocating p_data");
+                video_frame.frame_format_type = NDIlib_frame_format_type_progressive;
+                if (auto context = p.context.lock())
                 {
-                    p.thread.outputPixelType = getOutputType(config.pixelType);
-                    
-                    if (size.w == 0 && size.h == 0)
-                        throw std::runtime_error("Invalid output size");
-                    
-                    video_frame.xres = size.w;
-                    video_frame.yres = size.h;
-                    video_frame.picture_aspect_ratio = size.getAspect();
-                    video_frame.FourCC = toNDI(p.thread.outputPixelType);
-                    if (video_frame.FourCC == NDIlib_FourCC_video_type_max)
-                        throw std::runtime_error("Invalid pixel type for NDI!");
-
-                    size_t dataSize = getPackPixelsSize(size,
-                                                        p.thread.outputPixelType);
-                    if (dataSize == 0)
-                        throw std::runtime_error("Invalid data size for output pixel type");
-                    video_frame.p_data = (uint8_t*)malloc(dataSize);
-                    if (!video_frame.p_data)
-                        throw std::runtime_error("Out of memory allocating p_data");
-                    video_frame.frame_format_type = NDIlib_frame_format_type_progressive;
-                    if (auto context = p.context.lock())
-                    {
-                        context->log(
-                            "tl::ndi::OutputDevice",
-                            string::Format(
-                                "\n"
-                                "    #{0} {1}\n"
-                                "    video: {2} {3}\n"
-                                "    audio: {4} {5} {6}").
-                            arg(config.deviceIndex).
-                            arg(config.deviceName).
-                            arg(p.thread.size).
-                            arg(frameRate).
-                            arg(audioOutputInfo.channelCount).
-                            arg(audioOutputInfo.dataType).
-                            arg(audioOutputInfo.sampleRate));
-                    }
-
+                    context->log(
+                        "tl::ndi::OutputDevice",
+                        string::Format(
+                            "\n"
+                            "    #{0} {1}\n"
+                            "    video: {2} {3}\n"
+                            "    audio: {4} {5} {6}").
+                        arg(config.deviceIndex).
+                        arg(config.deviceName).
+                        arg(p.thread.size).
+                        arg(frameRate));
                 }
 
                 active = true;
             }
         }
 
-        void OutputDevice::_audio(const otime::RationalTime& time,
-                                  const std::vector<timeline::AudioData>& audioData)
+        void OutputDevice::_audio(
+            const otime::TimeRange& timeRange, 
+            const otime::RationalTime& currentTime,
+            const std::vector<timeline::AudioData>& audioDataCache)
         {
-            std::cerr << "play audio " << time << std::endl;
+            TLRENDER_P();
+
+            const otime::RationalTime kOneFrame(1.0, currentTime.rate());
+            const auto& currentLocalTime = currentTime - timeRange.start_time();
+            double currentSeconds = currentLocalTime.to_seconds();
+            double secondsD = std::floor(currentSeconds);
+
+            timeline::AudioData audioData;
+            for (const auto& audio : audioDataCache)
+            {
+                if (audio.seconds == secondsD && !audio.layers.empty())
+                {
+                    audioData = audio;
+                    break;
+                }
+            }
+
+            if (audioData.layers.empty())
+            {
+                return;
+            }
+            
+            std::shared_ptr<audio::Audio> inputAudio;
+            for (const auto& layer : audioData.layers)
+            {
+                if (layer.audio)
+                {
+                    inputAudio = layer.audio;
+                    break;
+                }
+            }
+
+            if (!inputAudio)
+            {
+                return;
+            }
+            
+            const auto& inputInfo = inputAudio->getInfo();
+            const int channelCount = inputInfo.channelCount;
+            const size_t inSampleRate = inputInfo.sampleRate;
+            const auto& inSampleDuration = kOneFrame.rescaled_to(inSampleRate);
+            
+            const size_t outSampleRate = 48000;
+            auto outStartSample  = otime::RationalTime(secondsD, 1.0).rescaled_to(outSampleRate);
+            auto outCurrentSample  = otime::RationalTime(currentSeconds, 1.0).rescaled_to(outSampleRate);
+            size_t outSampleStart = outStartSample.value();
+            size_t outSampleCurrent = outCurrentSample.value();
+            const size_t nFrames = kOneFrame.rescaled_to(outSampleRate).value();
+            if (nFrames == 0)
+                return;
+            
+
+            timeline::Playback playback = timeline::Playback::Stop;
+            otime::RationalTime playbackStartTime = time::invalidTime;
+            double audioOffset = 0.0;
+            double speed = 0.0;
+            double defaultSpeed = 0.0;
+            double speedMultiplier = 1.0F;
+            float volume = 1.F;
+            bool mute = false;
+            std::vector<int> channelMute;
+            std::chrono::steady_clock::time_point muteTimeout;
+            bool reset = false;
+            {
+                std::unique_lock<std::mutex> lock(p.mutex.mutex);
+                playbackStartTime = p.mutex.timeRange.start_time();
+                audioOffset = p.mutex.audioOffset;
+                speed = p.player->getSpeed();
+                defaultSpeed = p.player->getDefaultSpeed();
+                speedMultiplier = defaultSpeed / speed;
+                volume = p.mutex.volume;
+                mute = p.mutex.mute;
+                channelMute = p.mutex.channelMute;
+                muteTimeout = p.mutex.muteTimeout;
+                playback = p.player->getPlayback();
+                reset = p.mutex.reset;
+                p.mutex.reset = false;
+            }
+
+            auto& thread = p.thread;
+            
+            switch (playback)
+            {
+            case timeline::Playback::Forward:
+            case timeline::Playback::Reverse:
+            {
+                // Flush the audio resampler and buffer when the RtAudio
+                // playback is reset.
+                if (reset)
+                {
+                    if (thread.resample)
+                    {
+                        thread.resample->flush();
+                    }
+                    thread.silence.reset();
+                    thread.buffer.clear();
+                    thread.rtAudioCurrentFrame = 0;
+                    thread.backwardsSize =
+                        std::numeric_limits<size_t>::max();
+                }
+
+                const auto outputInfo = audio::Info(channelCount, audio::DataType::F32, 48000);
+                const size_t inSampleRate = inputInfo.sampleRate;
+                const size_t outSampleRate = outputInfo.sampleRate *
+                                             speedMultiplier;
+                    
+                
+                // Create the audio resampler.
+                if (!thread.resample ||
+                    (thread.resample &&
+                     thread.resample->getInputInfo() !=
+                     inputInfo) ||
+                    (thread.resample &&
+                     thread.resample->getOutputInfo() !=
+                     outputInfo))
+                {
+                    thread.resample = audio::AudioResample::create(
+                        inputInfo, outputInfo);
+                }
+
+                // Fill the audio buffer.
+                if (inputInfo.sampleRate <= 0 ||
+                    playbackStartTime == time::invalidTime)
+                    return;
+                
+                const bool backwards = playback == timeline::Playback::Reverse;
+                if (!thread.silence)
+                {
+                    thread.silence = audio::Audio::create(outputInfo, inSampleRate);
+                    thread.silence->zero();
+                }
+                    
+                const int64_t playbackStartFrame =
+                    playbackStartTime.rescaled_to(inSampleRate).value() -
+                    p.player->getTimeRange().start_time().rescaled_to(inSampleRate).value() -
+                    otime::RationalTime(audioOffset, 1.0).rescaled_to(inSampleRate).value();
+                const auto bufferSampleCount = audio::getSampleCount(thread.buffer);
+                const auto& timeOffset = otime::RationalTime(
+                    thread.rtAudioCurrentFrame + bufferSampleCount,
+                    outSampleRate).rescaled_to(inSampleRate);
+
+                const int64_t frameOffset = timeOffset.value();
+                int64_t frame = playbackStartFrame;
+
+                if (backwards)
+                {
+                    frame -= frameOffset;
+                }
+                else
+                {
+                    frame += frameOffset;
+                }
+                    
+                // Works but minor pops
+                int64_t seconds = inSampleRate > 0 ? (frame / inSampleRate) : 0;
+                int64_t offset = frame - seconds * inSampleRate;
+
+                // std::cerr << "\tNDI seconds:     " << seconds << std::endl;
+                // std::cerr << "\tNDI rtAudioCurrentFrame: " << thread.rtAudioCurrentFrame << std::endl;
+                // std::cerr << "\tNDI playbackStartTime: " << playbackStartTime << std::endl;
+                // std::cerr << "\tNDI playbackStartFrame: " << playbackStartFrame << std::endl;
+                // std::cerr << "\tNDI bufferSampleCount: " << bufferSampleCount << std::endl;
+                // std::cerr << "\tNDI inSampleRate: " << inSampleRate << std::endl;
+                // std::cerr << "\tNDI outSampleRate: " << outSampleRate << std::endl;
+                // std::cerr << "\tNDI timeOffset: " << timeOffset.rescaled_to(1.0) << std::endl;
+                // std::cerr << "\tNDI frameOffset: " << frameOffset << std::endl;
+                // std::cerr << "\tNDI frame:       " << frame   << std::endl;
+                // std::cerr << "\tNDI offset:      " << offset  << std::endl;
+                while (audio::getSampleCount(thread.buffer) < nFrames)
+                {
+                    std::vector<float> volumeScale;
+                    volumeScale.reserve(audioData.layers.size());
+                    std::vector<std::shared_ptr<audio::Audio> > audios;
+                    std::vector<const uint8_t*> audioDataP;
+                    const size_t dataOffset = offset * inputInfo.getByteCount();
+                    const auto sample = seconds * inSampleRate + offset;
+                    int audioIndex = 0;
+                    for (const auto& layer : audioData.layers)
+                    {
+                        float volumeMultiplier = 1.F;
+                        if (layer.audio && layer.audio->getInfo() == inputInfo)
+                        {
+                            auto audio = layer.audio;
+                                
+                            if (layer.inTransition)
+                            {
+                                const auto& clipTimeRange = layer.clipTimeRange;
+                                const auto& range = otime::TimeRange(clipTimeRange.start_time().rescaled_to(inSampleRate),
+                                                                     clipTimeRange.duration().rescaled_to(inSampleRate));
+                                const auto  inOffset = layer.inTransition->in_offset().value();
+                                const auto outOffset = layer.inTransition->out_offset().value();
+                                const auto fadeInBegin = range.start_time().value() - inOffset;
+                                const auto fadeInEnd   = range.start_time().value() + outOffset;
+                                if (sample > fadeInBegin)
+                                {
+                                    if (sample < fadeInEnd)
+                                    {
+                                        volumeMultiplier = fadeValue(sample,
+                                                                     range.start_time().value() - inOffset - 1.0,
+                                                                     range.start_time().value() + outOffset);
+                                        volumeMultiplier = std::min(1.F, volumeMultiplier);
+                                    }
+                                }
+                                else
+                                {
+                                    volumeMultiplier = 0.F;
+                                }
+                            }
+                                
+                            if (layer.outTransition)
+                            {
+                                const auto& clipTimeRange = layer.clipTimeRange;
+                                const auto& range = otime::TimeRange(clipTimeRange.start_time().rescaled_to(inSampleRate),
+                                                                     clipTimeRange.duration().rescaled_to(inSampleRate));
+                            
+                                const auto  inOffset = layer.outTransition->in_offset().value();
+                                const auto outOffset = layer.outTransition->out_offset().value();
+                                const auto fadeOutBegin = range.end_time_inclusive().value() - inOffset;
+                                const auto fadeOutEnd   = range.end_time_inclusive().value() + outOffset;
+                                if (sample > fadeOutBegin)
+                                {
+                                    if (sample < fadeOutEnd)
+                                    {
+                                        volumeMultiplier = 1.F - fadeValue(sample,
+                                                                           range.end_time_inclusive().value() - inOffset,
+                                                                           range.end_time_inclusive().value() + outOffset + 1.0);
+                                    }
+                                    else
+                                    {
+                                        volumeMultiplier = 0.F;
+                                    }
+                                }
+                            }
+
+                            if (audioIndex < channelMute.size() &&
+                                channelMute[audioIndex])
+                            {
+                                volumeMultiplier = 0.F;
+                            }
+                                
+                            if (backwards)
+                            {
+                                auto tmp = audio::Audio::create(inputInfo, inSampleRate);
+                                tmp->zero();
+
+                                std::memcpy(tmp->getData(), audio->getData(), audio->getByteCount());
+                                audio = tmp;
+                                audios.push_back(audio);
+                            }
+                            audioDataP.push_back(audio->getData() + dataOffset);
+                            volumeScale.push_back(volumeMultiplier);
+                            ++audioIndex;
+                        }
+                    }
+                    if (audioDataP.empty())
+                    {
+                        volumeScale.push_back(0.F);
+                        audioDataP.push_back(thread.silence->getData());
+                    }
+
+                    size_t size = std::min(
+                        p.player->getPlayerOptions().audioBufferFrameCount,
+                        static_cast<size_t>(inSampleRate - offset));
+
+                    if (backwards)
+                    {
+                        if ( thread.backwardsSize < size )
+                        {
+                            size = thread.backwardsSize;
+                        }
+                            
+                        audio::reverse(
+                            const_cast<uint8_t**>(audioDataP.data()),
+                            audioDataP.size(),
+                            size,
+                            inputInfo.channelCount,
+                            inputInfo.dataType);
+                    }
+
+                    auto tmp = audio::Audio::create(inputInfo, size);
+                    tmp->zero();
+                    audio::mix(
+                        audioDataP.data(),
+                        audioDataP.size(),
+                        tmp->getData(),
+                        volume,
+                        volumeScale,
+                        size,
+                        inputInfo.channelCount,
+                        inputInfo.dataType);
+
+                    if (thread.resample)
+                    {
+                        thread.buffer.push_back(thread.resample->process(tmp));
+                    }
+
+                    if (backwards)
+                    {
+                        offset -= size;
+                        if (offset < 0)
+                        {
+                            seconds -= 1;
+                            if (speedMultiplier < 1.0)
+                                offset += ( inSampleRate * speedMultiplier );
+                            else
+                                offset += inSampleRate;
+                            thread.backwardsSize = static_cast<size_t>(inSampleRate - offset);
+                        }
+                        else
+                        {
+                            thread.backwardsSize = size;
+                        }
+                    }
+                    else
+                    {
+                        offset += size;
+                        if (offset >= inSampleRate)
+                        {
+                            offset -= inSampleRate;
+                            seconds += 1;
+                        }
+                    }
+                }
+
+                const auto now = std::chrono::steady_clock::now();
+                if (defaultSpeed == p.player->getTimeRange().duration().rate() &&
+                    !mute &&
+                    now >= muteTimeout &&
+                    nFrames <= getSampleCount(thread.buffer))
+                {
+                    auto& NDI_audio_frame = p.thread.NDI_audio_frame;
+            
+                    // Send the output audio buffer to NDI.
+                    // Submit the audio buffer
+                    NDI_audio_frame.sample_rate = outSampleRate;
+                    NDI_audio_frame.no_channels = channelCount;
+                    NDI_audio_frame.no_samples = nFrames;
+                    NDI_audio_frame.p_data = (float*)malloc(nFrames * channelCount * sizeof(float));
+
+                    audio::move(
+                        p.thread.buffer,
+                        reinterpret_cast<uint8_t*>(NDI_audio_frame.p_data),
+                        nFrames);
+                
+                    NDIlib_util_send_send_audio_interleaved_32f(p.thread.NDI_send, &NDI_audio_frame);
+                                                
+                    free(p.thread.NDI_audio_frame.p_data);
+                    p.thread.NDI_audio_frame.p_data = nullptr;
+                }
+            
+                thread.rtAudioCurrentFrame += nFrames;
+                
+                break;
+            }
+            default:
+                break;
+            }
         }
         
         void OutputDevice::_render(
@@ -961,7 +1338,96 @@ namespace tl
                 glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
             }
             
-			NDIlib_send_send_video_v2(p.thread.NDI_send, &video_frame);
+            std::shared_ptr<image::HDRData> hdrData;
+            switch(p.thread.hdrMode)
+            {
+            case device::HDRMode::None:
+                break;
+            case device::HDRMode::FromFile:
+            case device::HDRMode::Custom:
+                if (p.thread.videoData.empty())
+                    return;
+                hdrData = device::getHDRData(p.thread.videoData[0]);
+                break;
+                break;
+            }
+            
+            if (hdrData)
+            {
+                std::string primariesName = "bt_2020";
+                std::string transferName = "bt_2020";
+                std::string matrixName = "bt_2020";
+                const auto& primaries = hdrData->primaries;
+                if (primaries[0].x == 0.708F && primaries[0].y == 0.292F &&
+                    primaries[1].x == 0.170F && primaries[1].y == 0.797F &&
+                    primaries[2].x == 0.131F && primaries[2].y == 0.046F &&
+                    primaries[3].x == 0.3127F && primaries[3].y == 0.3290F)
+                {
+                    primariesName = "bt_2020";
+                }
+                else if (primaries[0].x == 0.640F && primaries[0].y == 0.330F &&
+                         primaries[1].x == 0.300F && primaries[1].y == 0.600F &&
+                         primaries[2].x == 0.150F && primaries[2].y == 0.060F &&
+                         primaries[3].x == 0.3127F && primaries[3].y == 0.3290F)
+                {
+                    primariesName = "bt_709";
+                }
+                else if (primaries[0].x == 0.630F && primaries[0].y == 0.340F &&
+                         primaries[1].x == 0.310F && primaries[1].y == 0.595F &&
+                         primaries[2].x == 0.155F && primaries[2].y == 0.070F &&
+                         primaries[3].x == 0.3127F && primaries[3].y == 0.3290F)
+                {
+                    primariesName = "bt_601";
+                }
+                else
+                {
+                    if (auto context = p.context.lock())
+                    {
+                        auto logSystem = context->getLogSystem();
+                        logSystem->print(
+                            "tl::ndi::OutputDevice",
+                            "Unknown primaries.  Using bt_2020",
+                            log::Type::Error,
+                            kModule);
+                    }
+                }
+                
+                switch(hdrData->eotf)
+                {
+                case image::EOTFType::EOTF_BT601:
+                    transferName = "bt_601";
+                    matrixName = "bt_601";
+                    break;
+                case image::EOTFType::EOTF_BT709:
+                    transferName = "bt_709";
+                    matrixName = "bt_709";
+                    break;
+                case image::EOTFType::EOTF_BT2020:
+                    transferName = "bt_2020";
+                    matrixName = "bt_2020";
+                    break;
+                case image::EOTFType::EOTF_BT2100_HLG:
+                    transferName = "bt_2100_hlg";
+                    matrixName = "bt_2100";
+                    break;
+                case image::EOTFType::EOTF_BT2100_PQ:
+                    transferName = "bt_2100_pq";
+                    matrixName = "bt_2100";
+                    break;
+                }
+                
+                const std::string& metadata = string::Format("<ndi_color_info "
+                                                      " transfer=\"{0}\" "
+                                                      " matrix=\"{1}\" "
+                                                      " primaries=\"{2}\" "
+                                                      "/> ").
+                                              arg(transferName).
+                                              arg(matrixName).
+                                              arg(primariesName);
+                video_frame.p_metadata = metadata.c_str();
+            }
+            
+			NDIlib_send_send_video(p.thread.NDI_send, &video_frame);
             
         }
     }

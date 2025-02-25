@@ -49,11 +49,19 @@ namespace tl
         void from_json(const nlohmann::json&, HDRBezier&);
 
         ///@}
-        
+        enum EOTFType : uint8_t
+        {
+            EOTF_BT601 = 0,
+            EOTF_BT709 = 1,
+            EOTF_BT2020 = 2,
+            EOTF_BT2100_HLG = 3,
+            EOTF_BT2100_PQ = 4
+        };
+
         //! HDR data.
         struct HDRData
         {
-            uint8_t eotf = 0;
+            uint8_t eotf = EOTFType::EOTF_BT709;
             //! Default Rec. 2020 color primaries (red, green, blue, white).
             std::array<math::Vector2f, HDRPrimaries::Count> primaries =
             {

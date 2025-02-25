@@ -552,7 +552,7 @@ namespace tl
             int64_t audioStartSamples = 0;
             size_t  sampleRate = 0;
             std::shared_ptr<audio::AudioResample> resample;
-            std::vector<uint8_t*> flatData;
+            std::vector<uint8_t*> flatPointers;
             
             bool opened = false;
         };
@@ -792,9 +792,9 @@ namespace tl
                 }
 
                 if (p.avAudioPlanar)
-                    p.flatData.resize(info.audio.channelCount);
+                    p.flatPointers.resize(info.audio.channelCount);
                 else
-                    p.flatData.resize(1);
+                    p.flatPointers.resize(1);
                 
                 r = selectChannelLayout(
                     avCodec, &p.avAudioCodecContext->ch_layout,
@@ -1751,17 +1751,18 @@ namespace tl
                     const size_t stride = audio->getByteCount() / channels;
                     for (size_t i = 0; i < channels; ++i)
                     {
-                        p.flatData[i] = data + i * stride;
+                        p.flatPointers[i] = data + i * stride;
                     }
                 }
                 else
                 {
-                    p.flatData[0] = data;
+                    p.flatPointers[0] = data;
                 }
                 
                 const size_t sampleCount = audio->getSampleCount();
                 r = av_audio_fifo_write(
-                    p.avAudioFifo, reinterpret_cast<void**>(p.flatData.data()),
+                    p.avAudioFifo,
+                    reinterpret_cast<void**>(p.flatPointers.data()),
                     sampleCount);
                 if (r < 0)
                 {
