@@ -111,6 +111,7 @@ namespace tl
             PixelType   pixelType        = PixelType::None;
             BoolOptions boolOptions;
             bool        noAudio = false;
+            bool        noMetadata = false;
 
             bool operator == (const DeviceConfig&) const;
             bool operator != (const DeviceConfig&) const;

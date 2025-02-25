@@ -134,7 +134,7 @@ namespace tl
                 const std::vector<timeline::DisplayOptions>&,
                 const timeline::CompareOptions&,
                 const timeline::BackgroundOptions&);
-            void _read();
+            void _read(const device::DeviceConfig&);
 
             TLRENDER_PRIVATE();
         };

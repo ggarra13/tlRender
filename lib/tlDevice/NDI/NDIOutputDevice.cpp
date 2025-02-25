@@ -741,7 +741,7 @@ namespace tl
                     }
                 }
 
-                _read();
+                _read(config);
                 
                 const auto t1 = std::chrono::steady_clock::now();
                 const std::chrono::duration<double> diff = t1 - t;
@@ -1324,7 +1324,7 @@ namespace tl
             }
         }
 
-        void OutputDevice::_read()
+        void OutputDevice::_read(const device::DeviceConfig& config)
         {
             TLRENDER_P();
 
@@ -1351,7 +1351,7 @@ namespace tl
                 break;
             }
             
-            if (hdrData)
+            if (hdrData && !config.noMetadata)
             {
                 std::string primariesName = "bt_2020";
                 std::string transferName = "bt_2020";
