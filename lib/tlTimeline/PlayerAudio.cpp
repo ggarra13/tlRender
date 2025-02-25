@@ -383,10 +383,10 @@ namespace tl
                     now >= muteTimeout &&
                     nFrames <= getSampleCount(thread.buffer))
                 {
-                    // audio::move(
-                    //     thread.buffer,
-                    //     reinterpret_cast<uint8_t*>(outputBuffer),
-                    //     nFrames);
+                    audio::move(
+                        thread.buffer,
+                        reinterpret_cast<uint8_t*>(outputBuffer),
+                        nFrames);
                 }
 
                 // Update the audio frame.
