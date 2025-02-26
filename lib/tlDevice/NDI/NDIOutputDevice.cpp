@@ -43,6 +43,22 @@ namespace tl
             {
                 return (sample - in) / (out - in);
             }
+
+            inline timeline::AudioData
+            findAudioData(double seconds,
+                          const std::vector<timeline::AudioData>& audioDataCache)
+            {
+                timeline::AudioData audioData;
+                for (const auto& audio : audioDataCache)
+                {
+                    if (audio.seconds == seconds && !audio.layers.empty())
+                    {
+                        audioData = audio;
+                        break;
+                    }
+                }
+                return audioData;
+            }
         }
 
 
@@ -854,20 +870,7 @@ namespace tl
             double currentSeconds = currentLocalTime.to_seconds();
             double secondsD = std::floor(currentSeconds);
 
-            timeline::AudioData audioData;
-            for (const auto& audio : audioDataCache)
-            {
-                if (audio.seconds == secondsD && !audio.layers.empty())
-                {
-                    audioData = audio;
-                    break;
-                }
-            }
-
-            if (audioData.layers.empty())
-            {
-                return;
-            }
+            const timeline::AudioData& audioData = findAudioData(secondsD, audioDataCache);
             
             std::shared_ptr<audio::Audio> inputAudio;
             for (const auto& layer : audioData.layers)
@@ -881,6 +884,7 @@ namespace tl
 
             if (!inputAudio)
             {
+                std::cerr << "no input audio found" << std::endl;
                 return;
             }
             
@@ -895,8 +899,6 @@ namespace tl
             size_t outSampleStart = outStartSample.value();
             size_t outSampleCurrent = outCurrentSample.value();
             const size_t nFrames = kOneFrame.rescaled_to(outSampleRate).value();
-            if (nFrames == 0)
-                return;
             
 
             timeline::Playback playback = timeline::Playback::Stop;
@@ -1004,25 +1006,18 @@ namespace tl
                 int64_t seconds = inSampleRate > 0 ? (frame / inSampleRate) : 0;
                 int64_t offset = frame - seconds * inSampleRate;
 
-                // std::cerr << "\tNDI seconds:     " << seconds << std::endl;
-                // std::cerr << "\tNDI rtAudioCurrentFrame: " << thread.rtAudioCurrentFrame << std::endl;
-                // std::cerr << "\tNDI playbackStartTime: " << playbackStartTime << std::endl;
-                // std::cerr << "\tNDI playbackStartFrame: " << playbackStartFrame << std::endl;
-                // std::cerr << "\tNDI bufferSampleCount: " << bufferSampleCount << std::endl;
-                // std::cerr << "\tNDI inSampleRate: " << inSampleRate << std::endl;
-                // std::cerr << "\tNDI outSampleRate: " << outSampleRate << std::endl;
-                // std::cerr << "\tNDI timeOffset: " << timeOffset.rescaled_to(1.0) << std::endl;
-                // std::cerr << "\tNDI frameOffset: " << frameOffset << std::endl;
-                // std::cerr << "\tNDI frame:       " << frame   << std::endl;
-                // std::cerr << "\tNDI offset:      " << offset  << std::endl;
+                    
                 while (audio::getSampleCount(thread.buffer) < nFrames)
                 {
+                    const timeline::AudioData& audioData = findAudioData(secondsD,
+                                                                         audioDataCache);
+            
                     std::vector<float> volumeScale;
                     volumeScale.reserve(audioData.layers.size());
                     std::vector<std::shared_ptr<audio::Audio> > audios;
                     std::vector<const uint8_t*> audioDataP;
                     const size_t dataOffset = offset * inputInfo.getByteCount();
-                    const auto sample = seconds * inSampleRate + offset;
+                    const size_t sample = seconds * inSampleRate + offset;
                     int audioIndex = 0;
                     for (const auto& layer : audioData.layers)
                     {
@@ -1149,6 +1144,7 @@ namespace tl
                         if (offset < 0)
                         {
                             seconds -= 1;
+                            secondsD -= 1;
                             if (speedMultiplier < 1.0)
                                 offset += ( inSampleRate * speedMultiplier );
                             else
@@ -1167,6 +1163,7 @@ namespace tl
                         {
                             offset -= inSampleRate;
                             seconds += 1;
+                            secondsD += 1;
                         }
                     }
                 }
@@ -1218,9 +1215,7 @@ namespace tl
             TLRENDER_P();
 
             // Create the offscreen buffer.
-            const math::Size2i renderSize = timeline::getRenderSize(
-                compareOptions.mode,
-                p.thread.videoData);
+            const math::Size2i renderSize = p.thread.size;
             gl::OffscreenBufferOptions offscreenBufferOptions;
             offscreenBufferOptions.colorType = getColorBuffer(p.thread.outputPixelType);
             if (!displayOptions.empty())
@@ -1229,9 +1224,9 @@ namespace tl
             }
             offscreenBufferOptions.depth = gl::OffscreenDepth::_24;
             offscreenBufferOptions.stencil = gl::OffscreenStencil::_8;
-            if (gl::doCreate(p.thread.offscreenBuffer, p.thread.size, offscreenBufferOptions))
+            if (gl::doCreate(p.thread.offscreenBuffer, renderSize, offscreenBufferOptions))
             {
-                p.thread.offscreenBuffer = gl::OffscreenBuffer::create(p.thread.size, offscreenBufferOptions);
+                p.thread.offscreenBuffer = gl::OffscreenBuffer::create(renderSize, offscreenBufferOptions);
             }
 
             // Render the video.
@@ -1241,16 +1236,19 @@ namespace tl
 
                 timeline::RenderOptions renderOptions;
                 renderOptions.colorBuffer = getColorBuffer(p.thread.outputPixelType);
-                p.thread.render->begin(p.thread.size, renderOptions);
+                p.thread.render->begin(renderSize, renderOptions);
                 p.thread.render->setOCIOOptions(ocioOptions);
                 p.thread.render->setLUTOptions(lutOptions);
 
+                math::Size2i viewportSize = p.thread.viewportSize;
+                if (!viewportSize.isValid()) viewportSize = p.thread.size;
+                
                 math::Vector2f transformOffset;
                 math::Vector2i viewPosTmp = p.thread.viewPos;
                 double viewZoomTmp = p.thread.viewZoom;
                 
                 const auto renderAspect = renderSize.getAspect();
-                const auto viewportAspect = p.thread.viewportSize.getAspect();
+                const auto viewportAspect = viewportSize.getAspect();
                 if (viewportAspect > 1.F)
                 {
                     transformOffset.x = renderSize.w / 2.F;
@@ -1263,22 +1261,19 @@ namespace tl
                 }
                 if (p.thread.frameView)
                 {
-                    double zoom = p.thread.size.w / static_cast<double>(renderSize.w);
-                    if (zoom * renderSize.h > p.thread.size.h)
+                    double zoom = renderSize.w / static_cast<double>(renderSize.w);
+                    if (zoom * renderSize.h > renderSize.h)
                     {
-                        zoom = p.thread.size.h / static_cast<double>(renderSize.h);
+                        zoom = renderSize.h / static_cast<double>(renderSize.h);
                     }
                     const math::Vector2i c(renderSize.w / 2, renderSize.h / 2);
-                    viewPosTmp.x = p.thread.size.w / 2.0 - c.x * zoom;
-                    viewPosTmp.y = p.thread.size.h / 2.0 - c.y * zoom;
+                    viewPosTmp.x = renderSize.w / 2.0 - c.x * zoom;
+                    viewPosTmp.y = renderSize.h / 2.0 - c.y * zoom;
                     viewZoomTmp = zoom;
                 }
-                std::cerr << "p.viewPos=" << p.thread.viewPos << std::endl;
-                std::cerr << "p.viewZoom=" << p.thread.viewZoom << std::endl;
-                std::cerr << "p.viewPosTmp=" << viewPosTmp << std::endl;
-                std::cerr << "p.viewZoomTmp=" << viewZoomTmp << std::endl;
-                math::Matrix4x4f vm;
-                vm = vm * math::translate(math::Vector3f(viewPosTmp.x, -viewPosTmp.y, 0.F));
+                math::Matrix4x4f vm = math::translate(math::Vector3f(viewPosTmp.x, 
+                                                                     static_cast<float>(-viewPosTmp.y - (renderSize.h * (viewZoomTmp - 1.0))),
+                                                                     0.F));
                 vm = vm * math::scale(math::Vector3f(viewZoomTmp, viewZoomTmp, 1.F));
                 const auto& rm = math::rotateZ(-p.thread.rotateZ);
                 const math::Matrix4x4f& tm = math::translate(
@@ -1287,19 +1282,14 @@ namespace tl
                     math::Vector3f(transformOffset.x, transformOffset.y, 0.F));
                 const auto pm = math::ortho(
                     0.F,
-                    static_cast<float>(p.thread.viewportSize.w),
+                    static_cast<float>(viewportSize.w),
                     0.F,
-                    static_cast<float>(p.thread.viewportSize.h),
+                    static_cast<float>(viewportSize.h),
                     -1.F,
                     1.F);
-                
-                math::Matrix4x4f sm = math::scale(math::Vector3f(
-                                                      static_cast<float>(p.thread.size.w) / float(p.thread.viewportSize.w),
-                                                      static_cast<float>(p.thread.size.h) / float(p.thread.viewportSize.h),
-                                                      1.0f));
-                p.thread.render->setTransform(pm * vm * to * rm * tm);
                 if (!p.thread.videoData.empty())
                 {
+                    p.thread.render->setTransform(pm * vm * to * rm * tm);
                     p.thread.render->drawVideo(
                         p.thread.videoData,
                         timeline::getBoxes(compareOptions.mode, p.thread.videoData),
@@ -1348,7 +1338,8 @@ namespace tl
             glBindBuffer(GL_PIXEL_PACK_BUFFER, p.thread.pbo);
             if (void* pboP = glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY))
             {
-                copyPackPixels(video_frame.p_data, pboP, p.thread.size, p.thread.outputPixelType);
+                copyPackPixels(video_frame.p_data, pboP, p.thread.size,
+                               p.thread.outputPixelType);
                 glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
             }
             

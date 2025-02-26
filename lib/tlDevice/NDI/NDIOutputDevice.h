@@ -136,7 +136,7 @@ namespace tl
                 const timeline::CompareOptions&,
                 const timeline::BackgroundOptions&);
             void _read(const device::DeviceConfig&);
-
+            
             TLRENDER_PRIVATE();
         };
     }
