@@ -64,6 +64,7 @@ namespace tl
 
             //! Set the view.
             virtual void setView(
+                const tl::math::Size2i&   viewportSize,
                 const tl::math::Vector2i& position,
                 double                    zoom,
                 float                     rotateZ,

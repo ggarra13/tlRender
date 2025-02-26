@@ -79,6 +79,7 @@ namespace tl
                 image::HDRData hdrData;
                 timeline::CompareOptions compareOptions;
                 timeline::BackgroundOptions backgroundOptions;
+                math::Size2i viewportSize;
                 math::Vector2i viewPos;
                 double viewZoom = 1.0;
                 bool frameView = true;
@@ -107,6 +108,7 @@ namespace tl
                 device::PixelType outputPixelType = device::PixelType::None;
                 device::HDRMode hdrMode = device::HDRMode::FromFile;
                 image::HDRData hdrData;
+                math::Size2i   viewportSize;
                 math::Vector2i viewPos;
                 double viewZoom = 1.0;
                 float rotateZ = 0.F;
@@ -265,6 +267,7 @@ namespace tl
         }
 
         void OutputDevice::setView(
+            const tl::math::Size2i&   viewportSize,
             const tl::math::Vector2i& position,
             double                    zoom,
             float                     rotateZ,
@@ -273,6 +276,7 @@ namespace tl
             TLRENDER_P();
             {
                 std::unique_lock<std::mutex> lock(p.mutex.mutex);
+                p.mutex.viewportSize = viewportSize;
                 p.mutex.viewPos = position;
                 p.mutex.viewZoom = zoom;
                 p.mutex.rotateZ  = rotateZ;
@@ -609,6 +613,7 @@ namespace tl
                             p.thread.hdrData != p.mutex.hdrData ||
                             compareOptions != p.mutex.compareOptions ||
                             backgroundOptions != p.mutex.backgroundOptions ||
+                            p.thread.viewportSize != p.mutex.viewportSize ||
                             p.thread.viewPos != p.mutex.viewPos ||
                             p.thread.viewZoom != p.mutex.viewZoom ||
                             p.thread.rotateZ != p.mutex.rotateZ ||
@@ -623,6 +628,7 @@ namespace tl
                         p.thread.hdrData = p.mutex.hdrData;
                         compareOptions = p.mutex.compareOptions;
                         backgroundOptions = p.mutex.backgroundOptions;
+                        p.thread.viewportSize = p.mutex.viewportSize;
                         p.thread.viewPos = p.mutex.viewPos;
                         p.thread.viewZoom = p.mutex.viewZoom;
                         p.thread.rotateZ = p.mutex.rotateZ;
@@ -1244,7 +1250,7 @@ namespace tl
                 double viewZoomTmp = p.thread.viewZoom;
                 
                 const auto renderAspect = renderSize.getAspect();
-                const auto viewportAspect = p.thread.size.getAspect();
+                const auto viewportAspect = p.thread.viewportSize.getAspect();
                 if (viewportAspect > 1.F)
                 {
                     transformOffset.x = renderSize.w / 2.F;
@@ -1267,6 +1273,10 @@ namespace tl
                     viewPosTmp.y = p.thread.size.h / 2.0 - c.y * zoom;
                     viewZoomTmp = zoom;
                 }
+                std::cerr << "p.viewPos=" << p.thread.viewPos << std::endl;
+                std::cerr << "p.viewZoom=" << p.thread.viewZoom << std::endl;
+                std::cerr << "p.viewPosTmp=" << viewPosTmp << std::endl;
+                std::cerr << "p.viewZoomTmp=" << viewZoomTmp << std::endl;
                 math::Matrix4x4f vm;
                 vm = vm * math::translate(math::Vector3f(viewPosTmp.x, -viewPosTmp.y, 0.F));
                 vm = vm * math::scale(math::Vector3f(viewZoomTmp, viewZoomTmp, 1.F));
@@ -1277,11 +1287,16 @@ namespace tl
                     math::Vector3f(transformOffset.x, transformOffset.y, 0.F));
                 const auto pm = math::ortho(
                     0.F,
-                    static_cast<float>(p.thread.size.w),
+                    static_cast<float>(p.thread.viewportSize.w),
                     0.F,
-                    static_cast<float>(p.thread.size.h),
+                    static_cast<float>(p.thread.viewportSize.h),
                     -1.F,
                     1.F);
+                
+                math::Matrix4x4f sm = math::scale(math::Vector3f(
+                                                      static_cast<float>(p.thread.size.w) / float(p.thread.viewportSize.w),
+                                                      static_cast<float>(p.thread.size.h) / float(p.thread.viewportSize.h),
+                                                      1.0f));
                 p.thread.render->setTransform(pm * vm * to * rm * tm);
                 if (!p.thread.videoData.empty())
                 {
