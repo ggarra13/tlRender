@@ -1244,8 +1244,8 @@ namespace tl
                 if (!viewportSize.isValid()) viewportSize = p.thread.size;
                 
                 math::Vector2f transformOffset;
-                math::Vector2i viewPosTmp = p.thread.viewPos;
-                double viewZoomTmp = p.thread.viewZoom;
+                math::Vector2i viewPos = p.thread.viewPos;
+                double viewZoom = p.thread.viewZoom;
                 
                 const auto renderAspect = renderSize.getAspect();
                 const auto viewportAspect = viewportSize.getAspect();
@@ -1261,48 +1261,25 @@ namespace tl
                 }
                 if (p.thread.frameView)
                 {
-                    double zoom = 1.F;
-                    if (p.thread.rotateZ == 90.F || p.thread.rotateZ == 270.F)
+                    double zoom = renderSize.w / static_cast<double>(renderSize.w);
+                    if (zoom * renderSize.h > renderSize.h)
                     {
-                        if (renderSize.w > 0)
-                        {
-                            zoom = viewportSize.h / static_cast<float>(renderSize.w);
-                            if (renderSize.h > 0 && zoom * renderSize.h > viewportSize.w)
-                            {
-                                zoom = viewportSize.w / static_cast<float>(renderSize.h);
-                            }
-                        }
+                        zoom = renderSize.h / static_cast<double>(renderSize.h);
                     }
-                    else
-                    {
-                        if (renderSize.h > 0)
-                        {
-                            zoom = viewportSize.h / static_cast<float>(renderSize.h);
-                            if (renderSize.w > 0 && zoom * renderSize.w > viewportSize.w)
-                            {
-                                zoom = viewportSize.w / static_cast<float>(renderSize.w);
-                            }
-                        }
-                    }
-        
-                    // double zoom = renderSize.w / static_cast<double>(renderSize.w);
-                    // if (zoom * renderSize.h > renderSize.h)
-                    // {
-                    //     zoom = renderSize.h / static_cast<double>(renderSize.h);
-                    // }
                     const math::Vector2i c(renderSize.w / 2, renderSize.h / 2);
-                    viewPosTmp.x = renderSize.w / 2.0 - c.x * zoom;
-                    viewPosTmp.y = renderSize.h / 2.0 - c.y * zoom;
-                    viewZoomTmp = zoom;
+                    viewPos.x = renderSize.w / 2.0 - c.x * zoom;
+                    viewPos.y = renderSize.h / 2.0 - c.y * zoom;
+                    viewZoom = zoom;
+                    viewportSize = renderSize;
                 }
                 math::Matrix4x4f vm =
                     math::translate(
-                        math::Vector3f(viewPosTmp.x, 
-                                       static_cast<float>(-viewPosTmp.y -
-                                                          (renderSize.h * (viewZoomTmp - 1.0))),
+                        math::Vector3f(viewPos.x, 
+                                       static_cast<float>(-viewPos.y -
+                                                          (renderSize.h * (viewZoom - 1.0))),
                         0.F));
-                vm = vm * math::scale(math::Vector3f(viewZoomTmp,
-                                                     viewZoomTmp,
+                vm = vm * math::scale(math::Vector3f(viewZoom,
+                                                     viewZoom,
                                                      1.F));
                 const auto& rm = math::rotateZ(-p.thread.rotateZ);
                 const math::Matrix4x4f& tm = math::translate(
@@ -1321,22 +1298,22 @@ namespace tl
                 math::Matrix4x4f centerTranslation;
                 math::Matrix4x4f sm;
 
-                if (!p.thread.frameView)
-                {
-                    float scaleX = static_cast<float>(viewportSize.w) /
-                                   static_cast<float>(renderSize.w);
-                    float scaleY = static_cast<float>(viewportSize.h) /
-                                   static_cast<float>(renderSize.h);
-                    float scale = std::min(scaleX, scaleY); // Use the smaller scale to fit within the viewport
+                // if (!p.thread.frameView)
+                // {
+                //     float scaleX = static_cast<float>(viewportSize.w) /
+                //                    static_cast<float>(renderSize.w);
+                //     float scaleY = static_cast<float>(viewportSize.h) /
+                //                    static_cast<float>(renderSize.h);
+                //     float scale = std::min(scaleX, scaleY); // Use the smaller scale to fit within the viewport
                 
-                    // Calculate centering translation
-                    float translateX = (viewportSize.w - renderSize.w * scale) / 2.0f;
-                    float translateY = (viewportSize.h - renderSize.h * scale) / 2.0f;
-                    centerTranslation = math::translate(math::Vector3f(translateX, translateY, 0.0f));
+                //     // Calculate centering translation
+                //     float translateX = (viewportSize.w - renderSize.w * scale) / 2.0f;
+                //     float translateY = (viewportSize.h - renderSize.h * scale) / 2.0f;
+                //     centerTranslation = math::translate(math::Vector3f(translateX, translateY, 0.0f));
 
-                    // Scale matrix with aspect-correct scale
-                    sm = math::scale(math::Vector3f(scale, scale, 1.0f));
-                }
+                //     // Scale matrix with aspect-correct scale
+                //     sm = math::scale(math::Vector3f(scale, scale, 1.0f));
+                // }
                 
                 if (!p.thread.videoData.empty())
                 {
@@ -1369,8 +1346,10 @@ namespace tl
                 p.thread.render->end();
 
                 glBindBuffer(GL_PIXEL_PACK_BUFFER, p.thread.pbo);
-                glPixelStorei(GL_PACK_ALIGNMENT, getPackPixelsAlign(p.thread.outputPixelType));
-                glPixelStorei(GL_PACK_SWAP_BYTES, getPackPixelsSwap(p.thread.outputPixelType));
+                glPixelStorei(GL_PACK_ALIGNMENT,
+                              getPackPixelsAlign(p.thread.outputPixelType));
+                glPixelStorei(GL_PACK_SWAP_BYTES,
+                              getPackPixelsSwap(p.thread.outputPixelType));
                 glBindTexture(GL_TEXTURE_2D, p.thread.offscreenBuffer->getColorID());
                 glGetTexImage(
                     GL_TEXTURE_2D,
