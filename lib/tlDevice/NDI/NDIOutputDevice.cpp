@@ -1261,11 +1261,35 @@ namespace tl
                 }
                 if (p.thread.frameView)
                 {
-                    double zoom = renderSize.w / static_cast<double>(renderSize.w);
-                    if (zoom * renderSize.h > renderSize.h)
+                    double zoom = 1.F;
+                    if (p.thread.rotateZ == 90.F || p.thread.rotateZ == 270.F)
                     {
-                        zoom = renderSize.h / static_cast<double>(renderSize.h);
+                        if (renderSize.w > 0)
+                        {
+                            zoom = viewportSize.h / static_cast<float>(renderSize.w);
+                            if (renderSize.h > 0 && zoom * renderSize.h > viewportSize.w)
+                            {
+                                zoom = viewportSize.w / static_cast<float>(renderSize.h);
+                            }
+                        }
                     }
+                    else
+                    {
+                        if (renderSize.h > 0)
+                        {
+                            zoom = viewportSize.h / static_cast<float>(renderSize.h);
+                            if (renderSize.w > 0 && zoom * renderSize.w > viewportSize.w)
+                            {
+                                zoom = viewportSize.w / static_cast<float>(renderSize.w);
+                            }
+                        }
+                    }
+        
+                    // double zoom = renderSize.w / static_cast<double>(renderSize.w);
+                    // if (zoom * renderSize.h > renderSize.h)
+                    // {
+                    //     zoom = renderSize.h / static_cast<double>(renderSize.h);
+                    // }
                     const math::Vector2i c(renderSize.w / 2, renderSize.h / 2);
                     viewPosTmp.x = renderSize.w / 2.0 - c.x * zoom;
                     viewPosTmp.y = renderSize.h / 2.0 - c.y * zoom;
@@ -1293,15 +1317,30 @@ namespace tl
                     -1.F,
                     1.F);
                 
-                // Scale the video to renderSize
-                const math::Matrix4x4f& sm =
-                    math::scale(math::Vector3f(
-                                    static_cast<float>(renderSize.w) / float(viewportSize.w),
-                                    static_cast<float>(renderSize.h) / float(viewportSize.h),
-                                    1.0f));
+                // Calculate aspect-correct scale
+                math::Matrix4x4f centerTranslation;
+                math::Matrix4x4f sm;
+
+                if (!p.thread.frameView)
+                {
+                    float scaleX = static_cast<float>(viewportSize.w) /
+                                   static_cast<float>(renderSize.w);
+                    float scaleY = static_cast<float>(viewportSize.h) /
+                                   static_cast<float>(renderSize.h);
+                    float scale = std::min(scaleX, scaleY); // Use the smaller scale to fit within the viewport
+                
+                    // Calculate centering translation
+                    float translateX = (viewportSize.w - renderSize.w * scale) / 2.0f;
+                    float translateY = (viewportSize.h - renderSize.h * scale) / 2.0f;
+                    centerTranslation = math::translate(math::Vector3f(translateX, translateY, 0.0f));
+
+                    // Scale matrix with aspect-correct scale
+                    sm = math::scale(math::Vector3f(scale, scale, 1.0f));
+                }
+                
                 if (!p.thread.videoData.empty())
                 {
-                    p.thread.render->setTransform(pm * vm * to * rm * tm);
+                    p.thread.render->setTransform(pm * centerTranslation * sm * vm * to * rm * tm);
                     p.thread.render->drawVideo(
                         p.thread.videoData,
                         timeline::getBoxes(compareOptions.mode,
