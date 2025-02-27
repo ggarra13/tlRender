@@ -57,6 +57,19 @@ namespace tl
                         break;
                     }
                 }
+
+                // \@bug: This can happen in loops
+                // if (audioData.layers.empty())
+                // {
+                //     std::cerr << "No audioData found for seconds " << seconds
+                //               << std::endl;
+                //     for (const auto& audio : audioDataCache)
+                //     {
+                //         std::cerr << "\tcache.seconds=" << audio.seconds
+                //                   << std::endl;
+                //     }
+                // }
+                
                 return audioData;
             }
         }
@@ -864,6 +877,8 @@ namespace tl
             const std::vector<timeline::AudioData>& audioDataCache)
         {
             TLRENDER_P();
+            if (audioDataCache.empty())
+                return;
 
             const otime::RationalTime kOneFrame(1.0, currentTime.rate());
             const auto& currentLocalTime = currentTime - timeRange.start_time();
@@ -884,7 +899,6 @@ namespace tl
 
             if (!inputAudio)
             {
-                std::cerr << "no input audio found" << std::endl;
                 return;
             }
             
@@ -1272,6 +1286,9 @@ namespace tl
                     viewZoom = zoom;
                     viewportSize = renderSize;
                 }
+                // std::cerr << "viewPos=" << viewPos << std::endl;
+                // std::cerr << "viewZoom=" << viewZoom << std::endl;
+                // std::cerr << "viewportSize=" << viewportSize << std::endl;
                 math::Matrix4x4f vm =
                     math::translate(
                         math::Vector3f(viewPos.x, 
@@ -1298,25 +1315,26 @@ namespace tl
                 math::Matrix4x4f centerTranslation;
                 math::Matrix4x4f sm;
 
-                // if (!p.thread.frameView)
-                // {
-                //     float scaleX = static_cast<float>(viewportSize.w) /
-                //                    static_cast<float>(renderSize.w);
-                //     float scaleY = static_cast<float>(viewportSize.h) /
-                //                    static_cast<float>(renderSize.h);
-                //     float scale = std::min(scaleX, scaleY); // Use the smaller scale to fit within the viewport
+                if (!p.thread.frameView)
+                {
+                    float scaleX = static_cast<float>(viewportSize.w) /
+                                   static_cast<float>(renderSize.w);
+                    float scaleY = static_cast<float>(viewportSize.h) /
+                                   static_cast<float>(renderSize.h);
+                    float scale = std::min(scaleX, scaleY); // Use the smaller scale to fit within the viewport
                 
-                //     // Calculate centering translation
-                //     float translateX = (viewportSize.w - renderSize.w * scale) / 2.0f;
-                //     float translateY = (viewportSize.h - renderSize.h * scale) / 2.0f;
-                //     centerTranslation = math::translate(math::Vector3f(translateX, translateY, 0.0f));
+                    // Calculate centering translation
+                    float translateX = (viewportSize.w - renderSize.w * scale) / 2.0F;
+                    float translateY = (viewportSize.h - renderSize.h * scale)/ 2.0F;
+                    centerTranslation = math::translate(math::Vector3f(translateX, translateY, 0.0f));
 
-                //     // Scale matrix with aspect-correct scale
-                //     sm = math::scale(math::Vector3f(scale, scale, 1.0f));
-                // }
+                    // Scale matrix with aspect-correct scale
+                    sm = math::scale(math::Vector3f(scale, scale, 1.0f));
+                }
                 
                 if (!p.thread.videoData.empty())
                 {
+                    // This is fine
                     p.thread.render->setTransform(pm * centerTranslation * sm * vm * to * rm * tm);
                     p.thread.render->drawVideo(
                         p.thread.videoData,
@@ -1329,7 +1347,8 @@ namespace tl
                 }
                 if (p.thread.overlay)
                 {
-                    p.thread.render->setTransform(pm);
+                    // This is fine (sm and center trasnform are needed)
+                    p.thread.render->setTransform(pm * centerTranslation * sm);
                     timeline::ImageOptions imageOptions;
                     imageOptions.alphaBlend = timeline::AlphaBlend::Premultiplied;
                     p.thread.render->drawImage(
