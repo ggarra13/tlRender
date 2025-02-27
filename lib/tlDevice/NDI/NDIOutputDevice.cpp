@@ -1271,28 +1271,41 @@ namespace tl
                     viewPosTmp.y = renderSize.h / 2.0 - c.y * zoom;
                     viewZoomTmp = zoom;
                 }
-                math::Matrix4x4f vm = math::translate(math::Vector3f(viewPosTmp.x, 
-                                                                     static_cast<float>(-viewPosTmp.y - (renderSize.h * (viewZoomTmp - 1.0))),
-                                                                     0.F));
-                vm = vm * math::scale(math::Vector3f(viewZoomTmp, viewZoomTmp, 1.F));
+                math::Matrix4x4f vm =
+                    math::translate(
+                        math::Vector3f(viewPosTmp.x, 
+                                       static_cast<float>(-viewPosTmp.y -
+                                                          (renderSize.h * (viewZoomTmp - 1.0))),
+                        0.F));
+                vm = vm * math::scale(math::Vector3f(viewZoomTmp,
+                                                     viewZoomTmp,
+                                                     1.F));
                 const auto& rm = math::rotateZ(-p.thread.rotateZ);
                 const math::Matrix4x4f& tm = math::translate(
                     math::Vector3f(-renderSize.w / 2, -renderSize.h / 2, 0.F));
                 const math::Matrix4x4f& to = math::translate(
                     math::Vector3f(transformOffset.x, transformOffset.y, 0.F));
-                const auto pm = math::ortho(
+                const math::Matrix4x4f& pm = math::ortho(
                     0.F,
                     static_cast<float>(viewportSize.w),
                     0.F,
                     static_cast<float>(viewportSize.h),
                     -1.F,
                     1.F);
+                
+                // Scale the video to renderSize
+                const math::Matrix4x4f& sm =
+                    math::scale(math::Vector3f(
+                                    static_cast<float>(renderSize.w) / float(viewportSize.w),
+                                    static_cast<float>(renderSize.h) / float(viewportSize.h),
+                                    1.0f));
                 if (!p.thread.videoData.empty())
                 {
                     p.thread.render->setTransform(pm * vm * to * rm * tm);
                     p.thread.render->drawVideo(
                         p.thread.videoData,
-                        timeline::getBoxes(compareOptions.mode, p.thread.videoData),
+                        timeline::getBoxes(compareOptions.mode,
+                                           p.thread.videoData),
                         imageOptions,
                         displayOptions,
                         compareOptions,
