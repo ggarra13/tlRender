@@ -108,7 +108,7 @@ namespace tl
                 image::HDRData hdrData;
                 timeline::CompareOptions compareOptions;
                 timeline::BackgroundOptions backgroundOptions;
-                math::Size2i viewportSize;
+                math::Size2i sourceViewportSize;
                 math::Vector2i viewPos;
                 double viewZoom = 1.0;
                 bool frameView = true;
@@ -137,7 +137,7 @@ namespace tl
                 device::PixelType outputPixelType = device::PixelType::None;
                 device::HDRMode hdrMode = device::HDRMode::FromFile;
                 image::HDRData hdrData;
-                math::Size2i   viewportSize;
+                math::Size2i   sourceViewportSize;
                 math::Vector2i viewPos;
                 double viewZoom = 1.0;
                 float rotateZ = 0.F;
@@ -296,7 +296,7 @@ namespace tl
         }
 
         void OutputDevice::setView(
-            const tl::math::Size2i&   viewportSize,
+            const tl::math::Size2i&   sourceViewportSize,
             const tl::math::Vector2i& position,
             double                    zoom,
             float                     rotateZ,
@@ -305,7 +305,7 @@ namespace tl
             TLRENDER_P();
             {
                 std::unique_lock<std::mutex> lock(p.mutex.mutex);
-                p.mutex.viewportSize = viewportSize;
+                p.mutex.sourceViewportSize = sourceViewportSize;
                 p.mutex.viewPos = position;
                 p.mutex.viewZoom = zoom;
                 p.mutex.rotateZ  = rotateZ;
@@ -642,7 +642,7 @@ namespace tl
                             p.thread.hdrData != p.mutex.hdrData ||
                             compareOptions != p.mutex.compareOptions ||
                             backgroundOptions != p.mutex.backgroundOptions ||
-                            p.thread.viewportSize != p.mutex.viewportSize ||
+                            p.thread.sourceViewportSize != p.mutex.sourceViewportSize ||
                             p.thread.viewPos != p.mutex.viewPos ||
                             p.thread.viewZoom != p.mutex.viewZoom ||
                             p.thread.rotateZ != p.mutex.rotateZ ||
@@ -657,7 +657,7 @@ namespace tl
                         p.thread.hdrData = p.mutex.hdrData;
                         compareOptions = p.mutex.compareOptions;
                         backgroundOptions = p.mutex.backgroundOptions;
-                        p.thread.viewportSize = p.mutex.viewportSize;
+                        p.thread.sourceViewportSize = p.mutex.sourceViewportSize;
                         p.thread.viewPos = p.mutex.viewPos;
                         p.thread.viewZoom = p.mutex.viewZoom;
                         p.thread.rotateZ = p.mutex.rotateZ;
@@ -1254,15 +1254,19 @@ namespace tl
                 p.thread.render->setOCIOOptions(ocioOptions);
                 p.thread.render->setLUTOptions(lutOptions);
 
-                math::Size2i viewportSize = p.thread.viewportSize;
-                if (!viewportSize.isValid()) viewportSize = p.thread.size;
+                math::Size2i sourceViewportSize = p.thread.sourceViewportSize;
+                if (!sourceViewportSize.isValid()) sourceViewportSize = p.thread.size;
+                
+                math::Size2i targetViewportSize = p.thread.size;
+                if (!targetViewportSize.isValid())
+                    return;
                 
                 math::Vector2f transformOffset;
                 math::Vector2i viewPos = p.thread.viewPos;
                 double viewZoom = p.thread.viewZoom;
                 
                 const auto renderAspect = renderSize.getAspect();
-                const auto viewportAspect = viewportSize.getAspect();
+                const auto viewportAspect = sourceViewportSize.getAspect();
                 if (viewportAspect > 1.F)
                 {
                     transformOffset.x = renderSize.w / 2.F;
@@ -1273,69 +1277,111 @@ namespace tl
                     transformOffset.x = renderSize.h * renderAspect / 2.F;
                     transformOffset.y = renderSize.h / 2.F;
                 }
+                
+                math::Size2i targetRenderSize = renderSize;
+                float scaleX = 1.0, scaleY = 1.0;
                 if (p.thread.frameView)
                 {
-                    double zoom = renderSize.w / static_cast<double>(renderSize.w);
-                    if (zoom * renderSize.h > renderSize.h)
+                    double zoom;
+                    if (p.thread.rotateZ == 90.F || p.thread.rotateZ == 270.F)
                     {
-                        zoom = renderSize.h / static_cast<double>(renderSize.h);
+                        zoom = targetViewportSize.h / static_cast<double>(renderSize.w);
+                        if (zoom * renderSize.h > targetViewportSize.w)
+                        {
+                            zoom = targetViewportSize.w / static_cast<double>(renderSize.h);
+                        }
+                        
+                        math::Vector2i rotatedCenter;
+                        rotatedCenter.x = renderSize.h / 2;
+                        rotatedCenter.y = renderSize.w / 2;
+
+                        viewPos.x = targetViewportSize.w / 2.0 - rotatedCenter.x * zoom;
+                        viewPos.y = targetViewportSize.h / 2.0 - rotatedCenter.y * zoom;
                     }
-                    const math::Vector2i c(renderSize.w / 2, renderSize.h / 2);
-                    viewPos.x = renderSize.w / 2.0 - c.x * zoom;
-                    viewPos.y = renderSize.h / 2.0 - c.y * zoom;
+                    else
+                    {
+                        zoom = targetViewportSize.w / static_cast<double>(renderSize.w);
+                        if (zoom * renderSize.h > targetViewportSize.h)
+                        {
+                            zoom = targetViewportSize.h / static_cast<double>(renderSize.h);
+                        }
+                    }
+                    const math::Vector2i c(targetRenderSize.w / 2, targetRenderSize.h / 2);
+                    viewPos.x = targetViewportSize.w / 2.0 - c.x * zoom;
+                    viewPos.y = targetViewportSize.h / 2.0 - c.y * zoom;
                     viewZoom = zoom;
-                    viewportSize = renderSize;
+                    sourceViewportSize = renderSize;
                 }
-                // std::cerr << "viewPos=" << viewPos << std::endl;
-                // std::cerr << "viewZoom=" << viewZoom << std::endl;
-                // std::cerr << "viewportSize=" << viewportSize << std::endl;
-                math::Matrix4x4f vm =
-                    math::translate(
-                        math::Vector3f(viewPos.x, 
-                                       static_cast<float>(-viewPos.y -
-                                                          (renderSize.h * (viewZoom - 1.0))),
-                        0.F));
-                vm = vm * math::scale(math::Vector3f(viewZoom,
-                                                     viewZoom,
-                                                     1.F));
-                const auto& rm = math::rotateZ(-p.thread.rotateZ);
-                const math::Matrix4x4f& tm = math::translate(
-                    math::Vector3f(-renderSize.w / 2, -renderSize.h / 2, 0.F));
-                const math::Matrix4x4f& to = math::translate(
+                const math::Matrix4x4f& translateMatrix =
+                    math::translate(math::Vector3f(viewPos.x,
+                                                   static_cast<float>(-viewPos.y -
+                                                                      (renderSize.h * (viewZoom - 1.0))),
+                                                                      0.F));
+                // Create scaling matrix for zoom
+                const math::Matrix4x4f& zoomMatrix = math::scale(math::Vector3f(viewZoom,
+                                                                                viewZoom,
+                                                                                1.0f));
+                
+                // Create rotation matrix (must rotate around image center, not 0,0).
+                const math::Matrix4x4f& rotateMatrix = math::rotateZ(-p.thread.rotateZ);
+                
+                // Create translation matrix for centering the image (image origin at top-left)
+                const math::Matrix4x4f& centeringMatrix = math::translate(math::Vector3f(-renderSize.w / 2.0f, -renderSize.h / 2.0f, 0.0f));
+
+                // Create offset transform
+                const math::Matrix4x4f& offsetTransformMatrix = math::translate(
                     math::Vector3f(transformOffset.x, transformOffset.y, 0.F));
+
+                // Create orthographic projection matrix
                 const math::Matrix4x4f& pm = math::ortho(
                     0.F,
-                    static_cast<float>(viewportSize.w),
+                    static_cast<float>(targetViewportSize.w),
                     0.F,
-                    static_cast<float>(viewportSize.h),
+                    static_cast<float>(targetViewportSize.h),
                     -1.F,
                     1.F);
                 
                 // Calculate aspect-correct scale
-                math::Matrix4x4f centerTranslation;
-                math::Matrix4x4f sm;
+                math::Matrix4x4f centerTranslationMatrix;
+                math::Matrix4x4f resizeScaleMatrix;
 
                 if (!p.thread.frameView)
                 {
-                    float scaleX = static_cast<float>(viewportSize.w) /
+                    // These calculations are fine?
+                    float scaleX = static_cast<float>(targetViewportSize.w) /
                                    static_cast<float>(renderSize.w);
-                    float scaleY = static_cast<float>(viewportSize.h) /
+                    float scaleY = static_cast<float>(targetViewportSize.h) /
                                    static_cast<float>(renderSize.h);
-                    float scale = std::min(scaleX, scaleY); // Use the smaller scale to fit within the viewport
+                    
+                    // float scaleX = static_cast<float>(targetViewportSize.w) /
+                    //                static_cast<float>(sourceViewportSize.w);
+                    // float scaleY = static_cast<float>(targetViewportSize.h) /
+                    //                static_cast<float>(sourceViewportSize.h);
+
+                    // Use the smaller scale to fit within the viewport
+                    float scale = std::min(scaleX, scaleY); 
                 
                     // Calculate centering translation
-                    float translateX = (viewportSize.w - renderSize.w * scale) / 2.0F;
-                    float translateY = (viewportSize.h - renderSize.h * scale)/ 2.0F;
-                    centerTranslation = math::translate(math::Vector3f(translateX, translateY, 0.0f));
+#if 0
+                    float translateX = (targetViewportSize.w - renderSize.w * scale) / 2.0F;
+                    float translateY = (targetViewportSize.h - renderSize.h * scale) / 2.0F;
+                    centerTranslationMatrix = math::translate(math::Vector3f(translateX, translateY,
+                                                                             0.0f));
+#else
+#endif
 
+#if 1
                     // Scale matrix with aspect-correct scale
-                    sm = math::scale(math::Vector3f(scale, scale, 1.0f));
+                    resizeScaleMatrix = math::scale(math::Vector3f(scale, scale, 1.0f));
+#else
+                    // Scale matrix with independent X and Y scales
+                    resizeScaleMatrix = math::scale(math::Vector3f(scaleX, scaleY, 1.0f));
+#endif
                 }
-                
                 if (!p.thread.videoData.empty())
                 {
-                    // This is fine
-                    p.thread.render->setTransform(pm * centerTranslation * sm * vm * to * rm * tm);
+                    // This is almost fine
+                    p.thread.render->setTransform(pm * centerTranslationMatrix * resizeScaleMatrix * translateMatrix * zoomMatrix * offsetTransformMatrix * rotateMatrix * centeringMatrix);
                     p.thread.render->drawVideo(
                         p.thread.videoData,
                         timeline::getBoxes(compareOptions.mode,
@@ -1347,8 +1393,7 @@ namespace tl
                 }
                 if (p.thread.overlay)
                 {
-                    // This is fine (sm and center trasnform are needed)
-                    p.thread.render->setTransform(pm * centerTranslation * sm);
+                    p.thread.render->setTransform(pm);
                     timeline::ImageOptions imageOptions;
                     imageOptions.alphaBlend = timeline::AlphaBlend::Premultiplied;
                     p.thread.render->drawImage(
@@ -1376,6 +1421,15 @@ namespace tl
                     getPackPixelsFormat(p.thread.outputPixelType),
                     getPackPixelsType(p.thread.outputPixelType),
                     NULL);
+
+                // std::cerr << "pm=" << pm << std::endl;
+                // std::cerr << "centerTranslationMatrix=" << centerTranslationMatrix << std::endl;
+                // std::cerr << "resizeScaleMatrix=" << resizeScaleMatrix << std::endl;
+                // std::cerr << "translateMatrix=" << translateMatrix << std::endl;
+                // std::cerr << "zoomMatrix=" << zoomMatrix << std::endl;
+                // std::cerr << "offsetTransformMatrix=" << offsetTransformMatrix << std::endl;
+                // std::cerr << "rotateMatrix=" << rotateMatrix << std::endl;
+                // std::cerr << "centeringMatrix=" << centeringMatrix << std::endl;
             }
         }
 
