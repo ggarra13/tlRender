@@ -808,9 +808,8 @@ namespace tl
             otime::RationalTime& frameRate)
         {
             TLRENDER_P();
-            if (!config.deviceName.empty() &&
-                // config.deviceIndex != -1 &&
-                // config.displayModeIndex != -1 &&
+            if (config.deviceIndex != -1 &&
+                config.displayModeIndex != -1 &&
                 config.pixelType != device::PixelType::None)
             {    
                 if (size.w == 0 && size.h == 0)
@@ -819,7 +818,6 @@ namespace tl
                 if (!p.thread.NDI_send)
                 {
                     NDIlib_send_create_t send_create;
-                    send_create.p_ndi_name = config.deviceName.c_str();
                     send_create.p_groups = NULL;
                     send_create.clock_video = true;
                     send_create.clock_audio = true;
@@ -835,7 +833,7 @@ namespace tl
 
                 
                 p.thread.outputPixelType = getOutputType(config.pixelType);
-                    
+                
                 video_frame.xres = size.w;
                 video_frame.yres = size.h;
                 video_frame.picture_aspect_ratio = size.getAspect();
@@ -862,7 +860,7 @@ namespace tl
                             "    video: {2} {3}\n"
                             "    audio: {4} {5} {6}").
                         arg(config.deviceIndex).
-                        arg(config.deviceName).
+                        arg(config.displayModeIndex).
                         arg(p.thread.size).
                         arg(frameRate));
                 }

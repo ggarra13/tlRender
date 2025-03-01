@@ -9,37 +9,27 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
 #include <cstring>
 
 namespace tl
 {
-    namespace
+    struct YUVCoefficients
     {
-        std::vector<float> getYUVCoefficients(int width, int height)
+        uint8_t kr, kg, kb;
+    };
+
+    YUVCoefficients getYUVCoefficients8bits(int width, int height)
+    {
+        if (width > 720 && height > 576)
         {
-            std::vector<float> coefficients;
-
-            // Determine if to use BT.709 or BT.601 based on image dimensions
-            if (width > 720 || height > 576) { // Typically, HD resolutions use BT.709
-                // BT.709 coefficients
-                coefficients = {
-                    0.2126, 0.7152, 0.0722,   // Y coefficients
-                    -0.09991, -0.33609, 0.436, // U coefficients
-                    0.615, -0.55861, -0.05639  // V coefficients
-                };
-            } else {
-                // BT.601 coefficients
-                coefficients = {
-                    0.299, 0.587, 0.114,      // Y coefficients
-                    -0.14713, -0.28886, 0.436, // U coefficients
-                    0.615, -0.51499, -0.10001  // V coefficients
-                };
-            }
-
-            return coefficients;
+            return {55, 183, 18}; // BT.709 standard (scaled to 256)
+        }
+        else
+        {
+            return {77, 150, 29}; // BT.601 standard (scaled to 256)
         }
     }
-
     
     namespace device
     {
@@ -200,7 +190,6 @@ namespace tl
         bool DeviceConfig::operator == (const DeviceConfig& other) const
         {
             return
-                deviceName  == other.deviceName &&
                 deviceIndex == other.deviceIndex &&
                 displayModeIndex == other.displayModeIndex &&
                 pixelType == other.pixelType &&
@@ -526,48 +515,48 @@ namespace tl
             }
             case PixelType::_8BitUYVA:
             {
+                const size_t stride = width * 2; // UYVY is tightly packed
                 uint8_t* rgba = (uint8_t*)inP;
-                uint8_t* uyva = (uint8_t*)outP;
-
-                const auto& coeffs = getYUVCoefficients(width, height);
+                uint8_t* p_uyvy = (uint8_t*)outP;
+                uint8_t* p_alpha = p_uyvy + stride * height;
+    
+                YUVCoefficients coeffs = getYUVCoefficients8bits(width, height);
+                uint8_t kr = coeffs.kr, kg = coeffs.kg, kb = coeffs.kb;
+                
                 for (int y = 0; y < height; ++y)
                 {
-                    for (int x = 0; x < width; ++x)
+                    for (int x = 0; x < width; x += 2)
                     {
-                        int rgbaIndex = (y * width + x) * 4;
-                        int uyvaIndex = (y * width + x) * 4;
+                        // Load RGBA values
+                        uint8_t r0 = rgba[(y * width + x) * 4 + 0];
+                        uint8_t g0 = rgba[(y * width + x) * 4 + 1];
+                        uint8_t b0 = rgba[(y * width + x) * 4 + 2];
+                        uint8_t a0 = rgba[(y * width + x) * 4 + 3];
+                        uint8_t r1 = rgba[(y * width + x + 1) * 4 + 0];
+                        uint8_t g1 = rgba[(y * width + x + 1) * 4 + 1];
+                        uint8_t b1 = rgba[(y * width + x + 1) * 4 + 2];
+                        uint8_t a1 = rgba[(y * width + x + 1) * 4 + 3];
 
-                        uint8_t r = rgba[rgbaIndex];
-                        uint8_t g = rgba[rgbaIndex + 1];
-                        uint8_t b = rgba[rgbaIndex + 2];
-                        uint8_t a = rgba[rgbaIndex + 3];
-
-                        // RGB to YUV conversion
-                        float yf = coeffs[0] * r + coeffs[1] * g + coeffs[2] * b;
-                        float uf = coeffs[3] * r - coeffs[4] * g + coeffs[5] * b;
-                        float vf = coeffs[6] * r - coeffs[7] * g - coeffs[8] * b;
-
-                        // Clamp and convert to 8-bit integers
-                        uint8_t y = static_cast<uint8_t>(std::clamp(yf, 0.0f, 255.0f));
-                        uint8_t u = static_cast<uint8_t>(std::clamp(uf + 128.0f, 0.0f, 255.0f)); // Add 128 for U/V range
-                        uint8_t v = static_cast<uint8_t>(std::clamp(vf + 128.0f, 0.0f, 255.0f));
-
-
-                        uyva[uyvaIndex] = u;
-                        if (x % 2 == 0)
-                        {
-                            // Even pixels
-                            uyva[uyvaIndex + 1] = y;
-                            uyva[uyvaIndex + 2] = v;
-                            uyva[uyvaIndex + 3] = a;
-                        }
-                        else
-                        {
-                            // Odd pixels
-                            uyva[uyvaIndex + 1] = y;
-                            uyva[uyvaIndex + 2] = v;
-                            uyva[uyvaIndex + 3] = a;
-                        }
+                         // Convert to YUV (Integer Calculation with Proper Scaling)
+                        uint8_t y0 = std::min(235, std::max(16, ((kr * r0 + kg * g0 + kb * b0 + 128) >> 8) + 16));
+                        uint8_t y1 = std::min(235, std::max(16, ((kr * r1 + kg * g1 + kb * b1 + 128) >> 8) + 16));
+                        int u  = std::min(240,
+                                          std::max(16, ((((int)(-kr) * r0 - kg * g0 + (255 - kb) * b0 + 128) >> 8) + 
+                                                        (((int)(-kr) * r1 - kg * g1 + (255 - kb) * b1 + 128) >> 8)) / 2 + 128));
+                        int v  = std::min(240,
+                                          std::max(16, ((((255 - kr) * r0 - kg * g0 - kb * b0 + 128) >> 8) + 
+                                                        (((255 - kr) * r1 - kg * g1 - kb * b1 + 128) >> 8)) / 2 + 128));            
+                        // Store UYVY format
+                        int uyvy_index = y * stride + x * 2;
+                        p_uyvy[uyvy_index + 0] = (uint8_t)u;
+                        p_uyvy[uyvy_index + 1] = y0;
+                        p_uyvy[uyvy_index + 2] = (uint8_t)v;
+                        p_uyvy[uyvy_index + 3] = y1;
+            
+                        // Store Alpha plane
+                        int alpha_index = y * stride / 2 + x;
+                        p_alpha[alpha_index + 0] = a0;
+                        p_alpha[alpha_index + 1] = a1;
                     }
                 }
                 break;
@@ -691,8 +680,13 @@ namespace tl
                     }
                 }
                 break;
-            default:
+            case PixelType::_8BitBGRA:
+            case PixelType::_8BitRGBA:
+            case PixelType::_8BitYUV:
                 memcpy(outP, inP, getDataByteCount(size, pixelType));
+                break;
+            default:
+                throw std::runtime_error("Unhandled output device pixel type");
                 break;
             }
         }

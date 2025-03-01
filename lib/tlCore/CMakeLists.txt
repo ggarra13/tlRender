@@ -44,8 +44,6 @@ set(HEADERS
     MemoryInline.h
     Mesh.h
     MeshInline.h
-    NDI.h
-    NDIOptions.h
     OS.h
     Observer.h
     Path.h
@@ -93,8 +91,6 @@ set(SOURCE
     Matrix.cpp
     Memory.cpp
     Mesh.cpp
-    NDI.cpp
-    NDIOptions.cpp
     OS.cpp
     Path.cpp
     PathMapping.cpp

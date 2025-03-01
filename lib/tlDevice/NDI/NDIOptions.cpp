@@ -1,5 +1,5 @@
 
-#include <tlCore/NDIOptions.h>
+#include <tlDevice/NDI/NDIOptions.h>
 
 namespace tl
 {

@@ -14,12 +14,14 @@ if(TLRENDER_BMD OR TLRENDER_NDI)
 	DevicesModel.h
 	DeviceSystem.h
 	GLUtil.h
+	Init.h
 	IOutput.h
 	OutputData.h)
     set(SOURCE
 	DevicesModel.cpp
 	DeviceSystem.cpp
 	GLUtil.cpp
+	Init.cpp
 	IOutput.cpp
 	OutputData.cpp
 	)
@@ -27,10 +29,14 @@ endif()
 
 if(TLRENDER_NDI AND TLRENDER_FFMPEG)
     list(APPEND HEADERS
+	NDI/NDIOptions.h
 	NDI/NDIOutputDevice.h
+	NDI/NDISystem.h
 	NDI/NDIUtil.h)
     list(APPEND SOURCE
+	NDI/NDIOptions.cpp
 	NDI/NDIOutputDevice.cpp
+	NDI/NDISystem.cpp
 	NDI/NDIUtil.cpp)
 endif()
 
@@ -96,10 +102,6 @@ if(TLRENDER_BMD)
             ${TLRENDER_BMD_SDK}/Linux/include)
     endif()
 endif()
-if(TLRENDER_NDI AND TLRENDER_FFMPEG)
-    list(APPEND LIBRARIES_PRIVATE NDI)
-endif()
-
 
 add_library(tlDevice ${HEADERS} ${HEADERS_PRIVATE} ${SOURCE})
 target_include_directories(tlDevice PUBLIC ${INCLUDE_DIRS})

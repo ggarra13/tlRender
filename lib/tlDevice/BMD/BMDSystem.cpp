@@ -30,10 +30,10 @@ namespace tl
         struct System::Private
         {
             std::weak_ptr<system::Context> context;
-            std::shared_ptr<observer::List<DeviceInfo> > deviceInfo;
+            std::shared_ptr<observer::List<device::DeviceInfo> > deviceInfo;
             struct Mutex
             {
-                std::vector<DeviceInfo> deviceInfo;
+                std::vector<device::DeviceInfo> deviceInfo;
                 std::mutex mutex;
             };
             Mutex mutex;
@@ -48,7 +48,7 @@ namespace tl
 
             p.context = context;
 
-            p.deviceInfo = observer::List<DeviceInfo>::create();
+            p.deviceInfo = observer::List<device::DeviceInfo>::create();
 
             p.running = true;
             p.thread = std::thread(
@@ -65,7 +65,7 @@ namespace tl
                     {
                         const auto t0 = std::chrono::steady_clock::now();
 
-                        std::vector<DeviceInfo> deviceInfoList;
+                        std::vector<device::DeviceInfo> deviceInfoList;
 
                         IDeckLinkIterator* dlIterator = nullptr;
                         if (GetDeckLinkIterator(&dlIterator) == S_OK)
@@ -73,7 +73,7 @@ namespace tl
                             IDeckLink* dl = nullptr;
                             while (dlIterator->Next(&dl) == S_OK)
                             {
-                                DeviceInfo deviceInfo;
+                                device::DeviceInfo deviceInfo;
 
 #if defined(__APPLE__)
                                 CFStringRef dlstring;
@@ -147,7 +147,7 @@ namespace tl
                                     }
                                 }
                                 dlProfileAttributes->Release();
-
+                                
                                 dl->Release();
 
                                 deviceInfo.pixelTypes.push_back(PixelType::_8BitBGRA);
@@ -234,7 +234,7 @@ namespace tl
             return out;
         }
 
-        std::shared_ptr<observer::IList<DeviceInfo> > System::observeDeviceInfo() const
+        std::shared_ptr<observer::IList<device::DeviceInfo> > System::observeDeviceInfo() const
         {
             return _p->deviceInfo;
         }

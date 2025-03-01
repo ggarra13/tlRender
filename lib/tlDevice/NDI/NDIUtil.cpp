@@ -11,6 +11,52 @@ namespace tl
 {
     namespace ndi
     {
+        std::string FourCCString(const NDIlib_FourCC_video_type_e type)
+        {
+            std::string out;
+            switch (type)
+            {
+            case NDIlib_FourCC_video_type_UYVY:
+                out = "UYVY";
+                break;
+            case NDIlib_FourCC_video_type_UYVA:
+                out = "UYVA";
+                break;
+            case NDIlib_FourCC_video_type_P216:
+                out = "P216";
+                break;
+            case NDIlib_FourCC_video_type_PA16:
+                out = "PA16";
+                break;
+            case NDIlib_FourCC_video_type_YV12:
+                out = "YV12";
+                break;
+            case NDIlib_FourCC_video_type_I420:
+                out = "I420";
+                break;
+            case NDIlib_FourCC_video_type_NV12:
+                out = "NV12";
+                break;
+            case NDIlib_FourCC_video_type_BGRA:
+                out = "BGRA";
+                break;
+            case NDIlib_FourCC_video_type_BGRX:
+                out = "BGRX";
+                break;
+            case NDIlib_FourCC_video_type_RGBA:
+                out = "RGBA";
+                break;
+            case NDIlib_FourCC_video_type_RGBX:
+                out = "RGBX";
+                break;
+            case NDIlib_FourCC_video_type_max:
+            default:
+                out = "Unknown FourCC";
+                break;
+            }
+            return out;
+        }
+
         NDIlib_FourCC_video_type_e toNDI(device::PixelType value)
         {
             const std::array<
@@ -19,7 +65,7 @@ namespace tl
             {
                 NDIlib_FourCC_video_type_max,
                 NDIlib_FourCC_video_type_BGRA,// Planar 8bit, 4:4:4:4 video format.
-                NDIlib_FourCC_type_YV12,      // Planar
+                NDIlib_FourCC_type_YV12,      // Planar YUV
                 NDIlib_FourCC_video_type_max, // _10BitRGB,
                 NDIlib_FourCC_video_type_max, // _10BitRGBX,
                 NDIlib_FourCC_video_type_max, // _10BitRGBXLE
@@ -68,6 +114,7 @@ namespace tl
                 out = device::PixelType::_8BitRGBX;
                 break;
             default:
+                throw std::runtime_error("fromNDI device::PixelType unsupported");
                 break;
             }
             return out;
@@ -89,11 +136,6 @@ namespace tl
             switch (value)
             {
             case device::PixelType::_8BitBGRA:
-            case device::PixelType::_10BitRGB:
-            case device::PixelType::_10BitRGBX:
-            case device::PixelType::_10BitRGBXLE:
-            case device::PixelType::_12BitRGB:
-            case device::PixelType::_12BitRGBLE:
             case device::PixelType::_8BitUYVA:
             case device::PixelType::_16BitP216:
             case device::PixelType::_16BitPA16:
@@ -103,15 +145,20 @@ namespace tl
             case device::PixelType::_8BitRGBX:
                 out = value;
                 break;
-            case device::PixelType::_8BitYUV:
-                out = device::PixelType::_8BitBGRA;
-                break;
             //case device::PixelType::_10BitYUV:
             //    out = device::PixelType::_10BitRGBXLE;
             //    break;
-            // default:
+            case device::PixelType::_8BitYUV:   // \@bug: this one is broken on NDI
+                out = device::PixelType::_8BitUYVA;
+                break;
+            case device::PixelType::_10BitRGB:
+            case device::PixelType::_10BitRGBX:
+            case device::PixelType::_10BitRGBXLE:
+            case device::PixelType::_12BitRGB:
+            case device::PixelType::_12BitRGBLE:
             case device::PixelType::None:
             case device::PixelType::Count:
+                throw std::runtime_error("getOutputType device::PixelType unsupported");
                 break;
             }
             return out;

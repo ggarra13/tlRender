@@ -5,7 +5,8 @@
 #pragma once
 
 #include <cstddef>
-#include <Processing.NDI.Lib.h>
+
+#include <NDI/Processing.NDI.Lib.h>
 
 #include <tlDevice/OutputData.h>
 
@@ -17,10 +18,13 @@ namespace tl
 {
     namespace ndi
     {
-        //! Convert to BMD.
+        //! Convert FourCC to a string.
+        std::string FourCCString(const NDIlib_FourCC_video_type_e type);
+        
+        //! Convert to NDI.
         NDIlib_FourCC_video_type_e toNDI(device::PixelType);
 
-        //! Convert from BMD.
+        //! Convert from device::PixelType.
         device::PixelType fromNDI(NDIlib_FourCC_audio_type_e);
 
         inline std::ostream& operator<<(std::ostream& o,

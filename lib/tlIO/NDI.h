@@ -5,32 +5,12 @@
 #pragma once
 
 #include <tlCore/LogSystem.h>
-#include <tlCore/NDIOptions.h>
+
+#include <tlDevice/NDI/NDI.h>
+#include <tlDevice/NDI/NDIOptions.h>
 
 #include <tlIO/Plugin.h>
 
-
-#include <Processing.NDI.Lib.h>
-
-// Structs
-#define NDIlib_audio_frame_t NDIlib_audio_frame_v3_t
-#define NDIlib_video_frame_t NDIlib_video_frame_v2_t
-
-// Receive Functions
-#define NDIlib_recv_create   NDIlib_recv_create_v3
-#define NDIlib_recv_capture NDIlib_recv_capture_v3
-#define NDIlib_recv_free_video NDIlib_recv_free_video_v2
-#define NDIlib_recv_free_audio NDIlib_recv_free_audio_v3
-#define NDIlib_util_audio_to_interleaved_16s NDIlib_util_audio_to_interleaved_16s_v2 
-
-// Send functions
-#define NDIlib_send_send_video NDIlib_send_send_video_v2
-#define NDIlib_send_send_audio NDIlib_send_send_audio_v3
-
-#define NDI_TIME_BASE 10000000
-#define NDI_TIME_BASE_Q (AVRational){1, NDI_TIME_BASE}
-
-#define kNDI_MOVIE_DURATION 60.0 * 60.0 * 3.0   // in seconds (3 hours)
 
 #ifdef TLRENDER_FFMPEG
 extern "C"
@@ -39,14 +19,6 @@ extern "C"
 #include <libswscale/swscale.h>
 }
 #endif
-
-#ifdef _WIN32
-#ifdef _WIN64
-#pragma comment(lib, "Processing.NDI.Lib.x64.lib")
-#else // _WIN64
-#pragma comment(lib, "Processing.NDI.Lib.x86.lib")
-#endif // _WIN64
-#endif // _WIN32
 
 namespace tl
 {

@@ -105,7 +105,6 @@ namespace tl
         //! Device configuration.
         struct DeviceConfig
         {
-            std::string deviceName       = "mrv2";
             int         deviceIndex      = -1;
             int         displayModeIndex = -1;
             PixelType   pixelType        = PixelType::None;
