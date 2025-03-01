@@ -29,6 +29,7 @@ set(HEADERS
     ImageInline.h
     LRUCache.h
     LRUCacheInline.h
+    Library.h
     ListObserver.h
     ListObserverInline.h
     Locale.h
@@ -43,6 +44,7 @@ set(HEADERS
     MemoryInline.h
     Mesh.h
     MeshInline.h
+    NDI.h
     NDIOptions.h
     OS.h
     Observer.h
@@ -85,11 +87,13 @@ set(SOURCE
     ICoreSystem.cpp
     ISystem.cpp
     Image.cpp
+    Library.cpp
     Locale.cpp
     LogSystem.cpp
     Matrix.cpp
     Memory.cpp
     Mesh.cpp
+    NDI.cpp
     NDIOptions.cpp
     OS.cpp
     Path.cpp
