@@ -38,6 +38,7 @@ if(TLRENDER_NDI AND TLRENDER_FFMPEG)
 	NDI/NDIOutputDevice.cpp
 	NDI/NDISystem.cpp
 	NDI/NDIUtil.cpp)
+    list(APPEND LIBRARIES_PRIVATE NDI)
 endif()
 
 if(TLRENDER_BMD)
