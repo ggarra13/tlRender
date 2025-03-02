@@ -16,6 +16,8 @@ extern "C"
 #include <libswscale/swscale.h>
 }
 
+#include <rapidxml/rapidxml.hpp>
+
 namespace
 {
     const char* kModule = "ndi";
@@ -97,39 +99,63 @@ namespace tl
         }
 
         
-        void ReadVideo::_from_ndi(const NDIlib_video_frame_t& v)
+        void ReadVideo::_from_ndi(const NDIlib_video_frame_t& video_frame)
         {
             
             bool init = false;
 
             float pixelAspectRatio = 1.F;
-            if (v.picture_aspect_ratio == 0.F)
-                pixelAspectRatio = 1.F / v.xres * v.yres;
+            if (video_frame.picture_aspect_ratio == 0.F)
+                pixelAspectRatio = 1.F / video_frame.xres * video_frame.yres;
                 
-            if (_info.size.w != v.xres || _info.size.h != v.yres ||
+            if (_info.size.w != video_frame.xres || _info.size.h != video_frame.yres ||
                 _info.size.pixelAspectRatio != pixelAspectRatio)
             {
                 init = true;
             }
 
-            _info.size.w = v.xres;
-            _info.size.h = v.yres;
+            _info.size.w = video_frame.xres;
+            _info.size.h = video_frame.yres;
             _info.size.pixelAspectRatio = pixelAspectRatio;
             _info.layout.mirror.y = true;
             _info.videoLevels = image::VideoLevels::FullRange;
+            
+            std::string transferName, matrixName, primariesName;
+            if (video_frame.p_metadata)
+            {
+                rapidxml::xml_document<> doc;
+                doc.parse<0>((char*)video_frame.p_metadata);
+                    
+                // Get root node
+                rapidxml::xml_node<>* root = doc.first_node("ndi_color_info");
+
+                // Get attributes
+                rapidxml::xml_attribute<>* attr_transfer = root->first_attribute("transfer");
+                rapidxml::xml_attribute<>* attr_matrix = root->first_attribute("matrix");
+                rapidxml::xml_attribute<>* attr_primaries = root->first_attribute("primaries");
+                transferName = attr_transfer->value();
+                matrixName = attr_matrix->value();
+                primariesName = attr_primaries->value();
+            }
                 
-            if (_ndiFourCC != v.FourCC ||
-                _ndiStride != v.line_stride_in_bytes)
+            if (_ndiFourCC != video_frame.FourCC ||
+                _ndiStride != video_frame.line_stride_in_bytes ||
+                _ndiPrimariesName != primariesName ||
+                _ndiTransferName != transferName ||
+                _ndiMatrixName != matrixName)
             {
                 init = true;
-                _ndiFourCC = v.FourCC;
-                _ndiStride = v.line_stride_in_bytes;
+                _ndiPrimariesName = primariesName;
+                _ndiTransferName = transferName;
+                _ndiMatrixName = matrixName;
+                _ndiFourCC = video_frame.FourCC;
+                _ndiStride = video_frame.line_stride_in_bytes;
 
                 std::string msg = string::Format("NDI stream is {0}.").
-                                  arg(ndi::FourCCString(v.FourCC));
+                                  arg(ndi::FourCCString(video_frame.FourCC));
                 LOG_STATUS(msg);
             
-                switch(v.FourCC)
+                switch(video_frame.FourCC)
                 {
                 case NDIlib_FourCC_type_UYVY:
                     // YCbCr color space packed, not planar using 4:2:2. (works)
@@ -193,6 +219,70 @@ namespace tl
                 default:
                     throw std::runtime_error("Unsupported pixel type");
                 }
+
+                image::HDRData hdrData;
+                image::EOTFType eotf = image::EOTF_BT709;
+                if (transferName == "bt_601")
+                    eotf = image::EOTF_BT601;
+                else if (transferName == "bt_2020")
+                {
+                    eotf = image::EOTF_BT2020;
+                }
+                else if (transferName == "bt_2100_hlg")
+                {
+                    eotf = image::EOTF_BT2100_HLG;
+                }
+                else if (transferName == "bt_2100_pq")
+                {
+                    eotf = image::EOTF_BT2100_PQ;
+                }
+
+                // Stablish primaries
+                switch(eotf)
+                {
+                case image::EOTFType::EOTF_BT601:
+                    // This is just for NTSC
+                    hdrData.primaries[image::HDRPrimaries::Red].x = 0.630F;
+                    hdrData.primaries[image::HDRPrimaries::Red].y = 0.340F;
+                    hdrData.primaries[image::HDRPrimaries::Green].x = 0.310F;
+                    hdrData.primaries[image::HDRPrimaries::Green].y = 0.595F;
+                    hdrData.primaries[image::HDRPrimaries::Blue].x = 0.155F;
+                    hdrData.primaries[image::HDRPrimaries::Blue].y = 0.070F;
+                    hdrData.primaries[image::HDRPrimaries::White].x = 0.3127F;
+                    hdrData.primaries[image::HDRPrimaries::White].y = 0.3290F;
+                    break;
+                case image::EOTFType::EOTF_BT709:
+                    hdrData.primaries[image::HDRPrimaries::Red].x = 0.640F;
+                    hdrData.primaries[image::HDRPrimaries::Red].y = 0.330F;
+                    hdrData.primaries[image::HDRPrimaries::Green].x = 0.300F;
+                    hdrData.primaries[image::HDRPrimaries::Green].y = 0.600F;
+                    hdrData.primaries[image::HDRPrimaries::Blue].x = 0.150F;
+                    hdrData.primaries[image::HDRPrimaries::Blue].y = 0.060F;
+                    hdrData.primaries[image::HDRPrimaries::White].x = 0.3127F;
+                    hdrData.primaries[image::HDRPrimaries::White].y = 0.3290F;
+                    break;
+                case image::EOTFType::EOTF_BT2020:
+                case image::EOTFType::EOTF_BT2100_HLG:
+                case image::EOTFType::EOTF_BT2100_PQ:
+                    hdrData.primaries[image::HDRPrimaries::Red].x = 0.708F;
+                    hdrData.primaries[image::HDRPrimaries::Red].y = 0.292F;
+                    hdrData.primaries[image::HDRPrimaries::Green].x = 0.170F;
+                    hdrData.primaries[image::HDRPrimaries::Green].y = 0.797F;
+                    hdrData.primaries[image::HDRPrimaries::Blue].x = 0.131F;
+                    hdrData.primaries[image::HDRPrimaries::Blue].y = 0.046F;
+                    hdrData.primaries[image::HDRPrimaries::White].x = 0.3127F;
+                    hdrData.primaries[image::HDRPrimaries::White].y = 0.3290F;
+                    break;
+                default:
+                    break;
+                }
+                                             
+                hdrData.eotf = eotf;
+                bool hasHDR = eotf > image::EOTF_BT709;
+                if (hasHDR)
+                {
+                    _tags["hdr"] = nlohmann::json(hdrData).dump();
+                }
             }
             
             if (init)
@@ -203,13 +293,14 @@ namespace tl
             av_image_fill_arrays(
                 _avFrame->data,
                 _avFrame->linesize,
-                v.p_data,
+                video_frame.p_data,
                 _avInputPixelFormat,
                 _info.size.w,
                 _info.size.h,
                 1);
 
             auto image = image::Image::create(_info);
+            image->setTags(_tags);
             _copy(image);
             _buffer.push_back(image);
         }

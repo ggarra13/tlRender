@@ -74,12 +74,12 @@ namespace tl
             float maxCLL  = 1000.F;
             float maxFALL = 400.F;
 
-            // HDR10+ Metadata
+            //! HDR10+ Metadata
             float sceneMax[3] = { 0.F, 0.F, 0.F };
             float sceneAvg = 0.F;
             HDRBezier ootf;
 
-            // HDR CieY Metadata (DolbyVision)
+            //! HDR CieY Metadata (DolbyVision)
             float maxPQY = 0.F;
             float avgPQY = 0.F;
         

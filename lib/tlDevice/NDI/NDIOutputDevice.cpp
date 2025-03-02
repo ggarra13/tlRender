@@ -1527,6 +1527,8 @@ namespace tl
                     transferName = "bt_2100_pq";
                     matrixName = "bt_2100";
                     break;
+                default:
+                    break;
                 }
                 if (auto context = p.context.lock())
                 {

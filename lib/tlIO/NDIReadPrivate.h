@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <tlCore/HDR.h>
 #include <tlIO/NDI.h>
 
 extern "C"
@@ -16,6 +17,7 @@ extern "C"
 #include <atomic>
 #include <condition_variable>
 #include <mutex>
+#include <string>
 #include <thread>
 
 namespace tl
@@ -60,20 +62,27 @@ namespace tl
             image::Info _info;
             otime::TimeRange _timeRange = time::invalidTimeRange;
             std::list<std::shared_ptr<image::Image> > _buffer;
+            image::Tags _tags;
 
             // NDI structs
             const std::string _fileName;
             NDIlib_recv_instance_t NDI_recv = nullptr;
             int frame_rate_N = 30000, frame_rate_D = 1001;
 
-            // FFmpeg conversion variables
+            //! FFmpeg conversion variables
             AVFrame* _avFrame = nullptr;
             AVFrame* _avFrame2 = nullptr;
-            NDIlib_FourCC_video_type_e _ndiFourCC =	NDIlib_FourCC_type_UYVY;
-            size_t _ndiStride = 0;
             AVPixelFormat _avInputPixelFormat = AV_PIX_FMT_NONE;
             AVPixelFormat _avOutputPixelFormat = AV_PIX_FMT_NONE;
             SwsContext* _swsContext = nullptr;
+
+            //! NDI variables
+            size_t _ndiStride = 0;
+            NDIlib_FourCC_video_type_e _ndiFourCC =	NDIlib_FourCC_type_UYVY;
+            std::string    _ndiPrimariesName;
+            std::string    _ndiTransferName;
+            std::string    _ndiMatrixName;
+            image::HDRData _hdrData;
         };
 
         class ReadAudio
