@@ -1518,10 +1518,12 @@ namespace tl
                     matrixName = "bt_2020";
                     break;
                 case image::EOTFType::EOTF_BT2100_HLG:
+                    primariesName = "bt_2100";
                     transferName = "bt_2100_hlg";
                     matrixName = "bt_2100";
                     break;
                 case image::EOTFType::EOTF_BT2100_PQ:
+                    primariesName = "bt_2100";
                     transferName = "bt_2100_pq";
                     matrixName = "bt_2100";
                     break;
