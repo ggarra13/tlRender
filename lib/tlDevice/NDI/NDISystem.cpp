@@ -190,7 +190,7 @@ namespace tl
                             deviceInfo.pixelTypes.push_back(device::PixelType::_8BitUYVA);
                             deviceInfo.pixelTypes.push_back(device::PixelType::_16BitP216);
                             deviceInfo.pixelTypes.push_back(device::PixelType::_16BitPA16);
-                            deviceInfo.pixelTypes.push_back(device::PixelType::_8BitI420);
+                            // deviceInfo.pixelTypes.push_back(device::PixelType::_8BitI420);  // \@bug: this does nothing
                             deviceInfo.pixelTypes.push_back(device::PixelType::_8BitBGRX);
                             deviceInfo.pixelTypes.push_back(device::PixelType::_8BitRGBA);
                             deviceInfo.pixelTypes.push_back(device::PixelType::_8BitRGBX);

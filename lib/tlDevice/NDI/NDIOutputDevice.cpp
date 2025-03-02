@@ -1536,7 +1536,7 @@ namespace tl
                         arg(primariesName).
                         arg(transferName).
                         arg(matrixName),
-                        log::Type::Status,
+                        log::Type::Message,
                         kModule);
                 }
                 

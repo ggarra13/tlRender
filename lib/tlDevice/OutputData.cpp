@@ -14,12 +14,12 @@
 
 namespace tl
 {
-    struct YUVCoefficients
+    struct YUVCoefficients8bits
     {
         uint8_t kr, kg, kb;
     };
 
-    YUVCoefficients getYUVCoefficients8bits(int width, int height)
+    YUVCoefficients8bits getYUVCoefficients8bits(int width, int height)
     {
         if (width > 720 && height > 576)
         {
@@ -30,6 +30,32 @@ namespace tl
             return {77, 150, 29}; // BT.601 standard (scaled to 256)
         }
     }
+    
+    struct YUVCoefficients16bits
+    {
+        uint16_t kr, kg, kb;
+    };
+
+    YUVCoefficients16bits getYUVCoefficients16bits(int width, int height)
+    {
+        if (width > 720 && height > 576)
+        {
+            // BT.709 standard (16-bit scale)
+            return { (uint16_t)(0.2126 * 65535),  // kr
+                (uint16_t)(0.7152 * 65535),  // kg
+                (uint16_t)(0.0722 * 65535)   // kb
+            };
+        }
+        else
+        {
+            // BT.601 standard (16-bit scale)
+            return { (uint16_t)(0.299 * 65535),   // kr
+                (uint16_t)(0.587 * 65535),   // kg
+                (uint16_t)(0.114 * 65535)    // kb
+            };
+        }
+    }
+
     
     namespace device
     {
@@ -87,7 +113,7 @@ namespace tl
             //    break;
             case PixelType::_12BitRGB:
             case PixelType::_12BitRGBLE:
-                out = (size * 36) / 8;
+                out = size * 36 / 8;
                 break;
             case PixelType::_8BitUYVA:
                 out = size * 32 / 8;
@@ -119,9 +145,9 @@ namespace tl
                 image::PixelType::RGB_U16,   // 12BitRGB
                 image::PixelType::RGB_U16,   // 12BitRGBLE
                 image::PixelType::RGBA_U8,   // 8BitUYVA
-                image::PixelType::RGB_U16,   // 16BitP216 (YUV sans alpha)
-                image::PixelType::RGBA_U16,  // 16BitPA16 (YUV with alpha(
-                image::PixelType::RGB_U8,    // 8BitI420  (YUV with UV reversed)
+                image::PixelType::RGB_U16,   // 16BitP216 (4:2:2 16bits YUV sans alpha)
+                image::PixelType::RGBA_U16,  // 16BitPA16 (4:2:2 16bits YUV with alpha)
+                image::PixelType::RGB_U8,    // 8BitI420  (4:2:2 8bits YUV with UV reversed)
                 image::PixelType::RGB_U8,    // 8BitBGRX
                 image::PixelType::RGBA_U8,   // 8BitRGBA
                 image::PixelType::RGB_U8,    // 8BitRGBX
@@ -520,7 +546,7 @@ namespace tl
                 uint8_t* p_uyvy = (uint8_t*)outP;
                 uint8_t* p_alpha = p_uyvy + stride * height;
     
-                YUVCoefficients coeffs = getYUVCoefficients8bits(width, height);
+                YUVCoefficients8bits coeffs = getYUVCoefficients8bits(width, height);
                 uint8_t kr = coeffs.kr, kg = coeffs.kg, kb = coeffs.kb;
                 
                 for (int y = 0; y < height; ++y)
@@ -580,12 +606,19 @@ namespace tl
                 break;
             case PixelType::_16BitP216:
             {
-                int y_stride = width * sizeof(uint16_t);
-                int uv_stride = width * sizeof(uint16_t); // UV pairs, so same width.
-
+// This is a 4:2:2 buffer in semi-planar format with full 16bpp color precision.
+// This is formed from two buffers in memory, the first is a 16bpp luminance
+// buffer and the second is a buffer of U,V pairs in memory. This can be
+// considered as a 16bpp version of NV12.
+// For instance, if you have an image with p_data and stride, then the planes
+// are located as follows:
+// uint16_t *p_y = (uint16_t*)p_data;
+// uint16_t *p_uv = (uint16_t*)(p_data + stride*height);
+// As a matter of illustration, a completely packed image would have stride
+// as width*sizeof(uint16_t).
                 uint16_t* p_y = reinterpret_cast<uint16_t*>(outP);
-                uint16_t* p_uv = reinterpret_cast<uint16_t*>(p_y + y_stride * height);
-
+                uint16_t* p_uv = reinterpret_cast<uint16_t*>(p_y + width * height);
+                
                 for (int y = 0; y < height; ++y)
                 {
                     const uint16_t* rgba_row =
@@ -609,12 +642,13 @@ namespace tl
                         u_val = std::clamp(u_val, 0, 65535);
                         v_val = std::clamp(v_val, 0, 65535);
 
-                        p_y[y * width + x] = static_cast<uint16_t>(y_val);
+                        const int index = y * width + x;
+                        p_y[index] = static_cast<uint16_t>(y_val);
 
                         if (x % 2 == 0)
                         {
-                            p_uv[(y / 2) * width + x] = static_cast<uint16_t>(u_val);
-                            p_uv[(y / 2) * width + x + 1] = static_cast<uint16_t>(v_val);
+                            p_uv[index] = static_cast<uint16_t>(u_val);
+                            p_uv[index + 1] = static_cast<uint16_t>(v_val);
                         }
                     }
                 }
@@ -622,12 +656,21 @@ namespace tl
             }
             case PixelType::_16BitPA16:
             {
-                int y_stride = width * sizeof(uint16_t);
-                int uv_stride = width * sizeof(uint16_t); // UV pairs, so same width.
-
+// This is a 4:2:2 buffer in semi-planar format with full 16bpp color precision.
+// This is formed from two buffers in memory, the first is a 16bpp luminance
+// buffer and the second is a buffer of U,V pairs in memory. This can be
+// considered as a 16bpp version of NV12.
+// For instance, if you have an image with p_data and stride, then the planes
+// are located as follows:
+// uint16_t *p_y = (uint16_t*)p_data;
+// uint16_t *p_uv = (uint16_t*)(p_data + stride*height);
+// uint16_t *p_alpha = (uint16_t*)(p_uv + stride*height);
+// As a matter of illustration, a completely packed image would have stride
+// as width*sizeof(uint16_t).
                 uint16_t* p_y = reinterpret_cast<uint16_t*>(outP);
-                uint16_t* p_uv = reinterpret_cast<uint16_t*>(p_y + y_stride * height);
-
+                uint16_t* p_uv = reinterpret_cast<uint16_t*>(p_y + width * height);
+                uint16_t* p_alpha = reinterpret_cast<uint16_t*>(p_uv + width * height);
+                
                 for (int y = 0; y < height; ++y)
                 {
                     const uint16_t* rgba_row =
@@ -636,13 +679,12 @@ namespace tl
 
                     for (int x = 0; x < width; ++x)
                     {
-                        // Extract RGBA components (assuming RGBA order)
-                        uint16_t r = rgba_row[3 * x + 0];
-                        uint16_t g = rgba_row[3 * x + 1];
-                        uint16_t b = rgba_row[3 * x + 2];
+                        uint16_t r = rgba_row[4 * x + 0];
+                        uint16_t g = rgba_row[4 * x + 1];
+                        uint16_t b = rgba_row[4 * x + 2];
                         uint16_t a = rgba_row[4 * x + 3];
 
-                        // Integer based YUV conversion. BT.709 example.
+                        // Integer based YUV conversion. BT.709 coefficients should be fine.
                         int32_t y_val = (77 * r + 150 * g + 29 * b) >> 8; // Right shift by 8 == divide by 256.
                         int32_t u_val = (((-43 * r - 84 * g + 127 * b) >> 8) + 32768);
                         int32_t v_val = (((127 * r - 106 * g - 21 * b) >> 8) + 32768);
@@ -652,12 +694,14 @@ namespace tl
                         u_val = std::clamp(u_val, 0, 65535);
                         v_val = std::clamp(v_val, 0, 65535);
 
-                        p_y[y * width + x] = static_cast<uint16_t>(y_val);
+                        const int index = y * width + x;
+                        p_y[index] = static_cast<uint16_t>(y_val);
+                        p_alpha[index] = a;
 
                         if (x % 2 == 0)
                         {
-                            p_uv[(y / 2) * width + x] = static_cast<uint16_t>(u_val);
-                            p_uv[(y / 2) * width + x + 1] = static_cast<uint16_t>(v_val);
+                            p_uv[index] = static_cast<uint16_t>(u_val);
+                            p_uv[index + 1] = static_cast<uint16_t>(v_val);
                         }
                     }
                 }
