@@ -1488,17 +1488,21 @@ namespace tl
                 }
                 else
                 {
-                    if (auto context = p.context.lock())
-                    {
-                        auto logSystem = context->getLogSystem();
-                        logSystem->print(
-                            "tl::ndi::OutputDevice",
-                            "Unknown primaries.  Using bt_2020",
-                            log::Type::Error,
-                            kModule);
-                    }
+                    primariesName = "bt_2020";
                 }
                 
+                
+                if (auto context = p.context.lock())
+                {
+                    auto logSystem = context->getLogSystem();
+                    logSystem->print(
+                        "tl::ndi::OutputDevice",
+                        string::Format("Unknown primaries.  Using {0}.").
+                        arg(primariesName),
+                        log::Type::Status,
+                        kModule);
+                }
+                    
                 switch(hdrData->eotf)
                 {
                 case image::EOTFType::EOTF_BT601:
@@ -1521,6 +1525,19 @@ namespace tl
                     transferName = "bt_2100_pq";
                     matrixName = "bt_2100";
                     break;
+                }
+                if (auto context = p.context.lock())
+                {
+                    auto logSystem = context->getLogSystem();
+                    logSystem->print(
+                        "tl::ndi::OutputDevice",
+                        string::Format("primaries={0} transfer={1} "
+                                       "matrix={2}.").
+                        arg(primariesName).
+                        arg(transferName).
+                        arg(matrixName),
+                        log::Type::Status,
+                        kModule);
                 }
                 
                 const std::string& metadata = string::Format("<ndi_color_info "

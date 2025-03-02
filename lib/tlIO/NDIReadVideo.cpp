@@ -5,6 +5,8 @@
 #include <tlIO/FFmpegMacros.h>
 #include <tlIO/NDIReadPrivate.h>
 
+#include <tlDevice/NDI/NDIUtil.h>
+
 #include <tlCore/StringFormat.h>
 
 extern "C"
@@ -25,10 +27,12 @@ namespace tl
     {
         namespace
         {
+            
             bool canCopy(AVPixelFormat in, AVPixelFormat out)
             {
                 return (in == out &&
-                        (AV_PIX_FMT_RGB24   == in ||
+                        (AV_PIX_FMT_RGBA64  == in ||
+                         AV_PIX_FMT_RGB24   == in ||
                          AV_PIX_FMT_RGBA    == in ||
                          AV_PIX_FMT_YUV420P == in));
             }
@@ -120,27 +124,26 @@ namespace tl
                 init = true;
                 _ndiFourCC = v.FourCC;
                 _ndiStride = v.line_stride_in_bytes;
+
+                std::string msg = string::Format("NDI stream is {0}.").
+                                  arg(ndi::FourCCString(v.FourCC));
+                LOG_STATUS(msg);
             
                 switch(v.FourCC)
                 {
                 case NDIlib_FourCC_type_UYVY:
-                    LOG_STATUS("NDI Stream is UYVY pixel format");
                     // YCbCr color space packed, not planar using 4:2:2. (works)
                     _avInputPixelFormat = AV_PIX_FMT_UYVY422;
                     _avOutputPixelFormat = AV_PIX_FMT_RGB24;
                     _info.pixelType = image::PixelType::RGB_U8;
                     break;
                 case NDIlib_FourCC_type_UYVA:
-                    // @todo: This is 4:2:2:4 YUV with an alpha plane following.
-                    LOG_STATUS("NDI Stream is UYVA pixel format");
-                    LOG_ERROR("UVVA pixel format will not have an alpha channel.");
                     // YCbCr color space packed, not planar using 4:2:2:4.
                     _avInputPixelFormat = AV_PIX_FMT_UYVY422;
                     _avOutputPixelFormat = AV_PIX_FMT_RGBA;
                     _info.pixelType = image::PixelType::RGBA_U8;
                     break;
                 case NDIlib_FourCC_type_P216:
-                    LOG_STATUS("NDI Stream is P216");
                     // This is a 16bpp version of NV12 (semi-planar 4:2:2).
                     _avInputPixelFormat = AV_PIX_FMT_P216LE;
                     _avOutputPixelFormat = AV_PIX_FMT_YUV422P16LE;
@@ -149,46 +152,39 @@ namespace tl
                     // _info.pixelType = image::PixelType::RGB_U16;
                     break;
                 case NDIlib_FourCC_type_PA16:
-                    LOG_ERROR("NDI Stream is PA16.  Not supported yet");
                     // This is 4:2:2:4 in 16bpp.
-                    _avInputPixelFormat = AV_PIX_FMT_P016LE;
+                    _avInputPixelFormat = AV_PIX_FMT_RGBA64;
                     _avOutputPixelFormat = AV_PIX_FMT_RGBA64;
                     _info.pixelType = image::PixelType::RGBA_U16;
                     break;
                 case NDIlib_FourCC_type_YV12:
-                    LOG_STATUS("NDI Stream is YV12");
                     // Planar 8bit 4:2:0 YUV video format.
                     _avInputPixelFormat = AV_PIX_FMT_YUV420P;
                     _info.pixelType = image::PixelType::YUV_420P_U8;
                     _avOutputPixelFormat = _avInputPixelFormat;
                     break;
                 case NDIlib_FourCC_type_RGBA:
-                    LOG_STATUS("NDI Stream is RGBA");
                     _avInputPixelFormat = AV_PIX_FMT_RGBA;
                     _info.pixelType = image::PixelType::RGBA_U8;
                     _avOutputPixelFormat = _avInputPixelFormat;
                     break;
                 case NDIlib_FourCC_type_BGRA:
-                    LOG_STATUS("NDI Stream is BGRA");
                     _avInputPixelFormat = AV_PIX_FMT_BGRA;
                     _avOutputPixelFormat = AV_PIX_FMT_RGBA;
                     _info.pixelType = image::PixelType::RGBA_U8;
                     break;
                 case NDIlib_FourCC_type_RGBX:
-                    LOG_STATUS("NDI Stream is RGBX");
                     _avInputPixelFormat = AV_PIX_FMT_RGB24;
                     _info.pixelType = image::PixelType::RGB_U8;
                     _avOutputPixelFormat = _avInputPixelFormat;
                     break;
                 case NDIlib_FourCC_type_BGRX:
-                    LOG_STATUS("NDI Stream is BGRX");
                     _avInputPixelFormat = AV_PIX_FMT_BGR24;
                     _info.pixelType = image::PixelType::RGB_U8;
                     _avOutputPixelFormat = AV_PIX_FMT_RGB24;
                     break;
                 case NDIlib_FourCC_type_I420:
                     // @todo: Not tested yet, this is 4:2:0 YUV with UV reversed
-                    LOG_STATUS("NDI Stream is I420");
                     LOG_WARNING("I420 pixel format not tested");
                     _avInputPixelFormat = AV_PIX_FMT_YUV420P;
                     _avOutputPixelFormat = _avInputPixelFormat;
@@ -346,7 +342,7 @@ namespace tl
                 {
                     throw std::runtime_error(string::Format("{0}: Cannot initialize sws context").arg(_fileName));
                 }
-
+                
                 // Handle matrices and color space details
                 int in_full, out_full, brightness, contrast, saturation;
                 const int *inv_table, *table;
@@ -410,6 +406,62 @@ namespace tl
                             w * 4);
                     }
                     break;
+                case AV_PIX_FMT_RGBA64:
+                    if (_ndiFourCC == NDIlib_FourCC_type_PA16)
+                    {
+                        uint16_t* p_y = (uint16_t*)data0;
+                        const uint16_t* p_uv = p_y + w * h;
+                        const uint16_t* p_alpha = p_uv + w * h;
+                        uint16_t* rgba = (uint16_t*) data;
+
+                        for (int y = 0; y < h; ++y)
+                        {
+                            for (int x = 0; x < w; ++x)
+                            {
+                                const int yw = y * w;
+                                const int index_y = yw + x;
+                                const int index_uv = yw + (x / 2) * 2;  // UV is subsampled (4:2:2)
+                                const int index_alpha = index_y;
+
+                                // Extract Y, U, V, and Alpha
+                                float Y = p_y[index_y] / 65535.0f; // Normalize to [0,1]
+                                float U = (p_uv[index_uv] - 32768) / 32768.0f; // Center U around 0
+                                float V = (p_uv[index_uv + 1] - 32768) / 32768.0f; // Center V around 0
+                                float A = p_alpha[index_alpha] / 65535.0f; // Normalize Alpha
+
+                                // Convert YUV to RGB with no coefficients (already applied on sending)
+                                float R = Y + V;
+                                float G = Y;
+                                float B = Y + U;
+
+                                // \@todo: handle HDR support here
+    
+                                // Clamp values to valid U16 range
+                                R = std::min(std::max(R * 65535.F, 0.F), 65535.F);
+                                G = std::min(std::max(G * 65535.F, 0.F), 65535.F);
+                                B = std::min(std::max(B * 65535.F, 0.F), 65535.F);
+                                A = std::min(std::max(A * 65535.F, 0.F), 65535.F);
+            
+                                // Store as RGBA_U16
+                                int rgba_index = (yw + x) * 4;
+                                rgba[rgba_index] = R;
+                                rgba[rgba_index + 1] = G;
+                                rgba[rgba_index + 2] = B;
+                                rgba[rgba_index + 3] = A;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        for (std::size_t i = 0; i < h; ++i)
+                        {
+                            std::memcpy(
+                                data + w * 8 * i,
+                                data0 + linesize0 * 8 * i,
+                                w * 8);
+                        }
+                    }
+                    break;
                 case AV_PIX_FMT_YUV420P:
                 {   
                     const std::size_t w2 = w / 2;
@@ -425,16 +477,34 @@ namespace tl
                             data0 + linesize0 * i,
                             w);
                     }
-                    for (std::size_t i = 0; i < h2; ++i)
+
+                    if (_ndiFourCC != NDIlib_FourCC_type_I420)
+                    {                        
+                        for (std::size_t i = 0; i < h2; ++i)
+                        {
+                            std::memcpy(
+                                data + (w * h) + w2 * i,
+                                data1 + linesize1 * i,
+                                w2);
+                            std::memcpy(
+                                data + (w * h) + (w2 * h2) + w2 * i,
+                                data2 + linesize2 * i,
+                                w2);
+                        }
+                    }
+                    else
                     {
-                        std::memcpy(
-                            data + (w * h) + w2 * i,
-                            data1 + linesize1 * i,
-                            w2);
-                        std::memcpy(
-                            data + (w * h) + (w2 * h2) + w2 * i,
-                            data2 + linesize2 * i,
-                            w2);
+                        for (std::size_t i = 0; i < h2; ++i)
+                        {
+                            std::memcpy(
+                                data + (w * h) + w2 * i,
+                                data2 + linesize1 * i,
+                                w2);
+                            std::memcpy(
+                                data + (w * h) + (w2 * h2) + w2 * i,
+                                data1 + linesize2 * i,
+                                w2);
+                        }
                     }
                     break;
                 }
@@ -453,7 +523,7 @@ namespace tl
                 // I420 is YUV with U an V planar planes swapped.
                 if (_ndiFourCC == NDIlib_FourCC_type_I420)
                 {
-                    size_t tmp = _avFrame->linesize[1];
+                    const size_t tmp = _avFrame->linesize[1];
                     _avFrame->linesize[1] = _avFrame->linesize[2];
                     _avFrame->linesize[2] = tmp;
                 }
@@ -463,6 +533,27 @@ namespace tl
                     _swsContext, (uint8_t const* const*)_avFrame->data,
                     _avFrame->linesize, 0, h, _avFrame2->data,
                     _avFrame2->linesize);
+
+                //
+                // Extract the A of UYVA manually, as FFmpeg does not support it.
+                //
+                if (_ndiFourCC == NDIlib_FourCC_type_UYVA)
+                {
+                    uint8_t* const data0 = _avFrame->data[0];
+                    const size_t stride = w * sizeof(uint8_t) * 2;
+                    uint8_t* inP = data0 + stride * h;
+                    uint8_t* outP = data;
+                    for (int y = 0; y < h; ++y)
+                    {
+                        for (int x = 0; x < w; ++x)
+                        {
+                            const int rgbaIndex = (y * w + x) * 4;
+                            outP[rgbaIndex + 3] = *inP;
+                            ++inP;
+                        }
+                    }
+                }
+
             }
         }
     }

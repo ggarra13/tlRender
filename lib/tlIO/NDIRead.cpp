@@ -92,31 +92,7 @@ namespace tl
             // We now have at least one source,
             // so we create a receiver to look at it.
             NDIlib_recv_create_v3_t recv_desc;
-            
-            // Currently, tlRender does not support YUVA so we cannot use this.
-            // We use NDIlib_recv_color_format_UYVY_RGBA instead.
-            //      No alpha channel : UYVY
-            //      Alpha channel    : UYVA
-            // recv_desc.color_format = NDIlib_recv_color_format_fastest;
-            
-            //      No alpha channel : BGRX.
-            //      Alpha channel    : BGRA.
-            // recv_desc.color_format = NDIlib_recv_color_format_BGRX_BGRA;
-            
-            //      No alpha channel : UYVY.
-            //      Alpha channel    : BGRA.
-            // recv_desc.color_format = NDIlib_recv_color_format_UYVY_BGRA;
-            
-            //      No alpha channel : RGBX.
-            //      Alpha channel    : RGBA.
-            // recv_desc.color_format = NDIlib_recv_color_format_RGBX_RGBA;
-            
-            //      No alpha channel : UYVY.
-            //      Alpha channel    : RGBA.
-            // this is the best 8-bit format so far.
-
-
-            recv_desc.color_format = NDIlib_recv_color_format_UYVY_RGBA;
+            recv_desc.color_format = NDIlib_recv_color_format_fastest;
 
             
             // These are 16-bit formats, but they seem broken.
