@@ -34,7 +34,7 @@ namespace tl
         namespace
         {
             const std::chrono::milliseconds timeout(5);
-            const char* kModule = "NDI";
+            const char* kModule = "ndi";
         }
         
         namespace

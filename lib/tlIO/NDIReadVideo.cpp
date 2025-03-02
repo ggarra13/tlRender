@@ -414,6 +414,19 @@ namespace tl
                         const uint16_t* p_alpha = p_uv + w * h;
                         uint16_t* rgba = (uint16_t*) data;
 
+                        // Determine BT.601 or BT.709 based on resolution
+                        bool useBT709 = (w >= 1280 && h >= 720);
+
+                        // BT.601 coefficients
+                        int Kr601 = 299; // 0.299 * 1000
+                        int Kb601 = 114; // 0.114 * 1000
+                        int Kg601 = 1000 - Kr601 - Kb601; // 0.587 * 1000
+
+                        // BT.709 coefficients
+                        int Kr709 = 2126; // 0.2126 * 10000
+                        int Kb709 = 722;  // 0.0722 * 10000
+                        int Kg709 = 10000 - Kr709 - Kb709; // 0.7152 * 10000
+                        
                         for (int y = 0; y < h; ++y)
                         {
                             for (int x = 0; x < w; ++x)
@@ -424,30 +437,36 @@ namespace tl
                                 const int index_alpha = index_y;
 
                                 // Extract Y, U, V, and Alpha
-                                float Y = p_y[index_y] / 65535.0f; // Normalize to [0,1]
-                                float U = (p_uv[index_uv] - 32768) / 32768.0f; // Center U around 0
-                                float V = (p_uv[index_uv + 1] - 32768) / 32768.0f; // Center V around 0
-                                float A = p_alpha[index_alpha] / 65535.0f; // Normalize Alpha
+                                int Y = p_y[index_y];
+                                int U = (p_uv[index_uv] - 32768); // Center U around 0
+                                int V = (p_uv[index_uv + 1] - 32768); // Center V around 0
+                                int A = p_alpha[index_alpha];
 
-                                // Convert YUV to RGB with no coefficients (already applied on sending)
-                                float R = Y + V;
-                                float G = Y;
-                                float B = Y + U;
+                                // Convert YUV to RGB
+                                int R, G, B;
 
-                                // \@todo: handle HDR support here
-    
+                                if (useBT709) {
+                                    R = (Y * 10000 + V * 14746) / 10000;
+                                    G = (Y * 10000 - U * 3363 - V * 6140) / 10000;
+                                    B = (Y * 10000 + U * 17933) / 10000;
+                                } else {
+                                    R = (Y * 1000 + V * 1402) / 1000;
+                                    G = (Y * 1000 - U * 344 - V * 714) / 1000;
+                                    B = (Y * 1000 + U * 1772) / 1000;
+                                }
+                                
                                 // Clamp values to valid U16 range
-                                R = std::min(std::max(R * 65535.F, 0.F), 65535.F);
-                                G = std::min(std::max(G * 65535.F, 0.F), 65535.F);
-                                B = std::min(std::max(B * 65535.F, 0.F), 65535.F);
-                                A = std::min(std::max(A * 65535.F, 0.F), 65535.F);
+                                R = std::clamp(R, 0, 65535);
+                                G = std::clamp(G, 0, 65535);
+                                B = std::clamp(B, 0, 65535);
+                                A = std::clamp(A, 0, 65535);
             
                                 // Store as RGBA_U16
                                 int rgba_index = (yw + x) * 4;
-                                rgba[rgba_index] = R;
-                                rgba[rgba_index + 1] = G;
-                                rgba[rgba_index + 2] = B;
-                                rgba[rgba_index + 3] = A;
+                                rgba[rgba_index] = static_cast<uint16_t>(R);
+                                rgba[rgba_index + 1] = static_cast<uint16_t>(G);
+                                rgba[rgba_index + 2] = static_cast<uint16_t>(B);
+                                rgba[rgba_index + 3] = static_cast<uint16_t>(A);
                             }
                         }
                     }
