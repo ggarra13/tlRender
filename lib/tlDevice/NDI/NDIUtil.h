@@ -6,8 +6,7 @@
 
 #include <cstddef>
 
-#include <NDI/Processing.NDI.Lib.h>
-
+#include <tlDevice/NDI/NDI.h>
 #include <tlDevice/OutputData.h>
 
 #include <tlCore/Image.h>

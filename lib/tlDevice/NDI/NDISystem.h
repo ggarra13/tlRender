@@ -3,12 +3,11 @@
 // All rights reserved.
 #pragma once
 
+#include <tlDevice/NDI/NDI.h>
 #include <tlDevice/OutputData.h>
 
 #include <tlCore/ISystem.h>
 #include <tlCore/ListObserver.h>
-
-#include <NDI/Processing.NDI.Lib.h>
 
 #include <string>
 

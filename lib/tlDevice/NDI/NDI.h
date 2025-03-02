@@ -1,6 +1,6 @@
 #pragma once
 
-#include <NDI/Processing.NDI.Lib.h>
+#include <Processing.NDI.Lib.h>
 
 // Structs
 #define NDIlib_audio_frame_t NDIlib_audio_frame_v3_t
