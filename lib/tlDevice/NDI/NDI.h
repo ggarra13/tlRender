@@ -1,5 +1,8 @@
 #pragma once
 
+// \@bug Apple's SDK is broken on new macOS.
+#undef NULL
+#define NULL nullptr
 #include <Processing.NDI.Lib.h>
 
 // Structs
