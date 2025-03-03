@@ -56,15 +56,17 @@ namespace tl
             int _decode(const otime::RationalTime& currentTime);
             void _from_ndi(const NDIlib_video_frame_t& video_frame);
             void _copy(std::shared_ptr<image::Image>&);
-            
+
+            //! tlRender stuff
             std::weak_ptr<log::System> _logSystem;
             Options _options;
             image::Info _info;
             otime::TimeRange _timeRange = time::invalidTimeRange;
+            otime::RationalTime _currentTime = time::invalidTime;
             std::list<std::shared_ptr<image::Image> > _buffer;
             image::Tags _tags;
 
-            // NDI structs
+            //! NDI structs
             const std::string _fileName;
             NDIlib_recv_instance_t NDI_recv = nullptr;
             int frame_rate_N = 30000, frame_rate_D = 1001;

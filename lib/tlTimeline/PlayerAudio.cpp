@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: BSD-3-Clause
-// Copyright (c) 2021-2024 Darby Johnston
+// Copyright (c) 2021-2025 Darby Johnston and Gonzalo Garramuño
 // All rights reserved.
 
 #include <tlTimeline/PlayerPrivate.h>
@@ -66,7 +66,7 @@ namespace tl
         int Player::Private::rtAudioCallback(
             void* outputBuffer,
             void* inputBuffer,
-            unsigned int nFrames,
+            unsigned int outSamples,
             double streamTime,
             RtAudioStreamStatus status,
             void* userData)
@@ -106,10 +106,10 @@ namespace tl
             //std::cout << "playback: " << playback << std::endl;
             //std::cout << "playbackStartTime: " << playbackStartTime << std::endl;
 
-            // Zero output audio data.
-            std::memset(outputBuffer, 0, nFrames * p->audioThread.info.getByteCount());
-
             auto& thread = p->audioThread;
+
+            // Zero output audio data.
+            std::memset(outputBuffer, 0, outSamples * thread.info.getByteCount());
             
             switch (playback)
             {
@@ -127,7 +127,7 @@ namespace tl
                     thread.silence.reset();
                     thread.buffer.clear();
                     thread.rtAudioCurrentFrame = 0;
-                    thread.backwardsSize =
+                    thread.backwardsSamples =
                         std::numeric_limits<size_t>::max();
                 }
 
@@ -160,7 +160,8 @@ namespace tl
                 const bool backwards = playback == Playback::Reverse;
                 if (!thread.silence)
                 {
-                    thread.silence = audio::Audio::create(outputInfo, inSampleRate);
+                    thread.silence = audio::Audio::create(inputInfo,
+                                                          inSampleRate);
                     thread.silence->zero();
                 }
                     
@@ -189,10 +190,8 @@ namespace tl
                     
                     
                 int64_t seconds = inSampleRate > 0 ? (frame / inSampleRate) : 0;
-                int64_t offset = frame - seconds * inSampleRate;
-
-                    
-                    
+                int64_t inOffsetSamples = frame - seconds * inSampleRate;
+                
                 // std::cerr << "TIM seconds:     " << seconds << std::endl;
                 // std::cerr << "TIM rtAudioCurrentFrame: " << thread.rtAudioCurrentFrame << std::endl;
                 // std::cerr << "TIM playbackStartTime: " << playbackStartTime << std::endl;
@@ -203,11 +202,11 @@ namespace tl
                 // std::cerr << "TIM timeOffset: " << timeOffset.rescaled_to(1.0) << std::endl;
                 // std::cerr << "TIM frameOffset: " << frameOffset << std::endl;
                 // std::cerr << "TIM frame:       " << frame   << std::endl;
-                // std::cerr << "TIM offset:      " << offset  << std::endl;
-                while (audio::getSampleCount(thread.buffer) < nFrames)
-                {
+                while (audio::getSampleCount(thread.buffer) < outSamples)
+                {;
+                    // std::cerr << "\toffset  = " << offset  << std::endl;
                     // std::cout << "\tseconds: " << seconds << std::endl;
-                    // std::cout << "\toffset:  " << offset << std::endl;
+                    // std::cerr << "\tinOffsetSamples:      " << inOffsetSamples  << std::endl;
                     AudioData audioData;
                     {
                         std::unique_lock<std::mutex> lock(p->audioMutex.mutex);
@@ -222,10 +221,8 @@ namespace tl
                     volumeScale.reserve(audioData.layers.size());
                     std::vector<std::shared_ptr<audio::Audio> > audios;
                     std::vector<const uint8_t*> audioDataP;
-                    const size_t dataOffset = offset * inputInfo.getByteCount();
-                    const auto rate = timeOffset.rate();
-                    const auto sample = seconds * rate + offset;
-                    const auto currentTime = otime::RationalTime(sample, rate).rescaled_to(1.0);
+                    const size_t dataByteOffset = inOffsetSamples * inputInfo.getByteCount();
+                    const auto sample = seconds * inSampleRate + inOffsetSamples;
                     int audioIndex = 0;
                     for (const auto& layer : audioData.layers)
                     {
@@ -237,8 +234,8 @@ namespace tl
                             if (layer.inTransition)
                             {
                                 const auto& clipTimeRange = layer.clipTimeRange;
-                                const auto& range = otime::TimeRange(clipTimeRange.start_time().rescaled_to(rate),
-                                                                     clipTimeRange.duration().rescaled_to(rate));
+                                const auto& range = otime::TimeRange(clipTimeRange.start_time().rescaled_to(inSampleRate),
+                                                                     clipTimeRange.duration().rescaled_to(inSampleRate));
                                 const auto  inOffset = layer.inTransition->in_offset().value();
                                 const auto outOffset = layer.inTransition->out_offset().value();
                                 const auto fadeInBegin = range.start_time().value() - inOffset;
@@ -262,8 +259,8 @@ namespace tl
                             if (layer.outTransition)
                             {
                                 const auto& clipTimeRange = layer.clipTimeRange;
-                                const auto& range = otime::TimeRange(clipTimeRange.start_time().rescaled_to(rate),
-                                                                     clipTimeRange.duration().rescaled_to(rate));
+                                const auto& range = otime::TimeRange(clipTimeRange.start_time().rescaled_to(inSampleRate),
+                                                                     clipTimeRange.duration().rescaled_to(inSampleRate));
                             
                                 const auto  inOffset = layer.outTransition->in_offset().value();
                                 const auto outOffset = layer.outTransition->out_offset().value();
@@ -299,37 +296,39 @@ namespace tl
                                 audio = tmp;
                                 audios.push_back(audio);
                             }
-                            audioDataP.push_back(audio->getData() + dataOffset);
+                            audioDataP.push_back(audio->getData() +
+                                                 dataByteOffset);
                             volumeScale.push_back(volumeMultiplier);
                             ++audioIndex;
                         }
                     }
+                    
                     if (audioDataP.empty())
                     {
                         volumeScale.push_back(0.F);
                         audioDataP.push_back(thread.silence->getData());
                     }
 
-                    size_t size = std::min(
+                    size_t inSamples = std::min(
                         p->playerOptions.audioBufferFrameCount,
-                        static_cast<size_t>(inSampleRate - offset));
+                        static_cast<size_t>(inSampleRate - inOffsetSamples));
 
                     if (backwards)
                     {
-                        if ( thread.backwardsSize < size )
+                        if ( thread.backwardsSamples < inSamples )
                         {
-                            size = thread.backwardsSize;
+                            inSamples = thread.backwardsSamples;
                         }
                             
                         audio::reverse(
                             const_cast<uint8_t**>(audioDataP.data()),
                             audioDataP.size(),
-                            size,
+                            inSamples,
                             inputInfo.channelCount,
                             inputInfo.dataType);
                     }
 
-                    auto tmp = audio::Audio::create(inputInfo, size);
+                    auto tmp = audio::Audio::create(inputInfo, inSamples);
                     tmp->zero();
                     audio::mix(
                         audioDataP.data(),
@@ -337,7 +336,7 @@ namespace tl
                         tmp->getData(),
                         volume,
                         volumeScale,
-                        size,
+                        inSamples,
                         inputInfo.channelCount,
                         inputInfo.dataType);
 
@@ -348,27 +347,27 @@ namespace tl
 
                     if (backwards)
                     {
-                        offset -= size;
-                        if (offset < 0)
+                        inOffsetSamples -= inSamples;
+                        if (inOffsetSamples < 0)
                         {
                             seconds -= 1;
                             if (speedMultiplier < 1.0)
-                                offset += ( inSampleRate * speedMultiplier );
+                                inOffsetSamples += ( inSampleRate * speedMultiplier );
                             else
-                                offset += inSampleRate;
-                            thread.backwardsSize = static_cast<size_t>(inSampleRate - offset);
+                                inOffsetSamples += inSampleRate;
+                            thread.backwardsSamples = static_cast<size_t>(inSampleRate - inOffsetSamples);
                         }
                         else
                         {
-                            thread.backwardsSize = size;
+                            thread.backwardsSamples = inSamples;
                         }
                     }
                     else
                     {
-                        offset += size;
-                        if (offset >= inSampleRate)
+                        inOffsetSamples += inSamples;
+                        if (inOffsetSamples >= inSampleRate)
                         {
-                            offset -= inSampleRate;
+                            inOffsetSamples -= inSampleRate;
                             seconds += 1;
                         }
                     }
@@ -381,17 +380,24 @@ namespace tl
                 if (defaultSpeed == p->timeline->getTimeRange().duration().rate() &&
                     !mute &&
                     now >= muteTimeout &&
-                    nFrames <= getSampleCount(thread.buffer))
+                    outSamples <= getSampleCount(thread.buffer))
                 {
                     audio::move(
                         thread.buffer,
                         reinterpret_cast<uint8_t*>(outputBuffer),
-                        nFrames);
+                        outSamples);
                 }
 
                 // Update the audio frame.
-                thread.rtAudioCurrentFrame += nFrames;
+                thread.rtAudioCurrentFrame += outSamples;
 
+#ifdef CHECK_AUDIO
+                std::cerr << "\t\t\tSEND seconds=" << seconds << std::endl
+                          << "\t\t\tSEND inOccsetSamples " << inOffsetSamples
+                          << " outSamples=" << outSamples
+                          << std::endl;
+#endif
+                
                 break;
             }
             default: break;

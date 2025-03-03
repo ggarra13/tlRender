@@ -102,7 +102,7 @@ namespace tl
 
             //! Set the audio sync offset.
             virtual void setAudioOffset(double) = 0;
-
+            
             //! Set the timeline player.
             virtual void setPlayer(const std::shared_ptr<timeline::Player>&) = 0;
 

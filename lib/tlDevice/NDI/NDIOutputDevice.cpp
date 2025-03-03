@@ -13,6 +13,8 @@
 #include <tlGL/Texture.h>
 #include <tlGL/Util.h>
 
+#include <tlTimeline/Util.h>
+
 #include <tlIO/NDI.h>
 
 #include <tlCore/AudioResample.h>
@@ -22,6 +24,7 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <iostream>
 #include <list>
 #include <mutex>
@@ -43,39 +46,8 @@ namespace tl
             {
                 return (sample - in) / (out - in);
             }
-
-            inline timeline::AudioData
-            findAudioData(double seconds,
-                          const std::vector<timeline::AudioData>& audioDataCache)
-            {
-                timeline::AudioData audioData;
-                for (const auto& audio : audioDataCache)
-                {
-                    if (audio.seconds == seconds && !audio.layers.empty())
-                    {
-                        audioData = audio;
-                        break;
-                    }
-                }
-
-                // \@bug: This can happen in loops
-                // if (audioData.layers.empty())
-                // {
-                //     std::cerr << "No audioData found for seconds " << seconds
-                //               << std::endl;
-                //     for (const auto& audio : audioDataCache)
-                //     {
-                //         std::cerr << "\tcache.seconds=" << audio.seconds
-                //                   << std::endl;
-                //     }
-                // }
-                
-                return audioData;
-            }
         }
 
-
-        
         struct OutputDevice::Private
         {
             std::weak_ptr<system::Context> context;
@@ -84,12 +56,14 @@ namespace tl
             std::shared_ptr<observer::Value<bool> > active;
             std::shared_ptr<observer::Value<math::Size2i> > size;
             std::shared_ptr<observer::Value<otime::RationalTime> > frameRate;
+            std::shared_ptr<observer::Value<otime::RationalTime> > currentTime;
 
             std::shared_ptr<timeline::Player> player;
             std::shared_ptr<observer::ValueObserver<timeline::Playback> > playbackObserver;
             std::shared_ptr<observer::ValueObserver<otime::RationalTime> > currentTimeObserver;
             std::shared_ptr<observer::ListObserver<timeline::VideoData> > videoObserver;
             std::shared_ptr<observer::ListObserver<timeline::AudioData> > audioObserver;
+            std::shared_ptr<observer::ValueObserver<double> > speedObserver;
 
             std::shared_ptr<gl::GLFWWindow> window;
 
@@ -116,6 +90,7 @@ namespace tl
                 otime::TimeRange timeRange = time::invalidTimeRange;
                 timeline::Playback playback = timeline::Playback::Stop;
                 otime::RationalTime currentTime = time::invalidTime;
+                otime::RationalTime playbackStartTime = time::invalidTime;
                 double speed = 24.F;
                 double defaultSpeed = 24.F;
                 std::vector<timeline::VideoData> videoData;
@@ -126,13 +101,16 @@ namespace tl
                 std::chrono::steady_clock::time_point muteTimeout;
                 double audioOffset = 0.0;
                 std::vector<timeline::AudioData> audioData;
+                std::map<int64_t, timeline::AudioData> audioDataCache;
+                
                 bool reset = false;
                 std::mutex mutex;
             };
             Mutex mutex;
 
             struct Thread
-            {
+            {   
+                // Video variables
                 math::Size2i size;
                 device::PixelType outputPixelType = device::PixelType::None;
                 device::HDRMode hdrMode = device::HDRMode::FromFile;
@@ -157,11 +135,15 @@ namespace tl
 
                 // Audio variables
                 bool backwards = false;
+                bool reset = true;
                 std::shared_ptr<audio::AudioResample> resample;
                 std::list<std::shared_ptr<audio::Audio> > buffer;
                 std::shared_ptr<audio::Audio> silence;
                 size_t rtAudioCurrentFrame = 0;
-                size_t backwardsSize = std::numeric_limits<size_t>::max();
+                size_t backwardsSamples = std::numeric_limits<size_t>::max();
+                size_t outSampleRate = 0;
+                size_t outSamples = 0;
+                size_t outChannelCount = 2;
                 
                 std::condition_variable cv;
                 std::thread thread;
@@ -180,6 +162,9 @@ namespace tl
             p.active = observer::Value<bool>::create(false);
             p.size = observer::Value<math::Size2i>::create();
             p.frameRate = observer::Value<otime::RationalTime>::create(time::invalidTime);
+            p.currentTime = observer::Value<otime::RationalTime>::create(time::invalidTime);
+            
+            p.mutex.reset = true;    
 
             p.window = gl::GLFWWindow::create(
                 "tl::ndi::OutputDevice",
@@ -189,12 +174,12 @@ namespace tl
             p.thread.running = true;
             p.thread.thread = std::thread(
                 [this]
-                {
-                    TLRENDER_P();
-                    p.window->makeCurrent();
-                    _run();
-                    p.window->doneCurrent();
-                });
+                    {
+                        TLRENDER_P();
+                        p.window->makeCurrent();
+                        _run();
+                        p.window->doneCurrent();
+                    });
         }
 
         OutputDevice::OutputDevice() :
@@ -433,6 +418,7 @@ namespace tl
 
             p.playbackObserver.reset();
             p.currentTimeObserver.reset();
+            p.speedObserver.reset();
             p.videoObserver.reset();
             p.audioObserver.reset();
 
@@ -444,58 +430,82 @@ namespace tl
                 p.playbackObserver = observer::ValueObserver<timeline::Playback>::create(
                     p.player->observePlayback(),
                     [weak](timeline::Playback value)
-                    {
-                        if (auto device = weak.lock())
                         {
+                            if (auto device = weak.lock())
                             {
-                                std::unique_lock<std::mutex> lock(device->_p->mutex.mutex);
-                                device->_p->mutex.playback = value;
+                                {
+                                    std::unique_lock<std::mutex> lock(device->_p->mutex.mutex);
+                                    device->_p->mutex.reset = true;    
+                                    device->_p->mutex.playback = value;
+                                    device->_p->mutex.playbackStartTime = device->_p->player->getCurrentTime();
+                                }
+                                device->_p->thread.cv.notify_one();
                             }
-                            device->_p->thread.cv.notify_one();
-                        }
-                    },
+                        },
                     observer::CallbackAction::Suppress);
                 p.currentTimeObserver = observer::ValueObserver<otime::RationalTime>::create(
                     p.player->observeCurrentTime(),
                     [weak](const otime::RationalTime& value)
-                    {
-                        if (auto device = weak.lock())
                         {
+                            if (auto device = weak.lock())
                             {
-                                std::unique_lock<std::mutex> lock(device->_p->mutex.mutex);
-                                device->_p->mutex.currentTime = value;
+                                {
+                                    std::unique_lock<std::mutex> lock(device->_p->mutex.mutex);
+                                    double diff = std::abs(value.value() - device->_p->mutex.currentTime.value());
+                                    if (diff > 1.0)
+                                    {
+                                        device->_p->mutex.reset = true;
+                                        device->_p->mutex.playbackStartTime = value;
+                                    }
+                                    device->_p->mutex.currentTime = value;
+                                }
+                                device->_p->thread.cv.notify_one();
                             }
-                            device->_p->thread.cv.notify_one();
-                        }
-                    },
+                        },
                     observer::CallbackAction::Suppress);
                 p.videoObserver = observer::ListObserver<timeline::VideoData>::create(
                     p.player->observeCurrentVideo(),
                     [weak](const std::vector<timeline::VideoData>& value)
-                    {
-                        if (auto device = weak.lock())
                         {
+                            if (auto device = weak.lock())
                             {
-                                std::unique_lock<std::mutex> lock(device->_p->mutex.mutex);
-                                device->_p->mutex.videoData = value;
+                                {
+                                    std::unique_lock<std::mutex> lock(device->_p->mutex.mutex);
+                                    device->_p->mutex.videoData = value;
+                                }
+                                device->_p->thread.cv.notify_one();
                             }
-                            device->_p->thread.cv.notify_one();
-                        }
-                    },
+                        },
                     observer::CallbackAction::Suppress);
                 p.audioObserver = observer::ListObserver<timeline::AudioData>::create(
                     p.player->observeCurrentAudio(),
                     [weak](const std::vector<timeline::AudioData>& value)
-                    {
-                        if (auto device = weak.lock())
                         {
+                            if (auto device = weak.lock())
                             {
-                                std::unique_lock<std::mutex> lock(device->_p->mutex.mutex);
-                                device->_p->mutex.audioData = value;
+                                {
+                                    std::unique_lock<std::mutex> lock(device->_p->mutex.mutex);
+                                    device->_p->mutex.audioData = value;
+                                }
+                                device->_p->thread.cv.notify_one();
                             }
-                            device->_p->thread.cv.notify_one();
-                        }
-                    },
+                        },
+                    observer::CallbackAction::Suppress);
+                p.speedObserver = observer::ValueObserver<double>::create(
+                    p.player->observeSpeed(),
+                    [weak](double value)
+                        {
+                            if (auto device = weak.lock())
+                            {
+                                {
+                                    std::unique_lock<std::mutex> lock(device->_p->mutex.mutex);
+                                    device->_p->mutex.speed = value;
+                                    device->_p->mutex.reset = true;
+                                    device->_p->mutex.playbackStartTime = device->_p->player->getCurrentTime();
+                                }
+                                device->_p->thread.cv.notify_one();
+                            }
+                        },
                     observer::CallbackAction::Suppress);
             }
 
@@ -508,13 +518,15 @@ namespace tl
                     p.mutex.currentTime = p.player->getCurrentTime();
                     p.mutex.speed = p.player->getSpeed();
                     p.mutex.defaultSpeed = p.player->getDefaultSpeed();
+                    p.mutex.playbackStartTime = p.mutex.currentTime;
+                    p.mutex.reset = true;
                 }
                 else
                 {
                     p.mutex.timeRange = time::invalidTimeRange;
-                    p.mutex.playback = timeline::Playback::Stop;
+                    p.mutex.playback = timeline::Playback::Count;
                     p.mutex.currentTime = time::invalidTime;
-                    p.mutex.speed = p.mutex.defaultSpeed = 0.F;
+                    p.mutex.speed = p.mutex.defaultSpeed = 24.F;
                 }
                 p.mutex.videoData.clear();
                 p.mutex.audioData.clear();
@@ -543,6 +555,32 @@ namespace tl
             p.frameRate->setIfChanged(frameRate);
         }
 
+        timeline::AudioData
+        OutputDevice::findAudioData(double seconds)
+        {
+            TLRENDER_P();
+            timeline::AudioData audioData;
+            {
+                std::unique_lock<std::mutex> lock(p.mutex.mutex);
+                const auto j = p.mutex.audioDataCache.find(seconds);
+                if (j != p.mutex.audioDataCache.end())
+                {
+                    audioData = j->second;
+                }
+            }
+
+            // if (audioData.layers.empty())
+            // {
+            //     std::cerr << "NO AUDIO DATA FOUND FOR " << seconds << std::endl;
+            //     for (const auto& j : p.mutex.audioDataCache)
+            //     {
+            //         std::cerr << "\tcache.seconds=" << j.first << std::endl;
+            //     }
+            // }
+                
+            return audioData;
+        }
+        
         void OutputDevice::_run()
         {
             TLRENDER_P();
@@ -559,7 +597,10 @@ namespace tl
             otime::RationalTime currentTime = time::invalidTime;
             float volume = 1.F;
             bool mute = false;
+            bool reset = true;
+            otime::RationalTime frameRate = time::invalidTime; 
             double audioOffset = 0.0;
+            double speed = 24.0F;
             std::vector<timeline::AudioData> audioData;
             std::shared_ptr<image::Image> overlay;
 
@@ -572,7 +613,7 @@ namespace tl
 
             // Clear the NDI structs
             auto& video_frame = p.thread.NDI_video_frame;
-            auto& audio_frame = p.thread.NDI_audio_frame;
+            auto& audio_frame = p.thread.NDI_audio_frame;     
             
             while (p.thread.running)
             {
@@ -582,43 +623,50 @@ namespace tl
                 {
                     std::unique_lock<std::mutex> lock(p.mutex.mutex);
                     if (p.thread.cv.wait_for(
-                        lock,
-                        timeout,
-                        [this, config, enabled,
-                        ocioOptions, lutOptions, imageOptions,
-                        displayOptions, compareOptions, backgroundOptions,
-                        playback, currentTime,
-                        volume, mute, audioOffset, audioData]
-                        {
-                            return
-                                config != _p->mutex.config ||
-                                enabled != _p->mutex.enabled ||
-                                ocioOptions != _p->mutex.ocioOptions ||
-                                lutOptions != _p->mutex.lutOptions ||
-                                imageOptions != _p->mutex.imageOptions ||
-                                displayOptions != _p->mutex.displayOptions ||
-                                _p->thread.hdrMode != _p->mutex.hdrMode ||
-                                _p->thread.hdrData != _p->mutex.hdrData ||
-                                compareOptions != _p->mutex.compareOptions ||
-                                backgroundOptions != _p->mutex.backgroundOptions ||
-                                _p->thread.viewPos != _p->mutex.viewPos ||
-                                _p->thread.viewZoom != _p->mutex.viewZoom ||
-                                _p->thread.rotateZ != _p->mutex.rotateZ ||
-                                _p->thread.frameView != _p->mutex.frameView ||
-                                _p->thread.timeRange != _p->mutex.timeRange ||
-                                playback != _p->mutex.playback ||
-                                currentTime != _p->mutex.currentTime ||
-                                _p->thread.videoData != _p->mutex.videoData ||
-                                _p->thread.overlay != _p->mutex.overlay ||
-                                volume != _p->mutex.volume ||
-                                mute != _p->mutex.mute ||
-                                audioOffset != _p->mutex.audioOffset ||
-                                audioData != _p->mutex.audioData;
-                        }))
+                            lock,
+                            timeout,
+                            [this, config, enabled,
+                             ocioOptions, lutOptions, imageOptions,
+                             displayOptions, compareOptions, backgroundOptions,
+                             playback, currentTime, frameRate, speed,
+                             volume, mute, audioOffset, audioData, reset]
+                                {
+                                    return
+                                        config != _p->mutex.config ||
+                                        enabled != _p->mutex.enabled ||
+                                        ocioOptions != _p->mutex.ocioOptions ||
+                                        lutOptions != _p->mutex.lutOptions ||
+                                        imageOptions != _p->mutex.imageOptions ||
+                                        displayOptions != _p->mutex.displayOptions ||
+                                        _p->thread.hdrMode != _p->mutex.hdrMode ||
+                                        _p->thread.hdrData != _p->mutex.hdrData ||
+                                        compareOptions != _p->mutex.compareOptions ||
+                                        backgroundOptions != _p->mutex.backgroundOptions ||
+                                        _p->thread.viewPos != _p->mutex.viewPos ||
+                                        _p->thread.viewZoom != _p->mutex.viewZoom ||
+                                        _p->thread.rotateZ != _p->mutex.rotateZ ||
+                                        _p->thread.frameView != _p->mutex.frameView ||
+                                        _p->thread.timeRange != _p->mutex.timeRange ||
+                                        playback != _p->mutex.playback ||
+                                        currentTime != _p->mutex.currentTime ||
+                                        _p->thread.videoData != _p->mutex.videoData ||
+                                        _p->thread.overlay != _p->mutex.overlay ||
+                                        volume != _p->mutex.volume ||
+                                        mute != _p->mutex.mute ||
+                                        audioOffset != _p->mutex.audioOffset ||
+                                        audioData != _p->mutex.audioData ||
+                                        speed != _p->mutex.speed;
+                                }))
                     {
+                        p.thread.reset = createDevice ||
+                                         playback != p.mutex.playback ||
+                                         frameRate != p.mutex.frameRate;
+                        
                         createDevice =
                             p.mutex.config != config ||
-                            p.mutex.enabled != enabled;
+                            p.mutex.enabled != enabled ||
+                            p.mutex.frameRate != frameRate ||
+                            p.mutex.speed != speed;
                         
                         audioDataChanged =
                             createDevice ||
@@ -633,22 +681,22 @@ namespace tl
                         currentTime = p.mutex.currentTime;
                         
                         doRender =
-                            createDevice ||
-                            ocioOptions != p.mutex.ocioOptions ||
-                            lutOptions != p.mutex.lutOptions ||
-                            imageOptions != p.mutex.imageOptions ||
-                            displayOptions != p.mutex.displayOptions ||
-                            p.thread.hdrMode != p.mutex.hdrMode ||
-                            p.thread.hdrData != p.mutex.hdrData ||
-                            compareOptions != p.mutex.compareOptions ||
-                            backgroundOptions != p.mutex.backgroundOptions ||
-                            p.thread.sourceViewportSize != p.mutex.sourceViewportSize ||
-                            p.thread.viewPos != p.mutex.viewPos ||
-                            p.thread.viewZoom != p.mutex.viewZoom ||
-                            p.thread.rotateZ != p.mutex.rotateZ ||
-                            p.thread.frameView != p.mutex.frameView ||
-                            p.thread.videoData != p.mutex.videoData ||
-                            p.thread.overlay != p.mutex.overlay;
+                        createDevice ||
+                        ocioOptions != p.mutex.ocioOptions ||
+                        lutOptions != p.mutex.lutOptions ||
+                        imageOptions != p.mutex.imageOptions ||
+                        displayOptions != p.mutex.displayOptions ||
+                        p.thread.hdrMode != p.mutex.hdrMode ||
+                        p.thread.hdrData != p.mutex.hdrData ||
+                        compareOptions != p.mutex.compareOptions ||
+                        backgroundOptions != p.mutex.backgroundOptions ||
+                        p.thread.sourceViewportSize != p.mutex.sourceViewportSize ||
+                        p.thread.viewPos != p.mutex.viewPos ||
+                        p.thread.viewZoom != p.mutex.viewZoom ||
+                        p.thread.rotateZ != p.mutex.rotateZ ||
+                        p.thread.frameView != p.mutex.frameView ||
+                        p.thread.videoData != p.mutex.videoData ||
+                        p.thread.overlay != p.mutex.overlay;
                         ocioOptions = p.mutex.ocioOptions;
                         lutOptions = p.mutex.lutOptions;
                         imageOptions = p.mutex.imageOptions;
@@ -664,7 +712,7 @@ namespace tl
                         p.thread.frameView = p.mutex.frameView;
                         p.thread.videoData = p.mutex.videoData;
                         p.thread.overlay = p.mutex.overlay;
-
+                        
                         volume = p.mutex.volume;
                         mute = p.mutex.mute;
                         audioOffset = p.mutex.audioOffset;
@@ -735,20 +783,8 @@ namespace tl
 
                 if (audioDataChanged && p.thread.render && !config.noAudio)
                 {
-                    try
-                    {
-                        _audio(p.thread.timeRange, currentTime, audioData);
-                    }
-                    catch (const std::exception& e)
-                    {
-                        if (auto context = p.context.lock())
-                        {
-                            context->log(
-                                "tl::ndi::OutputDevice",
-                                e.what(),
-                                log::Type::Error);
-                        }
-                    }
+                    _cacheUpdate(audioData);
+                    _audio();
                 }
                 
                 if (doRender && p.thread.render)
@@ -780,7 +816,7 @@ namespace tl
                 
                 const auto t1 = std::chrono::steady_clock::now();
                 const std::chrono::duration<double> diff = t1 - t;
-                //std::cout << "diff: " << diff.count() * 1000 << std::endl;
+                //std::cerr << "diff: " << diff.count() * 1000 << std::endl;
                 t = t1;
             }
 
@@ -795,6 +831,10 @@ namespace tl
             // Free the video frame
             free(p.thread.NDI_video_frame.p_data);
             p.thread.NDI_video_frame.p_data = nullptr;
+            
+            // Free the audio frame
+            free(p.thread.NDI_audio_frame.p_data);
+            p.thread.NDI_audio_frame.p_data = nullptr;
             
             // Destroy the NDI sender
             NDIlib_send_destroy(p.thread.NDI_send);
@@ -812,7 +852,7 @@ namespace tl
                 config.displayModeIndex != -1 &&
                 config.pixelType != device::PixelType::None)
             {    
-                if (size.w == 0 && size.h == 0)
+                if (size.w == 0 || size.h == 0 || !p.player)
                     return;
                 
                 if (!p.thread.NDI_send)
@@ -820,7 +860,7 @@ namespace tl
                     NDIlib_send_create_t send_create;
                     send_create.p_groups = NULL;
                     send_create.clock_video = true;
-                    send_create.clock_audio = true;
+                    send_create.clock_audio = false;
 
                     p.thread.NDI_send = NDIlib_send_create();
                     if (!p.thread.NDI_send)
@@ -836,7 +876,115 @@ namespace tl
                 
                 video_frame.xres = size.w;
                 video_frame.yres = size.h;
+
+
+                const double tolerance = 1.0e-03;
+                const double speedMultiplier = p.mutex.speed / p.player->getDefaultSpeed();
+
+                double frame_rate = frameRate.rate() * speedMultiplier;
+                const auto& oldFrameRate = frameRate;
+                frameRate = otime::RationalTime(1.0, frame_rate);
+                
+                int denominator = 1000;
+                int numerator = static_cast<int>(frame_rate * 1000);
+                if (std::abs(frame_rate - 120.0) < tolerance)
+                {
+                    numerator = 120000;
+                    denominator = 1000;
+                }
+                else if (std::abs(frame_rate - 60.0) < tolerance)
+                {
+                    numerator = 60000;
+                    denominator = 1000;
+                }
+                else if (std::abs(frame_rate - 59.94) < tolerance)
+                {
+                    numerator = 60000;
+                    denominator = 1001;
+                }
+                else if (std::abs(frame_rate - 50.0) < tolerance)
+                {
+                    numerator = 60000;
+                    denominator = 1200;
+                }
+                else if (std::abs(frame_rate - 48.0) < tolerance)
+                {
+                    numerator = 48;
+                    denominator = 1;
+                }
+                else if (std::abs(frame_rate - 47.952) < tolerance)
+                {
+                    numerator = 48000;
+                    denominator = 1001;
+                }
+                else if (std::abs(frame_rate - 30.0) < tolerance)
+                {
+                    numerator = 30;
+                    denominator = 1;
+                }
+                else if (std::abs(frame_rate - 29.976) < tolerance)
+                {
+                    numerator = 30000;
+                    denominator = 1001;
+                }
+                else if (std::abs(frame_rate - 25.0) < tolerance)
+                {
+                    numerator = 30000;
+                    denominator = 1200;
+                }
+                else if (std::abs(frame_rate - 24.0) < tolerance)
+                {
+                    numerator = 24;
+                    denominator = 1;
+                }
+                else if (std::abs(frame_rate - 23.976) < tolerance)
+                {
+                    numerator = 24000;
+                    denominator = 1001;
+                }
+                else if (std::abs(frame_rate - 15.0) < tolerance)
+                {
+                    numerator = 15;
+                    denominator = 1;
+                }
+                else if (std::abs(frame_rate - 14.988) < tolerance)
+                {
+                    numerator = 15000;
+                    denominator = 1001;
+                }
+                else if (std::abs(frame_rate - 12.5) < tolerance)
+                {
+                    numerator = 12500;
+                    denominator = 1000;
+                }
+                else if (std::abs(frame_rate - 12.0) < tolerance)
+                {
+                    numerator = 12;
+                    denominator = 1;
+                }
+                else if (std::abs(frame_rate - 11.988) < tolerance)
+                {
+                    numerator = 12000;
+                    denominator = 1001;
+                }
+                else
+                {
+                    numerator   = 1000;
+                    denominator = 1000 * std::round(frame_rate);
+                    frameRate = otime::RationalTime(numerator, denominator);
+                }
+
+                if (oldFrameRate != frameRate)
+                {
+                    std::unique_lock<std::mutex> lock(p.mutex.mutex);
+                    p.mutex.reset = true;
+                }
+                
+                video_frame.frame_rate_N = numerator;
+                video_frame.frame_rate_D = denominator;
                 video_frame.picture_aspect_ratio = size.getAspect();
+                video_frame.frame_format_type = NDIlib_frame_format_type_progressive;
+                
                 video_frame.FourCC = toNDI(p.thread.outputPixelType);
                 if (video_frame.FourCC == NDIlib_FourCC_video_type_max)
                     throw std::runtime_error("Invalid pixel type for NDI!");
@@ -869,21 +1017,154 @@ namespace tl
             }
         }
 
-        void OutputDevice::_audio(
-            const otime::TimeRange& timeRange, 
-            const otime::RationalTime& currentTime,
-            const std::vector<timeline::AudioData>& audioDataCache)
+        void OutputDevice::_cacheUpdate(const std::vector<timeline::AudioData>& audioDataList)
         {
             TLRENDER_P();
-            if (audioDataCache.empty())
+            if (!p.player)
+                return;
+            
+            auto& thread = p.thread;
+            
+            const double outSampleRate = 1.0F; //48000.0F;
+            
+            // Get the pl<yer ranges to be cached.
+            const otime::TimeRange& timeRange = p.player->getTimeRange();
+            const otime::TimeRange& inOutRange = p.player->getInOutRange();
+
+            const otime::TimeRange audioTimeRange =
+                otime::TimeRange(timeRange.start_time().rescaled_to(outSampleRate),
+                                 timeRange.duration().rescaled_to(outSampleRate));
+            
+            // Set inOutRange in outSampleRate units.
+            const otime::RationalTime& currentTime = p.mutex.currentTime.rescaled_to(outSampleRate);
+            const auto cacheOptions = p.player->getCacheOptions();
+
+            timeline::CacheDirection cacheDirection = timeline::CacheDirection::Count;
+            switch(p.mutex.playback)
+            {
+            case timeline::Playback::Reverse:
+                cacheDirection = timeline::CacheDirection::Reverse;
+                break;
+            case timeline::Playback::Forward:
+            default:
+                cacheDirection = timeline::CacheDirection::Forward;
+                break;
+            }
+            
+
+            // std::cerr << "time range: " << timeRange << std::endl;
+            // std::cerr << "inOutRange range: " << inOutRange << std::endl;
+            
+            // Get the CacheOptions
+            // we need to look up one frame for buffer
+            const otime::RationalTime readAheadDivided(
+                cacheOptions.readAhead.value()  + 1.0,
+                cacheOptions.readAhead.rate());
+            const otime::RationalTime readBehindDivided(
+                cacheOptions.readBehind.value() + 1.0,
+                cacheOptions.readBehind.rate());
+
+            // std::cerr << "read ahead divided " << readAheadDivided << std::endl;
+            // std::cerr << "read behind divided " << readBehindDivided << std::endl;
+
+            // Rescale read aheads to times
+            const otime::RationalTime readAheadRescaled = readAheadDivided.
+                rescaled_to(outSampleRate).
+                floor();
+            const otime::RationalTime readBehindRescaled = readBehindDivided.
+                                                           rescaled_to(outSampleRate).floor();
+            // Get the audio ranges to be cached.
+            const otime::RationalTime audioOffsetTime = otime::RationalTime(p.mutex.audioOffset, 1.0).rescaled_to(outSampleRate);
+            const otime::RationalTime audioOffsetAhead = otime::RationalTime(
+                audioOffsetTime.value() < 0.0 ?
+                -audioOffsetTime :
+                otime::RationalTime(0.0, outSampleRate)).
+                                                         round();
+            const otime::RationalTime audioOffsetBehind = otime::RationalTime(
+                audioOffsetTime.value() > 0.0 ?
+                audioOffsetTime :
+                otime::RationalTime(0.0, outSampleRate)).round();
+            // std::cerr << "currentTime: " << currentTime << std::endl;
+            otime::TimeRange audioRange = time::invalidTimeRange;
+            switch (cacheDirection)
+            {
+            case timeline::CacheDirection::Forward:
+                audioRange = otime::TimeRange::range_from_start_end_time_inclusive(
+                    currentTime - readBehindRescaled - audioOffsetBehind,
+                    currentTime + readAheadRescaled + audioOffsetAhead);
+                break;
+            case timeline::CacheDirection::Reverse:
+                audioRange = otime::TimeRange::range_from_start_end_time_inclusive(
+                    currentTime - readAheadRescaled - audioOffsetAhead,
+                    currentTime + readBehindRescaled + audioOffsetBehind);
+                break;
+            default: break;
+            }
+            const otime::TimeRange inOutAudioRange = otime::TimeRange::range_from_start_end_time_inclusive(
+                inOutRange.start_time() - audioOffsetBehind,
+                inOutRange.end_time_inclusive() + audioOffsetAhead).
+                                                     clamped(audioTimeRange);
+            // std::cerr << "in out audio range: " << inOutAudioRange << std::endl;
+            const auto audioRanges = timeline::loopCache(
+                audioTimeRange,
+                inOutAudioRange,
+                cacheDirection);
+            
+            // Remove old audio from the cache.
+            {
+                std::unique_lock<std::mutex> lock(p.mutex.mutex);
+                auto audioCacheIt = p.mutex.audioDataCache.begin();
+                while (audioCacheIt != p.mutex.audioDataCache.end())
+                {
+                    const otime::TimeRange cacheRange(
+                        otime::RationalTime(
+                            timeRange.start_time().rescaled_to(1.0).value() +
+                            audioCacheIt->first,
+                            1.0),
+                        otime::RationalTime(1.0, 1.0));
+                    const auto j = std::find_if(
+                        audioRanges.begin(),
+                        audioRanges.end(),
+                        [cacheRange](const otime::TimeRange& value)
+                        {
+                            return cacheRange.intersects(value);
+                        });
+                    if (j == audioRanges.end())
+                    {
+                        std::cerr << "\t\tRemoving " << audioCacheIt->first << std::endl;
+                        audioCacheIt = p.mutex.audioDataCache.erase(audioCacheIt);
+                    }
+                    else
+                    {
+                        ++audioCacheIt;
+                    }
+                }
+            }
+
+            // Now, add the audios from the cacheList
+            for (const auto& audioData : audioDataList)
+            {
+                p.mutex.audioDataCache[static_cast<int64_t>(audioData.seconds)] = audioData;
+            }
+
+        }
+        
+        void OutputDevice::_audio()
+        {
+            TLRENDER_P();
+            if (!p.player)
                 return;
 
-            const otime::RationalTime kOneFrame(1.0, currentTime.rate());
+            
+            const otime::TimeRange& timeRange = p.player->getTimeRange();
+            const otime::RationalTime& currentTime = p.player->getCurrentTime();
             const auto& currentLocalTime = currentTime - timeRange.start_time();
             double currentSeconds = currentLocalTime.to_seconds();
             double secondsD = std::floor(currentSeconds);
 
-            const timeline::AudioData& audioData = findAudioData(secondsD, audioDataCache);
+            auto& thread = p.thread;
+
+            const timeline::AudioData& audioData = findAudioData(secondsD);
             
             std::shared_ptr<audio::Audio> inputAudio;
             for (const auto& layer : audioData.layers)
@@ -903,21 +1184,24 @@ namespace tl
             const auto& inputInfo = inputAudio->getInfo();
             const int channelCount = inputInfo.channelCount;
             const size_t inSampleRate = inputInfo.sampleRate;
+
+            // One frame
+            const size_t outSampleRate = 48000;
+            const otime::RationalTime kOneFrame(1.0, currentTime.rate());
+            const size_t outSamples = kOneFrame.rescaled_to(outSampleRate).value();
             const auto& inSampleDuration = kOneFrame.rescaled_to(inSampleRate);
             
-            const size_t outSampleRate = 48000;
-            auto outStartSample  = otime::RationalTime(secondsD, 1.0).rescaled_to(outSampleRate);
-            auto outCurrentSample  = otime::RationalTime(currentSeconds, 1.0).rescaled_to(outSampleRate);
-            size_t outSampleStart = outStartSample.value();
-            size_t outSampleCurrent = outCurrentSample.value();
-            const size_t nFrames = kOneFrame.rescaled_to(outSampleRate).value();
-            
+            // auto outStartSample  = otime::RationalTime(secondsD, 1.0).rescaled_to(outSampleRate);
+            // auto outCurrentSample  = otime::RationalTime(currentSeconds, 1.0).rescaled_to(outSampleRate);
+            // size_t outSampleStart = outStartSample.value();
+            // size_t outSampleCurrent = outCurrentSample.value();
+
 
             timeline::Playback playback = timeline::Playback::Stop;
             otime::RationalTime playbackStartTime = time::invalidTime;
             double audioOffset = 0.0;
-            double speed = 0.0;
-            double defaultSpeed = 0.0;
+            double speed = 1.0;
+            double defaultSpeed = 1.0;
             double speedMultiplier = 1.0F;
             float volume = 1.F;
             bool mute = false;
@@ -926,11 +1210,11 @@ namespace tl
             bool reset = false;
             {
                 std::unique_lock<std::mutex> lock(p.mutex.mutex);
-                playbackStartTime = p.mutex.timeRange.start_time();
+                playbackStartTime = p.mutex.playbackStartTime;
                 audioOffset = p.mutex.audioOffset;
-                speed = p.player->getSpeed();
+                speed = p.mutex.speed;
                 defaultSpeed = p.player->getDefaultSpeed();
-                speedMultiplier = defaultSpeed / speed;
+                speedMultiplier = speed / defaultSpeed;
                 volume = p.mutex.volume;
                 mute = p.mutex.mute;
                 channelMute = p.mutex.channelMute;
@@ -939,8 +1223,6 @@ namespace tl
                 reset = p.mutex.reset;
                 p.mutex.reset = false;
             }
-
-            auto& thread = p.thread;
             
             switch (playback)
             {
@@ -958,8 +1240,9 @@ namespace tl
                     thread.silence.reset();
                     thread.buffer.clear();
                     thread.rtAudioCurrentFrame = 0;
-                    thread.backwardsSize =
+                    thread.backwardsSamples =
                         std::numeric_limits<size_t>::max();
+                    thread.reset = false;
                 }
 
                 const auto outputInfo = audio::Info(channelCount, audio::DataType::F32, 48000);
@@ -989,7 +1272,8 @@ namespace tl
                 const bool backwards = playback == timeline::Playback::Reverse;
                 if (!thread.silence)
                 {
-                    thread.silence = audio::Audio::create(outputInfo, inSampleRate);
+                    thread.silence = audio::Audio::create(inputInfo,
+                                                          inSampleRate);
                     thread.silence->zero();
                 }
                     
@@ -1016,27 +1300,28 @@ namespace tl
                     
                 // Works but minor pops
                 int64_t seconds = inSampleRate > 0 ? (frame / inSampleRate) : 0;
-                int64_t offset = frame - seconds * inSampleRate;
-
+                int64_t inOffsetSamples = frame - seconds * inSampleRate;
                     
-                while (audio::getSampleCount(thread.buffer) < nFrames)
+                while (audio::getSampleCount(thread.buffer) < outSamples)
                 {
-                    const timeline::AudioData& audioData = findAudioData(secondsD,
-                                                                         audioDataCache);
+                    const timeline::AudioData& audioData = findAudioData(seconds);
             
                     std::vector<float> volumeScale;
                     volumeScale.reserve(audioData.layers.size());
                     std::vector<std::shared_ptr<audio::Audio> > audios;
                     std::vector<const uint8_t*> audioDataP;
-                    const size_t dataOffset = offset * inputInfo.getByteCount();
-                    const size_t sample = seconds * inSampleRate + offset;
+                    const int64_t dataByteOffset = inOffsetSamples *
+                                                   inputInfo.getByteCount();
+                    const size_t sampleGlobal = seconds * inSampleRate + inOffsetSamples;
+
                     int audioIndex = 0;
+                    std::shared_ptr<audio::Audio> audio;
                     for (const auto& layer : audioData.layers)
                     {
                         float volumeMultiplier = 1.F;
                         if (layer.audio && layer.audio->getInfo() == inputInfo)
                         {
-                            auto audio = layer.audio;
+                            audio = layer.audio;
                                 
                             if (layer.inTransition)
                             {
@@ -1047,11 +1332,11 @@ namespace tl
                                 const auto outOffset = layer.inTransition->out_offset().value();
                                 const auto fadeInBegin = range.start_time().value() - inOffset;
                                 const auto fadeInEnd   = range.start_time().value() + outOffset;
-                                if (sample > fadeInBegin)
+                                if (sampleGlobal > fadeInBegin)
                                 {
-                                    if (sample < fadeInEnd)
+                                    if (sampleGlobal < fadeInEnd)
                                     {
-                                        volumeMultiplier = fadeValue(sample,
+                                        volumeMultiplier = fadeValue(sampleGlobal,
                                                                      range.start_time().value() - inOffset - 1.0,
                                                                      range.start_time().value() + outOffset);
                                         volumeMultiplier = std::min(1.F, volumeMultiplier);
@@ -1073,11 +1358,11 @@ namespace tl
                                 const auto outOffset = layer.outTransition->out_offset().value();
                                 const auto fadeOutBegin = range.end_time_inclusive().value() - inOffset;
                                 const auto fadeOutEnd   = range.end_time_inclusive().value() + outOffset;
-                                if (sample > fadeOutBegin)
+                                if (sampleGlobal > fadeOutBegin)
                                 {
-                                    if (sample < fadeOutEnd)
+                                    if (sampleGlobal < fadeOutEnd)
                                     {
-                                        volumeMultiplier = 1.F - fadeValue(sample,
+                                        volumeMultiplier = 1.F - fadeValue(sampleGlobal,
                                                                            range.end_time_inclusive().value() - inOffset,
                                                                            range.end_time_inclusive().value() + outOffset + 1.0);
                                     }
@@ -1099,11 +1384,13 @@ namespace tl
                                 auto tmp = audio::Audio::create(inputInfo, inSampleRate);
                                 tmp->zero();
 
-                                std::memcpy(tmp->getData(), audio->getData(), audio->getByteCount());
+                                std::memcpy(tmp->getData(), audio->getData(),
+                                            audio->getByteCount());
                                 audio = tmp;
                                 audios.push_back(audio);
                             }
-                            audioDataP.push_back(audio->getData() + dataOffset);
+                            audioDataP.push_back(audio->getData() +
+                                                 dataByteOffset);
                             volumeScale.push_back(volumeMultiplier);
                             ++audioIndex;
                         }
@@ -1114,26 +1401,26 @@ namespace tl
                         audioDataP.push_back(thread.silence->getData());
                     }
 
-                    size_t size = std::min(
+                    size_t inSamples = std::min(
                         p.player->getPlayerOptions().audioBufferFrameCount,
-                        static_cast<size_t>(inSampleRate - offset));
+                        static_cast<size_t>(inSampleRate - inOffsetSamples));
 
                     if (backwards)
                     {
-                        if ( thread.backwardsSize < size )
+                        if ( thread.backwardsSamples < inSamples )
                         {
-                            size = thread.backwardsSize;
+                            inSamples = thread.backwardsSamples;
                         }
                             
                         audio::reverse(
                             const_cast<uint8_t**>(audioDataP.data()),
                             audioDataP.size(),
-                            size,
+                            inSamples,
                             inputInfo.channelCount,
                             inputInfo.dataType);
                     }
 
-                    auto tmp = audio::Audio::create(inputInfo, size);
+                    auto tmp = audio::Audio::create(inputInfo, inSamples);
                     tmp->zero();
                     audio::mix(
                         audioDataP.data(),
@@ -1141,7 +1428,7 @@ namespace tl
                         tmp->getData(),
                         volume,
                         volumeScale,
-                        size,
+                        inSamples,
                         inputInfo.channelCount,
                         inputInfo.dataType);
 
@@ -1152,30 +1439,29 @@ namespace tl
 
                     if (backwards)
                     {
-                        offset -= size;
-                        if (offset < 0)
+                        inOffsetSamples -= inSamples;
+                        if (inOffsetSamples < 0)
                         {
                             seconds -= 1;
-                            secondsD -= 1;
                             if (speedMultiplier < 1.0)
-                                offset += ( inSampleRate * speedMultiplier );
+                                inOffsetSamples += ( inSampleRate * speedMultiplier );
                             else
-                                offset += inSampleRate;
-                            thread.backwardsSize = static_cast<size_t>(inSampleRate - offset);
+                                inOffsetSamples += inSampleRate;
+                            thread.backwardsSamples =
+                                static_cast<size_t>(inSampleRate - inOffsetSamples);
                         }
                         else
                         {
-                            thread.backwardsSize = size;
+                            thread.backwardsSamples = inSamples;
                         }
                     }
                     else
                     {
-                        offset += size;
-                        if (offset >= inSampleRate)
+                        inOffsetSamples += inSamples;
+                        if (inOffsetSamples >= inSampleRate)
                         {
-                            offset -= inSampleRate;
+                            inOffsetSamples -= inSampleRate;
                             seconds += 1;
-                            secondsD += 1;
                         }
                     }
                 }
@@ -1184,29 +1470,39 @@ namespace tl
                 if (defaultSpeed == p.player->getTimeRange().duration().rate() &&
                     !mute &&
                     now >= muteTimeout &&
-                    nFrames <= getSampleCount(thread.buffer))
+                    outSamples <= getSampleCount(thread.buffer))
                 {
                     auto& NDI_audio_frame = p.thread.NDI_audio_frame;
-            
+                    
                     // Send the output audio buffer to NDI.
                     // Submit the audio buffer
                     NDI_audio_frame.sample_rate = outSampleRate;
                     NDI_audio_frame.no_channels = channelCount;
-                    NDI_audio_frame.no_samples = nFrames;
-                    NDI_audio_frame.p_data = (float*)malloc(nFrames * channelCount * sizeof(float));
+                    NDI_audio_frame.no_samples = outSamples;
+                    
+                    if (p.thread.outSamples != outSamples ||
+                        p.thread.outChannelCount != channelCount ||
+                        p.thread.outSampleRate != outSampleRate)
+                    {
+                        p.thread.outSamples = outSamples;
+                        p.thread.outChannelCount = channelCount;
+                        p.thread.outSampleRate = outSampleRate;
+                
+                        auto& NDI_audio_frame = p.thread.NDI_audio_frame;
+                        free(NDI_audio_frame.p_data);
+                        NDI_audio_frame.p_data = (float*)malloc(sizeof(float) * channelCount * outSamples);
+                    }
 
                     audio::move(
                         p.thread.buffer,
                         reinterpret_cast<uint8_t*>(NDI_audio_frame.p_data),
-                        nFrames);
+                        outSamples);
                 
                     NDIlib_util_send_send_audio_interleaved_32f(p.thread.NDI_send, &NDI_audio_frame);
-                                                
-                    free(p.thread.NDI_audio_frame.p_data);
-                    p.thread.NDI_audio_frame.p_data = nullptr;
                 }
             
-                thread.rtAudioCurrentFrame += nFrames;
+                    
+                thread.rtAudioCurrentFrame += outSamples;
                 
                 break;
             }
@@ -1350,31 +1646,12 @@ namespace tl
                                    static_cast<float>(renderSize.w);
                     float scaleY = static_cast<float>(targetViewportSize.h) /
                                    static_cast<float>(renderSize.h);
-                    
-                    // float scaleX = static_cast<float>(targetViewportSize.w) /
-                    //                static_cast<float>(sourceViewportSize.w);
-                    // float scaleY = static_cast<float>(targetViewportSize.h) /
-                    //                static_cast<float>(sourceViewportSize.h);
-
+                   
                     // Use the smaller scale to fit within the viewport
-                    float scale = std::min(scaleX, scaleY); 
-                
-                    // Calculate centering translation
-#if 0
-                    float translateX = (targetViewportSize.w - renderSize.w * scale) / 2.0F;
-                    float translateY = (targetViewportSize.h - renderSize.h * scale) / 2.0F;
-                    centerTranslationMatrix = math::translate(math::Vector3f(translateX, translateY,
-                                                                             0.0f));
-#else
-#endif
+                    float scale = std::min(scaleX, scaleY);
 
-#if 1
                     // Scale matrix with aspect-correct scale
                     resizeScaleMatrix = math::scale(math::Vector3f(scale, scale, 1.0f));
-#else
-                    // Scale matrix with independent X and Y scales
-                    resizeScaleMatrix = math::scale(math::Vector3f(scaleX, scaleY, 1.0f));
-#endif
                 }
                 if (!p.thread.videoData.empty())
                 {

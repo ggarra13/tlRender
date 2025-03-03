@@ -72,7 +72,7 @@ namespace tl
                 double                    zoom,
                 float                     rotateZ,
                 bool                      frame) override;
-
+            
             //! Set the OpenColorIO options.
             void setOCIOOptions(const timeline::OCIOOptions&) override;
 
@@ -105,7 +105,7 @@ namespace tl
 
             //! Set the audio sync offset.
             void setAudioOffset(double) override;
-
+            
             //! Set the timeline player.
             void setPlayer(const std::shared_ptr<timeline::Player>&) override;
 
@@ -119,14 +119,9 @@ namespace tl
                 bool& active,
                 math::Size2i& size,
                 otime::RationalTime& frameRate);
-
-            void _audio(
-                const otime::TimeRange&,
-                const otime::RationalTime&,
-                const std::vector<timeline::AudioData>&);
+            timeline::AudioData findAudioData(double seconds);
+            void _audio();
             math::Matrix4x4f _projectionMatrix() const noexcept;
-            void _audio(const otime::RationalTime&,
-                        const std::vector<timeline::AudioData>& audioData);
             void _render(
                 const device::DeviceConfig&,
                 const timeline::OCIOOptions&,
@@ -136,6 +131,7 @@ namespace tl
                 const timeline::CompareOptions&,
                 const timeline::BackgroundOptions&);
             void _read(const device::DeviceConfig&);
+            void _cacheUpdate(const std::vector<timeline::AudioData>&);
             
             TLRENDER_PRIVATE();
         };

@@ -51,6 +51,7 @@ namespace tl
             _logSystem(logSystem),
             _options(options)
         {   
+            _tags["otioClipName"] = _fileName;
             double fps = v.frame_rate_N /
                          static_cast<double>(v.frame_rate_D);
             double startTime = 0.0;
@@ -324,20 +325,27 @@ namespace tl
         int ReadVideo::_decode(const otime::RationalTime& time)
         {
             int out = 0;
-            NDIlib_video_frame_t v;
+            NDIlib_video_frame_t video_frame;
             NDIlib_frame_type_e type;
+
+            
+            {
+                std::stringstream ss;
+                ss << time;
+                _tags["otioClipTime"] = ss.str();
+            }
 
             while (out == 0 && NDI_recv)
             {
-                type = NDIlib_recv_capture(NDI_recv, &v, nullptr, nullptr, 50);
+                type = NDIlib_recv_capture(NDI_recv, &video_frame, nullptr, nullptr, 50);
                 if (type == NDIlib_frame_type_error)
                 {
                     out = -1;
                 }
                 else if (type == NDIlib_frame_type_video)
                 {
-                    _from_ndi(v);
-                    NDIlib_recv_free_video(NDI_recv, &v);
+                    _from_ndi(video_frame);
+                    NDIlib_recv_free_video(NDI_recv, &video_frame);
                     out = 1;
                 }
                 else if (type == NDIlib_frame_type_status_change)
@@ -468,7 +476,7 @@ namespace tl
         }     
 
         void ReadVideo::_copy(std::shared_ptr<image::Image>& image)
-        {
+        {                    
             const auto& info = image->getInfo();
             const std::size_t w = info.size.w;
             const std::size_t h = info.size.h;
@@ -665,6 +673,8 @@ namespace tl
                 }
 
             }
+
+            image->setTags(_tags);
         }
     }
 }
