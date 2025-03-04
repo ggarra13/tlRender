@@ -8,6 +8,7 @@
 
 #include <tlCore/Context.h>
 #include <tlCore/Library.h>
+#include <tlCore/LogSystem.h>
 #include <tlCore/String.h>
 #include <tlCore/StringFormat.h>
 
@@ -50,42 +51,6 @@ namespace tl
 
             return false;
         }
-
-        //! Path to NDI (if installed and found)
-        std::string NDI_library()
-        {
-            const std::string library = NDILIB_LIBRARY_NAME;
-#ifdef _WIN32
-            std::string libpath = rootpath() + "/bin/";
-#else
-            std::string libpath = rootpath() + "/lib/";
-#endif
-            std::string fullpath = libpath + library;
-            if (!isReadable(fullpath))
-            {
-                const char* env = fl_getenv(NDILIB_REDIST_FOLDER);
-                if (env)
-                    libpath = env;
-                if (!libpath.empty())
-                {
-                    fullpath = libpath + "/" + library;
-                }
-                else
-                {
-                    libpath = "/usr/local/lib/";
-                    fullpath = libpath + library;
-                    if (!isReadable(fullpath))
-                    {
-                        throw std::runtime_error(NDILIB_LIBRARY_NAME
-                                                 " was not found.  "
-                                                 "Please download it from "
-                                                 "http://ndi.link/NDIRedistV6");
-                    }
-                }
-            }
-            
-            return fullpath;
-        }
     }
 }
 
@@ -120,6 +85,7 @@ namespace tl
             
             p.deviceInfo = observer::List<device::DeviceInfo>::create();
             
+#ifdef TLRENDER_NDI_DYNAMIC_LIBRARY
             const std::string& ndi_library = NDI_library();
             p.handle = library::loadLibrary(ndi_library);
             if (!p.handle)
@@ -134,7 +100,6 @@ namespace tl
                                          "library");
             }
 
-#ifdef USE_LIBRARY
             pNDILib->NDIlib_initialize();;
             
             NDIlib_find_create_t findOptions;
@@ -216,6 +181,56 @@ namespace tl
             _p(new Private)
         {}
 
+
+        //! Path to NDI (if installed and found)
+        std::string System::NDI_library()
+        {
+            TLRENDER_P();
+            
+            const std::string library = NDILIB_LIBRARY_NAME;
+#ifdef _WIN32
+            std::string libpath = rootpath() + "/bin/";
+#else
+            std::string libpath = rootpath() + "/lib/";
+#endif
+            std::string fullpath = libpath + library;
+            if (!isReadable(fullpath))
+            {
+                const char* env = fl_getenv(NDILIB_REDIST_FOLDER);
+                if (env)
+                    libpath = env;
+                if (!libpath.empty())
+                {
+                    fullpath = libpath + "/" + library;
+                }
+                else
+                {
+                    libpath = "/usr/local/lib/";
+                    fullpath = libpath + library;
+                    if (!isReadable(fullpath))
+                    {
+                        throw std::runtime_error(NDILIB_LIBRARY_NAME
+                                                 " was not found.  "
+                                                 "Please download it from "
+                                                 "http://ndi.link/NDIRedistV6");
+                    }
+                }
+            }
+
+            std::string msg = string::Format("Will load {0} from {1}.").
+                              arg(library).
+                              arg(libpath);
+
+            if (auto context = p.context.lock())
+            {
+                auto logSystem = context->getSystem<log::System>();
+                logSystem->print("ndi::System", msg, log::Type::Status, "ndi");
+            }
+            
+            return fullpath;
+        }
+
+        
         System::~System()
         {
             TLRENDER_P();
@@ -226,7 +241,7 @@ namespace tl
                 p.thread.join();
             }
 
-#ifdef USE_LIBRARY
+#ifdef USE_NDI_DYNAMIC_LIBRARY
             pNDILib->NDIlib_destroy();
             library::closeLibrary(p.handle);
 #else

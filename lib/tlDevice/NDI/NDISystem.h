@@ -40,6 +40,9 @@ namespace tl
             std::chrono::milliseconds getTickTime() const override;
 
         private:
+
+            std::string NDI_library();
+            
             TLRENDER_PRIVATE();
         };
     }

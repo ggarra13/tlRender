@@ -42,6 +42,7 @@ set(SOURCE
     CompareOptions.cpp
     DisplayOptions.cpp
     Edit.cpp
+    HDROptions.cpp
     IRender.cpp
     ImageOptions.cpp
     Init.cpp

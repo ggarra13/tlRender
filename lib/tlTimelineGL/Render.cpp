@@ -1226,29 +1226,49 @@ namespace tl
                     pl_color_map_params cmap;
                     memset(&cmap, 0, sizeof(pl_color_map_params));
 
-#if 1
                     // defaults, generates LUTs if state is set.
                     cmap.gamut_mapping = &pl_gamut_map_perceptual;
 
+                    switch(p.hdrOptions.algorithm)
+                    {
+                    case timeline::HDRTonemapAlgorithm::Clip:
+                        break;
+                    case timeline::HDRTonemapAlgorithm::ST2094_10:
+                        cmap.tone_mapping_function = &pl_tone_map_st2094_10;
+                        break;
+                    case timeline::HDRTonemapAlgorithm::BT2390:
+                        cmap.tone_mapping_function = &pl_tone_map_bt2390;
+                        break;
+                    case timeline::HDRTonemapAlgorithm::BT2446A:
+                        cmap.tone_mapping_function = &pl_tone_map_bt2446a;
+                        break;
+                    case timeline::HDRTonemapAlgorithm::Spline:
+                        cmap.tone_mapping_function = &pl_tone_map_spline;
+                        break;
+                    case timeline::HDRTonemapAlgorithm::Reinhard:
+                        cmap.tone_mapping_function = &pl_tone_map_reinhard;
+                        break;
+                    case timeline::HDRTonemapAlgorithm::Mobius:
+                        cmap.tone_mapping_function = &pl_tone_map_mobius;
+                        break;
+                    case timeline::HDRTonemapAlgorithm::Hable:
+                        cmap.tone_mapping_function = &pl_tone_map_hable;
+                        break;
+                    case timeline::HDRTonemapAlgorithm::Gamma:
+                        cmap.tone_mapping_function = &pl_tone_map_gamma;
+                        break;
+                    case timeline::HDRTonemapAlgorithm::Linear:
+                        cmap.tone_mapping_function = &pl_tone_map_linear;
+                        break;
+                    case timeline::HDRTonemapAlgorithm::LinearLight:
+                        cmap.tone_mapping_function = &pl_tone_map_linear_light;
+                        break;
+                    case timeline::HDRTonemapAlgorithm::ST2094_40:
+                    default:
+                        cmap.tone_mapping_function = &pl_tone_map_st2094_40;
+                        break;
+                    }
                     
-
-                    // best so far
-                    cmap.tone_mapping_function = &pl_tone_map_st2094_40;
-                    
-                    // cmap.tone_mapping_function = &pl_tone_map_linear;
-                    // cmap.tone_mapping_function = &pl_tone_map_spline;
-                    // cmap.tone_mapping_function = &pl_tone_map_reinhard;
-                    // cmap.tone_mapping_function = &pl_tone_map_hable;
-                    // cmap.tone_mapping_function = &pl_tone_map_gamma;
-                    // cmap.tone_mapping_function = &pl_tone_map_st2094_10;
-                    // cmap.tone_mapping_function = &pl_tone_map_bt2390;
-                    // cmap.tone_mapping_function = &pl_tone_map_bt2446a;
-                    
-#else
-                    // These work without LUTs
-                    cmap.gamut_mapping = &pl_gamut_map_clip;
-                    cmap.tone_mapping_function = &pl_tone_map_clip;   
-#endif
 
                     // PL_GAMUT_MAP_CONSTANTS is defined in wrong order for C++
                     cmap.gamut_constants = { 0 };

@@ -49,6 +49,7 @@ namespace tl
         void from_json(const nlohmann::json&, HDRBezier&);
 
         ///@}
+        
         enum EOTFType : uint8_t
         {
             EOTF_BT601 = 0,

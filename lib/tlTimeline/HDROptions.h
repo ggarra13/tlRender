@@ -8,10 +8,31 @@ namespace tl
 {
     namespace timeline
     {
+        enum HDRTonemapAlgorithm
+        {
+            ST2094_40,
+            ST2094_10,
+            Clip,
+            BT2390,
+            BT2446A,
+            Spline,
+            Reinhard,
+            Mobius,
+            Hable,
+            Gamma,
+            Linear,
+            LinearLight,
+            Count,
+            First = ST2094_40
+        };
+        TLRENDER_ENUM(HDRTonemapAlgorithm);
+        TLRENDER_ENUM_SERIALIZE(HDRTonemapAlgorithm);
+        
         //! Tonemap options.
         struct HDROptions
         {
             bool               tonemap = false;
+            HDRTonemapAlgorithm algorithm = HDRTonemapAlgorithm::ST2094_40;
             image::HDRData     hdrData;
             
             bool operator == (const HDROptions&) const;

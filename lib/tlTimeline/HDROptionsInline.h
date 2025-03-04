@@ -10,6 +10,7 @@ namespace tl
         {
             return
                 tonemap == other.tonemap &&
+                algorithm == other.algorithm &&
                 hdrData == other.hdrData;
         }
 
