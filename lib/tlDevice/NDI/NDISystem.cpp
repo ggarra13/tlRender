@@ -153,8 +153,10 @@ namespace tl
                             // deviceInfo.pixelTypes.push_back(device::PixelType::_12BitRGB);
                             // deviceInfo.pixelTypes.push_back(device::PixelType::_12BitRGBLE);
                             deviceInfo.pixelTypes.push_back(device::PixelType::_8BitUYVA);
+#ifdef TLRENDER_NDI_ADVANCED
                             deviceInfo.pixelTypes.push_back(device::PixelType::_16BitP216);
                             deviceInfo.pixelTypes.push_back(device::PixelType::_16BitPA16);
+#endif
                             // deviceInfo.pixelTypes.push_back(device::PixelType::_8BitI420);  // \@bug: this does nothing
                             deviceInfo.pixelTypes.push_back(device::PixelType::_8BitBGRX);
                             deviceInfo.pixelTypes.push_back(device::PixelType::_8BitRGBA);
@@ -241,7 +243,7 @@ namespace tl
                 p.thread.join();
             }
 
-#ifdef USE_NDI_DYNAMIC_LIBRARY
+#ifdef TLRENDER_NDI_DYNAMIC_LIBRARY
             pNDILib->NDIlib_destroy();
             library::closeLibrary(p.handle);
 #else
