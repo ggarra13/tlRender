@@ -78,14 +78,6 @@ if(TLRENDER_USD)
     list(APPEND HEADERS_PRIVATE USD.h USDPrivate.h)
     list(APPEND SOURCE USD.cpp USDRead.cpp USDRender.cpp)
     list(APPEND LIBRARIES_PRIVATE tf usd usdGeom usdImagingGL usdAppUtils hd)
-    if(APPLE)
-	set_source_files_properties(USD.cpp
-	    PROPERTIES COMPILE_FLAGS -DBOOST_NO_CXX98_FUNCTION_BASE)
-	set_source_files_properties(USDRead.cpp
-	    PROPERTIES COMPILE_FLAGS -DBOOST_NO_CXX98_FUNCTION_BASE)
-	set_source_files_properties(USDRender.cpp
-	    PROPERTIES COMPILE_FLAGS -DBOOST_NO_CXX98_FUNCTION_BASE)
-    endif()
 endif()
 if(TLRENDER_RAW)
     list(APPEND HEADERS_PRIVATE RAW.h)
@@ -96,21 +88,6 @@ if(TLRENDER_NDI AND TLRENDER_FFMPEG)
     list(APPEND HEADERS_PRIVATE NDI.h)
     list(APPEND SOURCE NDI.cpp NDIRead.cpp NDIReadVideo.cpp NDIReadAudio.cpp )
     list(APPEND LIBRARIES_PRIVATE NDI)
-    if (WIN32)
-	# Additional handling for Windows to copy the DLL
-	execute_process(
-	    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-            "${TLRENDER_NDI_SDK}/Bin/x64/Processing.NDI.Lib.x64.dll"
-	    "${CMAKE_INSTALL_PRFIX}/bin")
-    else()
-	install(
-	    TARGETS NDI
-	    LIBRARY DESTINATION lib
-	    ARCHIVE DESTINATION lib
-	    RUNTIME DESTINATION bin
-	    INCLUDES DESTINATION include
-	)
-    endif()
 endif()
 list(APPEND LIBRARIES tlGL tlCore)
 
