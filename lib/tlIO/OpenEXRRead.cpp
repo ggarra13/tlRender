@@ -384,9 +384,9 @@ namespace tl
                     }
                     catch (const std::exception& e)
                     {
+                        _t.reset();
                     }
                     
-                    _t.reset();
                     
                     if (_xLevel > 0 || _yLevel > 0)
                     {
