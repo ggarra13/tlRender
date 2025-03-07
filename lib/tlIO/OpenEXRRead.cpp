@@ -318,8 +318,6 @@ namespace tl
                 
                 void readMipmap()
                     {
-                        _t.reset(new Imf::TiledInputFile(*_s));
-                        
                         int numXLevels = _t->numXLevels();
                         int numYLevels = _t->numYLevels();
                         
