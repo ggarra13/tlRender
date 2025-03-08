@@ -11,7 +11,6 @@
 #
 # * tlRender::tlCore
 # * tlRender::tlBaseApp
-# * tlRender::tlPlay
 # * tlRender::tlIO
 # * tlRender::tlTimeline
 # * tlRender::tlTimelineGL
@@ -102,7 +101,6 @@ endif()
 if(CMAKE_BUILD_TYPE MATCHES "^Debug$")
     find_library(tlRender_tlCore_LIBRARY NAMES tlCore)
     find_library(tlRender_tlBaseApp_LIBRARY NAMES tlBaseApp)
-    find_library(tlRender_tlPlay_LIBRARY NAMES tlPlay)
     find_library(tlRender_tlIO_LIBRARY NAMES tlIO)
     find_library(tlRender_tlTimeline_LIBRARY NAMES tlTimeline)
     find_library(tlRender_tlTimelineUI_LIBRARY NAMES tlTimelineUI)
@@ -113,7 +111,6 @@ if(CMAKE_BUILD_TYPE MATCHES "^Debug$")
 else()
     find_library(tlRender_tlCore_LIBRARY NAMES tlCore)
     find_library(tlRender_tlBaseApp_LIBRARY NAMES tlBaseApp)
-    find_library(tlRender_tlPlay_LIBRARY NAMES tlPlay)
     find_library(tlRender_tlIO_LIBRARY NAMES tlIO)
     find_library(tlRender_tlTimeline_LIBRARY NAMES tlTimeline)
     find_library(tlRender_tlTimelineUI_LIBRARY NAMES tlTimelineUI)
@@ -127,7 +124,6 @@ set(tlRender_LIBRARIES
     ${tlRender_tlCore_LIBRARY}
     ${tlRender_tlIO_LIBRARY}
     ${tlRender_tlBaseApp_LIBRARY}
-    ${tlRender_tlPlay_LIBRARY}
     ${tlRender_tlTimelineUI_LIBRARY}
     ${tlRender_tlTimeline_LIBRARY}
     ${tlRender_tlDevice_LIBRARY}
@@ -154,7 +150,6 @@ find_package_handle_standard_args(
     REQUIRED_VARS
         tlRender_INCLUDE_DIR
         tlRender_tlCore_LIBRARY
-        tlRender_tlPlay_LIBRARY
         tlRender_tlBaseApp_LIBRARY
         tlRender_tlIO_LIBRARY
         tlRender_tlTimeline_LIBRARY
@@ -166,7 +161,6 @@ find_package_handle_standard_args(
 mark_as_advanced(
     tlRender_INCLUDE_DIR
     tlRender_tlCore_LIBRARY
-    tlRender_tlPlay_LIBRARY
     tlRender_tlIO_LIBRARY
     tlRender_tlBaseApp_LIBRARY
     tlRender_tlTimeline_LIBRARY
@@ -236,14 +230,6 @@ if(tlRender_FOUND AND NOT TARGET tlRender::tlBaseApp)
         INTERFACE_INCLUDE_DIRECTORIES "${tlRender_INCLUDE_DIR}"
         INTERFACE_LINK_LIBRARIES "${tlRender_tlBaseApp_LIBRARIES}")
 endif()
-if(tlRender_FOUND AND NOT TARGET tlRender::tlPlay)
-    add_library(tlRender::tlPlay UNKNOWN IMPORTED)
-    set_target_properties(tlRender::tlPlay PROPERTIES
-        IMPORTED_LOCATION "${tlRender_tlPlay_LIBRARY}"
-        INTERFACE_COMPILE_DEFINITIONS "${tlRender_COMPILE_DEFINITIONS}"
-        INTERFACE_INCLUDE_DIRECTORIES "${tlRender_INCLUDE_DIR}"
-        INTERFACE_LINK_LIBRARIES "${tlRender_tlPlay_LIBRARIES}")
-endif()
 if(tlRender_FOUND AND NOT TARGET tlRender::tlTimeline)
     add_library(tlRender::tlTimeline UNKNOWN IMPORTED)
     set_target_properties(tlRender::tlTimeline PROPERTIES
@@ -294,7 +280,6 @@ if(tlRender_FOUND AND NOT TARGET tlRender)
     target_link_libraries(tlRender INTERFACE tlRender::tlCore)
     target_link_libraries(tlRender INTERFACE tlRender::tlIO)
     target_link_libraries(tlRender INTERFACE tlRender::tlBaseApp)
-    target_link_libraries(tlRender INTERFACE tlRender::tlPlay)
     target_link_libraries(tlRender INTERFACE tlRender::tlTimeline)
     target_link_libraries(tlRender INTERFACE tlRender::tlTimelineGL)
     target_link_libraries(tlRender INTERFACE tlRender::tlTimelineUI)
