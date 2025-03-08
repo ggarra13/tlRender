@@ -27,7 +27,7 @@ if (WIN32)
 endif()
 
 set(dav1d_CONFIGURE
-    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH="" "CXXFLAGS=${dav1d_CXXFLAGS}" "CFLAGS=${dav1d_CFLAGS}" "DYLD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib" "LDFLAGS=${dav1d_LDFLAGS}" -- meson setup --reconfigue -Denable_tools=false -Denable_tests=false --default-library=static -Dlibdir=${CMAKE_INSTALL_PREFIX}/lib --prefix=${CMAKE_INSTALL_PREFIX} build)
+    COMMAND ${CMAKE_COMMAND} -E env PYTHONPATH="" "CXXFLAGS=${dav1d_CXXFLAGS}" "CFLAGS=${dav1d_CFLAGS}" "DYLD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib" "LDFLAGS=${dav1d_LDFLAGS}" -- meson setup --reconfigure -Denable_tools=false -Denable_tests=false --default-library=static -Dlibdir=${CMAKE_INSTALL_PREFIX}/lib --prefix=${CMAKE_INSTALL_PREFIX} build)
 set(dav1d_BUILD cd build && ${dav1d_COPY_ZLIB} ninja)
 set(dav1d_INSTALL cd build && ninja install ${dav1d_RENAME_TO_LIB})
 
