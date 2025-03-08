@@ -14,7 +14,7 @@ set(HEADERS
 #    DoubleSlider.h
     DrawUtil.h
 #    DrivesModel.h
-#    Event.h
+    Event.h
 #    FileBrowser.h
 #    FileEdit.h
 #    FloatEdit.h
@@ -92,7 +92,7 @@ set(SOURCE
    # DoubleSlider.cpp
     DrawUtil.cpp
    # DrivesModel.cpp
-#    Event.cpp
+    Event.cpp
 #    FileBrowser.cpp
 #    FileEdit.cpp
 
