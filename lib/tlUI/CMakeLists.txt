@@ -23,18 +23,18 @@ set(HEADERS
 #    FloatSlider.h
 #    GridLayout.h
 #    GroupBox.h
-#    IButton.h
+    IButton.h
     IClipboard.h
-#    IDialog.h
-#    IMenuPopup.h
-#    IPopup.h
+    IDialog.h
+    IMenuPopup.h
+    IPopup.h
     IWidget.h
     IWidgetInline.h
     IWidgetOptions.h
     IWidgetPopup.h
     IWindow.h
-#    IconLibrary.h
-#    Icon.h
+    IconLibrary.h
+    Icon.h
 #    IncButtons.h
     Init.h
 #    IntEdit.h
@@ -42,7 +42,7 @@ set(HEADERS
 #    IntModel.h
 #    IntSlider.h
     Label.h
-#    LayoutUtil.h
+    LayoutUtil.h
 #    LineEdit.h
 #    ListButton.h
 #    ListWidget.h
@@ -50,106 +50,110 @@ set(HEADERS
 #    MDIWidget.h
 #    Menu.h
 #    MenuBar.h
-#    MessageDialog.h
+    MessageDialog.h
 #    OverlayLayout.h
 #    PieChart.h
 #    PushButton.h
-#    RecentFilesModel.h
-#    RowLayout.h
-#    ScrollArea.h
-#    ScrollWidget.h
+    RecentFilesModel.h
+    RowLayout.h
+    ScrollArea.h
+    ScrollWidget.h
 #    Spacer.h
-#    ScrollBar.h
+    ScrollBar.h
 #    SearchBox.h
 #    Splitter.h
 #    StackLayout.h
-    Style.h
+#    Style.h
     StyleInline.h
 #    TabBar.h
     ThumbnailSystem.h
 #    TimeEdit.h
 #    TimeLabel.h
 #    ToolButton.h
-#    ToolTip.h)
+    ToolTip.h
+)
 set(HEADERS_PRIVATE
     FileBrowserPrivate.h)
 
 set(SOURCE
-#    Action.cpp
-#    ButtonGroup.cpp
-#    Bellows.cpp
-#    CheckBox.cpp
-#    ComboBox.cpp
-#    ColorPopup.cpp
-#    ColorSwatch.cpp
-#    ColorWidget.cpp
-#    Divider.cpp
-#    DoubleEdit.cpp
-#    DoubleEditSlider.cpp
-#    DoubleModel.cpp
-#    DoubleSlider.cpp
+   # Action.cpp
+   # ButtonGroup.cpp
+   # Bellows.cpp
+   # CheckBox.cpp
+   # ComboBox.cpp
+   # ColorPopup.cpp
+   # ColorSwatch.cpp
+   # ColorWidget.cpp
+   # Divider.cpp
+   # DoubleEdit.cpp
+   # DoubleEditSlider.cpp
+   # DoubleModel.cpp
+   # DoubleSlider.cpp
     DrawUtil.cpp
-#    DrivesModel.cpp
+   # DrivesModel.cpp
     Event.cpp
 #    FileBrowser.cpp
 #    FileEdit.cpp
-#    FileBrowserButton.cpp
-#    FileBrowserDirectoryWidget.cpp
-#    FileBrowserPathsWidget.cpp
-#    FileBrowserSystem.cpp
-#    FileBrowserWidget.cpp
-#    FloatEdit.cpp
-#    FloatEditSlider.cpp
-#    FloatModel.cpp
-#    FloatSlider.cpp
-#    GridLayout.cpp
-#    GroupBox.cpp
-#    IButton.cpp
-#    IClipboard.cpp
-#    IDialog.cpp
-#    IMenuPopup.cpp
-#    IPopup.cpp
+
+    # FileBrowserButton.cpp
+    # FileBrowserDirectoryWidget.cpp
+    # FileBrowserPathsWidget.cpp
+    # FileBrowserSystem.cpp
+    # FileBrowserWidget.cpp
+
+    #  FloatEdit.cpp
+  #  FloatEditSlider.cpp
+  #  FloatModel.cpp
+  #  FloatSlider.cpp
+  #  GridLayout.cpp
+  #  GroupBox.cpp
+    IButton.cpp
+    IClipboard.cpp
+    IDialog.cpp
+    IMenuPopup.cpp
+    IPopup.cpp
     IWidget.cpp
     IWidgetOptions.cpp
     IWidgetPopup.cpp
     IWindow.cpp
-#    IconLibrary.cpp
-#    Icon.cpp
-#    IncButtons.cpp
+    IconLibrary.cpp
+    Icon.cpp
+  #  IncButtons.cpp
     Init.cpp
-#    IntEdit.cpp
-#    IntEditSlider.cpp
-#    IntModel.cpp
-#    IntSlider.cpp
+  #  IntEdit.cpp
+  #  IntEditSlider.cpp
+  #  IntModel.cpp
+  #  IntSlider.cpp
     Label.cpp
-#    LayoutUtil.cpp
-#    LineEdit.cpp
-#    ListButton.cpp
-#    ListWidget.cpp
-#    MDICanvas.cpp
-#    MDIWidget.cpp
-#    Menu.cpp
-#    MenuBar.cpp
-#    MessageDialog.cpp
-#    OverlayLayout.cpp
-#    PieChart.cpp
-#    PushButton.cpp
-#    RecentFilesModel.cpp
-#    RowLayout.cpp
-#    ScrollArea.cpp
-#    ScrollWidget.cpp
-#    SearchBox.cpp
-#    Spacer.cpp
-#    ScrollBar.cpp
-#    Splitter.cpp
-#    StackLayout.cpp
-    Style.cpp
-#    TabBar.cpp
-    ThumbnailSystem.cpp
-#    TimeEdit.cpp
-#    TimeLabel.cpp
-#    ToolButton.cpp
-#    ToolTip.cpp)
+    LayoutUtil.cpp
+  #  LineEdit.cpp
+  #  ListButton.cpp
+  #  ListWidget.cpp
+  #  MDICanvas.cpp
+  #  MDIWidget.cpp
+  #  Menu.cpp
+  #  MenuBar.cpp
+    MessageDialog.cpp
+  #  OverlayLayout.cpp
+  #  PieChart.cpp
+  #  PushButton.cpp
+  #  RecentFilesModel.cpp
+    RowLayout.cpp
+    ScrollArea.cpp
+    ScrollWidget.cpp
+  #  SearchBox.cpp
+  #  Spacer.cpp
+    ScrollBar.cpp
+  #  Splitter.cpp
+  #  StackLayout.cpp
+  #  Style.cpp
+  #  TabBar.cpp
+  #  ThumbnailSystem.cpp
+  #  TimeEdit.cpp
+  #  TimeLabel.cpp
+  #  ToolButton.cpp
+    ToolTip.cpp
+)
 
 set(LIBRARIES_PRIVATE)
 
