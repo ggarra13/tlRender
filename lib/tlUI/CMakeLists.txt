@@ -33,8 +33,8 @@ set(HEADERS
     IWidgetOptions.h
     IWidgetPopup.h
     IWindow.h
-    IconLibrary.h
-    Icon.h
+#    IconLibrary.h
+#    Icon.h
 #    IncButtons.h
     Init.h
 #    IntEdit.h
@@ -117,8 +117,8 @@ set(SOURCE
     IWidgetOptions.cpp
     IWidgetPopup.cpp
     IWindow.cpp
-    IconLibrary.cpp
-    Icon.cpp
+  #  IconLibrary.cpp
+  #  Icon.cpp
   #  IncButtons.cpp
     Init.cpp
   #  IntEdit.cpp
@@ -134,7 +134,7 @@ set(SOURCE
   #  MDIWidget.cpp
   #  Menu.cpp
   #  MenuBar.cpp
-    MessageDialog.cpp
+  # MessageDialog.cpp
   #  OverlayLayout.cpp
   #  PieChart.cpp
   #  PushButton.cpp
