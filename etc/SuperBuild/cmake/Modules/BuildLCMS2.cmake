@@ -1,34 +1,73 @@
 
-if(WIN32)
-else()
+include(ProcessorCount)
+ProcessorCount(NPROCS)
 
-    if(APPLE)
-        set(LCMS2_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
-        set(LCMS2_C_FLAGS "${CMAKE_C_FLAGS}")
-	if (CMAKE_OSX_DEPLOYMENT_TARGET)
-            list(APPEND LCMS2_CXX_FLAGS "-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
-            list(APPEND LCMS2_C_FLAGS "-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
-	endif()
+if(APPLE)
+    set(LCMS2_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+    set(LCMS2_C_FLAGS "${CMAKE_C_FLAGS}")
+    if (CMAKE_OSX_DEPLOYMENT_TARGET)
+        list(APPEND LCMS2_CXX_FLAGS "-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+        list(APPEND LCMS2_C_FLAGS "-mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
     endif()
-
-    set(LCMS2_BUILD_ARGS
-	--enable-shared
-	--disable-static
-	--prefix=${CMAKE_INSTALL_PREFIX}
-        "CFLAGS=${LCMS2_C_FLAGS}"
-        "CXXFLAGS=${LCMS2_CXX_FLAGS}"
-	)
-    
-    set(LCMS2_BUILD_COMMAND ./configure ${LCMS2_BUILD_ARGS})
-
-    ExternalProject_Add(
-        LCMS2
-	PREFIX ${CMAKE_CURRENT_BINARY_DIR}/LCMS2
-	GIT_REPOSITORY "https://github.com/mm2/Little-CMS.git"
-	GIT_TAG lcms2.15
-	GIT_SHALLOW 1
-	GIT_PROGRESS 1
-	CONFIGURE_COMMAND ${LCMS2_BUILD_COMMAND}
-	BUILD_IN_SOURCE 1)
-    
 endif()
+
+if (WIN32)
+    # Function to convert path to Msys2
+    function(convert_path_for_msys2 IN_PATH OUT_PATH)
+	# Split the path at the drive letter (if present)
+	string(REGEX REPLACE "^([A-Z]):/" "/\\1/" INTERMEDIATE_PATH "${IN_PATH}")
+
+	# Convert backslashes to forward slashes
+	string(REPLACE "\\" "/" INTERMEDIATE_PATH "${INTERMEDIATE_PATH}")
+
+	# Return the converted path
+	set(${OUT_PATH} "${INTERMEDIATE_PATH}" PARENT_SCOPE)
+    endfunction()
+    # Convert path for MSYS2 properly
+    convert_path_for_msys2("${CMAKE_INSTALL_PREFIX}" INSTALL_PREFIX)
+else()
+    set(INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
+endif()
+    
+set(LCMS2_CONFIGURE_ARGS
+    --enable-shared
+    --disable-static
+    --prefix=${INSTALL_PREFIX}
+    "CFLAGS=${LCMS2_C_FLAGS}"
+    "CXXFLAGS=${LCMS2_CXX_FLAGS}"
+)
+    
+set(LCMS2_CONFIGURE_COMMAND ./configure ${LCMS2_CONFIGURE_ARGS})
+set(LCMS2_BUILD_COMMAND make -j ${NPROCS})
+set(LCMS2_INSTALL_COMMAND make install)
+
+if(WIN32)
+    # Build LCMS2 with MSYS2 on Windows.
+    find_package(Msys REQUIRED)
+    set(LCMS2_MSYS2
+        ${MSYS_CMD}
+        -use-full-path
+        -defterm
+        -no-start
+        -here)
+
+    # Properly format VPX_CONFIGURE_ARGS
+    list(JOIN LCMS2_CONFIGURE_ARGS " " LCMS2_CONFIGURE_ARGS_STR)
+
+    set(LCMS2_CONFIGURE_COMMAND ${LCMS2_MSYS2} -c "CC=cl CXX=cl LD=link ./configure --build=mingw64 ${LCMS2_CONFIGURE_ARGS_STR}")
+    set(LCMS2_BUILD_COMMAND ${LCMS2_MSYS2} -c "make -j ${NPROCS}")
+    set(LCMS2_INSTALL_COMMAND ${LCMS2_MSYS2} -c "make install && mv ${INSTALL_PREFIX}/lib/lcms2.dll.lib ${INSTALL_PREFIX}/lib/liblcms2.lib")
+endif()
+
+ExternalProject_Add(
+    LCMS2
+    PREFIX ${CMAKE_CURRENT_BINARY_DIR}/LCMS2
+    GIT_REPOSITORY "https://github.com/mm2/Little-CMS.git"
+    GIT_TAG lcms2.15
+    GIT_SHALLOW 1
+    GIT_PROGRESS 1
+    CONFIGURE_COMMAND ${LCMS2_CONFIGURE_COMMAND}
+    BUILD_COMMAND ${LCMS2_BUILD_COMMAND}
+    INSTALL_COMMAND ${LCMS2_INSTALL_COMMAND}
+    BUILD_IN_SOURCE 1)
+    

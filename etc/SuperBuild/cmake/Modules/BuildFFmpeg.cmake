@@ -398,6 +398,7 @@ if(TLRENDER_FFMPEG_MINIMAL)
 endif()
 
 if(TLRENDER_VPX)
+    list(APPEND FFmpeg_DEPS VPX)
     list(APPEND FFmpeg_CONFIGURE_ARGS
         --enable-decoder=libvpx_vp8
         --enable-decoder=libvpx_vp9
@@ -420,10 +421,11 @@ if(TLRENDER_VPX)
     else()
 	list(APPEND FFmpeg_CONFIGURE_ARGS
 	    --extra-ldflags="${INSTALL_PREFIX}/lib/libvpx.a")
-	list(APPEND FFmpeg_DEPS VPX)
     endif()
 endif()
 if(TLRENDER_AV1)
+    list(APPEND FFmpeg_DEPS dav1d)
+    list(APPEND FFmpeg_DEPS SvtAV1)
     list(APPEND FFmpeg_CONFIGURE_ARGS
 	--enable-libdav1d
 	--enable-decoder=libdav1d
@@ -438,9 +440,7 @@ if(TLRENDER_AV1)
 		--extra-libs=-lm
 		--extra-libs=-lpthread)
 	endif()
-	list(APPEND FFmpeg_DEPS dav1d)
     endif()
-    list(APPEND FFmpeg_DEPS SvtAV1)
 endif()
 if(TLRENDER_HAP)
     list(APPEND FFmpeg_CONFIGURE_ARGS
@@ -468,7 +468,7 @@ endif()
 
 if(NOT WIN32)
     list(APPEND FFmpeg_CONFIGURE_ARGS
-	--x86asmexe=${INSTALL_PREFIX}/bin/nasm)
+	--x86asmexe=${CMAKE_INSTALL_PREFIX}/bin/nasm)
 endif()
 if(TLRENDER_NET)
     list(APPEND FFmpeg_CONFIGURE_ARGS
@@ -528,7 +528,7 @@ if(WIN32)
         -c "pacman -S diffutils make nasm pkg-config --noconfirm && \
         ${FFmpeg_OPENSSL_COPY} ${PKG_CONFIG_PATH_CMD} \
         ./ffmpeg_configure.sh")
-    set(FFmpeg_BUILD ${FFmpeg_MSYS2} -c "make")
+    set(FFmpeg_BUILD ${FFmpeg_MSYS2} -c "make -j ${NPROCS}")
     set(FFmpeg_INSTALL ${FFmpeg_MSYS2} -c "make install"
         COMMAND ${FFmpeg_MSYS2} -c "mv ${INSTALL_PREFIX}/bin/avcodec.lib ${INSTALL_PREFIX}/lib"
         COMMAND ${FFmpeg_MSYS2} -c "mv ${INSTALL_PREFIX}/bin/avdevice.lib ${INSTALL_PREFIX}/lib"
@@ -538,7 +538,7 @@ if(WIN32)
         COMMAND ${FFmpeg_MSYS2} -c "mv ${INSTALL_PREFIX}/bin/swscale.lib ${INSTALL_PREFIX}/lib")
 else()
     set(FFmpeg_CONFIGURE ./configure ${FFmpeg_CONFIGURE_ARGS})
-    set(FFmpeg_BUILD make)
+    set(FFmpeg_BUILD make -j ${NPROCS})
     set(FFmpeg_INSTALL make install)
 endif()
 

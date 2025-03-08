@@ -2,19 +2,20 @@ include(ExternalProject)
 
 include(GNUInstallDirs)
 
-set(SvtAV1_TAG v2.1.2)
-set(SvtAV1_ARGS ${TLRENDER_EXTERNAL_ARGS})
+#set(SvtAV1_TAG v3.0.0)  # not ocmpatible with FFmpeg 7.1.
+#set(SvtAV1_TAG v2.1.2)
+set(SvtAV1_TAG v2.3.0)
 
+set(SvtAV1_ARGS ${TLRENDER_EXTERNAL_ARGS})
 list(APPEND SvtAV1_ARGS
     -DENABLE_NASM=ON
     -DCMAKE_INSTALL_LIBDIR=lib
 )
 
 set(SvtAV1_DEPS )
-if(UNIX)
+if(NOT WIN32)
     set(SvtAV1_DEPS NASM)
 endif()
-
 
 ExternalProject_Add(
     SvtAV1

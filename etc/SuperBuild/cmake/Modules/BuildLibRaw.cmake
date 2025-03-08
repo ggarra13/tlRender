@@ -48,12 +48,9 @@ set(LibRaw_PATCH
     COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/LibRaw-patch/FindLCMS2.cmake <SOURCE_DIR>/cmake/modules
 )
 
-set(LibRaw_DEPS LibRaw_cmake jasper ZLIB)
+set(LibRaw_DEPS LibRaw_cmake jasper LCMS2 ZLIB)
 if(TLRENDER_JPEG)
     list(APPEND LibRaw_DEPS libjpeg-turbo)
-endif()
-if(UNIX)
-    list(APPEND LibRaw_DEPS LCMS2)
 endif()
     
 ExternalProject_Add(
