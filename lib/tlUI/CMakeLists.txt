@@ -21,7 +21,7 @@ set(HEADERS
 #    FloatEditSlider.h
 #    FloatModel.h
 #    FloatSlider.h
-#    GridLayout.h
+    GridLayout.h
 #    GroupBox.h
     IButton.h
     IClipboard.h
@@ -50,11 +50,11 @@ set(HEADERS
 #    MDIWidget.h
 #    Menu.h
 #    MenuBar.h
-    MessageDialog.h
+#    MessageDialog.h
 #    OverlayLayout.h
 #    PieChart.h
 #    PushButton.h
-    RecentFilesModel.h
+#    RecentFilesModel.h
     RowLayout.h
     ScrollArea.h
     ScrollWidget.h
@@ -63,7 +63,7 @@ set(HEADERS
 #    SearchBox.h
 #    Splitter.h
 #    StackLayout.h
-#    Style.h
+    Style.h
     StyleInline.h
 #    TabBar.h
     ThumbnailSystem.h
@@ -73,7 +73,8 @@ set(HEADERS
     ToolTip.h
 )
 set(HEADERS_PRIVATE
-    FileBrowserPrivate.h)
+    #FileBrowserPrivate.h
+)
 
 set(SOURCE
    # Action.cpp
@@ -105,7 +106,7 @@ set(SOURCE
   #  FloatEditSlider.cpp
   #  FloatModel.cpp
   #  FloatSlider.cpp
-  #  GridLayout.cpp
+    GridLayout.cpp
   #  GroupBox.cpp
     IButton.cpp
     IClipboard.cpp
@@ -146,9 +147,9 @@ set(SOURCE
     ScrollBar.cpp
   #  Splitter.cpp
   #  StackLayout.cpp
-  #  Style.cpp
+    Style.cpp
   #  TabBar.cpp
-  #  ThumbnailSystem.cpp
+    ThumbnailSystem.cpp
   #  TimeEdit.cpp
   #  TimeLabel.cpp
   #  ToolButton.cpp

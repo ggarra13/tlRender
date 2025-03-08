@@ -4,8 +4,6 @@
 
 #include <tlUI/Init.h>
 
-#include <tlUI/FileBrowser.h>
-#include <tlUI/MessageDialog.h>
 #include <tlUI/ThumbnailSystem.h>
 
 #include <tlIO/Init.h>
@@ -19,14 +17,6 @@ namespace tl
         void init(const std::shared_ptr<system::Context>& context)
         {
             tl::io::init(context);
-            if (!context->getSystem<FileBrowserSystem>())
-            {
-                context->addSystem(FileBrowserSystem::create(context));
-            }
-            if (!context->getSystem<MessageDialogSystem>())
-            {
-                context->addSystem(MessageDialogSystem::create(context));
-            }
             if (!context->getSystem<ThumbnailSystem>())
             {
                 context->addSystem(ThumbnailSystem::create(context));
