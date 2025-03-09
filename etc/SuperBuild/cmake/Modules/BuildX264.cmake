@@ -28,9 +28,9 @@ if (WIN32)
     endfunction()
     # Convert path for MSYS2 properly
     convert_path_for_msys2("${CMAKE_INSTALL_PREFIX}" INSTALL_PREFIX)
+    set(X264_DEPENDENCIES)
 else()
     set(INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
-    set(X264_DEPENDENCIES)
 endif()
 
 
