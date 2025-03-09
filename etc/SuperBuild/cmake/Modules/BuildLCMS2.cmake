@@ -12,17 +12,7 @@ if(APPLE)
 endif()
 
 if (WIN32)
-    # Function to convert path to Msys2
-    function(convert_path_for_msys2 IN_PATH OUT_PATH)
-	# Split the path at the drive letter (if present)
-	string(REGEX REPLACE "^([A-Z]):/" "/\\1/" INTERMEDIATE_PATH "${IN_PATH}")
-
-	# Convert backslashes to forward slashes
-	string(REPLACE "\\" "/" INTERMEDIATE_PATH "${INTERMEDIATE_PATH}")
-
-	# Return the converted path
-	set(${OUT_PATH} "${INTERMEDIATE_PATH}" PARENT_SCOPE)
-    endfunction()
+    include(functions/Msys2)
     # Convert path for MSYS2 properly
     convert_path_for_msys2("${CMAKE_INSTALL_PREFIX}" INSTALL_PREFIX)
 else()
@@ -65,7 +55,6 @@ ExternalProject_Add(
     GIT_REPOSITORY "https://github.com/mm2/Little-CMS.git"
     GIT_TAG lcms2.15
     GIT_SHALLOW 1
-    GIT_PROGRESS 1
     CONFIGURE_COMMAND ${LCMS2_CONFIGURE_COMMAND}
     BUILD_COMMAND ${LCMS2_BUILD_COMMAND}
     INSTALL_COMMAND ${LCMS2_INSTALL_COMMAND}

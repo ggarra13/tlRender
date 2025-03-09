@@ -6,6 +6,11 @@ set(libplacebo_GIT_TAG v7.349.0)
 
 set(libplacebo_DEPS ${PYTHON_DEP})
 
+find_program(MESON_EXECUTABLE NAMES meson meson.exe)
+if(NOT MESON_EXECUTABLE)
+    message(FATAL_ERROR "Meson build system not found!")
+endif()
+
 if(APPLE AND CMAKE_OSX_DEPLOYMENT_TARGET)
     set(libplacebo_CFLAGS -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET})
     set(libplacebo_CXXFLAGS -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET})
@@ -17,7 +22,8 @@ if(WIN32)
     set(CLANG_ENV CC=clang CXX=clang)
 endif()
 
-set (libplacebo_ENV ${CMAKE_COMMAND} -E env "DYLD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib" -- )
+set (libplacebo_ENV ${CMAKE_COMMAND} -E env
+    "DYLD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib" -- )
 set (libaplcebo_COPY )
 if (APPLE)
     set(libplacebo_COPY cp ${CMAKE_INSTALL_PREFIX}/lib/libz.1.dylib . && )
@@ -27,9 +33,30 @@ endif()
 
 set(libplacebo_CONFIGURE
     COMMAND ${libplacebo_ENV} git submodule update --init
-    COMMAND ${CMAKE_COMMAND} -E env ${CLANG_ENV} "DYLD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib" "CXXFLAGS=${libplacebo_CXXFLAGS}" "CFLAGS=${libplacebo_CFLAGS}" "LDFLAGS=${libplacebo_LDFLAGS}" -- meson setup --wipe -Dvulkan=disabled -Ddemos=false -Dshaderc=disabled -Dlcms=disabled -Dglslang=disabled -Dlibdir=${CMAKE_INSTALL_PREFIX}/lib --prefix=${CMAKE_INSTALL_PREFIX} build)
-set(libplacebo_BUILD cd build && ${libplacebo_COPY} ${libplacebo_ENV} ninja)
-set(libplacebo_INSTALL cd build && ${libplacebo_ENV} ninja install)
+    COMMAND ${CMAKE_COMMAND} -E env
+    ${CLANG_ENV}
+    "DYLD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib"
+    "CXXFLAGS=${libplacebo_CXXFLAGS}"
+    "CFLAGS=${libplacebo_CFLAGS}"
+    "LDFLAGS=${libplacebo_LDFLAGS}" --
+    ${MESON_EXECUTABLE} setup
+    --wipe
+    -Dvulkan=disabled
+    -Ddemos=false
+    -Dshaderc=disabled
+    -Dlcms=disabled
+    -Dglslang=disabled
+    -Dlibdir=${CMAKE_INSTALL_PREFIX}/lib
+    --prefix=${CMAKE_INSTALL_PREFIX}
+    build)
+
+set(libplacebo_BUILD
+    cd build &&
+    ${libplacebo_COPY} ${libplacebo_ENV} ninja)
+
+set(libplacebo_INSTALL
+    cd build &&
+    ${libplacebo_ENV} ninja install)
 
 set(libplacebo_PATCH)
 
