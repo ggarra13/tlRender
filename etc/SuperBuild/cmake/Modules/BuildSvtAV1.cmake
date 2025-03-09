@@ -14,7 +14,6 @@ list(APPEND SvtAV1_ARGS
 set(SvtAV1_DEPS )
 if(NOT WIN32)
     set(SvtAV1_DEPS NASM)
-    set(PROJECT_COMMAND )
 else()
     # Build SvtAV1 with MSYS2 on Windows.
     find_package(Msys REQUIRED)
@@ -24,7 +23,6 @@ else()
         -defterm
         -no-start
         -here)
-    set(PROJECT_COMMAND COMMAND ${SvtAV1_MSYS2} -c "pacman -S make nasm --noconfirm")
 endif()
 
 ExternalProject_Add(
@@ -36,5 +34,4 @@ ExternalProject_Add(
     GIT_SHALLOW 1
     LIST_SEPARATOR |
     CMAKE_ARGS ${SvtAV1_ARGS}
-    ${PROJECT_COMMAND}
 )
