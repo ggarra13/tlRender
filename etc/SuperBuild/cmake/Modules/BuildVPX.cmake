@@ -35,17 +35,8 @@ if (UNIX)
     set(VPX_ENV PATH="${CMAKE_INSTALL_PREFIX}/bin:$ENV{PATH}")
     set(INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
 else()
-    # Function to convert path to Msys2
-    function(convert_path_for_msys2 IN_PATH OUT_PATH)
-	# Split the path at the drive letter (if present)
-	string(REGEX REPLACE "^([A-Z]):/" "/\\1/" INTERMEDIATE_PATH "${IN_PATH}")
-
-	# Convert backslashes to forward slashes
-	string(REPLACE "\\" "/" INTERMEDIATE_PATH "${INTERMEDIATE_PATH}")
-
-	# Return the converted path
-	set(${OUT_PATH} "${INTERMEDIATE_PATH}" PARENT_SCOPE)
-    endfunction()
+    include(functions/Msys2)
+    
     # Convert path for MSYS2 properly
     convert_path_for_msys2("${CMAKE_INSTALL_PREFIX}" INSTALL_PREFIX)
     set(VPX_TARGET --target=x86_64-win64-vs17)
@@ -78,18 +69,27 @@ set(VPX_CONFIGURE_ARGS
 )
 
 
-# Properly format VPX_CONFIGURE_ARGS
-list(JOIN VPX_CONFIGURE_ARGS " " VPX_CONFIGURE_ARGS_STR)
-
 set(VPX_INSTALL $make install)
 if (WIN32)
+    # Properly format VPX_CONFIGURE_ARGS
+    list(JOIN VPX_CONFIGURE_ARGS " " VPX_CONFIGURE_ARGS_STR)
+
     set(VPX_CONFIGURE ${VPX_MSYS2} -c "pacman -S make nasm --noconfirm && ./configure ${VPX_CONFIGURE_ARGS_STR}")
+
     set(VPX_BUILD ${VPX_MSYS2} -c "make -j ${NPROCS}")
+
     set(VPX_INSTALL ${VPX_MSYS2} -c "make install && mv ${INSTALL_PREFIX}/lib/x64/vpxmd.lib ${INSTALL_PREFIX}/lib/vpx.lib" )
+
 else()
-    set(VPX_CONFIGURE cmake -E env ${VPX_ENV} -- ./configure ${VPX_CONFIGURE_ARGS})
-    set(VPX_BUILD cmake -E env ${VPX_ENV} -- make -j ${NPROCS})
-    set(VPX_INSTALL cmake -E env ${VPX_ENV} -- make install)
+
+    set(VPX_CONFIGURE cmake -E env ${VPX_ENV} --
+	./configure ${VPX_CONFIGURE_ARGS})
+
+    set(VPX_BUILD cmake -E env ${VPX_ENV} --
+	make -j ${NPROCS})
+
+    set(VPX_INSTALL cmake -E env ${VPX_ENV} --
+	make install)
 endif()
 
 ExternalProject_Add(
