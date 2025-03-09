@@ -12,6 +12,7 @@ set(X264_CFLAGS)
 set(X264_CXXFLAGS)
 set(X264_OBJCFLAGS)
 set(X264_LDFLAGS)
+set(X264_DEPENDENCIES NASM)
 
 if (WIN32)
     # Function to convert path to Msys2
@@ -29,6 +30,7 @@ if (WIN32)
     convert_path_for_msys2("${CMAKE_INSTALL_PREFIX}" INSTALL_PREFIX)
 else()
     set(INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
+    set(X264_DEPENDENCIES)
 endif()
 
 
@@ -75,7 +77,7 @@ endif()
 ExternalProject_Add(
     X264
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/X264
-    DEPENDS NASM
+    DEPENDS ${X264_DEPENDENCIES}
     GIT_REPOSITORY "https://code.videolan.org/videolan/x264.git"
     GIT_TAG ${X264_TAG}
     GIT_SHALLOW 1
