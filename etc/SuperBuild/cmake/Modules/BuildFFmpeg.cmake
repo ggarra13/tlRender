@@ -459,11 +459,11 @@ if(TLRENDER_X264)
 	list(APPEND FFmpeg_CONFIGURE_ARGS
 	    --enable-version3)
     endif()
-    if(UNIX)
-	list(APPEND FFmpeg_CONFIGURE_ARGS
-	    --extra-ldflags="${INSTALL_PREFIX}/lib/libx264.a")
-	list(APPEND FFmpeg_DEPS X264)
-    endif()
+    # if(UNIX)
+    # 	list(APPEND FFmpeg_CONFIGURE_ARGS
+    # 	    --extra-ldflags="${INSTALL_PREFIX}/lib/libx264.a")
+    # 	list(APPEND FFmpeg_DEPS X264)
+    # endif()
 endif()
 
 if(NOT WIN32)
