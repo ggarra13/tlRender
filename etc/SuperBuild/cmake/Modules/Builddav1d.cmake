@@ -8,6 +8,11 @@ if(UNIX)
     set(dav1d_DEPS NASM ${dav1d_DEPS})
 endif()
 
+find_program(MESON_EXECUTABLE NAMES meson meson.exe)
+if(NOT MESON_EXECUTABLE)
+    message(FATAL_ERROR "Meson build system not found!")
+endif()
+
 if(APPLE AND CMAKE_OSX_DEPLOYMENT_TARGET)
     set(dav1d_CFLAGS -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET})
     set(dav1d_CXXFLAGS -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET})
@@ -27,9 +32,27 @@ if (WIN32)
 endif()
 
 set(dav1d_CONFIGURE
-    COMMAND ${CMAKE_COMMAND} -E env "CXXFLAGS=${dav1d_CXXFLAGS}" "CFLAGS=${dav1d_CFLAGS}" "DYLD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib" "LDFLAGS=${dav1d_LDFLAGS}" -- meson setup --wipe -Denable_tools=false -Denable_tests=false --default-library=static -Dlibdir=${CMAKE_INSTALL_PREFIX}/lib --prefix=${CMAKE_INSTALL_PREFIX} build)
-set(dav1d_BUILD cd build && ${dav1d_COPY_ZLIB} ninja)
-set(dav1d_INSTALL cd build && ninja install ${dav1d_RENAME_TO_LIB})
+    COMMAND ${CMAKE_COMMAND} -E env
+    "CXXFLAGS=${dav1d_CXXFLAGS}"
+    "CFLAGS=${dav1d_CFLAGS}"
+    "LDFLAGS=${dav1d_LDFLAGS}"
+    "DYLD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib"
+    -- ${MESON_EXECUTABLE} setup
+    --wipe
+    -Denable_tools=false
+    -Denable_tests=false
+    --default-library=static
+    -Dlibdir=${CMAKE_INSTALL_PREFIX}/lib
+    --prefix=${CMAKE_INSTALL_PREFIX}
+    build)
+
+set(dav1d_BUILD
+    cd build &&
+    ${dav1d_COPY_ZLIB} ninja)
+
+set(dav1d_INSTALL
+    cd build &&
+    ninja install ${dav1d_RENAME_TO_LIB})
 
 ExternalProject_Add(
     dav1d
