@@ -2,6 +2,8 @@
 include(ProcessorCount)
 ProcessorCount(NPROCS)
 
+set(LCMS2_GIT_TAG lcms2.17)
+
 if(APPLE)
     set(LCMS2_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
     set(LCMS2_C_FLAGS "${CMAKE_C_FLAGS}")
@@ -53,7 +55,7 @@ ExternalProject_Add(
     LCMS2
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/LCMS2
     GIT_REPOSITORY "https://github.com/mm2/Little-CMS.git"
-    GIT_TAG lcms2.15
+    GIT_TAG ${LCMS2_GIT_TAG}
     GIT_SHALLOW 1
     CONFIGURE_COMMAND ${LCMS2_CONFIGURE_COMMAND}
     BUILD_COMMAND ${LCMS2_BUILD_COMMAND}
