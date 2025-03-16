@@ -98,7 +98,7 @@ ExternalProject_Add(
     DEPENDS ${VPX_DEPENDS}
     GIT_REPOSITORY "https://github.com/webmproject/libvpx.git"
     GIT_TAG ${VPX_TAG}
-    GIT_SHALLOW 1
+    
     CONFIGURE_COMMAND ${VPX_CONFIGURE}
     BUILD_COMMAND ${VPX_BUILD}
     INSTALL_COMMAND ${VPX_INSTALL}

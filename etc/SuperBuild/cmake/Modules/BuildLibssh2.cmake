@@ -15,7 +15,7 @@ ExternalProject_Add(
     DEPENDS ${OpenSSL} ZLIB
     GIT_REPOSITORY ${Libssh2_GIT_REPOSITORY}
     GIT_TAG ${Libssh2_GIT_TAG}
-    GIT_SHALLOW 1
+    
     PATCH_COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${CMAKE_CURRENT_SOURCE_DIR}/Libssh2-patch/CMakeLists.txt
         ${CMAKE_CURRENT_BINARY_DIR}/Libssh2/src/Libssh2/CMakeLists.txt

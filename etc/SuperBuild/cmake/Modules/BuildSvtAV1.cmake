@@ -31,7 +31,7 @@ ExternalProject_Add(
     DEPENDS ${SvtAV1_DEPS}
     GIT_REPOSITORY "https://gitlab.com/AOMediaCodec/SVT-AV1.git"
     GIT_TAG ${SvtAV1_TAG}
-    GIT_SHALLOW 1
+    
     LIST_SEPARATOR |
     CMAKE_ARGS ${SvtAV1_ARGS}
 )

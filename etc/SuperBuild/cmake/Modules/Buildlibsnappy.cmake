@@ -34,7 +34,7 @@ ExternalProject_Add(
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/libsnappy
     GIT_REPOSITORY ${libsnappy_REPO}
     GIT_TAG ${libsnappy_TAG}
-    GIT_SHALLOW 1
+    
 
     UPDATE_COMMAND ${libsnappy_UPDATE_CMD}
     

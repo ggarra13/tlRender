@@ -70,7 +70,6 @@ ExternalProject_Add(
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/libplacebo
     GIT_REPOSITORY ${libplacebo_GIT_REPO}
     GIT_TAG ${libplacebo_GIT_TAG}
-    GIT_SHALLOW 1
     DEPENDS ${libplacebo_DEPS}
     CONFIGURE_COMMAND ${libplacebo_CONFIGURE}
     PATCH_COMMAND ${libplacebo_PATCH}
