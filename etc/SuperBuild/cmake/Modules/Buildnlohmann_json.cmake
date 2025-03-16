@@ -1,6 +1,10 @@
 include(ExternalProject)
 
-set(nlohmann_json_GIT_REPOSITORY "https://github.com/nlohmann/json.git")
+if(TLRENDER_LOCAL)
+    set(nlohmann_json_GIT_REPOSITORY "https://github.com/ggarra13/json.git")
+else()
+    set(nlohmann_json_GIT_REPOSITORY "https://github.com/nlohmann/json.git") # orig
+endif()
 set(nlohmann_json_GIT_TAG "v3.11.3")
 
 set(nlohmann_json_ARGS ${TLRENDER_EXTERNAL_ARGS})
