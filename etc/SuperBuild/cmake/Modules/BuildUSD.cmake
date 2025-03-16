@@ -3,7 +3,12 @@ include(ExternalProject)
 
 set(USD_DEPS ${PYTHON_DEP})
 
-set(USD_GIT_REPOSITORY https://github.com/PixarAnimationStudios/OpenUSD.git)
+if(TLRENDER_LOCAL)
+    set(USD_GIT_REPOSITORY "git@github.com:ggarra13/OpenUSD.git")
+else()
+    set(USD_GIT_REPOSITORY https://github.com/PixarAnimationStudios/OpenUSD.git)
+endif()
+
 set(USD_GIT_TAG v24.08)
 
 string(TOLOWER ${CMAKE_BUILD_TYPE} cmake_build_type)

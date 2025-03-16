@@ -2,6 +2,12 @@
 include(ProcessorCount)
 ProcessorCount(NPROCS)
 
+if(TLRENDER_LOCAL)
+    set(LCMS2_GIT_REPO "git@github.com:ggarra13/Little-CMS.git")
+else()
+    set(LCMS2_GIT_REPO "https://github.com/mm2/Little-CMS.git")
+endif()
+
 set(LCMS2_GIT_TAG lcms2.17)
 
 if(APPLE)
@@ -54,7 +60,7 @@ endif()
 ExternalProject_Add(
     LCMS2
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/LCMS2
-    GIT_REPOSITORY "https://github.com/mm2/Little-CMS.git"
+    GIT_REPOSITORY ${LCMS2_GIT_REPO}
     GIT_TAG ${LCMS2_GIT_TAG}
     
     CONFIGURE_COMMAND ${LCMS2_CONFIGURE_COMMAND}
