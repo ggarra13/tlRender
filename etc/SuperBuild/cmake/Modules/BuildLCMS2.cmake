@@ -3,7 +3,7 @@ include(ProcessorCount)
 ProcessorCount(NPROCS)
 
 if(TLRENDER_LOCAL)
-    set(LCMES_GIT_REPO "https://github.com/ggarra13/Little-CMS.git")
+    set(LCMES_GIT_REPO "git@github.com:ggarra13/Little-CMS.git")
 else()
     set(LCMS2_GIT_REPO "https://github.com/mm2/Little-CMS.git")
 endif()

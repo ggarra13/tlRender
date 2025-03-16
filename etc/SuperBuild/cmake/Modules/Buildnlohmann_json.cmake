@@ -1,7 +1,7 @@
 include(ExternalProject)
 
 if(TLRENDER_LOCAL)
-    set(nlohmann_json_GIT_REPOSITORY "https://github.com/ggarra13/json.git")
+    set(nlohmann_json_GIT_REPOSITORY "git@github.com:ggarra13/json.git")
 else()
     set(nlohmann_json_GIT_REPOSITORY "https://github.com/nlohmann/json.git") # orig
 endif()

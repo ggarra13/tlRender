@@ -4,7 +4,7 @@ include(ExternalProject)
 set(USD_DEPS ${PYTHON_DEP})
 
 if(TLRENDER_LOCAL)
-    set(USD_GIT_REPOSITORY "https://github.com/ggarra13/OpenUSD.git")
+    set(USD_GIT_REPOSITORY "git@github.com:ggarra13/OpenUSD.git")
 else()
     set(USD_GIT_REPOSITORY https://github.com/PixarAnimationStudios/OpenUSD.git)
 endif()
