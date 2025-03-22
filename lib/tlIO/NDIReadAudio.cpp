@@ -30,7 +30,7 @@ namespace tl
 
             // We now have at least one source,
             // so we create a receiver to look at it.
-            NDIlib_recv_create_v3_t recv_desc;
+            NDIlib_recv_create_t recv_desc;
             recv_desc.color_format = NDIlib_recv_color_format_fastest;
             recv_desc.bandwidth = NDIlib_recv_bandwidth_highest;
             recv_desc.allow_video_fields = false;

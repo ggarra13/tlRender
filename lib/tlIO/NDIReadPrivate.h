@@ -31,7 +31,7 @@ namespace tl
             ReadVideo(
                 const std::string& fileName,
                 const NDIlib_source_t& NDIsource,
-                const NDIlib_recv_create_v3_t& recv_desc,
+                const NDIlib_recv_create_t& recv_desc,
                 const NDIlib_video_frame_t& video_frame,
                 const std::weak_ptr<log::System>& logSystem,
                 const Options& options);

@@ -45,7 +45,7 @@ namespace tl
                     
             const NDIlib_source_t* sources = nullptr;
             
-            p.NDI_find = NDIlib_find_create_v2();
+            p.NDI_find = NDIlib_find_create();
             if (!p.NDI_find)
                 throw std::runtime_error("Could not create NDI find");
             
@@ -91,7 +91,7 @@ namespace tl
             
             // We now have at least one source,
             // so we create a receiver to look at it.
-            NDIlib_recv_create_v3_t recv_desc;
+            NDIlib_recv_create_t recv_desc;
             recv_desc.color_format = NDIlib_recv_color_format_fastest;
 
             
