@@ -19,6 +19,7 @@
 
 #include <tlCore/AudioResample.h>
 #include <tlCore/Context.h>
+#include <tlCore/Locale.h>
 #include <tlCore/StringFormat.h>
 
 #include <algorithm>
@@ -1820,15 +1821,31 @@ namespace tl
                         log::Type::Message,
                         kModule);
                 }
-                
-                const std::string& metadata = string::Format("<ndi_color_info "
-                                                      " transfer=\"{0}\" "
-                                                      " matrix=\"{1}\" "
-                                                      " primaries=\"{2}\" "
-                                                      "/> ").
-                                              arg(transferName).
-                                              arg(matrixName).
-                                              arg(primariesName);
+
+                locale::SetAndRestore locale;
+                const std::string& ndi_color_info =
+                    string::Format("<ndi_color_info "
+                                   " transfer=\"{0}\" "
+                                   " matrix=\"{1}\" "
+                                   " primaries=\"{2}\" "
+                                   "/>\n").
+                    arg(transferName).
+                    arg(matrixName).
+                    arg(primariesName);
+                const std::string& cieY_color_info =
+                    string::Format("<cieY_color_info "
+                                   " <maxPQY>{0}</maxPQY>"
+                                   " <avgPQY>{1}</avgPQY>"
+                                   "/>\n").
+                    arg(hdrData->maxPQY).
+                    arg(hdrData->avgPQY);
+                // const std::string& hdr10_plus_color_info =
+                //     string::Format("<hdr10_plus_color_info "
+                //                    " <sceneMax>{0}</sceneMax> "
+                //                    " <avgPQY>{1}</avgPQY> "
+                //                    "/>\n");
+                const std::string metadata = ndi_color_info +
+                                             cieY_color_info;
                 video_frame.p_metadata = metadata.c_str();
             }
             
