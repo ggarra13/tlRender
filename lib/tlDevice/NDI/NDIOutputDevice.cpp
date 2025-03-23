@@ -47,6 +47,19 @@ namespace tl
             {
                 return (sample - in) / (out - in);
             }
+
+            // Function to escape quotes in JSON for XML compatibility
+            std::string escape_quotes_for_xml(const std::string& json_str) {
+                std::string escaped;
+                for (char c : json_str) {
+                    if (c == '"') {
+                        escaped += "&quot;";  // Replace " with &quot;
+                    } else {
+                        escaped += c;
+                    }
+                }
+                return escaped;
+            }
         }
 
         struct OutputDevice::Private
@@ -1823,29 +1836,21 @@ namespace tl
                 }
 
                 locale::SetAndRestore locale;
-                const std::string& ndi_color_info =
+
+                nlohmann::json j = *hdrData;
+                const std::string& mrv2_json = escape_quotes_for_xml(j.dump());
+                std::cerr << "mrv2_json=" << mrv2_json << std::endl;
+                const std::string& metadata =
                     string::Format("<ndi_color_info "
                                    " transfer=\"{0}\" "
                                    " matrix=\"{1}\" "
                                    " primaries=\"{2}\" "
+                                   " mrv2=\"{3}\" "
                                    "/>\n").
                     arg(transferName).
                     arg(matrixName).
-                    arg(primariesName);
-                const std::string& cieY_color_info =
-                    string::Format("<cieY_color_info "
-                                   " <maxPQY>{0}</maxPQY>"
-                                   " <avgPQY>{1}</avgPQY>"
-                                   "/>\n").
-                    arg(hdrData->maxPQY).
-                    arg(hdrData->avgPQY);
-                // const std::string& hdr10_plus_color_info =
-                //     string::Format("<hdr10_plus_color_info "
-                //                    " <sceneMax>{0}</sceneMax> "
-                //                    " <avgPQY>{1}</avgPQY> "
-                //                    "/>\n");
-                const std::string metadata = ndi_color_info +
-                                             cieY_color_info;
+                    arg(primariesName).
+                    arg(mrv2_json);
                 video_frame.p_metadata = metadata.c_str();
             }
             
