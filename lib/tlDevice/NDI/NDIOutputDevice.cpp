@@ -1852,6 +1852,10 @@ namespace tl
                            arg(mrv2_json);
                 video_frame.p_metadata = metadata.c_str();
             }
+            else
+            {
+                video_frame.p_metadata = nullptr;
+            }
             
 			NDIlib_send_send_video(p.thread.NDI_send, &video_frame);
             
