@@ -1145,7 +1145,6 @@ namespace tl
                         });
                     if (j == audioRanges.end())
                     {
-                        std::cerr << "\t\tRemoving " << audioCacheIt->first << std::endl;
                         audioCacheIt = p.mutex.audioDataCache.erase(audioCacheIt);
                     }
                     else
@@ -1749,6 +1748,8 @@ namespace tl
             case device::HDRMode::None:
                 break;
             }
+
+            std::string metadata;
             
             if (hdrData && !config.noMetadata)
             {
@@ -1839,18 +1840,16 @@ namespace tl
 
                 nlohmann::json j = *hdrData;
                 const std::string& mrv2_json = escape_quotes_for_xml(j.dump());
-                std::cerr << "mrv2_json=" << mrv2_json << std::endl;
-                const std::string& metadata =
-                    string::Format("<ndi_color_info "
-                                   " transfer=\"{0}\" "
-                                   " matrix=\"{1}\" "
-                                   " primaries=\"{2}\" "
-                                   " mrv2=\"{3}\" "
-                                   "/>\n").
-                    arg(transferName).
-                    arg(matrixName).
-                    arg(primariesName).
-                    arg(mrv2_json);
+                metadata = string::Format("<ndi_color_info "
+                                          " transfer=\"{0}\" "
+                                          " matrix=\"{1}\" "
+                                          " primaries=\"{2}\" "
+                                          " mrv2=\"{3}\" "
+                                          "/>\n").
+                           arg(transferName).
+                           arg(matrixName).
+                           arg(primariesName).
+                           arg(mrv2_json);
                 video_frame.p_metadata = metadata.c_str();
             }
             
