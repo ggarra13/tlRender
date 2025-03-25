@@ -966,7 +966,7 @@ namespace tl
                 out = 1;
                 return out;
             }
-            
+
             while (0 == out)
             {
                 out = avcodec_receive_frame(_avCodecContext[_avStream], _avFrame);
@@ -985,7 +985,8 @@ namespace tl
                             swap(avVideoStream->r_frame_rate)),
                     _timeRange.duration().rate());
 
-                if (time >= targetTime || backwards || _avFrame->duration == 0)
+                if (time >= targetTime || backwards ||
+                    (_avFrame->duration == 0 && _useAudioOnly))
                 {
                     if (time >= targetTime)
                         currentTime = targetTime;
