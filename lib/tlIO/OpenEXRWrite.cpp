@@ -114,16 +114,43 @@ namespace tl
             const uint8_t bitDepth = getBitDepth(p.pixelType) / 8;
             Imf::OutputPart out(*p.outputFile, layerId);
             const Imf::Header& header = p.outputFile->header(layerId);
-            const Imath::Box2i& daw = header.dataWindow();
+            const Imath::Box2i& dataWindow = header.dataWindow();
+            const Imath::Box2i& displayWindow = header.displayWindow();
 
-            const size_t width   = daw.max.x - daw.min.x + 1;
-            const size_t height  = daw.max.y - daw.min.y + 1;
+            const size_t width   = dataWindow.max.x - dataWindow.min.x + 1;
+            const size_t height  = dataWindow.max.y - dataWindow.min.y + 1;
             const size_t xStride = bitDepth * channelCount;
-            const size_t yStride = bitDepth * channelCount * width;
+            const size_t yStride = xStride * width;
+            
+            const size_t displayWidth  = displayWindow.max.x - displayWindow.min.x + 1;
+            const size_t displayHeight = displayWindow.max.y - displayWindow.min.y + 1;
+            const size_t dYStride = bitDepth * channelCount * displayWidth;
                 
-            char* base = const_cast<char*>(reinterpret_cast<const char*>(image->getData()));
-            char* flip = new char[height * yStride];
-            flipImageY(flip, base, height, yStride);
+            const char* base = reinterpret_cast<const char*>(image->getData());
+            char* flip = new char[displayHeight * dYStride];
+            flipImageY(flip, base, displayHeight, dYStride);
+            
+            char* dest = nullptr;
+            if (dataWindow == displayWindow)
+            {                
+                dest = const_cast<char*>(flip);
+            }
+            else
+            {
+                
+                const size_t srcXOffset = dataWindow.min.x - displayWindow.min.x;
+                const size_t srcYOffset = dataWindow.min.y - displayWindow.min.y;
+                dest = new char[height * yStride];
+
+                for (size_t y = 0; y < height; ++y)
+                {
+                    const size_t srcIndex = (srcYOffset + y) * dYStride + srcXOffset * xStride;
+                    const size_t dstIndex = y * yStride;
+                    std::memcpy(dest + dstIndex, flip + srcIndex, width * xStride);
+                }
+                
+            }
+                
                 
             Imf::FrameBuffer fb;
             auto ci = header.channels().begin();
@@ -131,15 +158,16 @@ namespace tl
             for (int k = 3; ci != ce; ++ci)
             {
                 const std::string& name = ci.name();
-                char* buf = flip + k-- * bitDepth;
-                fb.insert(
-                    name,
-                    Imf::Slice(toImf(p.pixelType), buf, xStride, yStride));
+                char* buf = dest + k-- * bitDepth;
+                fb.insert(name, Imf::Slice(toImf(p.pixelType), buf, xStride, yStride));
             }
 
             out.setFrameBuffer(fb);
             out.writePixels(height);
             delete [] flip;
+
+            if (dest != flip)
+                delete [] dest;
         }
     
         void Write::_writeVideo(
@@ -190,7 +218,7 @@ namespace tl
             header.setName(layerName);
             header.setType(Imf::SCANLINEIMAGE);
             header.setVersion(1);
-
+            
             auto i = tags.find("Display Window");
             if ( i != tags.end())
             {
@@ -201,16 +229,17 @@ namespace tl
                     Imath::V2i(box.min.x, box.min.y),
                     Imath::V2i(box.max.x, box.max.y));
             }
-            i = tags.find("Data Window");
-            if ( i != tags.end())
-            {
-                std::stringstream s(i->second);
-                math::Box2i box;
-                s >> box;
-                header.dataWindow() = Imath::Box2i(
-                    Imath::V2i(box.min.x, box.min.y),
-                    Imath::V2i(box.max.x, box.max.y));
-            }
+            header.dataWindow() = header.displayWindow();
+            // i = tags.find("Data Window");
+            // if ( i != tags.end())
+            // {
+            //     std::stringstream s(i->second);
+            //     math::Box2i box;
+            //     s >> box;
+            //     header.dataWindow() = Imath::Box2i(
+            //         Imath::V2i(box.min.x, box.min.y),
+            //         Imath::V2i(box.max.x, box.max.y));
+            // }
             
             std::vector<Imf::Header> headers;
             headers.push_back(header);
