@@ -478,6 +478,12 @@ namespace tl
             }
 
             template<>
+            void deserialize(const std::string& s, std::string& value)
+            {
+                value = s;
+            }
+
+            template<>
             void deserialize(const std::string& s, Imf::Chromaticities& value)
             {
                 std::stringstream ss(s);
