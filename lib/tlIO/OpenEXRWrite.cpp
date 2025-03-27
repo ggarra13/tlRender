@@ -21,13 +21,13 @@ namespace tl
         namespace
         {
             void flipImageY(
-                char* dst, const char* src, const size_t height,
+                uint8_t* dst, const uint8_t* src, const size_t height,
                 const size_t bytes)
             {
                 for (size_t row = 0; row < height; ++row)
                 {
-                    const char* srcRow = src + row * bytes;
-                    char* destRow = dst + (height - row - 1) * bytes;
+                    const uint8_t* srcRow = src + row * bytes;
+                    uint8_t* destRow = dst + (height - row - 1) * bytes;
 
                     // Copy the row from the source image to the destination
                     // image
@@ -120,54 +120,29 @@ namespace tl
             const size_t width   = dataWindow.max.x - dataWindow.min.x + 1;
             const size_t height  = dataWindow.max.y - dataWindow.min.y + 1;
             const size_t xStride = bitDepth * channelCount;
-            const size_t yStride = xStride * width;
+            size_t yStride = xStride * width;
             
-            const size_t displayWidth  = displayWindow.max.x - displayWindow.min.x + 1;
-            const size_t displayHeight = displayWindow.max.y - displayWindow.min.y + 1;
-            const size_t dYStride = bitDepth * channelCount * displayWidth;
-                
-            const char* base = reinterpret_cast<const char*>(image->getData());
-            char* flip = new char[displayHeight * dYStride];
-            flipImageY(flip, base, displayHeight, dYStride);
+            const uint8_t* base = reinterpret_cast<const uint8_t*>(image->getData());
+            uint8_t* flip = new uint8_t[height * yStride];
+            flipImageY(flip, base, height, yStride);
             
-            char* dest = nullptr;
-            if (dataWindow == displayWindow)
-            {                
-                dest = const_cast<char*>(flip);
-            }
-            else
-            {
-                
-                const size_t srcXOffset = dataWindow.min.x - displayWindow.min.x;
-                const size_t srcYOffset = dataWindow.min.y - displayWindow.min.y;
-                dest = new char[height * yStride];
+            uint8_t* dest = flip;
 
-                for (size_t y = 0; y < height; ++y)
-                {
-                    const size_t srcIndex = (srcYOffset + y) * dYStride + srcXOffset * xStride;
-                    const size_t dstIndex = y * yStride;
-                    std::memcpy(dest + dstIndex, flip + srcIndex, width * xStride);
-                }
-                
-            }
-                
-                
             Imf::FrameBuffer fb;
             auto ci = header.channels().begin();
             auto ce = header.channels().end();
-            for (int k = 3; ci != ce; ++ci)
+            int k = channelCount - 1;
+            for (; ci != ce; ++ci)
             {
                 const std::string& name = ci.name();
-                char* buf = dest + k-- * bitDepth;
-                fb.insert(name, Imf::Slice(toImf(p.pixelType), buf, xStride, yStride));
+                uint8_t* buf = dest + k-- * bitDepth;
+                fb.insert(name, Imf::Slice::Make(toImf(p.pixelType), (char*)buf, dataWindow,
+                                                 xStride, yStride));
             }
 
             out.setFrameBuffer(fb);
             out.writePixels(height);
             delete [] flip;
-
-            if (dest != flip)
-                delete [] dest;
         }
     
         void Write::_writeVideo(
@@ -229,17 +204,16 @@ namespace tl
                     Imath::V2i(box.min.x, box.min.y),
                     Imath::V2i(box.max.x, box.max.y));
             }
-            header.dataWindow() = header.displayWindow();
-            // i = tags.find("Data Window");
-            // if ( i != tags.end())
-            // {
-            //     std::stringstream s(i->second);
-            //     math::Box2i box;
-            //     s >> box;
-            //     header.dataWindow() = Imath::Box2i(
-            //         Imath::V2i(box.min.x, box.min.y),
-            //         Imath::V2i(box.max.x, box.max.y));
-            // }
+            i = tags.find("Data Window");
+            if ( i != tags.end())
+            {
+                std::stringstream s(i->second);
+                math::Box2i box;
+                s >> box;
+                header.dataWindow() = Imath::Box2i(
+                    Imath::V2i(box.min.x, box.min.y),
+                    Imath::V2i(box.max.x, box.max.y));
+            }
             
             std::vector<Imf::Header> headers;
             headers.push_back(header);
