@@ -37,7 +37,7 @@ namespace tl
     {
         namespace
         {
-            const std::chrono::milliseconds timeout(5);
+            const std::chrono::milliseconds timeout(8);
             const char* kModule = "ndi";
         }
         
@@ -146,7 +146,8 @@ namespace tl
                 NDIlib_send_instance_t NDI_send = nullptr;
                 NDIlib_video_frame_t NDI_video_frame;
                 NDIlib_audio_frame_interleaved_32f_t NDI_audio_frame;
-
+                std::string metadata;
+                
                 // Audio variables
                 bool backwards = false;
                 bool reset = true;
@@ -738,6 +739,7 @@ namespace tl
                 {
                     if (p.thread.pbo != 0)
                     {
+                        glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
                         glDeleteBuffers(1, &p.thread.pbo);
                         p.thread.pbo = 0;
                     }
@@ -749,7 +751,6 @@ namespace tl
                         compareOptions.mode, p.thread.videoData);
                     p.thread.size = size;
                     
-                    otime::RationalTime frameRate = time::invalidTime;
                     if (enabled)
                     {
                         if (!p.thread.videoData.empty())
@@ -783,6 +784,7 @@ namespace tl
                         std::unique_lock<std::mutex> lock(p.mutex.mutex);
                         p.mutex.active = active;
                         p.mutex.size = p.thread.size;
+                        p.mutex.speed = speed;
                         p.mutex.frameRate = frameRate;
                     }
 
@@ -836,6 +838,7 @@ namespace tl
 
             if (p.thread.pbo != 0)
             {
+                glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
                 glDeleteBuffers(1, &p.thread.pbo);
                 p.thread.pbo = 0;
             }
@@ -1001,16 +1004,23 @@ namespace tl
                 
                 video_frame.FourCC = toNDI(p.thread.outputPixelType);
                 if (video_frame.FourCC == NDIlib_FourCC_video_type_max)
+                {
                     throw std::runtime_error("Invalid pixel type for NDI!");
-
+                }
+                
                 size_t dataSize = getPackPixelsSize(size,
                                                     p.thread.outputPixelType);
                 if (dataSize == 0)
+                {
                     throw std::runtime_error("Invalid data size for output pixel type");
-                free(p.thread.NDI_video_frame.p_data);
+                }
+                free(video_frame.p_data);
                 video_frame.p_data = (uint8_t*)malloc(dataSize);
+                memset(video_frame.p_data, 128, dataSize);
                 if (!video_frame.p_data)
+                {
                     throw std::runtime_error("Out of memory allocating p_data");
+                }
                 video_frame.frame_format_type = NDIlib_frame_format_type_progressive;
                 if (auto context = p.context.lock())
                 {
@@ -1727,6 +1737,7 @@ namespace tl
 
             auto& video_frame = p.thread.NDI_video_frame;
 
+            video_frame.p_data = nullptr;
             glBindBuffer(GL_PIXEL_PACK_BUFFER, p.thread.pbo);
             if (void* pboP = glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY))
             {
@@ -1734,6 +1745,7 @@ namespace tl
                                p.thread.outputPixelType);
                 glUnmapBuffer(GL_PIXEL_PACK_BUFFER);
             }
+            glBindBuffer(GL_PIXEL_PACK_BUFFER, 0);
             
             std::shared_ptr<image::HDRData> hdrData;
             switch(p.thread.hdrMode)
@@ -1748,8 +1760,6 @@ namespace tl
             case device::HDRMode::None:
                 break;
             }
-
-            std::string metadata;
             
             if (hdrData && !config.noMetadata)
             {
@@ -1839,26 +1849,28 @@ namespace tl
                 locale::SetAndRestore locale;
 
                 nlohmann::json j = *hdrData;
-                const std::string& mrv2_json = escape_quotes_for_xml(j.dump());
-                metadata = string::Format("<ndi_color_info "
-                                          " transfer=\"{0}\" "
-                                          " matrix=\"{1}\" "
-                                          " primaries=\"{2}\" "
-                                          " mrv2=\"{3}\" "
-                                          "/>\n").
-                           arg(transferName).
-                           arg(matrixName).
-                           arg(primariesName).
-                           arg(mrv2_json);
-                video_frame.p_metadata = metadata.c_str();
+                const std::string mrv2_json = escape_quotes_for_xml(j.dump());
+                p.thread.metadata = string::Format("<ndi_color_info "
+                                                   " transfer=\"{0}\" "
+                                                   " matrix=\"{1}\" "
+                                                   " primaries=\"{2}\" "
+                                                   " mrv2=\"{3}\" "
+                                                   "/>\n").
+                                    arg(transferName).
+                                    arg(matrixName).
+                                    arg(primariesName).
+                                    arg(mrv2_json);
+                video_frame.p_metadata = p.thread.metadata.c_str();
             }
             else
             {
                 video_frame.p_metadata = nullptr;
             }
             
-			NDIlib_send_send_video(p.thread.NDI_send, &video_frame);
-            
+            if (p.thread.NDI_send && video_frame.p_data)
+            {
+                NDIlib_send_send_video(p.thread.NDI_send, &video_frame);
+            }
         }
     }
 }
