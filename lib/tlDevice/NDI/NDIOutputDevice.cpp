@@ -1737,7 +1737,6 @@ namespace tl
 
             auto& video_frame = p.thread.NDI_video_frame;
 
-            video_frame.p_data = nullptr;
             glBindBuffer(GL_PIXEL_PACK_BUFFER, p.thread.pbo);
             if (void* pboP = glMapBuffer(GL_PIXEL_PACK_BUFFER, GL_READ_ONLY))
             {
