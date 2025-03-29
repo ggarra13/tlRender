@@ -610,6 +610,7 @@ namespace tl
             timeline::BackgroundOptions backgroundOptions;
             timeline::Playback playback = timeline::Playback::Stop;
             otime::RationalTime currentTime = time::invalidTime;
+            math::Size2i size;
             float volume = 1.F;
             bool mute = false;
             bool reset = true;
@@ -677,11 +678,15 @@ namespace tl
                                          playback != p.mutex.playback ||
                                          frameRate != p.mutex.frameRate;
                         
+                        size = timeline::getRenderSize(
+                            compareOptions.mode, p.thread.videoData);
+                    
                         createDevice =
                             p.mutex.config != config ||
                             p.mutex.enabled != enabled ||
                             p.mutex.frameRate != frameRate ||
-                            p.mutex.speed != speed;
+                            p.mutex.speed != speed ||
+                            p.mutex.size != size;
                         
                         audioDataChanged =
                             createDevice ||
@@ -747,8 +752,6 @@ namespace tl
 
                     bool active = false;
 
-                    math::Size2i size = timeline::getRenderSize(
-                        compareOptions.mode, p.thread.videoData);
                     p.thread.size = size;
                     
                     if (enabled)
@@ -783,8 +786,8 @@ namespace tl
                     {
                         std::unique_lock<std::mutex> lock(p.mutex.mutex);
                         p.mutex.active = active;
-                        p.mutex.size = p.thread.size;
                         p.mutex.speed = speed;
+                        p.mutex.size  = size;
                         p.mutex.frameRate = frameRate;
                     }
 
