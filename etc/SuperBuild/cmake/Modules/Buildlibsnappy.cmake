@@ -2,7 +2,7 @@ include(ExternalProject)
 
 
 set(libsnappy_REPO "https://github.com/google/snappy.git")
-set(libsnappy_TAG 1.2.1)
+set(libsnappy_TAG 1.2.2)
 
 
 set(libsnappy_ARGS ${TLRENDER_EXTERNAL_ARGS})
