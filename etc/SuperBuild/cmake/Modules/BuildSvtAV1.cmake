@@ -9,12 +9,8 @@ set(SvtAV1_ARGS ${TLRENDER_EXTERNAL_ARGS})
 list(APPEND SvtAV1_ARGS
     -DENABLE_NASM=ON
     -DCMAKE_INSTALL_LIBDIR=lib
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5  # uses old CMake files
 )
-
-# \@todo: Patch for cmake 4.0 (remove later)
-set(SvtAV1_PATCH ${CMAKE_COMMAND} -E copy_if_different
-    ${CMAKE_CURRENT_SOURCE_DIR}/SvtAV1-patch/third_party/cpuinfo/CMakeLists.txt
-    ${CMAKE_CURRENT_BINARY_DIR}/SvtAV1/src/SvtAV1/third_party/cpuinfo/CMakeLists.txt )
 
 
 set(SvtAV1_DEPS )
