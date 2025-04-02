@@ -420,7 +420,7 @@ if(TLRENDER_AV1)
 	--enable-decoder=libdav1d)
     if(UNIX)
 	list(APPEND FFmpeg_CONFIGURE_ARGS
-	    --extra-ldflags="${INSTALL_PREFIX}/lib/libdav1d.a"
+	    --extra-ldflags="${INSTALL_PREFIX}/lib/libdav1d.a")
 	if (NOT APPLE)
 	    list(APPEND FFmpeg_CONFIGURE_ARGS
 		--extra-libs=-lm
