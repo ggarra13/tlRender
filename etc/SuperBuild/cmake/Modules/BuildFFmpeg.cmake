@@ -415,16 +415,12 @@ if(TLRENDER_VPX)
 endif()
 if(TLRENDER_AV1)
     list(APPEND FFmpeg_DEPS dav1d)
-    list(APPEND FFmpeg_DEPS SvtAV1)
     list(APPEND FFmpeg_CONFIGURE_ARGS
 	--enable-libdav1d
-	--enable-decoder=libdav1d
-	--enable-libsvtav1
-        --enable-encoder=libsvtav1)
+	--enable-decoder=libdav1d)
     if(UNIX)
 	list(APPEND FFmpeg_CONFIGURE_ARGS
 	    --extra-ldflags="${INSTALL_PREFIX}/lib/libdav1d.a"
-	    --extra-ldflags="${INSTALL_PREFIX}/lib/libSvtAv1Enc.a")
 	if (NOT APPLE)
 	    list(APPEND FFmpeg_CONFIGURE_ARGS
 		--extra-libs=-lm
@@ -454,6 +450,22 @@ if(TLRENDER_X264)
     # 	    --extra-ldflags="${INSTALL_PREFIX}/lib/libx264.a")
     # 	list(APPEND FFmpeg_DEPS X264)
     # endif()
+endif()
+
+if(TLRENDER_SVTAV1)
+    list(APPEND FFmpeg_DEPS SvtAV1)
+    list(APPEND FFmpeg_CONFIGURE_ARGS
+	--enable-libsvtav1
+        --enable-encoder=libsvtav1)
+    if(UNIX)
+	list(APPEND FFmpeg_CONFIGURE_ARGS
+	    --extra-ldflags="${INSTALL_PREFIX}/lib/libSvtAv1Enc.a")
+	if (NOT APPLE)
+	    list(APPEND FFmpeg_CONFIGURE_ARGS
+		--extra-libs=-lm
+		--extra-libs=-lpthread)
+	endif()
+    endif()
 endif()
 
 if(NOT WIN32)
