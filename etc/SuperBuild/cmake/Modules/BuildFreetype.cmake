@@ -1,7 +1,7 @@
 include(ExternalProject)
 
 set(Freetype_GIT_REPOSITORY "https://github.com/freetype/freetype.git")
-set(Freetype_GIT_TAG "VER-2-13-12")  # was VER-2-13-0
+set(Freetype_GIT_TAG "VER-2-13-3")
 
 set(Freetype_ARGS
     ${TLRENDER_EXTERNAL_ARGS}
