@@ -19,6 +19,7 @@ ExternalProject_Add(
     PREFIX ${CMAKE_CURRENT_BINARY_DIR}/yaml-cpp
     GIT_REPOSITORY ${yaml-cpp_GIT_REPOSITORY}
     GIT_TAG ${yaml-cpp_GIT_TAG}
+    PATCH_COMMAND ${yaml-cpp_PATCH}
     
     LIST_SEPARATOR |
     CMAKE_ARGS ${yaml-cpp_ARGS})
