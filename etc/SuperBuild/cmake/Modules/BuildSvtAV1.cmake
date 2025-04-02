@@ -11,6 +11,14 @@ list(APPEND SvtAV1_ARGS
     -DCMAKE_INSTALL_LIBDIR=lib
 )
 
+# \@todo: Patch for cmake 4.0 (remove later)
+set(SvtAV1_PATCH ${CMAKE_COMMAND} -E copy_if_different
+    ${CMAKE_CURRENT_SOURCE_DIR}/SvtAV1-patch/third_party/cpuinfo/CMakeLists.txt
+    ${CMAKE_CURRENT_BINARY_DIR}/SvtAV1/src/SvtAV1/third_party/cpuinfo/CMakeLists.txt )
+set(SvtAV1_PATCH
+    )
+
+
 set(SvtAV1_DEPS )
 if(NOT WIN32)
     set(SvtAV1_DEPS NASM)
@@ -31,6 +39,8 @@ ExternalProject_Add(
     DEPENDS ${SvtAV1_DEPS}
     GIT_REPOSITORY "https://gitlab.com/AOMediaCodec/SVT-AV1.git"
     GIT_TAG ${SvtAV1_TAG}
+
+    PATCH_COMMAND ${SvtAV1_PATCH}
     
     LIST_SEPARATOR |
     CMAKE_ARGS ${SvtAV1_ARGS}
