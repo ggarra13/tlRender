@@ -191,22 +191,29 @@ namespace tl
             }
     
             enum AVPixelFormat
-            choosePixelFormat(const AVCodec *codec, enum AVPixelFormat target,
+            choosePixelFormat(const AVCodecContext *avctx,
+                              const AVCodec *codec, enum AVPixelFormat target,
                               std::weak_ptr<log::System>& _logSystem)
             {
-                if (codec && codec->pix_fmts) {
-                    const enum AVPixelFormat *p = codec->pix_fmts;
+                const enum AVPixelFormat *p = nullptr;
+                int num = 0;
+                int i = 0;
+                if (codec && avctx) {
+                    int ok = avcodec_get_supported_config(avctx, codec,
+                                                          AV_CODEC_CONFIG_PIX_FORMAT,
+                                                          0, (const void**) &p, &num);
                     const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(target);
                     int has_alpha = desc ? desc->nb_components % 2 == 0 : 0;
                     enum AVPixelFormat best= AV_PIX_FMT_NONE;
 
-                    for (; *p != AV_PIX_FMT_NONE; p++) {
-                        best = av_find_best_pix_fmt_of_2(best, *p, target,
+                    for (i = 0; i < num; ++i)
+                    {
+                        best = av_find_best_pix_fmt_of_2(best, p[i], target,
                                                          has_alpha, NULL);
-                        if (*p == target)
+                        if (p[i] == target)
                             break;
                     }
-                    if (*p == AV_PIX_FMT_NONE)
+                    if (i >=num)
                     {
                         if (target != AV_PIX_FMT_NONE)
                         {
@@ -445,80 +452,92 @@ namespace tl
                 return out;
             }
             
-            //! Check that a given sample format is supported by the encoder
-            bool checkSampleFormat(const AVCodec* codec,
-                                   enum AVSampleFormat sample_fmt)
+        //! Check that a given sample format is supported by the encoder
+        bool checkSampleFormat(const AVCodecContext* avctx,
+                               const AVCodec* codec,
+                               enum AVSampleFormat sample_fmt)
             {
-                const enum AVSampleFormat *p = codec->sample_fmts;
-
                 bool out = false;
-                while (*p != AV_SAMPLE_FMT_NONE)
-                {
-                    if (*p == sample_fmt)
+                const enum AVSampleFormat *p = nullptr;
+                int num = 0;
+                int i = 0;
+                if (codec && avctx) {
+                    int ok = avcodec_get_supported_config(avctx, codec,
+                                                          AV_CODEC_CONFIG_SAMPLE_FORMAT,
+                                                          0, (const void**)&p, &num);
+                    for (i = 0; i < num; ++i)
                     {
-                        out = true;
-                        break;
+                        if (p[i] == sample_fmt)
+                        {
+                            out = true;
+                            break;
+                        }
                     }
-                    p++;
                 }
                 return out;
             }
 
             //! Select layout with equal or the highest channel count
-            int selectChannelLayout(const AVCodec* codec, AVChannelLayout* dst,
+            int selectChannelLayout(const AVCodecContext* avctx,
+                                    const AVCodec* codec, AVChannelLayout* dst,
                                     int channelCount)
             {
                 const AVChannelLayout* p = nullptr;
                 const AVChannelLayout* best_ch_layout = nullptr;
                 int best_nb_channels   = 0;
+                int num = 0;
+                int i = 0;
 
                 int out = 1;
-                if (!codec->ch_layouts)
-                {
-                    av_channel_layout_default(dst, channelCount);
-                    out = 0;
-                }
-                else
-                {
-                    p = codec->ch_layouts;
-                    while (p->nb_channels)
+                if (codec && avctx) {
+                    int ok = avcodec_get_supported_config(avctx, codec,
+                                                          AV_CODEC_CONFIG_CHANNEL_LAYOUT,
+                                                          0, (const void**)&p, &num);
+                    if (num == 0)
                     {
-                        int nb_channels = p->nb_channels;
-                        
-                        if (nb_channels > best_nb_channels)
-                        {
-                            best_ch_layout   = p;
-                            best_nb_channels = nb_channels;
-                        }
-                        p++;
+                        av_channel_layout_default(dst, channelCount);
+                        out = 0;
                     }
-                    out = av_channel_layout_copy(dst, best_ch_layout);
+                    else
+                    {
+                        for (i = 0; i < num; ++i)
+                        {
+                            int nb_channels = p[i].nb_channels;
+                        
+                            if (nb_channels > best_nb_channels)
+                            {
+                                best_ch_layout   = &p[i];
+                                best_nb_channels = nb_channels;
+                            }
+                        }
+                        out = av_channel_layout_copy(dst, best_ch_layout);
+                    }
                 }
                 return out;
             }
             
             //! Return an equal or higher supported samplerate
-            int selectSampleRate(const AVCodec* codec, const int sampleRate)
+            int selectSampleRate(const AVCodecContext *avctx,
+                                 const AVCodec* codec, const int sampleRate)
             {
-                int out = 0;
-                if (!codec->supported_samplerates)
-                {
-                    out = sampleRate;
-                }
-                else
-                {
-                    const int* p = codec->supported_samplerates;
-                    while (*p)
+                int out = sampleRate;
+                int* p = nullptr;
+                int num = 0;
+                int i = 0;
+                if (codec && avctx) {
+                    int ok = avcodec_get_supported_config(avctx, codec,
+                                                          AV_CODEC_CONFIG_SAMPLE_RATE,
+                                                          0, (const void**)&p, &num);
+                    for (i = 0; i < num; ++i)
                     {
-                        if (*p == sampleRate)
+                        if (p[i] == sampleRate)
                         {
                             out = sampleRate;
                             break;
                         }
 
-                        if (!out || abs(sampleRate - *p) < abs(sampleRate - out))
-                            out = *p;
-                        p++;
+                        if (!out || abs(sampleRate - p[i]) < abs(sampleRate - out))
+                            out = p[i];
                     }
                 }
                 return out;
@@ -745,31 +764,31 @@ namespace tl
                 bool resample = false;
                 p.avAudioCodecContext->sample_fmt =
                     fromAudioType(info.audio.dataType);
-                if (!checkSampleFormat(
+                if (!checkSampleFormat(p.avAudioCodecContext,
                         avCodec, p.avAudioCodecContext->sample_fmt))
                 {
                     // Try it as a planar format then.
                     AVSampleFormat planarFormat = 
                         toPlanarFormat(p.avAudioCodecContext->sample_fmt);
 
-                    if (!checkSampleFormat(avCodec, planarFormat))
+                    if (!checkSampleFormat(p.avAudioCodecContext, avCodec, planarFormat))
                     {
                         // If that also failed, initialize a resampler
                         resample = true;
 
-                        if (checkSampleFormat(avCodec, AV_SAMPLE_FMT_FLT))
+                        if (checkSampleFormat(p.avAudioCodecContext, avCodec, AV_SAMPLE_FMT_FLT))
                         {
                             p.avAudioPlanar = false;
                             p.avAudioCodecContext->sample_fmt =
                                 AV_SAMPLE_FMT_FLT;
                         }
-                        else if(checkSampleFormat(avCodec, AV_SAMPLE_FMT_FLTP))
+                        else if(checkSampleFormat(p.avAudioCodecContext, avCodec, AV_SAMPLE_FMT_FLTP))
                         {
                             p.avAudioPlanar = true;
                             p.avAudioCodecContext->sample_fmt =
                                 AV_SAMPLE_FMT_FLTP;
                         }
-                        else if(checkSampleFormat(avCodec, AV_SAMPLE_FMT_S16))
+                        else if(checkSampleFormat(p.avAudioCodecContext, avCodec, AV_SAMPLE_FMT_S16))
                         {
                             p.avAudioPlanar = false;
                             p.avAudioCodecContext->sample_fmt =
@@ -796,7 +815,7 @@ namespace tl
                 else
                     p.flatPointers.resize(1);
                 
-                r = selectChannelLayout(
+                r = selectChannelLayout(p.avAudioCodecContext,
                     avCodec, &p.avAudioCodecContext->ch_layout,
                     info.audio.channelCount);
                 if (r < 0)
@@ -806,7 +825,8 @@ namespace tl
                             .arg(p.fileName));
 
                 p.sampleRate =
-                    selectSampleRate(avCodec, info.audio.sampleRate);
+                    selectSampleRate(p.avAudioCodecContext,
+                                     avCodec, info.audio.sampleRate);
                 if (p.sampleRate == 0)
                     throw std::runtime_error(
                         string::Format(
@@ -1140,10 +1160,10 @@ namespace tl
                     throw std::runtime_error(string::Format("{0}: Cannot allocate stream").arg(p.fileName));
                 }
                 p.avVideoStream->id = p.avFormatContext->nb_streams - 1;
-                if (!avCodec->pix_fmts)
-                {
-                    throw std::runtime_error(string::Format("{0}: No pixel formats available").arg(p.fileName));
-                }
+                // if (!avCodec->pix_fmts)
+                // {
+                //     throw std::runtime_error(string::Format("{0}: No pixel formats available").arg(p.fileName));
+                // }
 
                 p.avCodecContext->codec_id = avCodec->id;
                 p.avCodecContext->codec_type = AVMEDIA_TYPE_VIDEO;
@@ -1247,7 +1267,8 @@ namespace tl
 
                 // Parse the pixel format and check that it is a valid one.
                 AVPixelFormat pix_fmt = parsePixelFormat(pixelFormat);
-                pix_fmt = choosePixelFormat(avCodec, pix_fmt, _logSystem);
+                pix_fmt = choosePixelFormat(p.avCodecContext,
+                                            avCodec, pix_fmt, _logSystem);
                 p.avCodecContext->pix_fmt = pix_fmt;
 
                 if (profile == Profile::H264)
