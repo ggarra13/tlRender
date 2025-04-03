@@ -1330,7 +1330,8 @@ namespace tl
                 if (r < 0)
                 {
                     throw std::runtime_error(
-                        string::Format("{0}: avcodec_open2 - {1}")
+                        string::Format("{0}: avcodec_open2 Could not open "
+                                       "video codec - {1}")
                             .arg(p.fileName)
                             .arg(getErrorLabel(r)));
                 }
@@ -1367,7 +1368,7 @@ namespace tl
                     if (pix_fmt == AV_PIX_FMT_YUVA420P)
                     {
                         av_dict_set(
-                            &p.avVideoStream->metadata, "alpha_mode", "1", 0);
+                            &p.avVideoStream->metadata, "alpha_mode", "on", 0);
 
                         const std::string& extension =
                             string::toLower(path.getExtension());
