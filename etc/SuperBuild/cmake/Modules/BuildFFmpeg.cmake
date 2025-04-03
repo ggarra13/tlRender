@@ -507,11 +507,6 @@ if(WIN32)
     # FFmpeg configure script can find them.
     # Not done here, but in pre-flight script of mrv2
     set(FFmpeg_OPENSSL_COPY)
-    # if(TLRENDER_NET)
-    #     set(FFmpeg_OPENSSL_COPY
-    #         "cp ${INSTALL_PREFIX}/lib/libssl.lib ${INSTALL_PREFIX}/lib/ssl.lib && \
-    #         cp ${INSTALL_PREFIX}/lib/libcrypto.lib ${INSTALL_PREFIX}/lib/crypto.lib &&")
-    # endif()
 
     if(WIN32)
 	convert_path_for_msys2("${CMAKE_CURRENT_BINARY_DIR}" BINARY_DIR)
