@@ -34,6 +34,7 @@ elseif(APPLE)
         --openssldir=${CMAKE_INSTALL_PREFIX}
         no-docs
         no-external-tests
+	no-shared
         no-tests
         no-unit-test)
     if(CMAKE_OSX_DEPLOYMENT_TARGET)
@@ -48,6 +49,7 @@ else()
         --openssldir=${CMAKE_INSTALL_PREFIX}
         no-docs
         no-external-tests
+	no-shared
         no-tests
         no-unit-test)
     set(OpenSSL_BUILD make -j ${NPROCS})
