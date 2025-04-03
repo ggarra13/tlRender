@@ -8,6 +8,7 @@
 #include <unordered_map>
 
 #include <tlCore/Math.h>
+#include <tlCore/String.h>
 #include <tlCore/StringFormat.h>
 #include <tlCore/AudioResample.h>
 #include <tlCore/LogSystem.h>
@@ -413,7 +414,10 @@ namespace tl
                     option.erase(option.find_last_not_of(" \t#") + 1);
                     value.erase(0, value.find_first_not_of(" \t"));
                     value.erase(value.find_last_not_of(" \t#") + 1);
-
+                    
+                    // Remove trailing newlines
+                    string::removeTrailingNewlines(value);
+                    
                     settings[option] = value;
                 }
                 file.close();
