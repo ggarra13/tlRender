@@ -8,7 +8,6 @@
 #include <unordered_map>
 
 #include <tlCore/Math.h>
-#include <tlCore/String.h>
 #include <tlCore/StringFormat.h>
 #include <tlCore/AudioResample.h>
 #include <tlCore/LogSystem.h>
@@ -192,29 +191,22 @@ namespace tl
             }
     
             enum AVPixelFormat
-            choosePixelFormat(const AVCodecContext *avctx,
-                              const AVCodec *codec, enum AVPixelFormat target,
+            choosePixelFormat(const AVCodec *codec, enum AVPixelFormat target,
                               std::weak_ptr<log::System>& _logSystem)
             {
-                const enum AVPixelFormat *p = nullptr;
-                int num = 0;
-                int i = 0;
-                if (codec && avctx) {
-                    int ok = avcodec_get_supported_config(avctx, codec,
-                                                          AV_CODEC_CONFIG_PIX_FORMAT,
-                                                          0, (const void**) &p, &num);
+                if (codec && codec->pix_fmts) {
+                    const enum AVPixelFormat *p = codec->pix_fmts;
                     const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(target);
                     int has_alpha = desc ? desc->nb_components % 2 == 0 : 0;
                     enum AVPixelFormat best= AV_PIX_FMT_NONE;
 
-                    for (i = 0; i < num; ++i)
-                    {
-                        best = av_find_best_pix_fmt_of_2(best, p[i], target,
+                    for (; *p != AV_PIX_FMT_NONE; p++) {
+                        best = av_find_best_pix_fmt_of_2(best, *p, target,
                                                          has_alpha, NULL);
-                        if (p[i] == target)
+                        if (*p == target)
                             break;
                     }
-                    if (i >=num)
+                    if (*p == AV_PIX_FMT_NONE)
                     {
                         if (target != AV_PIX_FMT_NONE)
                         {
@@ -414,10 +406,7 @@ namespace tl
                     option.erase(option.find_last_not_of(" \t#") + 1);
                     value.erase(0, value.find_first_not_of(" \t"));
                     value.erase(value.find_last_not_of(" \t#") + 1);
-                    
-                    // Remove trailing newlines
-                    string::removeTrailingNewlines(value);
-                    
+
                     settings[option] = value;
                 }
                 file.close();
@@ -456,92 +445,80 @@ namespace tl
                 return out;
             }
             
-        //! Check that a given sample format is supported by the encoder
-        bool checkSampleFormat(const AVCodecContext* avctx,
-                               const AVCodec* codec,
-                               enum AVSampleFormat sample_fmt)
+            //! Check that a given sample format is supported by the encoder
+            bool checkSampleFormat(const AVCodec* codec,
+                                   enum AVSampleFormat sample_fmt)
             {
+                const enum AVSampleFormat *p = codec->sample_fmts;
+
                 bool out = false;
-                const enum AVSampleFormat *p = nullptr;
-                int num = 0;
-                int i = 0;
-                if (codec && avctx) {
-                    int ok = avcodec_get_supported_config(avctx, codec,
-                                                          AV_CODEC_CONFIG_SAMPLE_FORMAT,
-                                                          0, (const void**)&p, &num);
-                    for (i = 0; i < num; ++i)
+                while (*p != AV_SAMPLE_FMT_NONE)
+                {
+                    if (*p == sample_fmt)
                     {
-                        if (p[i] == sample_fmt)
-                        {
-                            out = true;
-                            break;
-                        }
+                        out = true;
+                        break;
                     }
+                    p++;
                 }
                 return out;
             }
 
             //! Select layout with equal or the highest channel count
-            int selectChannelLayout(const AVCodecContext* avctx,
-                                    const AVCodec* codec, AVChannelLayout* dst,
+            int selectChannelLayout(const AVCodec* codec, AVChannelLayout* dst,
                                     int channelCount)
             {
                 const AVChannelLayout* p = nullptr;
                 const AVChannelLayout* best_ch_layout = nullptr;
                 int best_nb_channels   = 0;
-                int num = 0;
-                int i = 0;
 
                 int out = 1;
-                if (codec && avctx) {
-                    int ok = avcodec_get_supported_config(avctx, codec,
-                                                          AV_CODEC_CONFIG_CHANNEL_LAYOUT,
-                                                          0, (const void**)&p, &num);
-                    if (num == 0)
+                if (!codec->ch_layouts)
+                {
+                    av_channel_layout_default(dst, channelCount);
+                    out = 0;
+                }
+                else
+                {
+                    p = codec->ch_layouts;
+                    while (p->nb_channels)
                     {
-                        av_channel_layout_default(dst, channelCount);
-                        out = 0;
-                    }
-                    else
-                    {
-                        for (i = 0; i < num; ++i)
-                        {
-                            int nb_channels = p[i].nb_channels;
+                        int nb_channels = p->nb_channels;
                         
-                            if (nb_channels > best_nb_channels)
-                            {
-                                best_ch_layout   = &p[i];
-                                best_nb_channels = nb_channels;
-                            }
+                        if (nb_channels > best_nb_channels)
+                        {
+                            best_ch_layout   = p;
+                            best_nb_channels = nb_channels;
                         }
-                        out = av_channel_layout_copy(dst, best_ch_layout);
+                        p++;
                     }
+                    out = av_channel_layout_copy(dst, best_ch_layout);
                 }
                 return out;
             }
             
             //! Return an equal or higher supported samplerate
-            int selectSampleRate(const AVCodecContext *avctx,
-                                 const AVCodec* codec, const int sampleRate)
+            int selectSampleRate(const AVCodec* codec, const int sampleRate)
             {
-                int out = sampleRate;
-                int* p = nullptr;
-                int num = 0;
-                int i = 0;
-                if (codec && avctx) {
-                    int ok = avcodec_get_supported_config(avctx, codec,
-                                                          AV_CODEC_CONFIG_SAMPLE_RATE,
-                                                          0, (const void**)&p, &num);
-                    for (i = 0; i < num; ++i)
+                int out = 0;
+                if (!codec->supported_samplerates)
+                {
+                    out = sampleRate;
+                }
+                else
+                {
+                    const int* p = codec->supported_samplerates;
+                    while (*p)
                     {
-                        if (p[i] == sampleRate)
+                        if (*p == sampleRate)
                         {
                             out = sampleRate;
                             break;
                         }
 
-                        if (!out || abs(sampleRate - p[i]) < abs(sampleRate - out))
-                            out = p[i];
+                        if (!out || abs(sampleRate - *p) < abs(sampleRate - out))
+                            out = *p;
+                        p++;
                     }
                 }
                 return out;
@@ -768,31 +745,31 @@ namespace tl
                 bool resample = false;
                 p.avAudioCodecContext->sample_fmt =
                     fromAudioType(info.audio.dataType);
-                if (!checkSampleFormat(p.avAudioCodecContext,
+                if (!checkSampleFormat(
                         avCodec, p.avAudioCodecContext->sample_fmt))
                 {
                     // Try it as a planar format then.
                     AVSampleFormat planarFormat = 
                         toPlanarFormat(p.avAudioCodecContext->sample_fmt);
 
-                    if (!checkSampleFormat(p.avAudioCodecContext, avCodec, planarFormat))
+                    if (!checkSampleFormat(avCodec, planarFormat))
                     {
                         // If that also failed, initialize a resampler
                         resample = true;
 
-                        if (checkSampleFormat(p.avAudioCodecContext, avCodec, AV_SAMPLE_FMT_FLT))
+                        if (checkSampleFormat(avCodec, AV_SAMPLE_FMT_FLT))
                         {
                             p.avAudioPlanar = false;
                             p.avAudioCodecContext->sample_fmt =
                                 AV_SAMPLE_FMT_FLT;
                         }
-                        else if(checkSampleFormat(p.avAudioCodecContext, avCodec, AV_SAMPLE_FMT_FLTP))
+                        else if(checkSampleFormat(avCodec, AV_SAMPLE_FMT_FLTP))
                         {
                             p.avAudioPlanar = true;
                             p.avAudioCodecContext->sample_fmt =
                                 AV_SAMPLE_FMT_FLTP;
                         }
-                        else if(checkSampleFormat(p.avAudioCodecContext, avCodec, AV_SAMPLE_FMT_S16))
+                        else if(checkSampleFormat(avCodec, AV_SAMPLE_FMT_S16))
                         {
                             p.avAudioPlanar = false;
                             p.avAudioCodecContext->sample_fmt =
@@ -819,7 +796,7 @@ namespace tl
                 else
                     p.flatPointers.resize(1);
                 
-                r = selectChannelLayout(p.avAudioCodecContext,
+                r = selectChannelLayout(
                     avCodec, &p.avAudioCodecContext->ch_layout,
                     info.audio.channelCount);
                 if (r < 0)
@@ -829,8 +806,7 @@ namespace tl
                             .arg(p.fileName));
 
                 p.sampleRate =
-                    selectSampleRate(p.avAudioCodecContext,
-                                     avCodec, info.audio.sampleRate);
+                    selectSampleRate(avCodec, info.audio.sampleRate);
                 if (p.sampleRate == 0)
                     throw std::runtime_error(
                         string::Format(
@@ -1164,10 +1140,10 @@ namespace tl
                     throw std::runtime_error(string::Format("{0}: Cannot allocate stream").arg(p.fileName));
                 }
                 p.avVideoStream->id = p.avFormatContext->nb_streams - 1;
-                // if (!avCodec->pix_fmts)
-                // {
-                //     throw std::runtime_error(string::Format("{0}: No pixel formats available").arg(p.fileName));
-                // }
+                if (!avCodec->pix_fmts)
+                {
+                    throw std::runtime_error(string::Format("{0}: No pixel formats available").arg(p.fileName));
+                }
 
                 p.avCodecContext->codec_id = avCodec->id;
                 p.avCodecContext->codec_type = AVMEDIA_TYPE_VIDEO;
@@ -1271,8 +1247,7 @@ namespace tl
 
                 // Parse the pixel format and check that it is a valid one.
                 AVPixelFormat pix_fmt = parsePixelFormat(pixelFormat);
-                pix_fmt = choosePixelFormat(p.avCodecContext,
-                                            avCodec, pix_fmt, _logSystem);
+                pix_fmt = choosePixelFormat(avCodec, pix_fmt, _logSystem);
                 p.avCodecContext->pix_fmt = pix_fmt;
 
                 if (profile == Profile::H264)
@@ -1334,8 +1309,7 @@ namespace tl
                 if (r < 0)
                 {
                     throw std::runtime_error(
-                        string::Format("{0}: avcodec_open2 Could not open "
-                                       "video codec - {1}")
+                        string::Format("{0}: avcodec_open2 - {1}")
                             .arg(p.fileName)
                             .arg(getErrorLabel(r)));
                 }
