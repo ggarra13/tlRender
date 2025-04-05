@@ -1,14 +1,14 @@
 include(ExternalProject)
 
 set(PNG_GIT_REPOSITORY "https://github.com/pnggroup/libpng.git")
-set(PNG_GIT_TAG "v1.6.43")
+set(PNG_GIT_TAG "v1.6.44")
 
 set(PNG_SHARED_LIBS ON)
 set(PNG_STATIC_LIBS OFF)
-# if(NOT BUILD_SHARED_LIBS)
-#     set(PNG_SHARED_LIBS OFF)
-#     set(PNG_STATIC_LIBS ON)
-# endif()
+if(NOT BUILD_SHARED_LIBS)
+    set(PNG_SHARED_LIBS OFF)
+    set(PNG_STATIC_LIBS ON)
+endif()
 
 set(PNG_ARGS
     ${TLRENDER_EXTERNAL_ARGS}
