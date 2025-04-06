@@ -60,7 +60,7 @@ set(libplacebo_BUILD
     cd build && ninja)
 
 set(libplacebo_INSTALL
-    cd build && inja install)
+    cd build && ninja install)
 
 set(libplacebo_PATCH)
 
