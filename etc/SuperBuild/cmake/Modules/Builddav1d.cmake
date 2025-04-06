@@ -63,6 +63,7 @@ set(dav1d_CONFIGURE
     "CFLAGS=${dav1d_CFLAGS}"
     "LDFLAGS=${dav1d_LDFLAGS}"
     "DYLD_LIBRARY_PATH=''"
+    "LD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib"
     "PYTHONPATH=''"
     -- ${MESON_EXECUTABLE} setup
     --wipe

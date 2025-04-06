@@ -66,6 +66,7 @@ set(libplacebo_CONFIGURE
     "CFLAGS=${libplacebo_CFLAGS}"
     "LDFLAGS=${libplacebo_LDFLAGS}"
     "DYLD_LIBRARY_PATH=''"
+    "LD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib"
     "PYTHONPATH=''"
     --
     ${MESON_EXECUTABLE} setup
