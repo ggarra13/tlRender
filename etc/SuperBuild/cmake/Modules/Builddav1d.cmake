@@ -15,17 +15,16 @@ if(NOT BUILD_PYTHON)
     endif()
 else()
     set(MESON_EXECUTABLE ${CMAKE_INSTALL_PREFIX}/bin/meson)
+    if (APPLE)
+	execute_process(COMMAND brew install meson)
+	set(MESON_EXECUTABLE /usr/local/bin/meson)
+    endif()
 endif()
 
 if(APPLE AND CMAKE_OSX_DEPLOYMENT_TARGET)
     set(dav1d_CFLAGS -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET})
     set(dav1d_CXXFLAGS -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET})
     set(dav1d_LDFLAGS -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET})
-endif()
-
-set (dav1d_COPY_ZLIB )
-if (APPLE)
-    set(dav1d_COPY_ZLIB cp ${CMAKE_INSTALL_PREFIX}/lib/libz.1.dylib . && )
 endif()
 
 set(dav1d_RENAME_TO_LIB )
@@ -40,7 +39,8 @@ set(dav1d_CONFIGURE
     "CXXFLAGS=${dav1d_CXXFLAGS}"
     "CFLAGS=${dav1d_CFLAGS}"
     "LDFLAGS=${dav1d_LDFLAGS}"
-    "DYLD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib"
+    "DYLD_LIBRARY_PATH=''"
+    "PYTHONPATH=''"
     -- ${MESON_EXECUTABLE} setup
     --wipe
     -Denable_tools=false
@@ -50,9 +50,8 @@ set(dav1d_CONFIGURE
     --prefix=${CMAKE_INSTALL_PREFIX}
     build)
 
-set(dav1d_BUILD
-    cd build &&
-    ${dav1d_COPY_ZLIB} ninja)
+set(dav1d_BUILD 
+    cd build && ninja)
 
 set(dav1d_INSTALL
     cd build &&

@@ -27,23 +27,24 @@ if(WIN32)
     set(CLANG_ENV CC=clang CXX=clang)
 endif()
 
-set (libplacebo_ENV ${CMAKE_COMMAND} -E env
-    "DYLD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib" -- )
-set (libaplcebo_COPY )
+set (libplacebo_INSTALL_MESON )
 if (APPLE)
-    set(libplacebo_COPY cp ${CMAKE_INSTALL_PREFIX}/lib/libz.1.dylib . && )
+    set(libplacebo_INSTALL_MESON && brew install meson)
+    set(MESON_EXECUTABLE /usr/local/bin/meson)
 elseif(UNIX)
     set(libplacebo_LDFLAGS -lstdc++)  # \@bug: in Rocky Linux 8.10+
 endif()
 
 set(libplacebo_CONFIGURE
-    COMMAND ${libplacebo_ENV} git submodule update --init
+    COMMAND git submodule update --init ${libplacebo_INSTALL_MESON}
     COMMAND ${CMAKE_COMMAND} -E env
     ${CLANG_ENV}
-    "DYLD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib"
     "CXXFLAGS=${libplacebo_CXXFLAGS}"
     "CFLAGS=${libplacebo_CFLAGS}"
-    "LDFLAGS=${libplacebo_LDFLAGS}" --
+    "LDFLAGS=${libplacebo_LDFLAGS}"
+    "DYLD_LIBRARY_PATH=''"
+    "PYTHONPATH=''"
+    --
     ${MESON_EXECUTABLE} setup
     --wipe
     -Dvulkan=disabled
@@ -56,12 +57,10 @@ set(libplacebo_CONFIGURE
     build)
 
 set(libplacebo_BUILD
-    cd build &&
-    ${libplacebo_COPY} ${libplacebo_ENV} ninja)
+    cd build && ninja)
 
 set(libplacebo_INSTALL
-    cd build &&
-    ${libplacebo_ENV} ninja install)
+    cd build && ninja install)
 
 set(libplacebo_PATCH)
 
