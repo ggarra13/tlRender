@@ -27,27 +27,16 @@ if(WIN32)
     set(CLANG_ENV CC=clang CXX=clang)
 endif()
 
-set (libplacebo_USE_WRAPPER )
+set (libplacebo_INSTALL_MESON )
 if (APPLE)
-    # Define the wrapper path
-    set(PYTHON_WRAPPER "${CMAKE_BINARY_DIR}/python3.11-wrapper.sh")
-
-    # Create the wrapper script file
-    file(WRITE "${PYTHON_WRAPPER}" "#!/bin/bash\n")
-    file(APPEND "${PYTHON_WRAPPER}" "export DYLD_LIBRARY_PATH=\"${CMAKE_INSTALL_PREFIX}/lib:\$DYLD_LIBRARY_PATH\"\n")
-    file(APPEND "${PYTHON_WRAPPER}" "exec ${Python_EXECUTABLE} \"\$@\"\n")
-
-    # Make it executable
-    file(COPY "${PYTHON_WRAPPER}" DESTINATION "${CMAKE_BINARY_DIR}")
-    execute_process(COMMAND "chmod +x ${PYTHON_WRAPPER}")
-    
-    set(libplacebo_USE_WRAPPER -Dpython=${PYTHON_WRAPPER})
+    set(libplacebo_INSTALL_MESON 6& brew install meson)
+    set(MESON_EXECUTABLE /usr/local/bin/meson)
 elseif(UNIX)
     set(libplacebo_LDFLAGS -lstdc++)  # \@bug: in Rocky Linux 8.10+
 endif()
 
 set(libplacebo_CONFIGURE
-    COMMAND git submodule update --init
+    COMMAND git submodule update --init ${libplacebo_INSTALL_MESON}
     COMMAND ${CMAKE_COMMAND} -E env
     ${CLANG_ENV}
     "DYLD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib"
@@ -63,7 +52,6 @@ set(libplacebo_CONFIGURE
     -Dglslang=disabled
     -Dlibdir=${CMAKE_INSTALL_PREFIX}/lib
     --prefix=${CMAKE_INSTALL_PREFIX}
-    ${libplacebo_USE_WRAPPER}
     build)
 
 set(libplacebo_BUILD
