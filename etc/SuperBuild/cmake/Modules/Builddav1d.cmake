@@ -50,7 +50,7 @@ set(dav1d_CONFIGURE
     --prefix=${CMAKE_INSTALL_PREFIX}
     build)
 
-set(dav1d_BUILD
+set(dav1d_BUILD 
     cd build && ninja)
 
 set(dav1d_INSTALL
