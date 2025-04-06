@@ -39,7 +39,6 @@ set(libplacebo_CONFIGURE
     COMMAND git submodule update --init ${libplacebo_INSTALL_MESON}
     COMMAND ${CMAKE_COMMAND} -E env
     ${CLANG_ENV}
-    "DYLD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib"
     "CXXFLAGS=${libplacebo_CXXFLAGS}"
     "CFLAGS=${libplacebo_CFLAGS}"
     "LDFLAGS=${libplacebo_LDFLAGS}" --
