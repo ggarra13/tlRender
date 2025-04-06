@@ -39,7 +39,7 @@ if (APPLE)
 
     # Make it executable
     file(COPY "${PYTHON_WRAPPER}" DESTINATION "${CMAKE_BINARY_DIR}")
-    file(CALL "chmod +x ${PYTHON_WRAPPER}")
+    executure_process(COMMAND "chmod +x ${PYTHON_WRAPPER}")
     
     set(libplacebo_USE_WRAPPER -Dpython=${PYTHON_WRAPPER})
 elseif(UNIX)
