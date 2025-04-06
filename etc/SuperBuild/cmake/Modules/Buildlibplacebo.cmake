@@ -7,8 +7,6 @@ set(libplacebo_GIT_TAG v7.349.0)
 set(libplacebo_DEPS ${PYTHON_DEP})
 
 
-set(libplacebo_macOS_ENV)
-
 if(NOT BUILD_PYTHON)
     find_program(MESON_EXECUTABLE NAMES meson meson.exe)
     if(NOT MESON_EXECUTABLE)
@@ -19,10 +17,6 @@ else()
 	# Try to install meson via brew if not found
 	find_program(MESON_EXECUTABLE NAMES meson)
 
-	set(libplacebo_macOS_ENV
-	    "DYLD_LIBRARY_PATH=''"
-	    "PYTHONPATH=''"
-	)
 	if(NOT MESON_EXECUTABLE)
 	    message(STATUS "Meson not found. Attempting to install via Homebrew...")
 	    execute_process(COMMAND brew install meson
@@ -69,7 +63,6 @@ set(libplacebo_CONFIGURE
     "CXXFLAGS=${libplacebo_CXXFLAGS}"
     "CFLAGS=${libplacebo_CFLAGS}"
     "LDFLAGS=${libplacebo_LDFLAGS}"
-    ${libplacebo_macOS_ENV}
     "LD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib"
     --
     ${MESON_EXECUTABLE} setup

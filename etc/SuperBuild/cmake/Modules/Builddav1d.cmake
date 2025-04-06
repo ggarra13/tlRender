@@ -8,7 +8,6 @@ if(UNIX)
     set(dav1d_DEPS NASM ${dav1d_DEPS})
 endif()
 
-set(dav1d_macOS_ENV )
 if(NOT BUILD_PYTHON)
     find_program(MESON_EXECUTABLE NAMES meson meson.exe)
     if(NOT MESON_EXECUTABLE)
@@ -19,10 +18,6 @@ else()
 	# Try to install meson via brew if not found
 	find_program(MESON_EXECUTABLE NAMES meson)
 
-	set(dav1d_macOS_ENV
-	    "DYLD_LIBRARY_PATH=''"
-	    "PYTHONPATH=''"
-	)
 	if(NOT MESON_EXECUTABLE)
 	    message(STATUS "Meson not found. Attempting to install via Homebrew...")
 	    execute_process(COMMAND brew install meson
@@ -65,7 +60,6 @@ set(dav1d_CONFIGURE
     "CXXFLAGS=${dav1d_CXXFLAGS}"
     "CFLAGS=${dav1d_CFLAGS}"
     "LDFLAGS=${dav1d_LDFLAGS}"
-    ${dav1d_macOS_ENV}
     "LD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib"
     -- ${MESON_EXECUTABLE} setup
     --wipe
