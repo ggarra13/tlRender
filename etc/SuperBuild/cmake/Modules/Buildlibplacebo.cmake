@@ -31,7 +31,7 @@ set (libplacebo_ENV ${CMAKE_COMMAND} -E env
     "DYLD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib" -- )
 set (libaplcebo_COPY )
 if (APPLE)
-    set(libplacebo_COPY cp ${CMAKE_INSTALL_PREFIX}/lib/libz.1.dylib . && )
+    # set(libplacebo_COPY cp ${CMAKE_INSTALL_PREFIX}/lib/libz.* . && )
 elseif(UNIX)
     set(libplacebo_LDFLAGS -lstdc++)  # \@bug: in Rocky Linux 8.10+
 endif()
