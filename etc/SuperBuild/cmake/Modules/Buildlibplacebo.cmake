@@ -40,7 +40,7 @@ else()
 	set(MESON_EXECUTABLE ${CMAKE_INSTALL_PREFIX}/Bin/Scripts/meson)
     else()
 	set(MESON_EXECUTABLE ${CMAKE_INSTALL_PREFIX}/bin/meson)
-	set(libplacebo_PYTHONPATH "PYTHONPATH=${CMAKE_INSTALL_PREFIX}/lib/python${Python_VERSION}:${CMAKE_INSTALL_PREFIX}/lib/python${Python_VERSION}/site-packages"
+	set(libplacebo_PYTHONPATH "PYTHONPATH=${CMAKE_INSTALL_PREFIX}/lib/python${Python_VERSION}:${CMAKE_INSTALL_PREFIX}/lib/python${Python_VERSION}/site-packages")
     endif()
 endif()
 
