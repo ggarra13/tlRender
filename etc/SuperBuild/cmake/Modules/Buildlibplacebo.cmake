@@ -6,7 +6,7 @@ set(libplacebo_GIT_TAG v7.349.0)
 
 set(libplacebo_DEPS ${PYTHON_DEP})
 
-
+set(libplacebo_PYTHONPATH)
 if(NOT BUILD_PYTHON)
     find_program(MESON_EXECUTABLE NAMES meson meson.exe)
     if(NOT MESON_EXECUTABLE)
@@ -40,6 +40,7 @@ else()
 	set(MESON_EXECUTABLE ${CMAKE_INSTALL_PREFIX}/Bin/Scripts/meson)
     else()
 	set(MESON_EXECUTABLE ${CMAKE_INSTALL_PREFIX}/bin/meson)
+	set(libplacebo_PYTHONPATH "PYTHONPATH=${CMAKE_INSTALL_PREFIX}/lib/python${Python_VERSION}:${CMAKE_INSTALL_PREFIX}/lib/python${Python_VERSION}/site-packages"
     endif()
 endif()
 
@@ -66,6 +67,7 @@ set(libplacebo_CONFIGURE
     "CFLAGS=${libplacebo_CFLAGS}"
     "LDFLAGS=${libplacebo_LDFLAGS}"
     "LD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib"
+    ${libplacebo_PYTHONPATH}
     --
     ${MESON_EXECUTABLE} setup
     --wipe
@@ -79,7 +81,7 @@ set(libplacebo_CONFIGURE
     build)
 
 set(libplacebo_BUILD
-    cd build && ninja)
+    cd build && ${libplacebo_PYTHONPATH} ninja)
 
 set(libplacebo_INSTALL
     cd build && ninja install)
