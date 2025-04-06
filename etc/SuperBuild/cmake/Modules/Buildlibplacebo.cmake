@@ -84,7 +84,7 @@ set(libplacebo_BUILD
     cd build && ${libplacebo_PYTHONPATH} ninja)
 
 set(libplacebo_INSTALL
-    cd build && ninja install)
+    cd build && ${libplacebo_PYTHONPATH} ninja install)
 
 set(libplacebo_PATCH)
 

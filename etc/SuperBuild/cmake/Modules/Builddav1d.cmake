@@ -79,7 +79,7 @@ set(dav1d_BUILD
     cd build && ${dav1d_PYTHONPATH} ninja)
 
 set(dav1d_INSTALL
-    cd build &&
+    cd build && ${dav1d_PYTHONPATH} 
     ninja install ${dav1d_RENAME_TO_LIB})
 
 ExternalProject_Add(
