@@ -41,7 +41,9 @@ set(libplacebo_CONFIGURE
     ${CLANG_ENV}
     "CXXFLAGS=${libplacebo_CXXFLAGS}"
     "CFLAGS=${libplacebo_CFLAGS}"
-    "LDFLAGS=${libplacebo_LDFLAGS}" --
+    "LDFLAGS=${libplacebo_LDFLAGS}"
+    "PYTHONPATH=''"
+    --
     ${MESON_EXECUTABLE} setup
     --wipe
     -Dvulkan=disabled
