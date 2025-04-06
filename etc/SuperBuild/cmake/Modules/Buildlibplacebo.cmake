@@ -6,13 +6,14 @@ set(libplacebo_GIT_TAG v7.349.0)
 
 set(libplacebo_DEPS ${PYTHON_DEP})
 
+
 if(NOT BUILD_PYTHON)
     find_program(MESON_EXECUTABLE NAMES meson meson.exe)
     if(NOT MESON_EXECUTABLE)
 	message(FATAL_ERROR "Meson build system not found!")
     endif()
 else()
-    set(MESON_EXECUTABLE meson)
+    set(MESON_EXECUTABLE ${CMAKE_INSTALL_PREFIX}/bin/meson)
 endif()
 
 if(APPLE AND CMAKE_OSX_DEPLOYMENT_TARGET)

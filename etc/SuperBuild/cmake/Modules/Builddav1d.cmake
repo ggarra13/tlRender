@@ -14,7 +14,7 @@ if(NOT BUILD_PYTHON)
 	message(FATAL_ERROR "Meson build system not found!")
     endif()
 else()
-    set(MESON_EXECUTABLE meson)
+    set(MESON_EXECUTABLE ${CMAKE_INSTALL_PREFIX}/bin/meson)
 endif()
 
 if(APPLE AND CMAKE_OSX_DEPLOYMENT_TARGET)
