@@ -29,7 +29,7 @@ endif()
 
 set (libplacebo_INSTALL_MESON )
 if (APPLE)
-    set(libplacebo_INSTALL_MESON 6& brew install meson)
+    set(libplacebo_INSTALL_MESON && brew install meson)
     set(MESON_EXECUTABLE /usr/local/bin/meson)
 elseif(UNIX)
     set(libplacebo_LDFLAGS -lstdc++)  # \@bug: in Rocky Linux 8.10+
