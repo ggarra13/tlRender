@@ -42,6 +42,7 @@ set(libplacebo_CONFIGURE
     "CXXFLAGS=${libplacebo_CXXFLAGS}"
     "CFLAGS=${libplacebo_CFLAGS}"
     "LDFLAGS=${libplacebo_LDFLAGS}"
+    "DYLD_LIBRARY_PATH=''"
     "PYTHONPATH=''"
     --
     ${MESON_EXECUTABLE} setup
