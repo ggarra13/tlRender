@@ -8,6 +8,7 @@ if(UNIX)
     set(dav1d_DEPS NASM ${dav1d_DEPS})
 endif()
 
+set(dav1d_PYTHONPATH )
 if(NOT BUILD_PYTHON)
     find_program(MESON_EXECUTABLE NAMES meson meson.exe)
     if(NOT MESON_EXECUTABLE)
@@ -41,6 +42,7 @@ else()
 	set(MESON_EXECUTABLE ${CMAKE_INSTALL_PREFIX}/Bin/Scripts/meson)
     else()
 	set(MESON_EXECUTABLE ${CMAKE_INSTALL_PREFIX}/bin/meson)
+	set(dav1d_PYTHONPATH "PYTHONPATH=${CMAKE_INSTALL_PREFIX}/lib/python${Python_VERSION}:${CMAKE_INSTALL_PREFIX}/lib/python${Python_VERSION}/site-packages")
     endif()
 endif()
 
@@ -63,6 +65,7 @@ set(dav1d_CONFIGURE
     "CFLAGS=${dav1d_CFLAGS}"
     "LDFLAGS=${dav1d_LDFLAGS}"
     "LD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib"
+    ${dav1d_PYTHONPATH} 
     -- ${MESON_EXECUTABLE} setup
     --wipe
     -Denable_tools=false
@@ -73,7 +76,7 @@ set(dav1d_CONFIGURE
     build)
 
 set(dav1d_BUILD 
-    cd build && ninja)
+    cd build && ${dav1d_PYTHONPATH} ninja)
 
 set(dav1d_INSTALL
     cd build &&
