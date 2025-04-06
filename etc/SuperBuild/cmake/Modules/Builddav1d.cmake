@@ -16,24 +16,26 @@ if(NOT BUILD_PYTHON)
 else()
     if (APPLE)
 	# Try to install meson via brew if not found
-	find_program(MESON_EXECUTABLE NAMES meson)
-
-	if(NOT MESON_EXECUTABLE)
-	    message(STATUS "Meson not found. Attempting to install via Homebrew...")
-	    execute_process(COMMAND brew install meson
-                RESULT_VARIABLE BREW_RESULT
-                OUTPUT_QUIET ERROR_QUIET)
+	execute_process(COMMAND brew install meson
+            RESULT_VARIABLE BREW_RESULT
+            OUTPUT_QUIET ERROR_QUIET)
 	    
-	    if(NOT BREW_RESULT EQUAL 0)
-		message(FATAL_ERROR "Failed to install meson with Homebrew.")
-	    endif()
+	if(NOT BREW_RESULT EQUAL 0)
+	    message(FATAL_ERROR "Failed to install meson with Homebrew.")
+	endif()
 
-	    # Try to find it again after installation
-	    find_program(MESON_EXECUTABLE NAMES meson
-		PATHS
-		/opt/homebrew/bin        # M1 default
-		/usr/local/bin           # Intel default
-	    )
+	# Try to find it again after installation
+	find_program(MESON_EXECUTABLE NAMES meson
+	    PATHS
+	    /opt/homebrew/bin        # M1 default
+	    /usr/local/bin           # Intel default
+	    $ENV{PATH}
+	)
+	
+	if (NOT MESON_EXECUTABLE)
+	    message(FATAL_ERROR "meson not found in PATH")
+	else()
+	    message(STATUS "meson found at ${MESON_EXECUTABLE}")
 	endif()
     elseif(WIN32)
 	set(MESON_EXECUTABLE ${CMAKE_INSTALL_PREFIX}/Bin/Scripts/meson)
