@@ -51,17 +51,9 @@ set(dav1d_CONFIGURE
     build)
 
 set(dav1d_BUILD
-    COMMAND ${CMAKE_COMMAND} -E env
-    "DYLD_LIBRARY_PATH=''"
-    "PYTHONPATH=''"
-    --
     cd build && ninja)
 
 set(dav1d_INSTALL
-    COMMAND ${CMAKE_COMMAND} -E env
-    "DYLD_LIBRARY_PATH=''"
-    "PYTHONPATH=''"
-    --
     cd build &&
     ninja install ${dav1d_RENAME_TO_LIB})
 
