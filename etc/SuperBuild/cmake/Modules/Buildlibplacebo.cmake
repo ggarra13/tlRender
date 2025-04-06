@@ -27,17 +27,27 @@ if(WIN32)
     set(CLANG_ENV CC=clang CXX=clang)
 endif()
 
-set (libplacebo_ENV ${CMAKE_COMMAND} -E env
-    "DYLD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib" -- )
-set (libaplcebo_COPY )
+set (libplacebo_USE_WRAPPER )
 if (APPLE)
-    # set(libplacebo_COPY cp ${CMAKE_INSTALL_PREFIX}/lib/libz.* . && )
+    # Define the wrapper path
+    set(PYTHON_WRAPPER "${CMAKE_BINARY_DIR}/python3.11-wrapper.sh")
+
+    # Create the wrapper script file
+    file(WRITE "${PYTHON_WRAPPER}" "#!/bin/bash\n")
+    file(APPEND "${PYTHON_WRAPPER}" "export DYLD_LIBRARY_PATH=\"${CMAKE_INSTALL_PREFIX}/lib:\$DYLD_LIBRARY_PATH\"\n")
+    file(APPEND "${PYTHON_WRAPPER}" "exec ${Python_EXECUTABLE} \"\$@\"\n")
+
+    # Make it executable
+    file(COPY "${PYTHON_WRAPPER}" DESTINATION "${CMAKE_BINARY_DIR}")
+    file(CALL "chmod +x ${PYTHON_WRAPPER}")
+    
+    set(libplacebo_USE_WRAPPER -Dpython=${PYTHON_WRAPPER})
 elseif(UNIX)
     set(libplacebo_LDFLAGS -lstdc++)  # \@bug: in Rocky Linux 8.10+
 endif()
 
 set(libplacebo_CONFIGURE
-    COMMAND ${libplacebo_ENV} git submodule update --init
+    COMMAND git submodule update --init
     COMMAND ${CMAKE_COMMAND} -E env
     ${CLANG_ENV}
     "DYLD_LIBRARY_PATH=${CMAKE_INSTALL_PREFIX}/lib"
@@ -53,15 +63,14 @@ set(libplacebo_CONFIGURE
     -Dglslang=disabled
     -Dlibdir=${CMAKE_INSTALL_PREFIX}/lib
     --prefix=${CMAKE_INSTALL_PREFIX}
+    ${libplacebo_USE_WRAPPER}
     build)
 
 set(libplacebo_BUILD
-    cd build &&
-    ${libplacebo_COPY} ${libplacebo_ENV} ninja)
+    cd build && ninja)
 
 set(libplacebo_INSTALL
-    cd build &&
-    ${libplacebo_ENV} ninja install)
+    cd build && inja install)
 
 set(libplacebo_PATCH)
 
