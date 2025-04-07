@@ -25,10 +25,39 @@ namespace
     const char* kModule = "ffmpeg";
 }
 
+
 namespace tl
 {
     namespace ffmpeg
     {
+        image::EOTFType toEOTF(AVColorTransferCharacteristic trc)
+        {
+            image::EOTFType out = image::EOTFType::EOTF_BT709;
+            switch(trc)
+            {
+            case AVCOL_TRC_SMPTE2084: // PQ (HDR10)
+                out = image::EOTFType::EOTF_BT2100_PQ;
+                break;
+            case AVCOL_TRC_ARIB_STD_B67: // HLG
+                out = image::EOTFType::EOTF_BT2100_HLG;
+                break;
+            case AVCOL_TRC_BT2020_10:
+            case AVCOL_TRC_BT2020_12:
+                out = image::EOTFType::EOTF_BT2020;
+                break;
+            case AVCOL_TRC_BT709:
+            case AVCOL_TRC_SMPTE170M:
+            case AVCOL_TRC_SMPTE240M:
+            case AVCOL_TRC_IEC61966_2_4:
+            case AVCOL_TRC_BT1361_ECG:
+                out = image::EOTFType::EOTF_BT709;
+                break;
+            default:
+                out = image::EOTFType::EOTF_BT601;
+            }
+            return out;
+        }
+        
         ReadVideo::ReadVideo(
             const std::string& fileName,
             const std::vector<file::MemoryRead>& memory,
@@ -624,7 +653,7 @@ namespace tl
                 }
 
                 image::HDRData hdrData;
-                hdrData.eotf = static_cast<int>(_avColorTRC);
+                hdrData.eotf = toEOTF(_avColorTRC);
                 bool hasHDR = toHDRData(avVideoCodecParameters->coded_side_data,
                                         avVideoCodecParameters->nb_coded_side_data, hdrData);
                 if (hasHDR)
@@ -1024,7 +1053,7 @@ namespace tl
                     if (i == tags.end())
                     {
                         image::HDRData hdrData;
-                        hdrData.eotf = static_cast<int>(_avColorTRC);
+                        hdrData.eotf = toEOTF(_avColorTRC);
                         bool hasHDR = toHDRData(_avFrame->side_data,
                                                 _avFrame->nb_side_data,
                                                 hdrData);

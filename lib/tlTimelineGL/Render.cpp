@@ -1314,42 +1314,23 @@ namespace tl
                     src_colorspace.primaries = PL_COLOR_PRIM_BT_2020;
                     src_colorspace.transfer  = PL_COLOR_TRC_PQ;
 
-#if defined(TLRENDER_FFMPEG)
                     switch(data.eotf)
                     {
-                    case AVCOL_TRC_SMPTE2084: // PQ (HDR10)
+                    case image::EOTFType::EOTF_BT2100_PQ: // PQ (HDR10)
+                    case image::EOTFType::EOTF_BT2020: // PQ (HDR10)
                         src_colorspace.transfer  = PL_COLOR_TRC_PQ;
                         break;
-                    case AVCOL_TRC_ARIB_STD_B67: // HLG
+                    case image::EOTFType::EOTF_BT2100_HLG: // PQ (HDR10)
                         src_colorspace.transfer = PL_COLOR_TRC_HLG;
                         break;
-                    case AVCOL_TRC_BT709:
-                    case AVCOL_TRC_SMPTE170M:
-                    case AVCOL_TRC_SMPTE240M:
-                    case AVCOL_TRC_IEC61966_2_4:
-                    case AVCOL_TRC_BT1361_ECG:
-                    case AVCOL_TRC_BT2020_10:
-                    case AVCOL_TRC_BT2020_12:
-                        // EOTF != OETF
+                    case image::EOTFType::EOTF_BT709:
                         src_colorspace.transfer = PL_COLOR_TRC_BT_1886; 
                         break;
-                    case AVCOL_TRC_GAMMA22:
-                        src_colorspace.transfer = PL_COLOR_TRC_GAMMA22;
-                        break;
-                    case AVCOL_TRC_GAMMA28:
-                        src_colorspace.transfer = PL_COLOR_TRC_GAMMA28;
-                        break;
-                    case AVCOL_TRC_LINEAR:
-                        src_colorspace.transfer = PL_COLOR_TRC_LINEAR;
-                        break;
-                    case AVCOL_TRC_UNSPECIFIED:
-                    case AVCOL_TRC_RESERVED:
-                    case AVCOL_TRC_LOG: // missing
-                    case AVCOL_TRC_LOG_SQRT: // missing
+                    case image::EOTFType::EOTF_BT601:
                     default:
-                        src_colorspace.transfer = PL_COLOR_TRC_UNKNOWN;
+                        src_colorspace.transfer = PL_COLOR_TRC_SRGB; 
+                        break;
                     }
-#endif
                 
                     pl_hdr_metadata& hdr = src_colorspace.hdr;
                     hdr.min_luma = data.displayMasteringLuminance.getMin();
