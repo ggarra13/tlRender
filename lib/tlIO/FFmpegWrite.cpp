@@ -1169,6 +1169,30 @@ namespace tl
                     avCodecID = AV_CODEC_ID_PRORES;
                     avProfile = FF_PROFILE_PRORES_XQ;
                     break;
+                case Profile::DNxHD:
+                    avCodecID = AV_CODEC_ID_DNXHD;
+                    avProfile = FF_PROFILE_DNXHD;
+                    break;
+                case Profile::DNxHR_LB:
+                    avCodecID = AV_CODEC_ID_DNXHD;
+                    avProfile = FF_PROFILE_DNXHR_LB;
+                    break;
+                case Profile::DNxHR_SQ:
+                    avCodecID = AV_CODEC_ID_DNXHD;
+                    avProfile = FF_PROFILE_DNXHR_SQ;
+                    break;
+                case Profile::DNxHR_HQ:
+                    avCodecID = AV_CODEC_ID_DNXHD;
+                    avProfile = FF_PROFILE_DNXHR_HQ;
+                    break;
+                case Profile::DNxHR_HQX:
+                    avCodecID = AV_CODEC_ID_DNXHD;
+                    avProfile = FF_PROFILE_DNXHR_HQX;
+                    break;
+                case Profile::DNxHR_444:
+                    avCodecID = AV_CODEC_ID_DNXHD;
+                    avProfile = FF_PROFILE_DNXHR_444;
+                    break;
                 case Profile::VP9:
                     avCodecID = AV_CODEC_ID_VP9;
                     avProfile = FF_PROFILE_UNKNOWN;
