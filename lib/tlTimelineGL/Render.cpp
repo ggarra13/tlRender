@@ -857,14 +857,317 @@ namespace tl
                         
                         const char* textureName = sd->desc.name;
                         const char* samplerName = sd->desc.name;
-                    
+
+                        // std::cerr << "fmt->type=" << fmt->type << std::endl;
+                        // std::cerr << "fmt->num_components=" << fmt->component_depth << std::endl;
+                        // for (int i = 0; i < fmt->num_components; ++i)
+                        // {
+                        //     std::cerr << "fmt->component_depth[" << i << "]=" << fmt->component_depth[i] << std::endl;
+                        // }
+                        // std::cerr << "fmt->internal_size=" << fmt->internal_size << std::endl;
+
+                        // Defaults
                         unsigned textureId = 0;
                         GLint internalFormat = GL_RGB32F;
+                        GLint type = GL_FLOAT;
                         GLenum format = GL_RGB;
+                        int size = fmt->internal_size / fmt->num_components;
+
+                        switch(fmt->type)
+                        {
+                        case PL_FMT_FLOAT:
+                            if (size == 2)
+                                type = GL_HALF_FLOAT;
+                            else
+                                type = GL_FLOAT;
+                            break;
+                        case PL_FMT_UINT:
+                        case PL_FMT_UNORM:
+                            switch(size)
+                            {
+                            case 4:
+                                type = GL_UNSIGNED_INT;
+                                break;
+                            case 2:
+                                type = GL_UNSIGNED_SHORT;
+                                break;
+                            default:
+                                type = GL_UNSIGNED_BYTE;
+                            }
+                            break;
+                        case PL_FMT_SNORM:
+                        case PL_FMT_SINT:
+                            switch(size)
+                            {
+                            case 4:
+                                type = GL_INT;
+                                break;
+                            case 2:
+                                type = GL_SHORT;
+                                break;
+                            default:
+                                type = GL_BYTE;
+                            }
+                            break;
+                        }
+                            
+                        if (fmt->num_components == 1)
+                        {
+                            format = GL_RED;
+                            
+                            switch(fmt->type)
+                            {
+                            case PL_FMT_FLOAT:
+                                if (size == 2)
+                                    internalFormat = GL_R16F;
+                                else
+                                    internalFormat = GL_R32F;
+                                break;
+                            case PL_FMT_SNORM:
+                                switch(size)
+                                {
+                                case 2:
+                                    internalFormat = GL_R16_SNORM;
+                                    break;
+                                default:
+                                    internalFormat = GL_R8_SNORM;
+                                    break;
+                                }
+                                break;
+                            case PL_FMT_UINT:
+                                switch(size)
+                                {
+                                case 4:
+                                    internalFormat = GL_R32UI;
+                                    break;
+                                case 2:
+                                    internalFormat = GL_R16UI;
+                                    break;
+                                default:
+                                    internalFormat = GL_R8UI;
+                                    break;
+                                }
+                                break;
+                            case PL_FMT_SINT:
+                                switch(size)
+                                {
+                                case 4:
+                                    internalFormat = GL_R32I;
+                                    break;
+                                case 2:
+                                    internalFormat = GL_R16I;
+                                    break;
+                                default:
+                                    internalFormat = GL_R8I;
+                                    break;
+                                }
+                                break;
+                            case PL_FMT_UNORM:
+                                switch(size)
+                                {
+                                case 2:
+                                    internalFormat = GL_R16;
+                                    break;
+                                default:
+                                    internalFormat = GL_R8;
+                                    break;
+                                }
+                                break;
+                            }
+                        }
+                        else if (fmt->num_components == 2)
+                        {
+                            format = GL_RG;
+                            switch(fmt->type)
+                            {
+                            case PL_FMT_FLOAT:
+                                if (size == 2)
+                                    internalFormat = GL_RG16F;
+                                else
+                                    internalFormat = GL_RG32F;
+                                break;
+                            case PL_FMT_SNORM:
+                                switch(size)
+                                {
+                                case 2:
+                                    internalFormat = GL_RG16_SNORM;
+                                    break;
+                                default:
+                                    internalFormat = GL_RG8_SNORM;
+                                    break;
+                                }
+                                break;
+                            case PL_FMT_UINT:
+                                switch(size)
+                                {
+                                case 4:
+                                    internalFormat = GL_RG32UI;
+                                    break;
+                                case 2:
+                                    internalFormat = GL_RG16UI;
+                                    break;
+                                default:
+                                    internalFormat = GL_RG8UI;
+                                    break;
+                                }
+                                break;
+                            case PL_FMT_SINT:
+                                switch(size)
+                                {
+                                case 4:
+                                    internalFormat = GL_RG32I;
+                                    break;
+                                case 2:
+                                    internalFormat = GL_RG16I;
+                                    break;
+                                default:
+                                    internalFormat = GL_RG8I;
+                                    break;
+                                }
+                                break;
+                            case PL_FMT_UNORM:
+                                switch(size)
+                                {
+                                case 2:
+                                    internalFormat = GL_RG16;
+                                    break;
+                                default:
+                                    internalFormat = GL_RG8;
+                                    break;
+                                }
+                                break;
+                            }
+                        }
+                        else if (fmt->num_components == 3)
+                        {
+                            format = GL_RGB;
+                            switch(fmt->type)
+                            {
+                            case PL_FMT_FLOAT:
+                                if (size == 2)
+                                    internalFormat = GL_RGB16F;
+                                else
+                                    internalFormat = GL_RGB32F;
+                                break;
+                            case PL_FMT_SNORM:
+                                switch(size)
+                                {
+                                case 2:
+                                    internalFormat = GL_RGB16_SNORM;
+                                    break;
+                                default:   
+                                    internalFormat = GL_RGB8_SNORM;
+                                    break;
+                                }
+                                break;
+                            case PL_FMT_UINT:
+                                switch(size)
+                                {
+                                case 4:
+                                    internalFormat = GL_RGB32UI;
+                                    break;
+                                case 2:
+                                    internalFormat = GL_RGB16UI;
+                                    break;
+                                default:   
+                                    internalFormat = GL_RGB8UI;
+                                    break;
+                                }
+                                break;
+                            case PL_FMT_SINT:
+                                switch(size)
+                                {
+                                case 4:
+                                    internalFormat = GL_RGB32I;
+                                    break;
+                                case 2:
+                                    internalFormat = GL_RGB16I;
+                                    break;
+                                default:   
+                                    internalFormat = GL_RGB8I;
+                                    break;
+                                }
+                                break;
+                            case PL_FMT_UNORM:
+                                if (size == 2)
+                                    internalFormat = GL_RGB16;
+                                else                                    
+                                    internalFormat = GL_RGB8;
+                                break;
+                            }
+                        }
+                        else if (fmt->num_components == 4)
+                        {
+                            format = GL_RGBA;
+                            switch(fmt->type)
+                            {
+                            case PL_FMT_FLOAT:
+                                if (size == 2)
+                                    internalFormat = GL_RGBA16F;
+                                else
+                                    internalFormat = GL_RGBA32F;
+                                break;
+                            case PL_FMT_SNORM:
+                                switch(size)
+                                {
+                                case 2:
+                                    internalFormat = GL_RGBA16_SNORM;
+                                    break;
+                                default:                              
+                                    internalFormat = GL_RGBA8_SNORM;
+                                    break;
+                                }
+                                break;
+                            case PL_FMT_UINT:
+                                switch(size)
+                                {
+                                case 4:
+                                    internalFormat = GL_RGBA32UI;
+                                    break;
+                                case 2:
+                                    internalFormat = GL_RGBA16UI;
+                                    break;
+                                default:                              
+                                    internalFormat = GL_RGBA8UI;
+                                    break;
+                                }
+                                break;
+                            case PL_FMT_SINT:
+                                switch(size)
+                                {
+                                case 4:
+                                    internalFormat = GL_RGBA32I;
+                                    break;
+                                case 2:
+                                    internalFormat = GL_RGBA16I;
+                                    break;
+                                default:                              
+                                    internalFormat = GL_RGBA8I;
+                                    break;
+                                }
+                                break;
+                            case PL_FMT_UNORM:
+                                switch(size)
+                                {
+                                    internalFormat = GL_RGBA16;
+                                    break;
+                                default:                              
+                                    internalFormat = GL_RGBA8;
+                                    break;
+                                }
+                                break;
+                            }
+                        }
                     
                         GLint width = tex->params.w;
                         glGenTextures(1, &textureId);
-                        
+
+                        const uint8_t* values = pl_tex_dummy_data(tex);
+                        if (!values)
+                        {
+                            throw "Could not read pl_tex_dummy_data";
+                        }
+                            
                         if (dims == 3)
                         {
                             GLint height = tex->params.h;
@@ -873,17 +1176,11 @@ namespace tl
                             assert(height > 0);
                             assert(depth > 0);
                         
-                            const uint16_t* values = reinterpret_cast<uint16_t*>(pl_tex_dummy_data(tex));
-                            if (!values)
-                            {
-                                throw "Could not read pl_tex_dummy_data";
-                            }
-                        
                             glBindTexture(GL_TEXTURE_3D, textureId);
                             setTextureParameters(GL_TEXTURE_3D, GL_LINEAR);
-                            glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA16,
-                                         width, height, depth, 0, GL_RGBA,
-                                         GL_UNSIGNED_SHORT, values);
+                            glTexImage3D(GL_TEXTURE_3D, 0, internalFormat,
+                                         width, height, depth, 0, format,
+                                         type, values);
                             textures.push_back(OCIOTexture(textureId, textureName, samplerName, GL_TEXTURE_3D));
                         }
                         else if (dims == 2)
@@ -891,17 +1188,11 @@ namespace tl
                             GLint height = tex->params.h;
                             assert(height > 0);
                             
-                            const float* values = reinterpret_cast<float*>(pl_tex_dummy_data(tex));
-                            if (!values)
-                            {
-                                throw "Could not read pl_tex_dummy_data";
-                            }
-                            
                             glBindTexture(GL_TEXTURE_2D, textureId);
                             setTextureParameters(GL_TEXTURE_2D, GL_LINEAR);
                             glTexImage2D(GL_TEXTURE_2D, 0, internalFormat,
                                          width, height, 0,
-                                         format, GL_FLOAT, values);
+                                         format, type, values);
                             textures.push_back(OCIOTexture(
                                                    textureId,
                                                    textureName,
@@ -912,17 +1203,11 @@ namespace tl
                         {
                             // This one seems correct
                             assert(width != 0);
-                        
-                            const float* values = reinterpret_cast<float*>(pl_tex_dummy_data(tex));
-                            if (!values)
-                            {
-                                throw "Could not read pl_tex_dummy_data";
-                            }
                             
                             glBindTexture(GL_TEXTURE_1D, textureId);
                             setTextureParameters(GL_TEXTURE_1D, GL_LINEAR);
-                            glTexImage1D(GL_TEXTURE_1D, 0, GL_R32F, width, 0,
-                                         GL_RED, GL_FLOAT, values);
+                            glTexImage1D(GL_TEXTURE_1D, 0, internalFormat, width, 0,
+                                         format, type, values);
                             textures.push_back(OCIOTexture(
                                                    textureId,
                                                    textureName,
@@ -1320,7 +1605,7 @@ namespace tl
                     case image::EOTFType::EOTF_BT2020: // PQ (HDR10)
                         src_colorspace.transfer  = PL_COLOR_TRC_PQ;
                         break;
-                    case image::EOTFType::EOTF_BT2100_HLG: // PQ (HDR10)
+                    case image::EOTFType::EOTF_BT2100_HLG: // HLG
                         src_colorspace.transfer = PL_COLOR_TRC_HLG;
                         break;
                     case image::EOTFType::EOTF_BT709:
